@@ -1,0 +1,141 @@
+{
+  "currentUserId": "user-001",
+  "users": [
+    {
+      "id": "user-001",
+      "username": "minh.nguyen",
+      "displayName": "Nguyễn Hoàng Minh",
+      "email": "minh.demo@example.com",
+      "avatarUrl": "/demo/avatars/user-001.jpg",
+      "bio": "Sinh viên Công nghệ thông tin, yêu thích lập trình web.",
+      "role": "USER",
+      "status": "ACTIVE",
+      "followerCount": 125,
+      "followingCount": 48,
+      "isFollowedByCurrentUser": false
+    },
+    {
+      "id": "user-002",
+      "username": "lan.tran",
+      "displayName": "Trần Ngọc Lan",
+      "email": "lan.demo@example.com",
+      "avatarUrl": "/demo/avatars/user-002.jpg",
+      "bio": "Chia sẻ góc học tập và trải nghiệm sinh viên.",
+      "role": "USER",
+      "status": "ACTIVE",
+      "followerCount": 210,
+      "followingCount": 96,
+      "isFollowedByCurrentUser": true
+    },
+    {
+      "id": "user-003",
+      "username": "admin.demo",
+      "displayName": "Quản trị viên Demo",
+      "email": "admin.demo@example.com",
+      "avatarUrl": "/demo/avatars/admin.jpg",
+      "bio": "Tài khoản quản trị dùng trong môi trường demo.",
+      "role": "ADMIN",
+      "status": "ACTIVE",
+      "followerCount": 0,
+      "followingCount": 0,
+      "isFollowedByCurrentUser": false
+    },
+    {
+      "id": "user-004",
+      "username": "blocked.user",
+      "displayName": "Tài khoản bị khóa",
+      "email": "blocked.demo@example.com",
+      "avatarUrl": "/demo/avatars/default.jpg",
+      "bio": "",
+      "role": "USER",
+      "status": "BLOCKED",
+      "followerCount": 12,
+      "followingCount": 8,
+      "isFollowedByCurrentUser": false
+    }
+  ],
+  "posts": [
+    {
+      "id": "post-001",
+      "authorId": "user-002",
+      "content": "Mình vừa tìm được một góc học bài khá yên tĩnh trong khuôn viên trường.",
+      "imageUrls": [
+        "/demo/posts/post-001-image-01.jpg"
+      ],
+      "hashtags": [
+        "hoctap",
+        "sinhvien"
+      ],
+      "status": "PUBLISHED",
+      "likeCount": 36,
+      "commentCount": 4,
+      "likedByCurrentUser": true,
+      "savedByCurrentUser": false,
+      "edited": false,
+      "createdAt": "2026-06-21T08:30:00+07:00",
+      "updatedAt": "2026-06-21T08:30:00+07:00"
+    },
+    {
+      "id": "post-002",
+      "authorId": "user-001",
+      "content": "Hôm nay mình bắt đầu xây dựng giao diện Feed cho đồ án tốt nghiệp.",
+      "imageUrls": [],
+      "hashtags": [
+        "laptrinh",
+        "doan"
+      ],
+      "status": "PUBLISHED",
+      "likeCount": 18,
+      "commentCount": 2,
+      "likedByCurrentUser": false,
+      "savedByCurrentUser": true,
+      "edited": true,
+      "createdAt": "2026-06-20T20:15:00+07:00",
+      "updatedAt": "2026-06-20T21:00:00+07:00"
+    },
+    {
+      "id": "post-003",
+      "authorId": "user-002",
+      "content": "Bài viết dùng kiểm tra trạng thái bị ẩn.",
+      "imageUrls": [],
+      "hashtags": [],
+      "status": "HIDDEN",
+      "likeCount": 0,
+      "commentCount": 0,
+      "likedByCurrentUser": false,
+      "savedByCurrentUser": false,
+      "edited": false,
+      "createdAt": "2026-06-19T10:00:00+07:00",
+      "updatedAt": "2026-06-19T10:00:00+07:00"
+    }
+  ],
+  "comments": [
+    {
+      "id": "comment-001",
+      "postId": "post-001",
+      "userId": "user-001",
+      "content": "Góc này nhìn yên tĩnh thật.",
+      "createdAt": "2026-06-21T09:00:00+07:00"
+    }
+  ],
+  "feeds": {
+    "forYou": [
+      "post-001",
+      "post-002"
+    ],
+    "following": [
+      "post-001"
+    ]
+  },
+  "reports": [
+    {
+      "id": "report-001",
+      "postId": "post-003",
+      "reporterId": "user-001",
+      "reason": "SPAM",
+      "description": "Nội dung lặp lại nhiều lần.",
+      "status": "PENDING",
+      "createdAt": "2026-06-21T10:00:00+07:00"
+    }
+  ]
+}

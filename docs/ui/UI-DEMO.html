@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Social Network - UI Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #181818;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 640px) 280px;
+      gap: 24px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .panel {
+      background: white;
+      border: 1px solid #e5e5e5;
+      border-radius: 16px;
+    }
+    .sidebar {
+      padding: 16px;
+      height: fit-content;
+      position: sticky;
+      top: 24px;
+    }
+    .sidebar h1 { font-size: 18px; margin-top: 0; }
+    .nav-item {
+      display: block;
+      padding: 12px;
+      border-radius: 10px;
+      color: inherit;
+      text-decoration: none;
+      margin-bottom: 6px;
+    }
+    .nav-item:hover { background: #f2f2f2; }
+    .feed-header {
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f3f3f3;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #181818;
+      color: white;
+    }
+    .composer {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 12px;
+      font: inherit;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .primary {
+      background: #181818;
+      color: white;
+    }
+    .post {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .post:last-child { border-bottom: 0; }
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #ddd;
+      display: grid;
+      place-items: center;
+      font-weight: bold;
+    }
+    .muted { color: #707070; font-size: 14px; }
+    .post-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .post-actions button {
+      background: #f3f3f3;
+      font-weight: 500;
+    }
+    .right-panel {
+      padding: 16px;
+      height: fit-content;
+    }
+    .suggestion {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 180px minmax(0, 1fr); }
+      .right-panel { display: none; }
+    }
+    @media (max-width: 700px) {
+      .app { display: block; padding: 0; }
+      .sidebar { display: none; }
+      .panel { border-radius: 0; border-left: 0; border-right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="panel sidebar">
+      <h1>Student Social</h1>
+      <a class="nav-item" href="#">For You</a>
+      <a class="nav-item" href="#">Following</a>
+      <a class="nav-item" href="#">Search</a>
+      <a class="nav-item" href="#">Saved</a>
+      <a class="nav-item" href="#">Profile</a>
+      <a class="nav-item" href="#">Admin</a>
+    </aside>
+
+    <section class="panel">
+      <div class="feed-header">
+        <div class="tab active">For You</div>
+        <div class="tab">Following</div>
+      </div>
+
+      <div class="composer">
+        <textarea placeholder="Bạn đang nghĩ gì?"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+          <span class="muted">Tối đa 500 ký tự, 4 ảnh</span>
+          <button class="primary">Đăng bài</button>
+        </div>
+      </div>
+
+      <article class="post">
+        <div class="post-header">
+          <div class="avatar">L</div>
+          <div>
+            <strong>Trần Ngọc Lan</strong>
+            <div class="muted">@lan.tran · 10 phút trước</div>
+          </div>
+        </div>
+        <p>Mình vừa tìm được một góc học bài khá yên tĩnh trong khuôn viên trường.</p>
+        <p class="muted">#hoctap #sinhvien</p>
+        <div class="post-actions">
+          <button>♥ 36</button>
+          <button>💬 4</button>
+          <button>🔖 Lưu</button>
+          <button>⋯</button>
+        </div>
+      </article>
+
+      <article class="post">
+        <div class="post-header">
+          <div class="avatar">M</div>
+          <div>
+            <strong>Nguyễn Hoàng Minh</strong>
+            <div class="muted">@minh.nguyen · hôm qua</div>
+          </div>
+        </div>
+        <p>Hôm nay mình bắt đầu xây dựng giao diện Feed cho đồ án tốt nghiệp.</p>
+        <p class="muted">#laptrinh #doan</p>
+        <div class="post-actions">
+          <button>♡ 18</button>
+          <button>💬 2</button>
+          <button>🔖 Đã lưu</button>
+          <button>⋯</button>
+        </div>
+      </article>
+    </section>
+
+    <aside class="panel right-panel">
+      <h3>Gợi ý theo dõi</h3>
+      <div class="suggestion">
+        <div>
+          <strong>Mai Anh</strong>
+          <div class="muted">@maianh</div>
+        </div>
+        <button>Theo dõi</button>
+      </div>
+      <div class="suggestion">
+        <div>
+          <strong>Quốc Bảo</strong>
+          <div class="muted">@quocbao</div>
+        </div>
+        <button>Theo dõi</button>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>
