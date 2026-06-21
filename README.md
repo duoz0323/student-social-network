@@ -412,176 +412,204 @@ Database chỉ lưu URL và metadata của hình ảnh, không lưu trực tiế
 
 ## 📂 Cấu trúc thư mục dự án
 
+Cấu trúc tổng thể có thể thay đổi theo tiến độ triển khai. Riêng Frontend hiện tại sử dụng đúng cấu trúc được mô tả ở phần dưới.
+
+
+## 🧩 Cấu trúc Frontend thực tế
+
+Frontend hiện tại được tổ chức theo cấu trúc phẳng, gọn và phù hợp với tiến độ MVP:
+
 ```text
-student-social-network/
-│
-├── frontend/
-│   ├── public/
-│   │
-│   ├── src/
-│   │   ├── assets/
-│   │   │   ├── icons/
-│   │   │   └── images/
-│   │   │
-│   │   ├── components/
-│   │   │   ├── common/
-│   │   │   └── layout/
-│   │   │
-│   │   ├── config/
-│   │   │   ├── axios.js
-│   │   │   └── routes.js
-│   │   │
-│   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   │   ├── components/
-│   │   │   │   ├── pages/
-│   │   │   │   ├── services/
-│   │   │   │   └── validation/
-│   │   │   │
-│   │   │   ├── profile/
-│   │   │   │   ├── components/
-│   │   │   │   ├── pages/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   ├── follow/
-│   │   │   │   ├── components/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   ├── post/
-│   │   │   │   ├── components/
-│   │   │   │   ├── pages/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   ├── feed/
-│   │   │   │   ├── components/
-│   │   │   │   ├── pages/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   ├── search/
-│   │   │   │   ├── components/
-│   │   │   │   ├── pages/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   ├── report/
-│   │   │   │   ├── components/
-│   │   │   │   └── services/
-│   │   │   │
-│   │   │   └── admin/
-│   │   │       ├── components/
-│   │   │       ├── pages/
-│   │   │       └── services/
-│   │   │
-│   │   ├── hooks/
-│   │   ├── routes/
-│   │   ├── store/
-│   │   ├── utils/
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   │
-│   ├── .env.example
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-│
-├── backend/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/
-│   │   │   │   └── com/
-│   │   │   │       └── studentsocialnetwork/
-│   │   │   │           ├── common/
-│   │   │   │           │   ├── config/
-│   │   │   │           │   ├── exception/
-│   │   │   │           │   ├── response/
-│   │   │   │           │   ├── security/
-│   │   │   │           │   └── util/
-│   │   │   │           │
-│   │   │   │           ├── auth/
-│   │   │   │           │   ├── controller/
-│   │   │   │           │   ├── dto/
-│   │   │   │           │   ├── entity/
-│   │   │   │           │   ├── mapper/
-│   │   │   │           │   ├── repository/
-│   │   │   │           │   └── service/
-│   │   │   │           │
-│   │   │   │           ├── user/
-│   │   │   │           ├── follow/
-│   │   │   │           ├── post/
-│   │   │   │           ├── comment/
-│   │   │   │           ├── reaction/
-│   │   │   │           ├── savedpost/
-│   │   │   │           ├── feed/
-│   │   │   │           ├── search/
-│   │   │   │           ├── report/
-│   │   │   │           ├── admin/
-│   │   │   │           └── StudentSocialNetworkApplication.java
-│   │   │   │
-│   │   │   └── resources/
-│   │   │       ├── application.yml
-│   │   │       ├── application-dev.yml
-│   │   │       └── application-prod.yml
-│   │   │
-│   │   └── test/
-│   │
-│   ├── .env.example
-│   └── pom.xml
-│
-├── database/
-│   ├── student_social_network_db.sql
-│   ├── seed_data.sql
-│   └── erd/
-│
-├── docs/
-│   ├── api/
-│   ├── database/
-│   ├── diagrams/
-│   ├── ui/
-│   └── business/
-│
+FrontEnd/
+├── node_modules/
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── config/
+│   ├── contexts/
+│   ├── features/
+│   ├── hooks/
+│   ├── router/
+│   ├── utils/
+│   ├── App.css
+│   ├── App.jsx
+│   ├── index.css
+│   └── main.jsx
+├── .env
 ├── .gitignore
-├── docker-compose.yml
-└── README.md
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── README.md
+└── vite.config.js
 ```
 
----
+### Vai trò từng thư mục
 
-## 🧩 Nguyên tắc tổ chức Frontend
+#### `src/assets/`
 
-Frontend được tổ chức theo hướng **Feature-Based Structure**.
+Chứa tài nguyên tĩnh được import vào mã nguồn:
 
-Mỗi chức năng nghiệp vụ được đặt trong một thư mục riêng bên trong `features/`.
+* Hình ảnh.
+* Icon.
+* Logo.
+* Font hoặc file media nội bộ nếu có.
 
-Ví dụ:
+#### `src/components/`
+
+Chứa component dùng chung cho nhiều tính năng:
+
+* Button.
+* Input.
+* Modal.
+* Loading.
+* Empty State.
+* Error State.
+* Layout dùng chung.
+* Header.
+* Sidebar.
+
+Không đặt component chỉ dùng riêng cho một nghiệp vụ vào đây nếu component đó phù hợp hơn với `features/`.
+
+#### `src/config/`
+
+Chứa cấu hình dùng chung:
+
+* Axios instance.
+* Axios Interceptor.
+* Biến môi trường.
+* Hằng số API.
+* Cấu hình ứng dụng.
+
+Ví dụ dự kiến:
 
 ```text
-features/post/
-├── components/
-│   ├── CreatePostForm.jsx
-│   ├── PostCard.jsx
-│   └── PostList.jsx
-├── pages/
-│   ├── PostDetailPage.jsx
-│   └── SavedPostsPage.jsx
-├── services/
-│   └── postApi.js
-└── validation/
-    └── postSchema.js
+src/config/
+├── axios.js
+├── env.js
+└── constants.js
 ```
 
-Nguyên tắc:
+#### `src/contexts/`
 
-* `components/`: Chứa component thuộc riêng module.
-* `pages/`: Chứa các trang được khai báo trong Router.
-* `services/`: Chứa các hàm gọi RESTful API.
-* `validation/`: Chứa quy tắc kiểm tra dữ liệu biểu mẫu.
-* Component dùng chung toàn hệ thống đặt trong `src/components/common/`.
-* Cấu hình Axios và Interceptor đặt trong `src/config/axios.js`.
-* Không gọi Axios trực tiếp bên trong component giao diện.
-* Token được quản lý tập trung và tự động gắn vào request bằng Axios Interceptor.
+Chứa React Context dùng toàn ứng dụng:
 
----
+* Auth Context.
+* Theme Context nếu có.
+* Toast/Notification Context nếu cần.
+
+Chỉ tạo Context khi dữ liệu thực sự cần dùng ở nhiều khu vực. Không đưa mọi state vào Context.
+
+#### `src/features/`
+
+Chứa các module nghiệp vụ chính của hệ thống:
+
+```text
+src/features/
+├── auth/
+├── profile/
+├── follow/
+├── post/
+├── interaction/
+├── feed/
+├── search/
+├── report/
+└── admin/
+```
+
+Mỗi feature có thể tổ chức linh hoạt:
+
+```text
+src/features/post/
+├── components/
+├── pages/
+├── services/
+├── hooks/
+├── utils/
+└── validation/
+```
+
+Không bắt buộc feature nào cũng phải có đầy đủ mọi thư mục con. Chỉ tạo thư mục khi thực sự cần.
+
+#### `src/hooks/`
+
+Chứa custom hook dùng chung cho nhiều feature:
+
+* `useAuth`.
+* `useDebounce`.
+* `usePagination`.
+* `useOutsideClick`.
+
+Hook chỉ dùng riêng một feature nên đặt trong chính feature đó.
+
+#### `src/router/`
+
+Chứa cấu hình điều hướng:
+
+* Router chính.
+* Public Route.
+* Protected Route.
+* Admin Route.
+* Danh sách route.
+
+Tên thư mục chính thức của dự án là `router/`, không dùng `routes/`.
+
+#### `src/utils/`
+
+Chứa hàm tiện ích dùng chung:
+
+* Format thời gian.
+* Xử lý chuỗi.
+* Chuẩn hóa hashtag.
+* Kiểm tra file.
+* Xử lý lỗi API.
+
+Không đặt logic nghiệp vụ phức tạp trong `utils/`.
+
+#### `App.jsx`
+
+Component gốc của ứng dụng.
+
+Nên chịu trách nhiệm:
+
+* Gắn Router.
+* Gắn Provider.
+* Khởi tạo layout cấp cao.
+
+Không đặt toàn bộ giao diện và nghiệp vụ trong `App.jsx`.
+
+#### `main.jsx`
+
+Điểm khởi tạo React:
+
+* Render ứng dụng.
+* Gắn StrictMode.
+* Import CSS toàn cục.
+* Gắn Provider cấp cao nếu cần.
+
+#### `App.css` và `index.css`
+
+* `index.css`: style toàn cục, Tailwind directives và reset CSS.
+* `App.css`: chỉ giữ style cấp ứng dụng nếu thật sự cần.
+
+Không để toàn bộ style của mọi component trong hai file này.
+
+### Nguyên tắc tổ chức Frontend
+
+* Dự án sử dụng cấu trúc `features/` theo nghiệp vụ.
+* `components/` chỉ chứa component dùng chung.
+* `contexts/` chỉ chứa state toàn cục thực sự cần thiết.
+* `hooks/` chỉ chứa hook dùng chung.
+* `router/` là nơi duy nhất quản lý route.
+* `config/` quản lý Axios và cấu hình môi trường.
+* `utils/` không chứa component hoặc logic gọi API.
+* Không gọi Axios trực tiếp trong JSX.
+* API của từng feature đặt trong `features/<feature>/services/`.
+* Component riêng của feature đặt trong `features/<feature>/components/`.
+* Page riêng của feature đặt trong `features/<feature>/pages/`.
+* Mọi màn hình gọi API phải có trạng thái loading, empty và error.
 
 ## 🧩 Nguyên tắc tổ chức Backend
 
@@ -1222,6 +1250,161 @@ Các tài liệu phân tích và thiết kế được lưu trong thư mục `do
 * Thiết kế giao diện.
 * Kịch bản kiểm thử.
 * Hướng dẫn sử dụng hệ thống.
+
+---
+
+
+## 🤖 Tài liệu dành cho AI Coding Agent
+
+Dự án sử dụng bộ tài liệu hỗ trợ Codex, Antigravity và các AI Coding Agent khác.
+
+### Cấu trúc tài liệu AI
+
+```text
+.agents/
+├── rules/
+│   ├── general-rules.md
+│   ├── frontend-rules.md
+│   ├── backend-rules.md
+│   ├── database-rules.md
+│   └── security-rules.md
+│
+├── skills/
+│   ├── frontend-development.md
+│   ├── backend-development.md
+│   ├── database-design.md
+│   ├── api-design.md
+│   └── bug-fixing.md
+│
+└── workflows/
+    ├── implement-feature.md
+    ├── create-ui.md
+    ├── create-api.md
+    ├── fix-bug.md
+    └── review-code.md
+
+docs/
+├── data/
+│   ├── DATABASE.md
+│   ├── DATA-FLOW.md
+│   ├── API-CONTRACT.md
+│   ├── DEMO-DATA.md
+│   ├── demo-data.json
+│   └── demo-credentials.md
+│
+├── ui/
+│   ├── UI-DEMO.html
+│   ├── UI-FLOW.md
+│   ├── SCREEN-LIST.md
+│   ├── COMPONENTS.md
+│   └── DESIGN-SYSTEM.md
+│
+├── ARCHITECTURE.md
+├── PRD.md
+└── PROJECT-RULES.md
+
+AGENTS.md
+```
+
+### Vai trò của `AGENTS.md`
+
+`AGENTS.md` là file điều hướng chính mà AI Agent phải đọc trước khi code.
+
+File này quy định:
+
+* Thứ tự đọc tài liệu.
+* Phạm vi MVP.
+* Quy tắc bắt buộc.
+* Cách lập kế hoạch.
+* Cách báo cáo kết quả.
+* Các hành động Agent không được tự ý thực hiện.
+
+### Vai trò của `.agents/rules/`
+
+Chứa các quy tắc bắt buộc theo phạm vi:
+
+* Quy tắc chung.
+* Quy tắc Frontend.
+* Quy tắc Backend.
+* Quy tắc Database.
+* Quy tắc bảo mật.
+
+### Vai trò của `.agents/skills/`
+
+Chứa hướng dẫn chuyên môn để Agent triển khai đúng cách:
+
+* Phát triển Frontend.
+* Phát triển Backend.
+* Thiết kế Database.
+* Thiết kế API.
+* Phân tích và sửa lỗi.
+
+### Vai trò của `.agents/workflows/`
+
+Chứa trình tự làm việc bắt buộc:
+
+* Triển khai chức năng.
+* Tạo giao diện.
+* Tạo API.
+* Sửa lỗi.
+* Review code.
+
+### Vai trò của `docs/ui/`
+
+Chứa tài liệu giúp AI hiểu giao diện và luồng sử dụng:
+
+* Danh sách màn hình.
+* Luồng giao diện.
+* Danh sách component.
+* Design System.
+* File HTML demo.
+
+### Vai trò của `docs/data/`
+
+Chứa tài liệu giúp AI hiểu dữ liệu và API:
+
+* Mô tả database.
+* Luồng dữ liệu.
+* API Contract.
+* Mock data.
+* Tài khoản demo.
+
+### Thứ tự AI Agent phải đọc
+
+1. `AGENTS.md`
+2. `docs/PRD.md`
+3. `docs/ARCHITECTURE.md`
+4. `docs/PROJECT-RULES.md`
+5. Rule phù hợp trong `.agents/rules/`
+6. Skill phù hợp trong `.agents/skills/`
+7. Workflow phù hợp trong `.agents/workflows/`
+8. Tài liệu UI hoặc Data liên quan.
+
+### Prompt khởi đầu khuyến nghị
+
+```text
+Hãy đọc AGENTS.md và toàn bộ tài liệu liên quan đến nhiệm vụ.
+Chưa viết code.
+
+Hãy:
+1. Tóm tắt yêu cầu.
+2. Xác định phạm vi MVP.
+3. Liệt kê các file dự kiến tạo hoặc sửa.
+4. Đề xuất kế hoạch triển khai.
+5. Chỉ ra các rủi ro hoặc điểm chưa thống nhất.
+```
+
+### Nguyên tắc sử dụng AI Agent
+
+* Chỉ giao một chức năng nhỏ trong mỗi nhiệm vụ.
+* Yêu cầu Agent lập kế hoạch trước khi code.
+* Không cho Agent tự ý mở rộng ngoài MVP.
+* Không cho Agent tự ý đổi cấu trúc dự án.
+* Không cho Agent tự ý cài thư viện.
+* Không cho Agent tự ý thay đổi database.
+* Yêu cầu Agent báo cáo file đã tạo và sửa.
+* Luôn review code trước khi merge.
+
 
 ---
 
