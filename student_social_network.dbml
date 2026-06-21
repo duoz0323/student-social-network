@@ -1,0 +1,310 @@
+// ERD vật lý cho MySQL 8 - MVP mạng xã hội tinh gọn dành cho sinh viên.
+// Các giới hạn nghiệp vụ phức tạp được ghi chú và kiểm tra thêm tại Service Layer.
+
+Enum user_role {
+  USER
+  ADMIN
+}
+
+Enum user_status {
+  ACTIVE
+  BLOCKED
+}
+
+Enum post_status {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+Enum comment_status {
+  PUBLISHED
+  DELETED
+}
+
+Enum report_status {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+Enum report_reason {
+  SPAM
+  HARASSMENT
+  HARMFUL_CONTENT
+  VIOLENCE
+  MISINFORMATION
+  INAPPROPRIATE
+  OTHER
+}
+
+Table users {
+  id bigint [pk, increment]
+  email varchar(255) [not null, unique]
+  username varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  role user_role [not null, default: 'USER']
+  status user_status [not null, default: 'ACTIVE']
+  blocked_at datetime
+  blocked_reason varchar(500)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Indexes {
+    (status, created_at)
+  }
+}
+
+Table user_profiles {
+  user_id bigint [pk]
+  display_name varchar(100) [not null]
+  avatar_url varchar(1000)
+  avatar_public_id varchar(255)
+  bio varchar(500)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table refresh_tokens {
+  id bigint [pk, increment]
+  user_id bigint [not null]
+  token_hash char(64) [not null, unique]
+  device_id varchar(100)
+  device_info varchar(500)
+  ip_address varchar(45)
+  expires_at datetime [not null]
+  revoked_at datetime
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, revoked_at, expires_at)
+  }
+}
+
+Table password_reset_tokens {
+  id bigint [pk, increment]
+  user_id bigint [not null]
+  token_hash char(64) [not null, unique]
+  expires_at datetime [not null]
+  used_at datetime
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, used_at, expires_at)
+  }
+}
+
+Table follows {
+  follower_id bigint [pk]
+  following_id bigint [pk]
+  created_at datetime [not null]
+
+  Indexes {
+    (following_id, created_at)
+    (follower_id, created_at)
+  }
+
+  Note: 'CHECK follower_id <> following_id'
+}
+
+Table posts {
+  id bigint [pk, increment]
+  author_id bigint [not null]
+  content varchar(500)
+  status post_status [not null, default: 'PUBLISHED']
+  is_edited boolean [not null, default: false]
+  like_count int [not null, default: 0]
+  comment_count int [not null, default: 0]
+  published_at datetime [not null]
+  hidden_by bigint 
+  hidden_at datetime
+  hidden_reason varchar(500)
+  deleted_at datetime
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Indexes {
+    (author_id, status, published_at, id)
+    (status, published_at, id)
+    (status, like_count, comment_count, published_at)
+  }
+
+  Note: 'Bài phải có content hoặc ít nhất một post_media; kiểm tra bằng transaction tại Service.'
+}
+
+Table post_media {
+  id bigint [pk, increment]
+  post_id bigint [not null]
+  media_url varchar(1000) [not null]
+  storage_public_id varchar(255) [not null, unique]
+  mime_type varchar(30) [not null]
+  file_size_bytes bigint [not null]
+  width_px int 
+  height_px int 
+  display_order tinyint [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (post_id, display_order) [unique]
+  }
+
+  Note: 'Tối đa 4 ảnh mỗi bài; display_order từ 0 đến 3.'
+}
+
+Table hashtags {
+  id bigint [pk, increment]
+  normalized_name varchar(100) [not null, unique]
+  display_name varchar(100) [not null]
+  post_count int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table post_hashtags {
+  post_id bigint [pk]
+  hashtag_id bigint [pk]
+  created_at datetime [not null]
+
+  Indexes {
+    (hashtag_id, post_id)
+  }
+}
+
+Table post_likes {
+  user_id bigint [pk]
+  post_id bigint [pk]
+  created_at datetime [not null]
+
+  Indexes {
+    (post_id, created_at)
+  }
+}
+
+Table comments {
+  id bigint [pk, increment]
+  post_id bigint [not null]
+  user_id bigint [not null]
+  parent_comment_id bigint 
+  content varchar(1000) [not null]
+  status comment_status [not null, default: 'PUBLISHED']
+  deleted_at datetime
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Indexes {
+    (post_id, parent_comment_id, status, created_at)
+    (user_id, created_at)
+  }
+
+  Note: 'Chỉ cho phép trả lời tối đa một cấp; Service phải kiểm tra parent không có parent.'
+}
+
+Table saved_posts {
+  user_id bigint [pk]
+  post_id bigint [pk]
+  created_at datetime [not null]
+
+  Indexes {
+    (post_id, created_at)
+  }
+}
+
+Table reports {
+  id bigint [pk, increment]
+  reporter_id bigint [not null]
+  post_id bigint [not null]
+  reason report_reason [not null]
+  description varchar(1000)
+  status report_status [not null, default: 'PENDING']
+  resolved_by bigint 
+  resolved_at datetime
+  resolution_note varchar(1000)
+  post_content_snapshot varchar(500)
+  post_media_snapshot json
+  pending_report_key varchar(100) [unique, note: 'Generated column chỉ có giá trị khi status = PENDING']
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Indexes {
+    (status, created_at, id)
+    (post_id, status, created_at)
+  }
+}
+
+Table account_status_histories {
+  id bigint [pk, increment]
+  user_id bigint [not null]
+  old_status user_status [not null]
+  new_status user_status [not null]
+  changed_by bigint [not null]
+  reason varchar(500) [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, created_at)
+  }
+}
+
+Table admin_actions {
+  id bigint [pk, increment]
+  admin_id bigint [not null]
+  action_type varchar(40) [not null]
+  target_type varchar(20) [not null]
+  target_id bigint [not null]
+  note varchar(1000)
+  old_data json
+  new_data json
+  created_at datetime [not null]
+
+  Indexes {
+    (target_type, target_id, created_at)
+    (admin_id, created_at)
+  }
+
+  Note: 'Quan hệ đa hình target_type + target_id được kiểm tra tại Service.'
+}
+
+// Quan hệ 1-1 giữa tài khoản và hồ sơ.
+Ref: user_profiles.user_id - users.id
+
+// Quan hệ 1-N cho token đăng nhập và token đặt lại mật khẩu.
+Ref: refresh_tokens.user_id > users.id
+Ref: password_reset_tokens.user_id > users.id
+
+// Quan hệ N-N tự tham chiếu của Follow thông qua bảng trung gian.
+Ref: follows.follower_id > users.id
+Ref: follows.following_id > users.id
+
+// Quan hệ 1-N giữa người dùng và bài viết.
+Ref: posts.author_id > users.id
+Ref: posts.hidden_by > users.id
+
+// Quan hệ 1-N giữa bài viết và ảnh.
+Ref: post_media.post_id > posts.id
+
+// Quan hệ N-N giữa bài viết và hashtag.
+Ref: post_hashtags.post_id > posts.id
+Ref: post_hashtags.hashtag_id > hashtags.id
+
+// Quan hệ N-N giữa người dùng và bài viết thông qua Like.
+Ref: post_likes.user_id > users.id
+Ref: post_likes.post_id > posts.id
+
+// Quan hệ bình luận.
+Ref: comments.post_id > posts.id
+Ref: comments.user_id > users.id
+Ref: comments.parent_comment_id > comments.id
+
+// Quan hệ N-N giữa người dùng và bài viết thông qua Save.
+Ref: saved_posts.user_id > users.id
+Ref: saved_posts.post_id > posts.id
+
+// Quan hệ báo cáo bài viết.
+Ref: reports.reporter_id > users.id
+Ref: reports.post_id > posts.id
+Ref: reports.resolved_by > users.id
+
+// Quan hệ truy vết quản trị.
+Ref: account_status_histories.user_id > users.id
+Ref: account_status_histories.changed_by > users.id
+Ref: admin_actions.admin_id > users.id
