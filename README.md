@@ -117,8 +117,8 @@ Quản trị viên có thể:
 
 ### 🔐 1. Xác thực và tài khoản
 
-* Đăng ký tài khoản bằng email, username và mật khẩu.
-* Đăng nhập bằng email hoặc username.
+* Đăng ký tài khoản bằng email, số điện thoại và mật khẩu.
+* Đăng nhập bằng email hoặc số điện thoại.
 * Đăng xuất khỏi phiên hiện tại.
 * Xác thực bằng JWT Access Token.
 * Làm mới Access Token bằng Refresh Token.
@@ -233,7 +233,6 @@ Phiên bản MVP không quản lý chủ đề nội dung riêng biệt.
 
 ### 🔍 8. Tìm kiếm
 
-* Tìm kiếm người dùng theo username.
 * Tìm kiếm người dùng theo tên hiển thị.
 * Tìm kiếm bài viết theo nội dung.
 * Tìm kiếm bài viết theo hashtag.
@@ -774,7 +773,7 @@ POST   /api/v1/auth/login
 POST   /api/v1/auth/refresh-token
 POST   /api/v1/auth/logout
 
-GET    /api/v1/users/{username}
+GET    /api/v1/users/{userId}
 PUT    /api/v1/users/me/profile
 
 POST   /api/v1/users/{userId}/follow
@@ -815,8 +814,8 @@ Cấu trúc phản hồi lỗi tham khảo:
   "message": "Dữ liệu không hợp lệ",
   "errors": [
     {
-      "field": "username",
-      "message": "Username đã tồn tại"
+      "field": "phoneNumber",
+      "message": "Số điện thoại đã tồn tại"
     }
   ],
   "timestamp": "2026-06-21T10:00:00"

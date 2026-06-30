@@ -166,3 +166,8 @@ Form phải:
 - Không render HTML thô chưa làm sạch.
 - Không tin role phía Frontend.
 - Không commit secret.
+
+## 9. Ghi chú
+- Toàn bộ giao diện người dùng và quản trị phải sử dụng cùng một logo.
+- Logo chính thức nằm tại: `FrontEnd/src/assets/brand/logo.png`.
+- Nếu logo trong ảnh Stitch khác với logo chính thức thì bỏ qua logo trong ảnh và sử dụng file logo chính thức.

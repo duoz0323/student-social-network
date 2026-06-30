@@ -22,6 +22,36 @@ Dùng để:
 - User ACTIVE.
 - Admin ACTIVE.
 - User BLOCKED.
+- Dữ liệu đăng nhập nằm trong `demoAccounts`.
+- Đăng nhập bằng email hoặc số điện thoại và mật khẩu mô phỏng.
+- Không dùng username trong dữ liệu demo.
+- Không render công khai email, số điện thoại hoặc passwordDemo.
+
+### Cấu trúc `demoAccounts`
+
+- `id`
+- `email`
+- `phoneNumber`
+- `passwordDemo`
+- `role`
+- `status`
+- `userId`
+
+Quan hệ: `demoAccounts.userId -> users.id`.
+
+### Cấu trúc `users`
+
+- `id`
+- `displayName`
+- `avatarUrl`
+- `bio`
+- `birthDate`
+- `role`
+- `status`
+- `followerCount`
+- `followingCount`
+
+Thông tin công khai chỉ dùng displayName, avatarUrl, bio, birthDate nếu cần, followerCount và followingCount.
 
 ## 4. Post
 
@@ -35,6 +65,30 @@ Có dữ liệu:
 - Chưa Like.
 - Đã Save.
 - Chưa Save.
+- `posts.authorId -> users.id`.
+- PostCard hiển thị displayName của tác giả, không hiển thị username.
+
+## 4.1 Quan hệ dữ liệu
+
+- `comments.authorId -> users.id`.
+- `follows.followerId -> users.id`.
+- `follows.followingId -> users.id`.
+- `reports.reporterId -> users.id`.
+- `reports.postId -> posts.id`.
+- `postMentions.mentionedUserId -> users.id`.
+- `commentMentions.mentionedUserId -> users.id`.
+
+## 4.2 Mention
+
+Mention thuộc `FUTURE_DEVELOPMENT` nếu chưa triển khai trong MVP.
+
+Quy tắc dữ liệu:
+
+- Hiển thị mention bằng displayName.
+- Lưu liên kết bằng `mentionedUserId`.
+- Có thể lưu `displayNameSnapshot` nếu cần.
+- Không lưu hoặc render `@username`.
+- Khi bấm mention, điều hướng đến `/profile/:userId`.
 
 ## 5. UI State
 

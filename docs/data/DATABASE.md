@@ -7,7 +7,7 @@
 Lưu:
 
 - Email.
-- Username.
+- Số điện thoại.
 - Password hash.
 - Role.
 - Status.
@@ -21,6 +21,7 @@ Lưu:
 - Display name.
 - Avatar URL.
 - Bio.
+- Birth date nếu cần hiển thị/cập nhật hồ sơ.
 
 ### refresh_tokens
 
@@ -91,6 +92,26 @@ Lưu:
 - Created at.
 - Deleted state nếu cần.
 
+### post_mentions
+
+FUTURE_DEVELOPMENT.
+
+Lưu:
+
+- Post.
+- Mentioned user.
+- Display name snapshot nếu cần.
+
+### comment_mentions
+
+FUTURE_DEVELOPMENT.
+
+Lưu:
+
+- Comment.
+- Mentioned user.
+- Display name snapshot nếu cần.
+
 ### saved_posts
 
 Lưu User ↔ Post.
@@ -129,11 +150,13 @@ Tùy chọn.
 - users N-N posts qua saved_posts.
 - users 1-N reports.
 - posts 1-N reports.
+- posts N-N users qua post_mentions.
+- comments N-N users qua comment_mentions.
 
 ## 3. Unique Constraint
 
 - users.email.
-- users.username.
+- users.phone_number.
 - follows(follower_id, following_id).
 - post_likes(user_id, post_id).
 - saved_posts(user_id, post_id).
@@ -141,7 +164,7 @@ Tùy chọn.
 ## 4. Index
 
 - users(email).
-- users(username).
+- users(phone_number).
 - users(status).
 - posts(author_id).
 - posts(status, created_at).

@@ -3,8 +3,11 @@
 ## 1. Tài khoản
 
 - Email duy nhất.
-- Username duy nhất.
-- Mật khẩu tối thiểu 8 ký tự.
+- Số điện thoại duy nhất.
+- Không dùng username hoặc định danh công khai tương tự trong MVP.
+- Đăng ký bằng email, số điện thoại và mật khẩu.
+- Đăng nhập bằng email hoặc số điện thoại.
+- Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Trạng thái MVP: ACTIVE, BLOCKED.
 - User BLOCKED không đăng nhập được.
 - Role: USER, ADMIN.
@@ -59,6 +62,8 @@
 ## 9. Search
 
 - MySQL.
+- Tìm user theo tên hiển thị.
+- Không tìm user theo username.
 - Có phân trang.
 - Không hiển thị user BLOCKED.
 - Không hiển thị post HIDDEN/DELETED.

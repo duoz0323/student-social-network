@@ -73,13 +73,14 @@ Ngoài quyền người dùng, Admin được phép:
 
 ### 4.1 Xác thực
 
-- Đăng ký bằng email, username và mật khẩu.
+- Đăng ký bằng email, số điện thoại và mật khẩu.
 - Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi đăng ký.
 - Email duy nhất.
-- Username duy nhất.
-- Mật khẩu tối thiểu 8 ký tự.
+- Số điện thoại duy nhất.
+- Backend chuẩn hóa email và số điện thoại trước khi kiểm tra trùng và lưu.
+- Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Tài khoản mới ở trạng thái ACTIVE.
-- Đăng nhập bằng email hoặc username.
+- Đăng nhập bằng email hoặc số điện thoại.
 - Cấp Access Token và Refresh Token.
 - Đăng xuất thu hồi Refresh Token.
 - Tài khoản BLOCKED không đăng nhập được.
@@ -90,6 +91,7 @@ Người dùng có thể:
 
 - Xem hồ sơ cá nhân.
 - Xem hồ sơ người khác.
+- Điều hướng hồ sơ bằng userId, trong đó `/profile/me` dành cho hồ sơ cá nhân và `/profile/:userId` dành cho hồ sơ người khác.
 - Cập nhật tên hiển thị.
 - Cập nhật avatar.
 - Cập nhật bio.
@@ -174,7 +176,6 @@ Quy tắc:
 
 ### 4.8 Tìm kiếm
 
-- Tìm user theo username.
 - Tìm user theo tên hiển thị.
 - Tìm post theo nội dung.
 - Tìm post theo hashtag.
@@ -182,6 +183,13 @@ Quy tắc:
 - Có phân trang.
 - Không hiển thị user BLOCKED.
 - Không hiển thị post HIDDEN/DELETED.
+
+### 4.8.1 Mention
+
+- Mention không thuộc phạm vi MVP hiện tại.
+- Khi phát triển sau MVP, mention hiển thị bằng tên hiển thị của người được chọn.
+- Mention phải liên kết nội bộ bằng userId, không dùng tên hiển thị làm khóa.
+- Khi bấm mention, điều hướng đến `/profile/:userId`.
 
 ### 4.9 Báo cáo
 

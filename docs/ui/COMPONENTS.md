@@ -7,7 +7,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `UserShell` | Khung giao diện người dùng gồm sidebar trái và vùng nội dung chính. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeNav`, `currentUser`, `children`, `onCreatePost`. | Dùng chung. |
-| `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, `unreadCount` CẦN XÁC NHẬN, callbacks điều hướng. | Dùng chung. |
+| `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
 | `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-06. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
 | `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-06. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
 | `AuthLayout` | Canh giữa form auth trên nền pattern giáo dục. | AUTH-01 đến AUTH-06. | `title`, `children`, `statusIllustration` nếu có. | Dùng chung auth. |
@@ -31,8 +31,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `LoginForm` | Form đăng nhập bằng email/username và mật khẩu. | AUTH-01. | `initialValues`, `errors`, `submitting`, `onSubmit`, `onForgotPassword`. | Module auth. |
-| `RegisterForm` | Form đăng ký tài khoản MVP. | AUTH-02. | `initialValues`, `errors`, `submitting`, `onSubmit`. | Module auth. |
+| `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `initialValues`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. | Module auth. |
+| `RegisterForm` | Form đăng ký tài khoản MVP bằng email, số điện thoại và mật khẩu. | AUTH-02. | `initialValues`, `errors`, `submitting`, `onSubmit`. | Module auth. |
 | `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-04. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, P2/CẦN XÁC NHẬN. |
 | `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-05. | `errors`, `submitting`, `onSubmit`. | Module auth, P2/CẦN XÁC NHẬN. |
 | `AuthSuccessPanel` | Thông báo đăng ký/đặt lại mật khẩu thành công. | AUTH-03, AUTH-06. | `title`, `description`, `actionLabel`, `onAction`. | Module auth. |
@@ -44,6 +44,7 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP; không tách
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `PostCard` | Hiển thị bài viết trong feed, profile, saved và search. | FEED-01, PROFILE-01/02, POST-07, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
+| `PostAuthor` | Hiển thị tác giả bài viết bằng displayName và avatar. | FEED-01, POST-01, PROFILE-01/02, POST-07. | `authorId` hoặc `user`, `onOpenProfile`. Điều hướng bằng `/profile/:userId`. | Dùng chung module post/profile. |
 | `PostDetail` | Hiển thị bài viết đầy đủ và khu vực bình luận. | POST-01. | `post`, `comments`, `currentUser`, action callbacks. | Module post. |
 | `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxImages`, `submitting`, `onSubmit`. | Module post. |
 | `EditPostForm` | Sửa nội dung và hashtag của bài đã đăng. | POST-03. | `post`, `maxLength`, `submitting`, `onSave`, `onCancel`. | Module post. |
@@ -57,11 +58,12 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP; không tách
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `ProfileHeader` | Hiển thị thông tin hồ sơ, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`. | Module profile. |
-| `EditProfileModal` | Cập nhật avatar, tên hiển thị, username/bio theo API. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. | Module profile. |
+| `ProfileHeader` | Hiển thị thông tin hồ sơ, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `userId` hoặc `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`. | Module profile. |
+| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh nếu UI cần. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username. | Module profile. |
 | `ProfileTabs` | Chuyển nhóm nội dung trong hồ sơ. | PROFILE-01, PROFILE-02. | `activeTab`, `tabs`, `onChange`. | Module profile. |
-| `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`. | Module follow/profile. |
+| `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`, `onOpenProfile(userId)`. | Module follow/profile. |
 | `FollowButton` | Theo dõi hoặc bỏ theo dõi. | PROFILE-02, PROFILE-04, SEARCH-01. | `isFollowing`, `loading`, `onClick`. | Dùng chung profile/search. |
+| `UserListItem` | Hiển thị một người dùng trong danh sách follow/search/gợi ý. | PROFILE-04, SEARCH-01. | `userId` hoặc `user`, `onOpenProfile(userId)`, `onFollowToggle`. | Dùng chung profile/search. |
 
 ## 6. Search component
 
@@ -69,8 +71,10 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP; không tách
 |---|---|---|---|---|
 | `SearchBox` | Nhập từ khóa tìm kiếm. | SEARCH-01, admin list nếu dùng chung style. | `value`, `placeholder`, `onChange`, `onSubmit`. | Dùng chung có biến thể. |
 | `PopularSearchList` | Hiển thị từ khóa/hashtag phổ biến. | SEARCH-01. | `items`, `onSelect`. | Module search. |
-| `SuggestedUserList` | Gợi ý người dùng để theo dõi. | SEARCH-01, có thể dùng ở Feed nếu có panel gợi ý. | `users`, `onFollowToggle`, `onOpenProfile`. | Module search/follow. |
-| `SearchResults` | Hiển thị kết quả user/post/hashtag khi có truy vấn. | SEARCH-01. | `query`, `users`, `posts`, `hashtags`, `loading`, `pagination`. | Module search. |
+| `SuggestedUserList` | Gợi ý người dùng để theo dõi. | SEARCH-01, có thể dùng ở Feed nếu có panel gợi ý. | `users`, `onFollowToggle`, `onOpenProfile(userId)`. | Module search/follow. |
+| `SearchResultItem` | Hiển thị kết quả user bằng displayName hoặc bài viết/hashtag. | SEARCH-01. | `userId` hoặc `user`, `post`, `hashtag`, `onOpenProfile(userId)`, `onOpenPost`. | Module search. |
+| `SearchResults` | Hiển thị kết quả user/post/hashtag khi có truy vấn. | SEARCH-01. | `query`, `users`, `posts`, `hashtags`, `loading`, `pagination`. User tìm theo displayName và điều hướng bằng userId. | Module search. |
+| `MentionSuggestionItem` | Gợi ý mention theo displayName khi phát triển sau MVP. | FUTURE_DEVELOPMENT. | `userId` hoặc `user`, `onSelect(mentionedUserId)`. Hiển thị avatar, displayName, bio ngắn nếu cần. | FUTURE_DEVELOPMENT, chưa dùng trong MVP. |
 
 ## 7. Admin component
 

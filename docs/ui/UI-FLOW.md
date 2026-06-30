@@ -2,24 +2,26 @@
 
 Tài liệu này mô tả các luồng có thể suy ra từ MVP, ảnh trong `docs/ui/screens/` và điều hướng mẫu trong `UI-DEMO.html`. Không mô tả luồng cho nhắn tin, Discovery Map, Feed tùy chỉnh, Follow Request, Repost, video/tài liệu, Elasticsearch hoặc dashboard nâng cao.
 
-## 1. Đăng ký
+## 1. Luồng MVP hiện tại
+
+### 1.1 Đăng ký
 
 ```text
 AUTH-02 Đăng ký
-→ Nhập tên hiển thị, tên người dùng, email, mật khẩu, xác nhận mật khẩu
+→ Nhập email, số điện thoại, mật khẩu, xác nhận mật khẩu nếu UI cần
 → Đồng ý điều khoản nếu form yêu cầu
 → Gửi đăng ký
 → AUTH-03 Đăng ký thành công
 → AUTH-01 Đăng nhập
 ```
 
-Ghi chú: nút Google/Facebook xuất hiện trong ảnh nhưng ngoài MVP, không triển khai trong luồng này.
+Ghi chú: Không dùng username, Google hoặc Facebook trong MVP. Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi tạo tài khoản.
 
-## 2. Đăng nhập
+### 1.2 Đăng nhập
 
 ```text
 AUTH-01 Đăng nhập
-→ Nhập email hoặc tên người dùng
+→ Nhập email hoặc số điện thoại
 → Nhập mật khẩu
 → Gửi đăng nhập
 → Nhận Access Token và Refresh Token
@@ -36,20 +38,7 @@ API trả 401
 → AUTH-01 Đăng nhập
 ```
 
-## 3. Quên mật khẩu
-
-```text
-AUTH-01 Đăng nhập
-→ Chọn Quên mật khẩu
-→ AUTH-04 Nhập mã xác minh
-→ AUTH-05 Đặt lại mật khẩu
-→ AUTH-06 Đặt lại mật khẩu thành công
-→ AUTH-01 Đăng nhập
-```
-
-Ghi chú: luồng này có ảnh nhưng thuộc P2/CẦN XÁC NHẬN nếu xem là phạm vi MVP triển khai.
-
-## 4. Feed For You và Following
+### 1.3 Feed For You và Following
 
 ```text
 FEED-01
@@ -66,7 +55,7 @@ Hiển thị empty state
 → Gợi ý người dùng tìm kiếm hoặc follow tài khoản khác
 ```
 
-## 5. Tạo bài viết
+### 1.4 Tạo bài viết
 
 ```text
 FEED-01 hoặc sidebar Tạo bài viết
@@ -79,7 +68,7 @@ FEED-01 hoặc sidebar Tạo bài viết
 
 Quy tắc: bài phải có nội dung hoặc ít nhất một ảnh; tối đa 4 ảnh; chỉ hỗ trợ JPG, JPEG, PNG, WEBP theo MVP.
 
-## 6. Xem chi tiết bài viết
+### 1.5 Xem chi tiết bài viết
 
 ```text
 PostCard trong Feed/Profile/Saved
@@ -89,7 +78,7 @@ PostCard trong Feed/Profile/Saved
 → Nhập bình luận mới
 ```
 
-## 7. Chỉnh sửa và xóa bài viết của mình
+### 1.6 Chỉnh sửa và xóa bài viết của mình
 
 Chỉnh sửa:
 
@@ -117,7 +106,7 @@ PostCard của chính mình
 
 Quy tắc: chỉ tác giả được sửa/xóa; sau khi đăng không chỉnh sửa ảnh.
 
-## 8. Like, bình luận và lưu bài
+### 1.7 Like, bình luận và lưu bài
 
 Like/Unlike:
 
@@ -145,12 +134,13 @@ PostCard hoặc menu bài viết
 → POST-07/SAVED-01 hiển thị danh sách bài đã lưu của chính người dùng
 ```
 
-## 9. Xem hồ sơ
+### 1.8 Xem hồ sơ
 
 Hồ sơ của mình:
 
 ```text
 Sidebar Trang cá nhân
+→ /profile/me
 → PROFILE-01 Hồ sơ của mình
 → Xem thông tin cá nhân, số follower/following, bài đã đăng
 → Chọn Chỉnh sửa trang cá nhân
@@ -161,15 +151,16 @@ Sidebar Trang cá nhân
 Hồ sơ người khác:
 
 ```text
-Chọn avatar/tên người dùng từ Feed/Search/Comment
+Chọn avatar/tên hiển thị từ Feed/Search/Comment
+→ /profile/:userId
 → PROFILE-02 Hồ sơ người khác
 → Xem thông tin công khai và bài viết
 → Follow hoặc Unfollow
 ```
 
-Ghi chú: nút Nhắn tin xuất hiện trong ảnh nhưng ngoài MVP.
+Quy tắc: `/profile/me` active mục Trang cá nhân. `/profile/:userId` không active mục Trang cá nhân. Nút Nhắn tin xuất hiện trong ảnh nhưng thuộc FUTURE_DEVELOPMENT.
 
-## 10. Follow và Unfollow
+### 1.9 Follow và Unfollow
 
 ```text
 PROFILE-02 hoặc PROFILE-04
@@ -182,20 +173,20 @@ PROFILE-02 hoặc PROFILE-04
 
 Quy tắc: không follow chính mình, không tạo follow trùng, không có Follow Request.
 
-## 11. Tìm kiếm
+### 1.10 Tìm kiếm
 
 ```text
 Sidebar Tìm kiếm
 → SEARCH-01
-→ Nhập từ khóa
+→ Nhập từ khóa theo displayName, nội dung bài viết hoặc hashtag
 → Xem gợi ý/tìm kiếm phổ biến hoặc kết quả
-→ Chọn user để đến PROFILE-02
+→ Chọn user để đến /profile/:userId
 → Chọn bài viết/hashtag để xem danh sách bài hoặc POST-01
 ```
 
-MVP dùng MySQL và phân trang; không dùng Elasticsearch.
+MVP dùng MySQL và phân trang; không dùng username hoặc Elasticsearch.
 
-## 12. Báo cáo bài viết
+### 1.11 Báo cáo bài viết
 
 ```text
 PostCard của người khác hoặc POST-01
@@ -209,7 +200,7 @@ PostCard của người khác hoặc POST-01
 
 Quy tắc: chỉ báo cáo bài viết; một người không có nhiều report PENDING cho cùng một bài; gửi report không tự động ẩn bài.
 
-## 13. Admin quản lý người dùng
+### 1.12 Admin quản lý người dùng
 
 ```text
 Admin đăng nhập
@@ -222,7 +213,7 @@ Admin đăng nhập
 
 Tài khoản BLOCKED không được đăng nhập hoặc dùng chức năng hệ thống.
 
-## 14. Admin quản lý bài viết
+### 1.13 Admin quản lý bài viết
 
 ```text
 Admin đăng nhập
@@ -234,7 +225,7 @@ Admin đăng nhập
 
 Chỉ xử lý trạng thái phục vụ MVP: PUBLISHED, HIDDEN, DELETED.
 
-## 15. Admin xử lý báo cáo
+### 1.14 Admin xử lý báo cáo
 
 ```text
 Admin đăng nhập
@@ -247,7 +238,7 @@ Admin đăng nhập
 
 Lịch sử xử lý trong ảnh chỉ nên là lịch sử đơn giản; audit log chi tiết ngoài MVP.
 
-## 16. Trạng thái hệ thống
+### 1.15 Trạng thái hệ thống
 
 ```text
 Không có quyền → SYS-01
@@ -255,3 +246,44 @@ Không tìm thấy route/tài nguyên → SYS-02
 Lỗi server/API → SYS-03
 Phiên đăng nhập hết hạn → SYS-04
 ```
+
+## 2. Luồng phát triển tương lai
+
+Các luồng sau có thể đã có ảnh thiết kế nhưng thuộc `FUTURE_DEVELOPMENT`, không triển khai trong bản demo và Frontend MVP hiện tại.
+
+### 2.1 Quên mật khẩu
+
+```text
+AUTH-01 Đăng nhập
+→ Chọn Quên mật khẩu
+→ AUTH-04 Nhập mã xác minh
+→ AUTH-05 Đặt lại mật khẩu
+→ AUTH-06 Đặt lại mật khẩu thành công
+→ AUTH-01 Đăng nhập
+```
+
+### 2.2 Mention
+
+```text
+Người dùng nhập @ trong bài viết hoặc bình luận
+→ Hệ thống gợi ý người dùng theo displayName
+→ Người dùng chọn một tài khoản cụ thể
+→ Lưu mentionedUserId
+→ Render mention bằng @displayName
+→ Bấm mention điều hướng /profile/:userId
+```
+
+Quy tắc: Không dùng @username, không dùng displayName làm khóa liên kết, không điều hướng theo tên hiển thị.
+
+### 2.3 Các chức năng tương lai khác
+
+- Nhắn tin.
+- Discovery Map.
+- Feed tùy chỉnh.
+- Follow Request.
+- Repost.
+- Trích dẫn bài viết.
+- Video hoặc tài liệu trong bài viết.
+- Elasticsearch.
+- Dashboard nâng cao.
+- Thông báo thời gian thực.

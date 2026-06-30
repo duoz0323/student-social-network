@@ -9,7 +9,7 @@ Request:
 ```json
 {
   "email": "minh@example.com",
-  "username": "minh.nguyen",
+  "phoneNumber": "+84901234567",
   "password": "Password123!"
 }
 ```
@@ -18,9 +18,7 @@ Response 201:
 
 ```json
 {
-  "id": 1,
-  "email": "minh@example.com",
-  "username": "minh.nguyen",
+  "userId": "user-001",
   "displayName": "Nguyễn Hoàng Minh",
   "role": "USER",
   "status": "ACTIVE"
@@ -38,6 +36,8 @@ Request:
 }
 ```
 
+`identifier` là email hoặc số điện thoại. Backend tự xác định loại định danh để truy vấn đúng trường.
+
 Response 200:
 
 ```json
@@ -47,8 +47,7 @@ Response 200:
   "tokenType": "Bearer",
   "expiresIn": 900,
   "user": {
-    "id": 1,
-    "username": "minh.nguyen",
+    "id": "user-001",
     "displayName": "Nguyễn Hoàng Minh",
     "role": "USER"
   }
@@ -77,7 +76,7 @@ Request:
 
 ## 2. User
 
-### GET `/api/v1/users/{username}`
+### GET `/api/v1/users/{userId}`
 
 ### PATCH `/api/v1/users/me/profile`
 
@@ -90,6 +89,11 @@ Request:
   "avatarUrl": "https://example.com/avatar.jpg"
 }
 ```
+
+Route UI tương ứng:
+
+- Hồ sơ cá nhân: `/profile/me`.
+- Hồ sơ người dùng khác: `/profile/:userId`.
 
 ## 3. Follow
 
