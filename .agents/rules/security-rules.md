@@ -4,6 +4,10 @@
 
 - Mật khẩu phải được băm một chiều.
 - Không lưu mật khẩu dạng văn bản thuần.
+- Đăng ký phải kiểm tra email và số điện thoại bắt buộc, đúng định dạng và duy nhất.
+- Backend phải chuẩn hóa email về chữ thường trước khi kiểm tra và lưu.
+- Backend phải chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra và lưu.
+- Mật khẩu đăng ký tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Access Token có thời hạn ngắn.
 - Refresh Token có thời hạn dài hơn và có thể bị thu hồi.
 - Khi đăng xuất, refresh token của phiên hiện tại phải bị vô hiệu hóa.
@@ -20,6 +24,7 @@
 Không trả qua API công khai:
 
 - Password hash.
+- Email và số điện thoại trên hồ sơ công khai.
 - Refresh Token.
 - Secret.
 - Stack trace.

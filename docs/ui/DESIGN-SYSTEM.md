@@ -1,68 +1,98 @@
 # Design System
 
-## 1. Phong cách
+Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ ảnh trong `docs/ui/screens/` và `UI-DEMO.html`. Các giá trị chưa đo được chính xác được mô tả định tính và đánh dấu `CẦN XÁC NHẬN`.
 
-- Tối giản.
-- Tập trung nội dung.
-- Gần với trải nghiệm mạng xã hội dạng luồng ngắn.
-- Responsive.
-- Ưu tiên khả năng đọc.
+## 1. Bố cục tổng thể
 
-## 2. Layout
+- Giao diện người dùng chính theo kiểu mạng xã hội tối giản: sidebar trái cố định, vùng nội dung chính ở giữa, nền sáng.
+- Vùng Feed/Profile/Post Detail có chiều rộng trung tâm vừa phải để tập trung vào nội dung bài viết.
+- Các modal xuất hiện trên nền mờ hoặc nền trung tính, ưu tiên thao tác ngắn và rõ ràng.
+- Admin dùng layout dashboard riêng: sidebar trái, vùng nội dung rộng, bảng dữ liệu và thẻ thống kê.
+- `UI-DEMO.html` dùng grid desktop gồm sidebar trái, feed giữa và panel phải; ảnh Stitch hiện tại chủ yếu thể hiện sidebar trái và nội dung giữa.
 
-### Desktop
+## 2. Sidebar người dùng
 
-- Sidebar trái.
-- Feed giữa.
-- Khu vực phụ bên phải nếu cần.
+- Brand `UniShare` đặt ở góc trên trái.
+- Danh mục chính quan sát được: Dành cho bạn/Trang chủ, Tạo bài viết, Tìm kiếm, Hoạt động, Trang cá nhân, Bài viết đã lưu, Xem thêm.
+- Item active có nền xám nhạt, bo góc mềm, icon ở bên trái và text ở bên phải.
+- Các mục thuộc MVP: Feed, Tạo bài viết, Tìm kiếm, Trang cá nhân, Bài viết đã lưu.
+- Mục `Hoạt động` và một số mục trong `Xem thêm` CẦN XÁC NHẬN, không đưa vào MVP nếu không có đặc tả.
 
-### Mobile
+## 3. Sidebar Admin
 
-- Header gọn.
-- Bottom navigation.
-- Feed chiếm toàn bộ chiều rộng.
+- Sidebar admin dùng brand `UniShare`, nhãn khu vực "Trang quản trị" và danh mục quản trị.
+- Danh mục quan sát được: Tổng quan, Người dùng, Bài viết, Báo cáo, Cài đặt, Quay lại ứng dụng.
+- Các mục thuộc MVP: Người dùng, Bài viết, Báo cáo, Quay lại ứng dụng.
+- `Tổng quan` chỉ nên hiểu là dashboard tóm tắt đơn giản nếu cần; dashboard nâng cao ngoài MVP.
+- `Cài đặt` CẦN XÁC NHẬN và không nằm trong luồng MVP đã chốt.
 
-## 3. Typography
+## 4. Vùng nội dung
 
-- Font sans-serif.
-- Nội dung bài dễ đọc.
-- Heading rõ cấp độ.
-- Không dùng quá nhiều cỡ chữ.
+- Feed dùng tab ngang ở đầu vùng nội dung cho `Dành cho bạn` và `Đang theo dõi`.
+- Composer tạo bài nhanh nằm phía trên danh sách bài trong Feed.
+- Profile dùng header thông tin cá nhân, chỉ số follower/following, nút hành động và tab nội dung.
+- Search dùng thanh tìm kiếm lớn ở đầu, bên dưới là nhóm gợi ý/tìm kiếm phổ biến.
+- Admin dùng tiêu đề trang lớn, mô tả ngắn, bộ lọc/tìm kiếm và bảng dữ liệu.
 
-## 4. Khoảng cách
+## 5. PostCard
 
-Sử dụng hệ thống khoảng cách nhất quán:
+- PostCard gồm avatar, tên hiển thị, username, thời gian, menu ba chấm, nội dung text, hashtag, media và thanh action.
+- Media ảnh thường bo góc nhẹ, chiếm gần hết chiều rộng card.
+- Action quan sát được: like, comment, repost/share-like icon, chia sẻ/lưu/menu tùy màn hình.
+- Repost không thuộc MVP; nếu icon xuất hiện trong ảnh thì chỉ ghi nhận visual, không triển khai nghiệp vụ repost.
+- Bài có thể hiển thị trạng thái đã chỉnh sửa hoặc số liệu tương tác; vị trí và format CẦN XÁC NHẬN khi có API.
 
-- 4px.
-- 8px.
-- 12px.
-- 16px.
-- 24px.
-- 32px.
+## 6. Modal
 
-## 5. Component state
+- Modal có header rõ, nút đóng hoặc hành động hủy, nội dung chính ở giữa và footer hành động.
+- Modal xác nhận xóa dùng thông điệp cảnh báo, nút hủy trung tính và nút xóa màu cảnh báo.
+- Modal báo cáo dùng danh sách radio toàn hàng, sau đó màn hình nhập mô tả.
+- Modal thành công dùng icon check lớn, tiêu đề ngắn, mô tả và nút chính màu đen.
+- Modal phiên hết hạn dùng icon đồng hồ, mô tả ngắn và nút đăng nhập lại.
 
-Mỗi component tương tác cần có:
+## 7. Button
 
-- Default.
-- Hover.
-- Focus.
-- Disabled.
-- Loading.
-- Error nếu phù hợp.
+- Primary button: nền đen, chữ trắng, bo tròn lớn; dùng cho đăng nhập, đăng ký, đăng bài, lưu thay đổi, tiếp tục, xác nhận.
+- Secondary button: nền trắng hoặc xám rất nhạt, viền mảnh, chữ đen; dùng cho hủy, theo dõi phụ, điều hướng phụ.
+- Destructive action: chữ đỏ hoặc nút cảnh báo trong modal xóa.
+- Button trong bảng admin nhỏ gọn hơn, ưu tiên thao tác nhanh.
+- Kích thước cụ thể CẦN XÁC NHẬN; không tự chốt pixel khi chưa đo từ thiết kế gốc.
 
-## 6. Accessibility
+## 8. Input
 
-- Label cho input.
-- Keyboard navigation.
-- Focus state rõ.
-- Alt text cho ảnh.
-- Button có nội dung hoặc aria-label.
-- Không chỉ dùng màu để truyền đạt trạng thái.
+- Auth form dùng input bo góc, cao vừa phải, viền xám nhạt, placeholder rõ.
+- Search input có icon kính lúp và nền xám nhạt.
+- Textarea tạo/sửa bài chiếm chiều rộng lớn, hỗ trợ đếm ký tự.
+- Radio trong báo cáo đặt bên phải mỗi lựa chọn.
+- Focus, error và disabled state cần có nhưng màu/độ dày viền CẦN XÁC NHẬN.
 
-## 7. Trạng thái dữ liệu
+## 9. Typography
 
-- Loading: Skeleton hoặc Spinner.
-- Empty: tiêu đề, mô tả, hành động.
-- Error: thông báo dễ hiểu và nút thử lại.
-- Success: Toast hoặc inline message.
+- Font sans-serif, phong cách sạch và dễ đọc.
+- Brand và heading dùng weight đậm.
+- Nội dung bài viết dùng cỡ chữ trung bình, line-height thoáng.
+- Metadata như username, thời gian, mô tả phụ dùng màu xám và cỡ nhỏ hơn.
+- Không tự chốt font-size pixel; CẦN XÁC NHẬN từ file thiết kế gốc nếu cần triển khai chính xác.
+
+## 10. Màu sắc
+
+- Nền chính: trắng hoặc xám rất nhạt.
+- Text chính: gần đen.
+- Text phụ, border, divider: các sắc xám nhạt đến xám trung tính.
+- Primary action: đen/trắng.
+- Link/brand `UniShare`: tím/xanh tím trong một số màn hình người dùng; CẦN XÁC NHẬN mã màu.
+- Trạng thái admin: xanh cho active/published, vàng cho pending/chờ xử lý, đỏ cho blocked/ẩn/xóa; mã màu CẦN XÁC NHẬN.
+
+## 11. Border, radius, spacing
+
+- Card, input, modal và media đều dùng bo góc mềm.
+- Divider mảnh phân tách bài viết, item menu, bảng và vùng thông tin.
+- Khoảng cách tổng thể thoáng, nhiều whitespace; sidebar và content có khoảng cách rõ.
+- `UI-DEMO.html` tham chiếu spacing 12px, 16px, 24px và radius 10px-16px, nhưng ảnh Stitch có thể khác; xem đây là tham khảo, không phải token bắt buộc.
+
+## 12. Responsive dự kiến
+
+- Desktop: sidebar trái hiển thị cố định, content ở giữa.
+- Tablet: có thể thu hẹp sidebar hoặc ẩn panel phụ nếu có.
+- Mobile: CẦN XÁC NHẬN vì bộ ảnh hiện tại chủ yếu là desktop/tablet; dự kiến chuyển sidebar thành top/bottom navigation hoặc drawer.
+- Modal trên mobile cần full-width gần mép màn hình, đảm bảo nút chính không bị che và text không tràn.

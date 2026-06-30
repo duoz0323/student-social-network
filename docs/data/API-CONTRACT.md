@@ -10,7 +10,6 @@ Request:
 {
   "email": "minh@example.com",
   "username": "minh.nguyen",
-  "displayName": "Nguyễn Hoàng Minh",
   "password": "Password123!"
 }
 ```

@@ -21,7 +21,22 @@ Mục tiêu của MVP là hoàn thiện luồng mạng xã hội cốt lõi, ổ
 → Báo cáo
 → Quản trị.
 
-## 3. Nguyên tắc làm việc
+## 3. Quy tắc tài khoản và đăng ký
+
+- Đăng ký MVP dùng `email`, `phoneNumber` và `password`.
+- Không dùng `username` hoặc tên định danh công khai riêng trong phạm vi MVP.
+- Email và số điện thoại là bắt buộc, phải đúng định dạng, được chuẩn hóa và không trùng.
+- Backend chuẩn hóa email về chữ thường trước khi kiểm tra và lưu.
+- Backend chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra và lưu.
+- Mật khẩu tối thiểu 8 ký tự, bao gồm chữ, số và ký tự đặc biệt.
+- Tài khoản mới có trạng thái `ACTIVE`.
+- Đăng nhập bằng email hoặc số điện thoại kèm mật khẩu.
+- Email, số điện thoại và dữ liệu xác thực không hiển thị công khai trên hồ sơ.
+- Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi đăng ký.
+- Không tạo trường hoặc thuật ngữ `gmail`; Gmail chỉ là một nhà cung cấp email.
+- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn khi cập nhật hồ sơ và không bắt buộc trong form đăng ký.
+
+## 4. Nguyên tắc làm việc
 
 Agent phải:
 
@@ -33,7 +48,7 @@ Agent phải:
 - Luôn ưu tiên thay đổi nhỏ, an toàn và có thể kiểm thử.
 - Giữ code và tài liệu đồng nhất.
 
-## 4. Nguyên tắc đặt tên
+## 5. Nguyên tắc đặt tên
 
 - Tên file và thư mục: tiếng Anh, dạng kebab-case hoặc theo convention framework.
 - Java class: PascalCase.
@@ -43,14 +58,14 @@ Agent phải:
 - Constant: UPPER_SNAKE_CASE.
 - Endpoint REST: danh từ số nhiều, chữ thường, dùng dấu gạch ngang khi cần.
 
-## 5. Quy tắc comment
+## 6. Quy tắc comment
 
 - Comment bằng tiếng Việt.
 - Giải thích mục đích, quy tắc nghiệp vụ hoặc lý do kỹ thuật.
 - Không comment lại chính xác điều câu lệnh đã thể hiện.
 - Không để comment sai lệch với code.
 
-## 6. Quy tắc Git
+## 7. Quy tắc Git
 
 - Không commit secret.
 - Không commit file build.
@@ -59,7 +74,7 @@ Agent phải:
 - Mỗi commit chỉ nên phục vụ một mục tiêu rõ ràng.
 - Không đổi tên hoặc xóa hàng loạt file nếu không thật sự cần thiết.
 
-## 7. Quy tắc tài liệu
+## 8. Quy tắc tài liệu
 
 Khi thay đổi nghiệp vụ hoặc API:
 

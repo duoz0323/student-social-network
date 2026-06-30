@@ -1,18 +1,27 @@
 -- =============================================================================
--- TÊN CSDL: student_social_network_mvp
+-- TÊN CSDL: student_social_network
 -- HỆ QUẢN TRỊ: MySQL 8.0+
 -- PHẠM VI: MVP mạng xã hội tinh gọn dành cho sinh viên
--- GHI CHÚ: Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
---          được kiểm tra tại Service Layer để bảo đảm thông báo lỗi nghiệp vụ rõ ràng.
+-- GHI CHÚ:
+-- 1. Người dùng bắt buộc nhập cả email và số điện thoại khi đăng ký.
+-- 2. Hệ thống không sử dụng tên định danh công khai riêng trong phạm vi MVP.
+-- 3. Người dùng đăng nhập bằng email hoặc số điện thoại.
+-- 4. Ngày sinh được lưu trong bảng user_profiles.
+-- 5. Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
+--    được kiểm tra tại Service Layer để bảo đảm thông báo lỗi nghiệp vụ rõ ràng.
+-- 6. Index được thiết kế theo các truy vấn thực tế: đăng nhập, hồ sơ, Feed,
+--    bình luận, bài đã lưu, tìm kiếm và màn hình quản trị.
+-- 7. Các danh sách lớn nên dùng cursor pagination theo cặp (thời gian, id).
+-- 8. Không dùng SELECT * trong API; chỉ lấy các cột cần thiết.
 -- =============================================================================
 
 -- Tạo cơ sở dữ liệu với bộ ký tự utf8mb4 để lưu đầy đủ tiếng Việt và emoji.
-CREATE DATABASE IF NOT EXISTS student_social_network_mvp
+CREATE DATABASE IF NOT EXISTS student_social_network
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_0900_ai_ci;
 
 -- Chọn cơ sở dữ liệu vừa tạo để thực thi các lệnh tiếp theo.
-USE student_social_network_mvp;
+USE student_social_network;
 
 -- Tắt kiểm tra khóa ngoại tạm thời để có thể chạy lại script nhiều lần.
 SET FOREIGN_KEY_CHECKS = 0;
@@ -45,31 +54,56 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE users (
     -- Khóa chính dạng số lớn, thuận lợi cho index và quan hệ khóa ngoại.
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Email dùng để đăng ký/đăng nhập; luôn lưu dạng chữ thường tại Backend.
+
+    -- Email bắt buộc dùng để đăng ký, đăng nhập và khôi phục tài khoản.
+    -- Backend phải chuẩn hóa email về chữ thường trước khi lưu.
     email VARCHAR(255) NOT NULL,
-    -- Username công khai và có tính duy nhất.
-    username VARCHAR(50) NOT NULL,
+
+    -- Số điện thoại bắt buộc dùng để đăng ký, đăng nhập và khôi phục tài khoản.
+    -- Backend phải chuẩn hóa số điện thoại về định dạng thống nhất trước khi lưu.
+    phone_number VARCHAR(20) NOT NULL,
+
     -- Mật khẩu đã băm một chiều bằng BCrypt hoặc Argon2.
     password_hash VARCHAR(255) NOT NULL,
+
     -- Vai trò hệ thống trong MVP chỉ gồm USER và ADMIN.
     role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
+
     -- Trạng thái tài khoản trong MVP chỉ gồm ACTIVE và BLOCKED.
     status ENUM('ACTIVE', 'BLOCKED') NOT NULL DEFAULT 'ACTIVE',
+
     -- Thời điểm tài khoản bị khóa; NULL khi tài khoản đang hoạt động.
     blocked_at DATETIME(6) NULL,
+
     -- Lý do khóa tài khoản; chỉ có ý nghĩa khi status = BLOCKED.
     blocked_reason VARCHAR(500) NULL,
+
     -- Thời điểm tạo bản ghi.
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
     -- Thời điểm cập nhật gần nhất.
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
         ON UPDATE CURRENT_TIMESTAMP(6),
+
     -- Khóa chính của bảng users.
     CONSTRAINT pk_users PRIMARY KEY (id),
-    -- Không cho phép hai tài khoản dùng cùng email.
+
+    -- Không cho phép hai tài khoản sử dụng cùng email.
     CONSTRAINT uq_users_email UNIQUE (email),
-    -- Không cho phép hai tài khoản dùng cùng username.
-    CONSTRAINT uq_users_username UNIQUE (username),
+
+    -- Không cho phép hai tài khoản sử dụng cùng số điện thoại.
+    CONSTRAINT uq_users_phone_number UNIQUE (phone_number),
+
+    -- Không cho phép lưu email là chuỗi rỗng.
+    CONSTRAINT chk_users_email_not_blank CHECK (
+        CHAR_LENGTH(TRIM(email)) > 0
+    ),
+
+    -- Không cho phép lưu số điện thoại là chuỗi rỗng.
+    CONSTRAINT chk_users_phone_not_blank CHECK (
+        CHAR_LENGTH(TRIM(phone_number)) > 0
+    ),
+
     -- Bảo đảm dữ liệu khóa tài khoản nhất quán với trạng thái.
     CONSTRAINT chk_users_blocked_data CHECK (
         (status = 'ACTIVE' AND blocked_at IS NULL)
@@ -80,7 +114,10 @@ CREATE TABLE users (
 
 -- Tạo index phục vụ màn hình quản trị lọc tài khoản theo trạng thái.
 CREATE INDEX idx_users_status_created_at
-    ON users (status, created_at DESC);
+    ON users (status, created_at DESC, id DESC);
+
+-- Các UNIQUE INDEX trên email và phone_number hỗ trợ trực tiếp
+-- việc kiểm tra trùng và truy vấn đăng nhập theo từng loại định danh.
 
 -- Bảng user_profiles tách dữ liệu hồ sơ công khai khỏi dữ liệu xác thực.
 CREATE TABLE user_profiles (
@@ -94,6 +131,12 @@ CREATE TABLE user_profiles (
     avatar_public_id VARCHAR(255) NULL,
     -- Nội dung giới thiệu cá nhân.
     bio VARCHAR(500) NULL,
+
+    -- Ngày tháng năm sinh của người dùng.
+    -- Cho phép NULL để người dùng có thể bổ sung sau trong trang hồ sơ.
+    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai.
+    date_of_birth DATE NULL,
+
     -- Thời điểm tạo hồ sơ.
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     -- Thời điểm cập nhật hồ sơ gần nhất.
@@ -107,6 +150,11 @@ CREATE TABLE user_profiles (
         ON UPDATE RESTRICT
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- FULLTEXT INDEX hỗ trợ tìm kiếm người dùng theo tên hiển thị trong phạm vi MVP.
+-- Backend vẫn phải lọc trạng thái tài khoản sau khi JOIN với bảng users.
+CREATE FULLTEXT INDEX ftx_user_profiles_display_name
+    ON user_profiles (display_name);
 
 -- Bảng refresh_tokens quản lý phiên đăng nhập và khả năng thu hồi token.
 CREATE TABLE refresh_tokens (
@@ -147,14 +195,17 @@ CREATE TABLE refresh_tokens (
 
 -- Index phục vụ truy vấn danh sách token còn hiệu lực theo người dùng.
 CREATE INDEX idx_refresh_tokens_user_expiry
-    ON refresh_tokens (user_id, revoked_at, expires_at);
+    ON refresh_tokens (user_id, revoked_at, expires_at, id);
 
--- Bảng password_reset_tokens hỗ trợ chức năng khôi phục mật khẩu P2.
+-- Bảng password_reset_tokens hỗ trợ khôi phục mật khẩu qua email hoặc số điện thoại.
 CREATE TABLE password_reset_tokens (
     -- Khóa chính của yêu cầu đặt lại mật khẩu.
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     -- Tài khoản yêu cầu đặt lại mật khẩu.
     user_id BIGINT UNSIGNED NOT NULL,
+    -- Kênh nhận mã đặt lại mật khẩu.
+    -- EMAIL áp dụng khi tài khoản có email; SMS áp dụng khi tài khoản có số điện thoại.
+    delivery_channel ENUM('EMAIL', 'SMS') NOT NULL,
     -- Giá trị băm của mã hoặc token đặt lại mật khẩu.
     token_hash CHAR(64) NOT NULL,
     -- Thời điểm token hết hạn.
@@ -182,7 +233,14 @@ CREATE TABLE password_reset_tokens (
 
 -- Index hỗ trợ kiểm tra token chưa dùng và chưa hết hạn của một tài khoản.
 CREATE INDEX idx_password_reset_tokens_user_state
-    ON password_reset_tokens (user_id, used_at, expires_at);
+    ON password_reset_tokens (user_id, used_at, expires_at, id);
+
+-- Quy tắc triển khai tại Backend:
+-- 1. Form đăng ký bắt buộc nhập đồng thời email và số điện thoại.
+-- 2. Backend chuẩn hóa và kiểm tra trùng cả email lẫn số điện thoại.
+-- 3. Hệ thống không tạo thêm tên định danh đăng nhập riêng.
+-- 4. Khi đăng nhập, Backend xác định dữ liệu nhập là email hay số điện thoại.
+-- 5. Ngày sinh được cập nhật trong hồ sơ và phải được kiểm tra không nằm trong tương lai.
 
 -- =============================================================================
 -- 2. NHÓM QUAN HỆ THEO DÕI
@@ -214,11 +272,11 @@ CREATE TABLE follows (
 
 -- Index phục vụ truy vấn danh sách follower của một người dùng.
 CREATE INDEX idx_follows_following_created_at
-    ON follows (following_id, created_at DESC);
+    ON follows (following_id, created_at DESC, follower_id DESC);
 
 -- Index phục vụ truy vấn danh sách following theo thời gian.
 CREATE INDEX idx_follows_follower_created_at
-    ON follows (follower_id, created_at DESC);
+    ON follows (follower_id, created_at DESC, following_id DESC);
 
 -- =============================================================================
 -- 3. NHÓM BÀI VIẾT, HÌNH ẢNH VÀ HASHTAG
@@ -263,10 +321,11 @@ CREATE TABLE posts (
         ON UPDATE RESTRICT
         ON DELETE RESTRICT,
     -- Khóa ngoại liên kết người ẩn bài với tài khoản Admin.
+    -- Dùng RESTRICT để bảo toàn lịch sử kiểm duyệt và không xung đột với CHECK yêu cầu hidden_by khác NULL khi status = 'HIDDEN'.
     CONSTRAINT fk_posts_hidden_by FOREIGN KEY (hidden_by)
         REFERENCES users (id)
         ON UPDATE RESTRICT
-        ON DELETE SET NULL,
+        ON DELETE RESTRICT,
     -- Bảo đảm dữ liệu HIDDEN đi kèm thời điểm và người xử lý.
     CONSTRAINT chk_posts_hidden_state CHECK (
         (status = 'HIDDEN' AND hidden_at IS NOT NULL AND hidden_by IS NOT NULL)
@@ -291,7 +350,18 @@ CREATE INDEX idx_posts_status_published
 
 -- Index hỗ trợ xếp hạng Feed cơ bản theo tương tác.
 CREATE INDEX idx_posts_status_engagement
-    ON posts (status, like_count DESC, comment_count DESC, published_at DESC);
+    ON posts (
+        status,
+        like_count DESC,
+        comment_count DESC,
+        published_at DESC,
+        id DESC
+    );
+
+-- FULLTEXT INDEX hỗ trợ tìm kiếm nội dung bài viết trong MySQL MVP.
+-- Khi chuyển sang Elasticsearch, MySQL vẫn là nguồn dữ liệu chuẩn.
+CREATE FULLTEXT INDEX ftx_posts_content
+    ON posts (content);
 
 -- Bảng post_media lưu metadata ảnh; tệp thật nằm trên Cloud Storage.
 CREATE TABLE post_media (
@@ -332,9 +402,8 @@ CREATE TABLE post_media (
     CONSTRAINT chk_post_media_file_size CHECK (file_size_bytes > 0)
 ) ENGINE=InnoDB;
 
--- Index hỗ trợ tải danh sách ảnh theo bài và đúng thứ tự.
-CREATE INDEX idx_post_media_post_order
-    ON post_media (post_id, display_order);
+-- UNIQUE INDEX uq_post_media_post_order đã đồng thời hỗ trợ truy vấn
+-- danh sách ảnh theo post_id và display_order nên không tạo index trùng lặp.
 
 -- Bảng hashtags lưu hashtag chuẩn hóa dùng chung cho nhiều bài viết.
 CREATE TABLE hashtags (
@@ -358,6 +427,10 @@ CREATE TABLE hashtags (
     -- Tên hashtag phải có ít nhất một ký tự.
     CONSTRAINT chk_hashtags_not_empty CHECK (CHAR_LENGTH(normalized_name) > 0)
 ) ENGINE=InnoDB;
+
+-- Index hỗ trợ lấy danh sách hashtag phổ biến theo số bài.
+CREATE INDEX idx_hashtags_post_count
+    ON hashtags (post_count DESC, id DESC);
 
 -- Bảng post_hashtags là bảng trung gian cho quan hệ N-N giữa posts và hashtags.
 CREATE TABLE post_hashtags (
@@ -383,7 +456,7 @@ CREATE TABLE post_hashtags (
 
 -- Index hỗ trợ truy vấn danh sách bài theo hashtag.
 CREATE INDEX idx_post_hashtags_hashtag_post
-    ON post_hashtags (hashtag_id, post_id);
+    ON post_hashtags (hashtag_id, post_id DESC);
 
 -- =============================================================================
 -- 4. NHÓM TƯƠNG TÁC
@@ -413,7 +486,7 @@ CREATE TABLE post_likes (
 
 -- Index hỗ trợ đếm và liệt kê người Like theo bài.
 CREATE INDEX idx_post_likes_post_created
-    ON post_likes (post_id, created_at DESC);
+    ON post_likes (post_id, created_at DESC, user_id DESC);
 
 -- Bảng comments lưu bình luận và trả lời bình luận tối đa một cấp.
 CREATE TABLE comments (
@@ -467,11 +540,17 @@ CREATE TABLE comments (
 
 -- Index hỗ trợ tải bình luận gốc của một bài theo thời gian.
 CREATE INDEX idx_comments_post_parent_created
-    ON comments (post_id, parent_comment_id, status, created_at ASC);
+    ON comments (
+        post_id,
+        parent_comment_id,
+        status,
+        created_at ASC,
+        id ASC
+    );
 
 -- Index hỗ trợ người dùng quản lý các bình luận của mình.
 CREATE INDEX idx_comments_user_created
-    ON comments (user_id, created_at DESC);
+    ON comments (user_id, status, created_at DESC, id DESC);
 
 -- Bảng saved_posts là bảng trung gian N-N giữa users và posts.
 CREATE TABLE saved_posts (
@@ -495,9 +574,14 @@ CREATE TABLE saved_posts (
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Index quan trọng cho màn hình danh sách bài viết đã lưu của người dùng.
+-- Khóa chính (user_id, post_id) không tối ưu cho ORDER BY created_at.
+CREATE INDEX idx_saved_posts_user_created
+    ON saved_posts (user_id, created_at DESC, post_id DESC);
+
 -- Index hỗ trợ truy vấn danh sách người đã lưu một bài nếu Admin cần thống kê.
 CREATE INDEX idx_saved_posts_post_created
-    ON saved_posts (post_id, created_at DESC);
+    ON saved_posts (post_id, created_at DESC, user_id DESC);
 
 -- =============================================================================
 -- 5. NHÓM BÁO CÁO VÀ QUẢN TRỊ
@@ -563,10 +647,11 @@ CREATE TABLE reports (
         ON UPDATE RESTRICT
         ON DELETE RESTRICT,
     -- Khóa ngoại liên kết báo cáo với Admin xử lý.
+    -- Dùng RESTRICT để bảo toàn lịch sử xử lý và không xung đột với CHECK yêu cầu resolved_by khác NULL khi báo cáo đã xử lý.
     CONSTRAINT fk_reports_resolved_by FOREIGN KEY (resolved_by)
         REFERENCES users (id)
         ON UPDATE RESTRICT
-        ON DELETE SET NULL,
+        ON DELETE RESTRICT,
     -- Báo cáo đã xử lý phải có Admin và thời điểm xử lý.
     CONSTRAINT chk_reports_resolution_state CHECK (
         (status = 'PENDING' AND resolved_by IS NULL AND resolved_at IS NULL)
@@ -583,7 +668,11 @@ CREATE INDEX idx_reports_status_created
 
 -- Index phục vụ xem các báo cáo của một bài viết.
 CREATE INDEX idx_reports_post_status
-    ON reports (post_id, status, created_at DESC);
+    ON reports (post_id, status, created_at DESC, id DESC);
+
+-- Index hỗ trợ người dùng xem lịch sử báo cáo của chính mình.
+CREATE INDEX idx_reports_reporter_created
+    ON reports (reporter_id, created_at DESC, id DESC);
 
 -- Bảng account_status_histories lưu lịch sử khóa/mở khóa tài khoản.
 CREATE TABLE account_status_histories (
@@ -621,7 +710,7 @@ CREATE TABLE account_status_histories (
 
 -- Index phục vụ xem lịch sử trạng thái theo tài khoản.
 CREATE INDEX idx_account_status_histories_user_created
-    ON account_status_histories (user_id, created_at DESC);
+    ON account_status_histories (user_id, created_at DESC, id DESC);
 
 -- Bảng admin_actions lưu vết thao tác quản trị cơ bản trong MVP/P2.
 CREATE TABLE admin_actions (
@@ -661,11 +750,11 @@ CREATE TABLE admin_actions (
 
 -- Index phục vụ truy vết thao tác theo đối tượng.
 CREATE INDEX idx_admin_actions_target_created
-    ON admin_actions (target_type, target_id, created_at DESC);
+    ON admin_actions (target_type, target_id, created_at DESC, id DESC);
 
 -- Index phục vụ truy vết thao tác của một Admin.
 CREATE INDEX idx_admin_actions_admin_created
-    ON admin_actions (admin_id, created_at DESC);
+    ON admin_actions (admin_id, created_at DESC, id DESC);
 
 -- =============================================================================
 -- 6. TRIGGER BẢO ĐẢM DỮ LIỆU VÀ TỐI ƯU BỘ ĐẾM
@@ -818,8 +907,6 @@ SELECT
     p.is_edited,
     -- ID tác giả.
     u.id AS author_id,
-    -- Username tác giả.
-    u.username,
     -- Tên hiển thị tác giả.
     up.display_name,
     -- Ảnh đại diện tác giả.
@@ -832,9 +919,58 @@ INNER JOIN user_profiles up
 WHERE p.status = 'PUBLISHED'
   AND u.status = 'ACTIVE';
 
+-- View nhẹ phục vụ các truy vấn Feed chỉ cần dữ liệu bài và tác giả cơ bản.
+-- Media, hashtag và trạng thái Like/Save nên được tải bằng truy vấn riêng theo danh sách ID
+-- để tránh JOIN nhiều bảng làm nhân bản số dòng và gây chậm.
+CREATE OR REPLACE VIEW v_feed_posts AS
+SELECT
+    p.id AS post_id,
+    p.author_id,
+    p.content,
+    p.is_edited,
+    p.like_count,
+    p.comment_count,
+    p.published_at,
+    up.display_name,
+    up.avatar_url
+FROM posts p
+INNER JOIN users u
+    ON u.id = p.author_id
+INNER JOIN user_profiles up
+    ON up.user_id = p.author_id
+WHERE p.status = 'PUBLISHED'
+  AND u.status = 'ACTIVE';
+
 -- =============================================================================
 -- 8. DỮ LIỆU ADMIN MẪU TÙY CHỌN
 -- =============================================================================
 
 -- Lưu ý: Không chèn sẵn mật khẩu mẫu để tránh tạo thông tin đăng nhập không an toàn.
 -- Admin đầu tiên nên được tạo bằng migration riêng với password_hash hợp lệ.
+
+-- =============================================================================
+-- 9. KHUYẾN NGHỊ TRUY VẤN VÀ VẬN HÀNH
+-- =============================================================================
+
+-- 1. Cursor pagination cho Feed:
+--    WHERE status = 'PUBLISHED'
+--      AND (published_at < :cursorTime
+--           OR (published_at = :cursorTime AND id < :cursorId))
+--    ORDER BY published_at DESC, id DESC
+--    LIMIT :pageSize;
+--
+-- 2. Không JOIN trực tiếp posts với post_media, post_hashtags, post_likes và comments
+--    trong cùng một truy vấn danh sách Feed vì có thể tạo tích Descartes.
+--    Nên tải trang bài viết trước, sau đó truy vấn dữ liệu liên quan bằng WHERE post_id IN (...).
+--
+-- 3. Khi truy vấn, luôn kiểm tra bằng EXPLAIN ANALYZE trong môi trường thử nghiệm.
+--
+-- 4. Chỉ chọn các cột cần dùng; không sử dụng SELECT * trong API.
+--
+-- 5. Sau khi nhập dữ liệu lớn, có thể chạy ANALYZE TABLE để cập nhật thống kê:
+--    ANALYZE TABLE users, user_profiles, follows, posts, comments,
+--                  post_likes, saved_posts, reports;
+--
+-- 6. Chỉ tạo thêm index khi có truy vấn thật sự cần đến.
+--    Quá nhiều index sẽ làm chậm INSERT, UPDATE và tăng dung lượng lưu trữ.
+

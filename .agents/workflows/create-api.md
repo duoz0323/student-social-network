@@ -14,6 +14,14 @@ Xác định:
 - Quyền truy cập.
 - Lỗi nghiệp vụ.
 
+Với API Auth MVP:
+
+- Register nhận `email`, `phoneNumber` và `password`.
+- Login nhận `identifier` là email hoặc số điện thoại và `password`.
+- Không thiết kế request/response phụ thuộc `username`.
+- Không tạo trường `gmail`; dùng `email`.
+- Email và số điện thoại phải được chuẩn hóa ở Backend trước khi kiểm tra trùng và lưu.
+
 ## Bước 2: Xác định tầng
 
 - DTO.

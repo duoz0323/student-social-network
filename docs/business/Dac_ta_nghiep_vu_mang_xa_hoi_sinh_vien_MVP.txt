@@ -1,0 +1,644 @@
+================================================================================
+ĐẶC TẢ YÊU CẦU NGHIỆP VỤ
+HỆ THỐNG MẠNG XÃ HỘI TINH GỌN DÀNH CHO SINH VIÊN
+PHIÊN BẢN MVP - RÚT GỌN PHẠM VI TRIỂN KHAI
+================================================================================
+
+I. TỔNG QUAN
+
+1. Mục tiêu hệ thống
+
+Hệ thống được xây dựng dưới dạng website mạng xã hội tinh gọn hướng đến sinh viên.
+Hệ thống cho phép người dùng tạo tài khoản, xây dựng hồ sơ cá nhân, theo dõi người
+dùng khác, đăng tải nội dung ngắn, xem bảng tin và thực hiện các tương tác cơ bản.
+
+Mục tiêu chính của phiên bản MVP là hoàn thiện một luồng sử dụng mạng xã hội xuyên
+suốt, ổn định và có thể kiểm thử, bao gồm:
+
+- Đăng ký và đăng nhập.
+- Quản lý hồ sơ cá nhân.
+- Theo dõi người dùng.
+- Đăng và quản lý bài viết.
+- Xem bảng tin.
+- Like, bình luận và lưu bài viết.
+- Tìm kiếm nội dung.
+- Báo cáo và quản trị nội dung cơ bản.
+
+2. Đối tượng sử dụng
+
+2.1. Khách chưa đăng nhập
+
+Khách chưa đăng nhập được phép:
+
+- Đăng ký tài khoản.
+- Đăng nhập.
+- Yêu cầu đặt lại mật khẩu.
+
+Khách chưa đăng nhập không được phép sử dụng các chức năng mạng xã hội.
+
+2.2. Người dùng
+
+Người dùng là tài khoản đã đăng nhập thành công và đang ở trạng thái hoạt động.
+
+Người dùng được phép:
+
+- Quản lý hồ sơ cá nhân.
+- Theo dõi người dùng khác.
+- Đăng và quản lý bài viết.
+- Like, bình luận và lưu bài viết.
+- Xem Feed.
+- Tìm kiếm.
+- Báo cáo bài viết vi phạm.
+
+2.3. Quản trị viên
+
+Quản trị viên có quyền:
+
+- Quản lý người dùng.
+- Khóa và mở khóa tài khoản.
+- Xem các bài viết bị báo cáo.
+- Ẩn hoặc khôi phục bài viết.
+- Xử lý báo cáo.
+
+================================================================================
+II. PHẠM VI MVP
+================================================================================
+
+1. Xác thực và tài khoản
+
+1.1. Đăng ký
+
+Người dùng đăng ký tài khoản bằng cách nhập đầy đủ các thông tin sau:
+
+- Email.
+- Số điện thoại.
+- Mật khẩu.
+
+Hệ thống không sử dụng tên định danh công khai riêng trong phạm vi MVP.
+
+Quy tắc:
+
+- Email là thông tin bắt buộc.
+- Số điện thoại là thông tin bắt buộc.
+- Email phải đúng định dạng và không được trùng với tài khoản khác.
+- Số điện thoại phải đúng định dạng chuẩn hóa và không được trùng với tài khoản khác.
+- Backend phải chuẩn hóa email về chữ thường trước khi kiểm tra và lưu.
+- Backend phải chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra và lưu.
+- Mật khẩu phải có tối thiểu 8 ký tự, bao gồm chữ, số và ký tự đặc biệt.
+- Mật khẩu phải được băm một chiều trước khi lưu vào cơ sở dữ liệu.
+- Tài khoản mới được tạo ở trạng thái ACTIVE.
+- Email và số điện thoại không được hiển thị công khai trên hồ sơ.
+
+1.2. Đăng nhập
+
+Người dùng đăng nhập bằng một trong hai thông tin sau và mật khẩu:
+
+- Email.
+- Số điện thoại.
+
+Hệ thống phải tự xác định dữ liệu người dùng nhập là email hay số điện thoại để truy vấn
+đúng trường dữ liệu tương ứng.
+
+Khi đăng nhập thành công, hệ thống cấp:
+
+- Access Token.
+- Refresh Token.
+
+Tài khoản bị khóa không được đăng nhập.
+
+Lưu ý: Gmail là một nhà cung cấp dịch vụ email. Trong tài liệu nghiệp vụ, giao diện,
+API và cơ sở dữ liệu sử dụng thuật ngữ chung là email, không tạo trường riêng tên Gmail.
+
+1.3. Đăng xuất
+
+Khi đăng xuất, Refresh Token của phiên hiện tại bị thu hồi hoặc vô hiệu hóa.
+
+1.4. Quên mật khẩu
+
+Người dùng có thể yêu cầu đặt lại mật khẩu thông qua email hoặc số điện thoại đã đăng ký.
+
+Chức năng này có thể được triển khai sau khi các luồng mạng xã hội chính đã hoàn
+thành nếu tiến độ thực hiện không đảm bảo.
+
+2. Hồ sơ người dùng
+
+Người dùng có thể:
+
+- Xem hồ sơ của mình.
+- Xem hồ sơ người dùng khác.
+- Cập nhật tên hiển thị.
+- Cập nhật ảnh đại diện.
+- Cập nhật phần giới thiệu cá nhân.
+- Cập nhật ngày tháng năm sinh.
+- Xem số lượng follower.
+- Xem số lượng following.
+- Xem danh sách bài viết đã đăng.
+
+Quy tắc:
+
+- Tất cả hồ sơ trong phiên bản MVP đều ở chế độ công khai.
+- Email, số điện thoại và các dữ liệu xác thực không được hiển thị công khai.
+- Ngày sinh được lưu trong hồ sơ người dùng.
+- Ngày sinh không được lớn hơn ngày hiện tại.
+- Ngày sinh là thông tin tùy chọn khi cập nhật hồ sơ, không bắt buộc trong form đăng ký.
+- Chỉ chủ tài khoản được chỉnh sửa hồ sơ của mình.
+
+3. Theo dõi người dùng
+
+Người dùng có thể:
+
+- Theo dõi người dùng khác.
+- Bỏ theo dõi.
+- Xem danh sách follower.
+- Xem danh sách following.
+
+Quy tắc:
+
+- Người dùng không được theo dõi chính mình.
+- Mỗi người chỉ được theo dõi một tài khoản tối đa một lần.
+- Follow có hiệu lực ngay.
+- Không sử dụng Follow Request trong phiên bản MVP.
+
+4. Bài viết
+
+4.1. Tạo bài viết
+
+Người dùng có thể tạo bài viết gồm:
+
+- Nội dung văn bản tối đa 500 ký tự.
+- Tối đa 4 hình ảnh.
+- Nhiều hashtag.
+
+Bài viết phải có ít nhất nội dung văn bản hoặc một hình ảnh.
+
+4.2. Media bài viết
+
+Hệ thống chỉ hỗ trợ hình ảnh trong phiên bản MVP.
+
+Định dạng cho phép:
+
+- JPG.
+- JPEG.
+- PNG.
+- WEBP.
+
+Quy tắc:
+
+- Mỗi hình ảnh không vượt quá giới hạn dung lượng do hệ thống quy định.
+- Hình ảnh được lưu trên dịch vụ lưu trữ tệp.
+- Cơ sở dữ liệu chỉ lưu thông tin và đường dẫn của tệp.
+- Backend phải kiểm tra định dạng, MIME type và dung lượng tệp.
+
+4.3. Xem bài viết
+
+Người dùng đã đăng nhập có thể xem các bài viết đang hoạt động.
+
+Bài viết bị xóa hoặc bị Admin ẩn không được hiển thị trên Feed, kết quả tìm kiếm
+hoặc hồ sơ công khai.
+
+4.4. Chỉnh sửa bài viết
+
+Chỉ tác giả được chỉnh sửa bài viết.
+
+Tác giả được phép chỉnh sửa:
+
+- Nội dung văn bản.
+- Hashtag.
+
+Sau khi chỉnh sửa, bài viết phải lưu thời gian cập nhật và hiển thị trạng thái
+“Đã chỉnh sửa”.
+
+4.5. Xóa bài viết
+
+- Chỉ tác giả được xóa bài viết của mình.
+- Admin được quyền ẩn hoặc xử lý bài viết vi phạm.
+- Tác giả thực hiện xóa mềm bài viết.
+- Bài viết đã xóa không còn xuất hiện trong các chức năng thông thường.
+
+4.6. Trạng thái bài viết
+
+- PUBLISHED: Bài viết đang hoạt động.
+- HIDDEN: Bài viết bị Admin ẩn.
+- DELETED: Bài viết đã được xóa mềm.
+
+5. Tương tác bài viết
+
+5.1. Like
+
+Người dùng có thể Like hoặc Unlike bài viết.
+
+Quy tắc:
+
+- Mỗi người chỉ được Like một bài tối đa một lần.
+- Không được Like bài đã bị xóa hoặc bị ẩn.
+- Hệ thống hiển thị tổng số lượt Like.
+
+5.2. Bình luận
+
+Người dùng có thể:
+
+- Thêm bình luận.
+- Xem danh sách bình luận.
+- Xóa bình luận của chính mình.
+
+Quy tắc:
+
+- Chỉ người dùng đã đăng nhập được bình luận.
+- Không được bình luận trên bài bị ẩn hoặc bị xóa.
+- Nếu đủ thời gian, hệ thống có thể hỗ trợ trả lời bình luận tối đa một cấp.
+
+5.3. Lưu bài viết
+
+Người dùng có thể:
+
+- Lưu bài viết.
+- Bỏ lưu bài viết.
+- Xem danh sách bài viết đã lưu.
+
+Quy tắc:
+
+- Mỗi người chỉ được lưu một bài tối đa một lần.
+- Danh sách bài đã lưu chỉ hiển thị với chủ tài khoản.
+- Bài viết bị xóa hoặc bị ẩn không còn khả dụng trong danh sách đã lưu.
+
+6. Feed
+
+6.1. Feed Following
+
+Feed Following hiển thị bài viết của các tài khoản mà người dùng đang theo dõi.
+
+Quy tắc:
+
+- Sắp xếp theo thời gian đăng giảm dần.
+- Không hiển thị bài bị xóa hoặc bị ẩn.
+- Sử dụng phân trang.
+- Khi người dùng Unfollow, bài viết của tài khoản đó không còn thuộc nguồn của
+  Feed Following.
+
+6.2. Feed For You
+
+Feed For You hiển thị các bài viết công khai đang hoạt động.
+
+Hệ thống có thể xếp hạng dựa trên:
+
+- Thời gian đăng.
+- Số lượt Like.
+- Số bình luận.
+
+Quy tắc:
+
+- Ưu tiên bài viết mới.
+- Không hiển thị bài bị ẩn hoặc bị xóa.
+- Hạn chế lặp liên tiếp quá nhiều bài của cùng một tác giả.
+- Phiên bản MVP không sử dụng Machine Learning.
+- Phiên bản MVP không thực hiện cá nhân hóa hành vi nâng cao.
+
+Công thức tham khảo:
+
+Điểm bài viết = Điểm độ mới
+                 + Số lượt Like × Trọng số Like
+                 + Số bình luận × Trọng số bình luận
+
+Trọng số được cấu hình trong Backend và có thể điều chỉnh khi kiểm thử.
+
+7. Hashtag
+
+Người dùng có thể gắn hashtag trong bài viết.
+
+Quy tắc:
+
+- Hashtag được chuẩn hóa về chữ thường.
+- Một bài viết có thể có nhiều hashtag.
+- Người dùng có thể xem danh sách bài viết theo một hashtag.
+- Hệ thống không quản lý chủ đề nội dung riêng biệt trong phiên bản MVP.
+
+8. Tìm kiếm
+
+Người dùng có thể:
+
+- Tìm tài khoản theo tên hiển thị.
+- Tìm bài viết theo nội dung.
+- Tìm bài viết theo hashtag.
+
+Quy tắc:
+
+- Phiên bản MVP sử dụng MySQL để tìm kiếm.
+- Kết quả phải có phân trang.
+- Không hiển thị tài khoản bị khóa.
+- Không hiển thị bài viết bị ẩn hoặc bị xóa.
+- Elasticsearch được đưa vào hướng phát triển khi dữ liệu hệ thống tăng.
+
+9. Báo cáo vi phạm
+
+Người dùng có thể báo cáo bài viết.
+
+Thông tin báo cáo gồm:
+
+- Bài viết bị báo cáo.
+- Người báo cáo.
+- Lý do.
+- Mô tả bổ sung.
+- Thời gian báo cáo.
+- Trạng thái xử lý.
+
+Trạng thái báo cáo gồm:
+
+- PENDING.
+- RESOLVED.
+- REJECTED.
+
+Quy tắc:
+
+- Một người không được gửi nhiều báo cáo đang chờ xử lý cho cùng một bài viết.
+- Việc gửi báo cáo không tự động làm ẩn bài viết.
+- Admin là người quyết định kết quả xử lý.
+- Báo cáo chỉ áp dụng cho bài viết trong phiên bản MVP.
+
+10. Quản trị
+
+10.1. Quản lý người dùng
+
+Admin có thể:
+
+- Xem danh sách người dùng.
+- Tìm kiếm người dùng.
+- Khóa tài khoản.
+- Mở khóa tài khoản.
+
+Trạng thái tài khoản MVP gồm:
+
+- ACTIVE.
+- BLOCKED.
+
+Quy tắc:
+
+- Tài khoản BLOCKED không được đăng nhập hoặc sử dụng chức năng hệ thống.
+- Chỉ Admin mới có quyền thay đổi trạng thái khóa tài khoản.
+
+10.2. Quản lý bài viết
+
+Admin có thể:
+
+- Xem bài viết.
+- Xem bài viết bị báo cáo.
+- Ẩn bài viết.
+- Khôi phục bài viết.
+
+10.3. Xử lý báo cáo
+
+Admin có thể:
+
+- Xem nội dung báo cáo.
+- Xem bài viết bị báo cáo.
+- Đánh dấu báo cáo hợp lệ.
+- Đánh dấu báo cáo không hợp lệ.
+- Ẩn bài viết nếu xác định có vi phạm.
+
+================================================================================
+III. DANH SÁCH MODULE CHỨC NĂNG MVP
+================================================================================
+
+1. Module xác thực và tài khoản
+
+- Đăng ký.
+- Đăng nhập.
+- Đăng xuất.
+- Refresh Token.
+- Quên mật khẩu và đặt lại mật khẩu nếu đủ thời gian.
+
+2. Module hồ sơ người dùng
+
+- Xem hồ sơ.
+- Cập nhật hồ sơ.
+- Cập nhật tên hiển thị.
+- Cập nhật ảnh đại diện.
+- Cập nhật phần giới thiệu cá nhân.
+- Cập nhật ngày tháng năm sinh.
+- Xem danh sách bài viết.
+- Xem follower.
+- Xem following.
+
+3. Module theo dõi
+
+- Follow.
+- Unfollow.
+- Xem follower.
+- Xem following.
+
+4. Module bài viết
+
+- Tạo bài viết.
+- Xem bài viết.
+- Chỉnh sửa bài viết.
+- Xóa bài viết.
+- Tải hình ảnh.
+- Gắn hashtag.
+
+5. Module tương tác
+
+- Like.
+- Unlike.
+- Bình luận.
+- Xóa bình luận.
+- Lưu bài viết.
+- Bỏ lưu bài viết.
+- Xem danh sách bài đã lưu.
+
+6. Module Feed
+
+- Xem Feed For You.
+- Xem Feed Following.
+
+7. Module tìm kiếm
+
+- Tìm người dùng.
+- Tìm bài viết.
+- Tìm bài theo hashtag.
+
+8. Module báo cáo
+
+- Báo cáo bài viết.
+
+9. Module quản trị
+
+- Quản lý người dùng.
+- Quản lý bài viết.
+- Quản lý báo cáo.
+
+================================================================================
+IV. YÊU CẦU PHI CHỨC NĂNG
+================================================================================
+
+1. Bảo mật
+
+- Mật khẩu phải được băm một chiều.
+- Backend chịu trách nhiệm kiểm tra quyền truy cập.
+- API quản trị chỉ dành cho tài khoản ADMIN.
+- Access Token có thời hạn sử dụng.
+- Refresh Token có thể bị thu hồi.
+- Không trả mật khẩu hoặc Token trong API công khai.
+- Kiểm tra loại tệp và dung lượng ảnh tải lên.
+- Kiểm tra và làm sạch dữ liệu đầu vào để hạn chế XSS và SQL Injection.
+- Không trả stack trace hoặc thông tin kỹ thuật nhạy cảm cho người dùng.
+
+2. Hiệu năng
+
+- Các API thông thường có thời gian phản hồi trung bình không quá 2 giây trong
+  môi trường kiểm thử.
+- API Feed trả tối đa 20 bài viết trên mỗi lần tải.
+- Tất cả danh sách phải hỗ trợ phân trang.
+- Kích thước trang mặc định là 20 bản ghi.
+- Hệ thống đáp ứng tối thiểu 30 đến 50 người dùng đồng thời trong môi trường
+  kiểm thử luận văn.
+
+3. Tính toàn vẹn dữ liệu
+
+- Email và số điện thoại là bắt buộc và phải duy nhất.
+- Quan hệ Follow không được trùng.
+- Quan hệ Like không được trùng.
+- Quan hệ Save không được trùng.
+- Một người không được báo cáo trùng cùng một bài đang chờ xử lý.
+- Các thao tác quan trọng phải được kiểm soát bằng transaction khi cần.
+- Các dữ liệu quan trọng sử dụng xóa mềm.
+- Các bảng dữ liệu chính phải có created_at và updated_at.
+
+4. Khả năng sử dụng
+
+- Giao diện phải tương thích trên máy tính và thiết bị di động.
+- Các thao tác chính phải có thông báo thành công hoặc thất bại rõ ràng.
+- Các màn hình danh sách phải có trạng thái đang tải, rỗng và lỗi.
+- Người dùng phải được xác nhận trước các thao tác xóa quan trọng.
+
+================================================================================
+V. NGOÀI PHẠM VI MVP VÀ HƯỚNG PHÁT TRIỂN
+================================================================================
+
+Các chức năng sau không triển khai trong phiên bản MVP:
+
+1. Xác thực email.
+2. Đăng nhập Google và Facebook.
+3. Hồ sơ riêng tư.
+4. Follow Request.
+5. Block và Restrict nâng cao.
+6. Video và tài liệu trong bài viết.
+7. Bài viết nháp.
+8. Mention.
+9. Repost.
+10. Trích dẫn bài viết.
+11. Chủ đề nội dung do Admin quản lý.
+12. Địa điểm và Discovery Map.
+13. Feed cá nhân hóa do người dùng tạo.
+14. Feed công khai và lưu Feed.
+15. Không quan tâm và từ khóa bị ẩn.
+16. Elasticsearch.
+17. Nhắn tin trực tiếp.
+18. Message Request và Hidden Message Request.
+19. Thông báo thời gian thực.
+20. Quản lý dữ liệu trường, khoa và ngành.
+21. Dashboard thống kê nâng cao.
+22. Moderation Case.
+23. Audit Log chi tiết.
+24. Thuật toán gợi ý bằng Machine Learning.
+25. Ứng dụng di động native.
+26. Group Chat, gọi thoại, gọi video và livestream.
+
+================================================================================
+VI. CÁC BẢNG DỮ LIỆU DỰ KIẾN CHO MVP
+================================================================================
+
+1. users
+2. user_profiles
+3. refresh_tokens
+4. password_reset_tokens
+5. follows
+6. posts
+7. post_media
+8. hashtags
+9. post_hashtags
+10. post_likes
+11. comments
+12. saved_posts
+13. reports
+14. notifications (tùy chọn)
+15. account_status_histories (tùy chọn)
+16. admin_actions (tùy chọn)
+
+================================================================================
+VII. TIÊU CHÍ NGHIỆM THU MVP
+================================================================================
+
+Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí sau:
+
+1. Người dùng chỉ đăng ký thành công khi cung cấp đầy đủ email, số điện thoại và mật khẩu.
+2. Hệ thống từ chối đăng ký nếu email đã tồn tại.
+3. Hệ thống từ chối đăng ký nếu số điện thoại đã tồn tại.
+4. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.
+5. Access Token và Refresh Token hoạt động đúng.
+6. Tài khoản bị khóa không đăng nhập được.
+7. Người dùng cập nhật và xem hồ sơ thành công.
+8. Người dùng cập nhật ngày sinh hợp lệ và hệ thống từ chối ngày sinh nằm trong tương lai.
+9. Người dùng Follow và Unfollow thành công.
+10. Không tồn tại hai quan hệ Follow trùng nhau.
+11. Người dùng tạo bài có văn bản hoặc hình ảnh.
+12. Chỉ tác giả được sửa hoặc xóa bài của mình.
+13. Bài bị xóa hoặc bị ẩn không xuất hiện trên Feed.
+14. Người dùng Like và Unlike bài viết.
+15. Một người không Like một bài hai lần.
+16. Người dùng bình luận và xóa bình luận của mình.
+17. Người dùng lưu và bỏ lưu bài viết.
+18. Feed Following hiển thị bài của tài khoản đang theo dõi.
+19. Feed For You hiển thị các bài viết hợp lệ.
+20. Người dùng tìm được tài khoản và bài viết.
+21. Người dùng gửi được báo cáo bài viết.
+22. Admin xử lý được người dùng, bài viết và báo cáo.
+23. Các API danh sách đều có phân trang.
+24. API từ chối thao tác khi người dùng không có quyền.
+25. Mật khẩu không được lưu dưới dạng văn bản thuần.
+26. Hình ảnh không hợp lệ phải bị Backend từ chối.
+
+================================================================================
+VIII. THỨ TỰ ƯU TIÊN TRIỂN KHAI
+================================================================================
+
+MỨC P0 - BẮT BUỘC HOÀN THÀNH
+
+- Đăng ký, đăng nhập, đăng xuất.
+- JWT Access Token và Refresh Token.
+- Hồ sơ người dùng.
+- Follow và Unfollow.
+- Tạo, xem, chỉnh sửa và xóa bài viết.
+- Upload hình ảnh.
+- Like và Unlike.
+- Bình luận.
+- Feed Following.
+- Feed For You cơ bản.
+- Phân quyền USER và ADMIN.
+
+MỨC P1 - CẦN HOÀN THÀNH NẾU ĐỦ TIẾN ĐỘ
+
+- Save và Unsave.
+- Hashtag.
+- Tìm kiếm người dùng và bài viết.
+- Báo cáo bài viết.
+- Admin khóa tài khoản.
+- Admin ẩn bài viết.
+
+MỨC P2 - CHỈ THỰC HIỆN KHI P0 VÀ P1 ĐÃ ỔN ĐỊNH
+
+- Quên mật khẩu.
+- Trả lời bình luận một cấp.
+- Thông báo trong hệ thống.
+- Lịch sử thao tác quản trị đơn giản.
+
+================================================================================
+KẾT LUẬN
+================================================================================
+
+Phiên bản MVP tập trung vào các chức năng cốt lõi của một mạng xã hội:
+
+Đăng ký -> Đăng nhập -> Quản lý hồ sơ -> Follow -> Đăng bài -> Xem Feed
+-> Like/Bình luận/Lưu bài -> Tìm kiếm -> Báo cáo và quản trị cơ bản.
+
+Các chức năng nâng cao được loại khỏi phạm vi triển khai hiện tại và chuyển thành
+hướng phát triển nhằm đảm bảo hệ thống có thể hoàn thành, kiểm thử và trình bày
+trong thời gian còn lại của luận văn.

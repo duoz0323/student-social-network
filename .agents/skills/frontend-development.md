@@ -65,6 +65,11 @@ Không bắt buộc tạo đầy đủ các thư mục trên nếu chưa dùng.
 - Không tự ý thêm Zustand hoặc Redux.
 - Không chuyển toàn bộ code sang TypeScript.
 - Không tự ý đổi tên thư mục hiện có.
+- Form đăng ký auth dùng email, số điện thoại, mật khẩu và xác nhận mật khẩu nếu cần.
+- Không thêm trường `username` vào UI đăng ký MVP.
+- Form đăng nhập dùng một ô email hoặc số điện thoại.
+- Không dùng nhãn `Gmail`; luôn dùng `email`.
+- Ngày sinh chỉ đặt ở màn hình cập nhật hồ sơ, không đặt ở đăng ký.
 
 ## 6. Kiểm tra
 

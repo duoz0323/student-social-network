@@ -24,6 +24,14 @@ Trình bày:
 - API liên quan.
 - Màn hình liên quan.
 
+Nếu chức năng thuộc Auth hoặc hồ sơ, phải xác định rõ:
+
+- Đăng ký dùng `email`, `phoneNumber`, `password`.
+- Đăng nhập dùng email hoặc số điện thoại.
+- Không dùng `username` trong MVP.
+- Email/số điện thoại không hiển thị công khai.
+- Ngày sinh chỉ thuộc cập nhật hồ sơ và là tùy chọn.
+
 ## Bước 3: Lập kế hoạch
 
 Liệt kê:

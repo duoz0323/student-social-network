@@ -139,7 +139,18 @@ Form phải:
 - Ngăn submit lặp.
 - Hiển thị lỗi rõ ràng.
 
-## 6. Quy tắc API
+## 6. Quy tắc form xác thực
+
+- Form đăng ký MVP gồm `email`, `phoneNumber`, `password` và xác nhận mật khẩu nếu UI cần.
+- Không hiển thị hoặc gửi trường `username` trong form đăng ký MVP.
+- Form đăng nhập dùng một trường định danh chung cho email hoặc số điện thoại và trường mật khẩu.
+- Label, placeholder và thông báo lỗi dùng thuật ngữ `email`, không dùng `gmail`.
+- Frontend validate định dạng email, số điện thoại, độ mạnh mật khẩu và mật khẩu xác nhận trước khi gửi.
+- Ngày sinh không nằm trong form đăng ký; chỉ xuất hiện khi cập nhật hồ sơ và không được lớn hơn ngày hiện tại.
+- Frontend không hiển thị công khai email hoặc số điện thoại trong hồ sơ người khác.
+- Tên hiển thị là dữ liệu hồ sơ, người dùng chỉnh trong màn hình hồ sơ sau khi đăng ký.
+
+## 7. Quy tắc API
 
 - Base URL lấy từ `.env`.
 - Dùng Axios instance trong `src/config/`.
@@ -148,7 +159,7 @@ Form phải:
 - Không tạo vòng lặp refresh.
 - Refresh thất bại thì xóa phiên và về đăng nhập.
 
-## 7. Bảo mật
+## 8. Bảo mật
 
 - Không lưu mật khẩu.
 - Không log token.

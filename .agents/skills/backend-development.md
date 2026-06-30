@@ -39,6 +39,10 @@ post/
 - Không bỏ qua kiểm tra quyền.
 - Exception phải rõ nghĩa.
 - Response không chứa dữ liệu nhạy cảm.
+- Luồng đăng ký dùng `email`, `phoneNumber`, `password`; không dùng `username` và không nhận `displayName` ở bước đăng ký.
+- Service Auth phải chuẩn hóa email và số điện thoại trước khi kiểm tra trùng và lưu.
+- Đăng nhập dùng một định danh email hoặc số điện thoại kèm mật khẩu.
+- Ngày sinh chỉ xử lý ở hồ sơ, không bắt buộc khi đăng ký.
 
 ## 5. Kiểm tra
 

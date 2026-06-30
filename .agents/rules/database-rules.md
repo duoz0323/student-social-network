@@ -21,7 +21,7 @@
 Phải có unique constraint cho:
 
 - `users.email`.
-- `users.username`.
+- `users.phone_number`.
 - `follows(follower_id, following_id)`.
 - `post_likes(user_id, post_id)`.
 - `saved_posts(user_id, post_id)`.
@@ -30,6 +30,12 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 
 ## 4. Ràng buộc nghiệp vụ
 
+- Email và số điện thoại là bắt buộc khi đăng ký.
+- Email lưu ở dạng chữ thường đã chuẩn hóa.
+- Số điện thoại lưu ở dạng chuẩn hóa thống nhất.
+- Không tạo cột `gmail`; dùng cột email chung cho mọi nhà cung cấp email.
+- Không dùng `username` làm định danh công khai trong MVP.
+- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
 - Người dùng không được Follow chính mình.
 - Bài viết phải có nội dung hoặc hình ảnh.
 - Bài viết tối đa 500 ký tự.
@@ -40,7 +46,7 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 ## 5. Index đề xuất
 
 - `users(email)`.
-- `users(username)`.
+- `users(phone_number)`.
 - `users(status)`.
 - `posts(author_id)`.
 - `posts(status, created_at)`.

@@ -28,6 +28,10 @@
 - Không tồn tại Follow trùng.
 - Không tồn tại Like trùng.
 - Không tồn tại Save trùng.
-- Email và username duy nhất.
+- Email và số điện thoại duy nhất.
+- Email được chuẩn hóa chữ thường trước khi lưu.
+- Số điện thoại được chuẩn hóa về một định dạng thống nhất trước khi lưu.
+- Không dùng `username` làm định danh công khai trong MVP.
+- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
 - Quan hệ xóa phù hợp.
 - Index phục vụ truy vấn chính.

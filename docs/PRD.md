@@ -73,7 +73,8 @@ Ngoài quyền người dùng, Admin được phép:
 
 ### 4.1 Xác thực
 
-- Đăng ký bằng email, username, mật khẩu và tên hiển thị.
+- Đăng ký bằng email, username và mật khẩu.
+- Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi đăng ký.
 - Email duy nhất.
 - Username duy nhất.
 - Mật khẩu tối thiểu 8 ký tự.

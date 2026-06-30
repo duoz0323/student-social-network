@@ -23,6 +23,14 @@ Ghi rõ:
 - Error State.
 - Permission State.
 
+Với màn hình Auth MVP:
+
+- Đăng ký hiển thị email, số điện thoại, mật khẩu và xác nhận mật khẩu nếu cần.
+- Đăng ký không hiển thị tên người dùng hoặc username.
+- Đăng nhập hiển thị một ô email hoặc số điện thoại và một ô mật khẩu.
+- Không dùng nhãn Gmail, Google/Facebook login hoặc xác thực email trong MVP.
+- Ngày sinh chỉ đặt ở màn hình cập nhật hồ sơ, không đặt ở đăng ký.
+
 ## Bước 3: Dựng bằng mock data
 
 - Không hard-code dữ liệu trong component.

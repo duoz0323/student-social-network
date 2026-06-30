@@ -1,23 +1,71 @@
 # Danh sách màn hình
 
-| Mã | Màn hình | Route | Actor | Ưu tiên |
-|---|---|---|---|---|
-| UI-01 | Đăng nhập | `/login` | Khách | P0 |
-| UI-02 | Đăng ký | `/register` | Khách | P0 |
-| UI-03 | Feed For You | `/` | User | P0 |
-| UI-04 | Feed Following | `/following` | User | P0 |
-| UI-05 | Tạo bài | Modal hoặc `/posts/create` | User | P0 |
-| UI-06 | Chi tiết bài | `/posts/:postId` | User | P0 |
-| UI-07 | Hồ sơ | `/profile/:username` | User | P0 |
-| UI-08 | Chỉnh sửa hồ sơ | `/profile/edit` | User | P0 |
-| UI-09 | Follower | `/profile/:username/followers` | User | P0 |
-| UI-10 | Following | `/profile/:username/following` | User | P0 |
-| UI-11 | Tìm kiếm | `/search` | User | P1 |
-| UI-12 | Bài đã lưu | `/saved` | User | P1 |
-| UI-13 | Báo cáo bài | Modal | User | P1 |
-| UI-14 | Admin User | `/admin/users` | Admin | P0/P1 |
-| UI-15 | Admin Post | `/admin/posts` | Admin | P1 |
-| UI-16 | Admin Report | `/admin/reports` | Admin | P1 |
-| UI-17 | Chi tiết Report | `/admin/reports/:reportId` | Admin | P1 |
-| UI-18 | Không có quyền | `/403` | Tất cả | P0 |
-| UI-19 | Không tìm thấy | `*` | Tất cả | P0 |
+Tài liệu này chỉ liệt kê các màn hình, modal, menu hoặc biến thể thực sự có ảnh trong `docs/ui/screens/`. Các chi tiết xuất hiện trong ảnh nhưng nằm ngoài phạm vi MVP được ghi chú rõ để không triển khai nhầm.
+
+## Authentication
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| AUTH-01 | Đăng nhập | `docs/ui/screens/auth/login.jpg` | Khách | Cho phép người dùng vào hệ thống. | Nhập email hoặc tên người dùng, nhập mật khẩu, quên mật khẩu, chuyển sang đăng ký. | Sau đăng nhập thành công đến Feed; liên kết đến AUTH-02 và AUTH-04. | Nút Google/Facebook có trong ảnh nhưng ngoài MVP. |
+| AUTH-02 | Đăng ký | `docs/ui/screens/auth/register.jpg` | Khách | Tạo tài khoản mới. | Tên người dùng, email, mật khẩu, xác nhận mật khẩu, đồng ý điều khoản, chuyển sang đăng nhập. | Thành công đến AUTH-03 hoặc đăng nhập. | Nút Google/Facebook có trong ảnh nhưng ngoài MVP. Tên hiển thị là dữ liệu hồ sơ, cập nhật sau khi tạo tài khoản. |
+| AUTH-03 | Đăng ký thành công | `docs/ui/screens/auth/register-success.jpg` | Khách | Xác nhận tạo tài khoản thành công. | Thông báo thành công, nút đăng nhập. | Đi đến AUTH-01. | Ảnh trạng thái sau thao tác. |
+| AUTH-04 | Nhập mã xác minh quên mật khẩu | `docs/ui/screens/auth/verified-for-forget-password.jpg` | Khách | Nhập mã xác minh khi đặt lại mật khẩu. | Các ô nhập mã, tiếp tục, gửi lại mã. | Đến AUTH-05 khi mã hợp lệ. | Quên mật khẩu thuộc P2/CẦN XÁC NHẬN nếu đưa vào MVP triển khai. |
+| AUTH-05 | Đặt lại mật khẩu | `docs/ui/screens/auth/set-password.jpg` | Khách | Tạo mật khẩu mới. | Nhập mật khẩu mới, xác nhận mật khẩu, lưu mật khẩu. | Thành công đến AUTH-06. | Quên mật khẩu thuộc P2/CẦN XÁC NHẬN. |
+| AUTH-06 | Đặt lại mật khẩu thành công | `docs/ui/screens/auth/set-password-success.jpg` | Khách | Xác nhận đổi mật khẩu thành công. | Thông báo thành công, nút đăng nhập. | Đi đến AUTH-01. | Ảnh trạng thái sau thao tác. |
+
+## Feed
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, chia sẻ, menu bài viết. | Tạo bài mở POST-02; tab Following dùng cùng màn hình; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ PROFILE-01/02; saved POST-07. | Mục "Hoạt động" trong sidebar CẦN XÁC NHẬN vì không thuộc MVP đã chốt. |
+
+## Post
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| POST-01 | Chi tiết bài viết | `docs/ui/screens/post/detail-post.jpg` | User | Xem một bài viết cùng bình luận. | Nội dung bài, ảnh, like, bình luận, lưu/chia sẻ, danh sách bình luận, ô nhập bình luận. | Từ FEED-01, PROFILE-01/02, POST-07; menu mở POST-04/POST-05. | Một số biểu tượng cần xác nhận ý nghĩa chính xác. |
+| POST-02 | Modal tạo bài viết | `docs/ui/screens/post/model-create-post.jpg` | User | Tạo bài viết mới. | Nhập nội dung, gắn ảnh, thanh công cụ, nút đăng, giới hạn nội dung. | Mở từ sidebar/composer FEED-01. | Modal. |
+| POST-03 | Modal chỉnh sửa bài viết | `docs/ui/screens/post/model-edit-post.jpg` | Tác giả bài viết | Sửa nội dung bài của mình. | Sửa text/hashtag, xem ảnh cũ, lưu thay đổi, hủy. | Mở từ menu POST-04; sau lưu quay lại bài/feed/profile. | Ảnh không được thay đổi sau khi đăng, đúng MVP. |
+| POST-04 | Menu thao tác bài viết | `docs/ui/screens/post/model-thao-tác-post.jpg` | User, tác giả bài viết | Hiển thị hành động theo quyền trên bài viết. | Menu của chính mình có chỉnh sửa/xóa; menu bài người khác có lưu/báo cáo/sao chép liên kết. | Chỉnh sửa đến POST-03; xóa đến POST-05; báo cáo đến POST-08. | Các mục ghim, lưu trữ, ẩn like, thêm vào feed, không quan tâm, tắt thông báo, hạn chế, chặn nằm ngoài MVP/CẦN XÁC NHẬN. |
+| POST-05 | Modal xác nhận xóa bài viết | `docs/ui/screens/post/model-delete-post.jpg` | Tác giả bài viết | Xác nhận trước khi xóa mềm bài viết. | Nội dung cảnh báo, hủy, xóa bài viết. | Thành công đến POST-06. | Modal. |
+| POST-06 | Xóa bài viết thành công | `docs/ui/screens/post/model-delete-success.jpg` | Tác giả bài viết | Thông báo xóa bài thành công. | Success state, nút đi tiếp/đóng. | Quay lại Feed hoặc Profile. | Modal trạng thái. |
+| POST-07 | Bài viết đã lưu | `docs/ui/screens/post/post-saved.jpg` | User | Xem danh sách bài đã lưu của chính mình. | Sidebar, danh sách PostCard đã lưu, tương tác bài viết. | Từ sidebar "Bài viết đã lưu"; mở POST-01. | Saved list chỉ chủ tài khoản xem. |
+| POST-08 | Modal chọn lý do báo cáo | `docs/ui/screens/post/model-report.jpg` | User | Chọn lý do báo cáo bài viết. | Danh sách lý do dạng radio, hủy, tiếp tục. | Sau tiếp tục đến POST-09. | Chỉ report bài viết trong MVP. |
+| POST-09 | Chi tiết báo cáo bài viết | `docs/ui/screens/post/report-detail.jpg` | User | Bổ sung mô tả trước khi gửi báo cáo. | Xem bài bị báo cáo, chọn/hiển thị lý do, nhập mô tả, gửi báo cáo. | Thành công đến POST-10. | Modal. |
+| POST-10 | Gửi báo cáo thành công | `docs/ui/screens/post/report-success.jpg` | User | Xác nhận báo cáo đã gửi. | Success state, thông báo admin sẽ xem xét, nút xong. | Quay lại bài viết/feed. | Modal trạng thái. |
+
+## Profile
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| PROFILE-01 | Hồ sơ của mình | `docs/ui/screens/profile/profile-for-self.jpg` | User | Xem và quản lý hồ sơ cá nhân. | Thông tin cá nhân, số follower/following, chỉnh sửa trang cá nhân, tab bài viết/câu trả lời/file phương tiện/bài đăng lại, danh sách bài. | Chỉnh sửa mở PROFILE-03; follower/following mở PROFILE-04; bài mở POST-01. | Tab "Bài đăng lại" ngoài MVP; "Câu trả lời", "File phương tiện" CẦN XÁC NHẬN. |
+| PROFILE-02 | Hồ sơ người khác | `docs/ui/screens/profile/profile-for-other.jpg` | User | Xem hồ sơ công khai và theo dõi người khác. | Thông tin người dùng, Follow, menu thêm, tab nội dung, danh sách bài. | Follow/Unfollow tại màn hình; follower/following mở PROFILE-04; bài mở POST-01. | Nút "Nhắn tin" ngoài MVP. |
+| PROFILE-03 | Modal chỉnh sửa hồ sơ | `docs/ui/screens/profile/model-edit-profile.jpg` | User | Cập nhật hồ sơ cá nhân. | Avatar, tên hiển thị, username, bio/thông tin cá nhân, lưu. | Mở từ PROFILE-01. | Modal/trang chỉnh sửa; các trường chính xác CẦN XÁC NHẬN theo API. |
+| PROFILE-04 | Modal danh sách follower/following | `docs/ui/screens/other/model-list-follow.jpg` | User | Xem người theo dõi và đang theo dõi. | Tab Người theo dõi/Đang theo dõi, danh sách user, nút theo dõi/trạng thái đang theo dõi. | Mở từ PROFILE-01/02. | Modal dùng chung cho follower và following. |
+
+## Search và Saved Posts
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| SEARCH-01 | Tìm kiếm và khám phá | `docs/ui/screens/search/model-search-and-discovery.jpg` | User | Tìm kiếm người dùng, bài viết hoặc hashtag. | Thanh tìm kiếm, tìm kiếm phổ biến, gợi ý theo dõi. | Từ sidebar; kết quả user đến PROFILE-02; kết quả bài đến POST-01. | Tên ảnh có "discovery" nhưng Discovery Map ngoài MVP; chỉ hiểu là khám phá/tìm kiếm nội dung cơ bản. |
+| SAVED-01 | Bài viết đã lưu | `docs/ui/screens/post/post-saved.jpg` | User | Xem các bài đã lưu. | Danh sách bài đã lưu, PostCard. | Trùng ảnh với POST-07. | Biến thể thuộc nhóm Post nhưng liên quan trực tiếp đến Saved Posts. |
+
+## Admin
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| ADMIN-01 | Tổng quan quản trị | `docs/ui/screens/admin/dashboard-admin.jpg` | Admin | Theo dõi nhanh trạng thái hệ thống. | Chỉ số tổng, trạng thái user/post, báo cáo cần xử lý, hoạt động gần đây. | Điều hướng đến ADMIN-02/04/05. | Dashboard nâng cao ngoài MVP; chỉ dùng như tổng quan đơn giản nếu cần, CẦN XÁC NHẬN. |
+| ADMIN-02 | Quản lý người dùng | `docs/ui/screens/admin/user-admin.jpg` | Admin | Xem và tìm kiếm người dùng. | Bảng user, trạng thái, bộ lọc/tìm kiếm, phân trang, thao tác. | Menu thao tác ADMIN-03. | Các cột chính xác CẦN XÁC NHẬN theo API. |
+| ADMIN-03 | Menu thao tác người dùng | `docs/ui/screens/admin/thao-tác-user-admin.jpg` | Admin | Thao tác trên một user. | Xem thông tin, khóa/mở khóa hoặc hành động quản trị liên quan. | Từ ADMIN-02. | Ảnh là biến thể/menu thao tác; chi tiết text nhỏ CẦN XÁC NHẬN. |
+| ADMIN-04 | Quản lý bài viết | `docs/ui/screens/admin/post-admin.jpg` | Admin | Xem danh sách bài viết và trạng thái xử lý. | Bảng post, trạng thái, bộ lọc/tìm kiếm, phân trang, thao tác ẩn/khôi phục. | Có thể đi đến bài hoặc report liên quan. | Chỉ ẩn/khôi phục post thuộc MVP. |
+| ADMIN-05 | Quản lý báo cáo | `docs/ui/screens/admin/report-admin.jpg` | Admin | Xem danh sách báo cáo. | Bảng report, trạng thái, lý do, người báo cáo, thời gian, phân trang. | Mở ADMIN-06. | Tập trung report bài viết. |
+| ADMIN-06 | Chi tiết báo cáo | `docs/ui/screens/admin/detail-report-admin.jpg` | Admin | Xử lý một báo cáo cụ thể. | Bài bị báo cáo, thông tin báo cáo, lịch sử xử lý, từ chối báo cáo, xác nhận vi phạm. | Từ ADMIN-05; có thể ẩn bài khi vi phạm. | Lịch sử xử lý đơn giản; audit log chi tiết ngoài MVP. |
+
+## System States
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| SYS-01 | Không có quyền | `docs/ui/screens/system/error-403.jpg` | Tất cả | Báo người dùng không có quyền truy cập. | Mã 403, thông báo, nút quay lại/điều hướng. | Protected/Admin route. | Error state. |
+| SYS-02 | Không tìm thấy | `docs/ui/screens/system/error-404.jpg` | Tất cả | Báo route hoặc tài nguyên không tồn tại. | Mã 404, thông báo, nút quay lại. | Route `*` hoặc tài nguyên bị xóa/ẩn. | Error state. |
+| SYS-03 | Lỗi hệ thống | `docs/ui/screens/system/error-500.jpg` | Tất cả | Báo lỗi hệ thống. | Mã 500, thông báo, nút thử lại/quay lại. | Khi API/server lỗi. | Error state. |
+| SYS-04 | Phiên đăng nhập hết hạn | `docs/ui/screens/system/model-expired-login.jpg` | User, Admin | Yêu cầu đăng nhập lại khi phiên hết hạn. | Thông báo hết hạn, nút đăng nhập lại. | Refresh token thất bại, quay về AUTH-01. | Modal trạng thái hệ thống. |
