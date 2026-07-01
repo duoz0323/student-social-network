@@ -103,3 +103,13 @@
 - Không trả Entity.
 - Không trả dữ liệu nhạy cảm.
 - Không trả stack trace.
+
+## 13. Cấu trúc enum Backend
+
+- Mỗi module Backend có entity sử dụng status, role, type, reason hoặc nhóm giá trị cố định phải đặt enum trong thư mục `enums/` của chính module đó.
+- Không gom enum nghiệp vụ của nhiều module vào một package chung nếu enum chỉ thuộc về một module.
+- `UserStatus` và `UserRole` thuộc `user/enums`.
+- `PostStatus` thuộc `post/enums`.
+- `CommentStatus` thuộc `interaction/enums`.
+- `ReportStatus` và `ReportReason` thuộc `report/enums`.
+- Enum dùng chung thật sự cho nhiều module chỉ được đặt trong `common/enums` khi có lý do rõ ràng.

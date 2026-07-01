@@ -108,10 +108,18 @@ post/
 ├── service/
 ├── repository/
 ├── entity/
+├── enums/
 ├── dto/
 ├── mapper/
 └── exception/
 ```
+
+Quy tắc enum trong Backend:
+
+- Mỗi feature/module có thể tạo thư mục `enums/` khi entity của module có trạng thái, vai trò, loại, lý do hoặc nhóm giá trị cố định.
+- Enum phải nằm trong module sở hữu nghiệp vụ, không đặt chung ở package toàn cục nếu chỉ phù hợp với một module.
+- Ví dụ: `user/enums/UserStatus.java`, `user/enums/UserRole.java`, `post/enums/PostStatus.java`, `interaction/enums/CommentStatus.java`, `report/enums/ReportStatus.java`.
+- Entity, DTO, mapper, service và repository phải import enum từ package `enums` của module tương ứng.
 
 ## 5. Tầng xử lý
 

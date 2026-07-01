@@ -131,7 +131,7 @@ export default function RegisterPage() {
         <SocialAuthButtons actionLabel="Dang ky voi" onUnavailable={showFutureMessage} />
 
         <p className="mt-6 text-center text-xs text-[var(--app-text)]">
-          Da co tai khoan? <Link to="/login" className="font-black">Dang nhap</Link>
+          Đã có tài khoản? <Link to="/login" className="font-black">Đăng nhập</Link>
         </p>
       </form>
     </main>

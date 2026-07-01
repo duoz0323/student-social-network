@@ -19,6 +19,21 @@ Controller
 → Repository
 → Database.
 
+Trong mỗi module Backend, nếu entity có status, role, type, reason hoặc enum nghiệp vụ khác thì enum phải nằm trong thư mục `enums/` của module đó.
+
+Ví dụ:
+
+```text
+user/
+├── entity/
+├── enums/
+│   ├── UserRole.java
+│   └── UserStatus.java
+└── repository/
+```
+
+Không đặt enum của một module vào package chung. Chỉ dùng `common/enums` khi enum thật sự được chia sẻ bởi nhiều module và không thuộc sở hữu nghiệp vụ của module nào.
+
 ## 3. Quy tắc Auth và tài khoản
 
 - API đăng ký nhận `identifier`, `password` và `confirmPassword`.

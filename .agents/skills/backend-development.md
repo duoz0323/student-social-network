@@ -12,24 +12,28 @@ post/
 ├── service/
 ├── repository/
 ├── entity/
+├── enums/
 ├── dto/
 ├── mapper/
 └── exception/
 ```
 
+Thư mục `enums/` chỉ tạo khi module có enum nghiệp vụ. Các trạng thái hoặc nhóm giá trị cố định của entity phải đặt tại đây, ví dụ `user/enums/UserStatus.java`, `user/enums/UserRole.java`, `post/enums/PostStatus.java`.
+
 ## 3. Quy trình triển khai
 
 1. Đọc PRD và rule nghiệp vụ.
 2. Xác định Entity liên quan.
-3. Xác định request DTO.
-4. Xác định response DTO.
-5. Viết Repository.
-6. Viết Service.
-7. Viết Mapper.
-8. Viết Controller.
-9. Bổ sung validation.
-10. Bổ sung phân quyền.
-11. Viết test.
+3. Xác định enum của entity và đặt trong `enums/` của module.
+4. Xác định request DTO.
+5. Xác định response DTO.
+6. Viết Repository.
+7. Viết Service.
+8. Viết Mapper.
+9. Viết Controller.
+10. Bổ sung validation.
+11. Bổ sung phân quyền.
+12. Viết test.
 
 ## 4. Nguyên tắc
 
@@ -39,6 +43,7 @@ post/
 - Không bỏ qua kiểm tra quyền.
 - Exception phải rõ nghĩa.
 - Response không chứa dữ liệu nhạy cảm.
+- Enum nghiệp vụ thuộc module nào thì đặt trong `enums/` của module đó; không đặt chung ngoài module khi không cần chia sẻ.
 - Luồng đăng ký dùng `identifier`, `password`, `confirmPassword`; không dùng `username` hoặc `displayName`.
 - `identifier` là email hoặc số điện thoại; request đăng ký chỉ nhận đúng một phương thức định danh tại thời điểm tạo tài khoản.
 - Service Auth phải tự xác định `identifier`, chuẩn hóa email hoặc số điện thoại trước khi kiểm tra trùng và lưu.

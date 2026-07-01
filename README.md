@@ -534,6 +534,7 @@ student-social-network/
 │   │   │   │           │   ├── controller/
 │   │   │   │           │   ├── dto/
 │   │   │   │           │   ├── entity/
+│   │   │   │           │   ├── enums/
 │   │   │   │           │   ├── mapper/
 │   │   │   │           │   ├── repository/
 │   │   │   │           │   └── service/
@@ -628,6 +629,7 @@ post/
 │   ├── request/
 │   └── response/
 ├── entity/
+├── enums/
 ├── mapper/
 ├── repository/
 └── service/
@@ -640,6 +642,7 @@ Trách nhiệm của từng thành phần:
 * `dto/request`: Nhận và kiểm tra dữ liệu đầu vào.
 * `dto/response`: Trả dữ liệu cần thiết cho Frontend.
 * `entity`: Ánh xạ thực thể với bảng trong cơ sở dữ liệu.
+* `enums`: Chứa status, role, type, reason hoặc nhóm giá trị cố định thuộc entity của module.
 * `repository`: Truy vấn và thao tác dữ liệu.
 * `service`: Khai báo nghiệp vụ.
 * `service/impl`: Triển khai nghiệp vụ và quản lý transaction.
@@ -652,6 +655,8 @@ Nguyên tắc:
 
 * Controller không trực tiếp truy cập Repository.
 * Entity không được trả trực tiếp ra API.
+* Enum nghiệp vụ thuộc module nào thì đặt trong `enums/` của module đó.
+* Không gom enum của một module vào package chung; chỉ dùng `common/enums` khi enum thật sự được chia sẻ bởi nhiều module.
 * Mọi kiểm tra quyền phải thực hiện tại Backend.
 * Các thao tác nhiều bước phải sử dụng Transaction khi cần.
 * Không đặt toàn bộ nghiệp vụ vào Controller.

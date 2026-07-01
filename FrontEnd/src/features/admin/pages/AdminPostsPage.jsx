@@ -11,20 +11,20 @@ export default function AdminPostsPage() {
 
   return (
     <section>
-      <h1 className="text-3xl font-black">Quan ly bai viet</h1>
-      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tim theo noi dung bai viet" className="my-5 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3" />
+      <h1 className="text-3xl font-black">Quản lý bài viết</h1>
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm theo nội dung bài viết" className="my-5 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3" />
       <DataTable
         rows={rows}
         columns={[
-          { key: 'authorId', label: 'Tac gia', render: (row) => getUserById(row.authorId)?.displayName },
-          { key: 'content', label: 'Noi dung', render: (row) => <span className="line-clamp-1">{row.content}</span> },
-          { key: 'status', label: 'Trang thai', render: (row) => <Badge tone={row.status === 'PUBLISHED' ? 'success' : row.status === 'HIDDEN' ? 'warning' : 'danger'}>{row.status}</Badge> },
+          { key: 'authorId', label: 'Tác giả', render: (row) => getUserById(row.authorId)?.displayName },
+          { key: 'content', label: 'Nội dung', render: (row) => <span className="line-clamp-1">{row.content}</span> },
+          { key: 'status', label: 'Trạng thái', render: (row) => <Badge tone={row.status === 'PUBLISHED' ? 'success' : row.status === 'HIDDEN' ? 'warning' : 'danger'}>{row.status}</Badge> },
           {
             key: 'action',
-            label: 'Thao tac',
+            label: 'Thao tác',
             render: (row) => (
               <Button size="sm" variant="secondary" onClick={() => setPostStatus(row.id, row.status === 'HIDDEN' ? 'PUBLISHED' : 'HIDDEN')}>
-                {row.status === 'HIDDEN' ? 'Khoi phuc' : 'An bai'}
+                {row.status === 'HIDDEN' ? 'Khôi phục' : 'Ẩn bài'}
               </Button>
             ),
           },

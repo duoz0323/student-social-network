@@ -45,6 +45,7 @@ Liệt kê:
 
 - File tạo mới.
 - File cần sửa.
+- Enum của entity, nếu có, và vị trí trong `enums/` của module tương ứng.
 - Migration nếu có.
 - API request/response.
 - Test cần viết.
@@ -54,6 +55,7 @@ Với Auth/Profile, kế hoạch phải đi theo thứ tự: đối chiếu data
 ## Bước 4: Triển khai
 
 - Tuân thủ kiến trúc.
+- Đặt status, role, type, reason hoặc enum nghiệp vụ của entity trong thư mục `enums/` của module đó.
 - Không mở rộng ngoài MVP.
 - Comment tiếng Việt.
 - Không cài thư viện nếu chưa cần.
