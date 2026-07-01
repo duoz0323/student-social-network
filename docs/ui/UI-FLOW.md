@@ -12,15 +12,31 @@ AUTH-02 Đăng ký
 → Nhập mật khẩu và xác nhận mật khẩu
 → Đồng ý điều khoản nếu form yêu cầu
 → Gửi đăng ký
-→ AUTH-03 Đăng ký thành công nếu UI cần trạng thái trung gian
-→ Onboarding hồ sơ
-→ Nhập tên hiển thị bắt buộc
-→ Có thể bỏ qua avatar, ngày sinh và bio
-→ Xác nhận hoàn tất
+→ Tạo mock user
+→ Tạo mock profile rỗng
+→ Tạo session React hợp lệ
+→ /onboarding/profile
+→ AUTH-03 Onboarding bước 1: nhập tên hiển thị bắt buộc
+→ AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
+→ AUTH-05 Onboarding bước 3: nhập hoặc bỏ qua ngày sinh và bio
+→ Cập nhật profileCompletedAt
+→ AUTH-06 /onboarding/success
 → FEED-01 Feed người dùng
 ```
 
-Ghi chú: Không dùng username, displayName, Google hoặc Facebook trong form đăng ký MVP. Người dùng chỉ cung cấp đúng một phương thức định danh tại thời điểm đăng ký. Tên hiển thị được lưu trong `user_profiles` ở onboarding và có thể chỉnh sửa sau khi hoàn tất hồ sơ.
+Ghi chú: Không dùng username hoặc displayName trong form đăng ký MVP. Người dùng chỉ cung cấp đúng một phương thức định danh tại thời điểm đăng ký. Tên hiển thị được lưu trong `user_profiles` ở onboarding và có thể chỉnh sửa sau khi hoàn tất hồ sơ.
+
+Google/Facebook:
+
+```text
+Bấm nút Google hoặc Facebook
+→ Hiển thị "Tính năng đang được phát triển."
+→ Không tạo mock user
+→ Không tạo session
+→ Không điều hướng
+```
+
+Google/Facebook chỉ là UI hướng phát triển, không thuộc tiêu chí nghiệm thu MVP.
 
 Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`.
 
@@ -33,7 +49,8 @@ AUTH-01 Đăng nhập
 → Gửi đăng nhập
 → Nhận Access Token và Refresh Token
 → Nếu hồ sơ chưa hoàn tất thì đến onboarding
-→ Nếu hồ sơ đã hoàn tất thì đến FEED-01 Feed người dùng
+→ Nếu hồ sơ đã hoàn tất và role USER thì đến FEED-01 Feed người dùng
+→ Nếu hồ sơ đã hoàn tất và role ADMIN thì đến Admin
 ```
 
 Trường hợp phiên hết hạn:

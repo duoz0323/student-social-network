@@ -313,6 +313,33 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 
 ---
 
+## UI-012 - Chuẩn hóa Auth và Onboarding theo ảnh mới
+
+### Kết quả mong muốn
+
+- Đăng ký chỉ dùng một trường `identifier`, `password` và `confirmPassword`.
+- Sau đăng ký tạo mock user, mock profile rỗng và session React hợp lệ.
+- User chưa có `profileCompletedAt` phải vào `/onboarding/profile`.
+- Onboarding dùng ba bước nội bộ: tên hiển thị, avatar, ngày sinh/bio.
+- `/onboarding/success` dùng ảnh `docs/ui/screens/auth/update-profile-success.jpg`.
+- Route `/register/success` không còn là luồng chính.
+- Google/Facebook chỉ hiển thị trên UI, bấm chỉ báo “Tính năng đang được phát triển.”.
+- Google/Facebook không tạo user, không tạo session và không thuộc tiêu chí nghiệm thu MVP.
+
+### Phạm vi áp dụng
+
+- Frontend ReactJS.
+- Mock data React.
+- Tài liệu UI và Data.
+
+### Trạng thái
+
+- [x] Đã cập nhật trong Frontend ReactJS.
+- [x] Đã cập nhật trong tài liệu UI.
+- [x] Đã cập nhật trong tài liệu Data.
+
+---
+
 ## Quy tắc cập nhật tài liệu
 
 Khi phát hiện thêm sai lệch giao diện:

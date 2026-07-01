@@ -1,11 +1,12 @@
 {
-  "currentUserId": "user-001",
+  "currentUserId": null,
   "demoAccounts": [
     {
       "id": "account-001",
       "email": "minh.demo@example.com",
       "phoneNumber": null,
       "passwordDemo": "DemoUser123!",
+      "passwordHash": "c88f70e0ff9546971974f1c582b14da9991b34fbb59b0cb27b848eaed3e0210e",
       "role": "USER",
       "status": "ACTIVE",
       "userId": "user-001"
@@ -15,6 +16,7 @@
       "email": null,
       "phoneNumber": "+84907654321",
       "passwordDemo": "DemoAdmin123!",
+      "passwordHash": "df88c832e9ed606645d98fac326669b3e12856e23719aabdfd7d894212ec1a0b",
       "role": "ADMIN",
       "status": "ACTIVE",
       "userId": "user-003"
@@ -24,6 +26,7 @@
       "email": "blocked.demo@example.com",
       "phoneNumber": "+84909998877",
       "passwordDemo": "DemoBlocked123!",
+      "passwordHash": "64dc5d2eb37b17c70d158c4aa48f0650dbddf2ae4395389a1d1dfd83146cba1e",
       "role": "USER",
       "status": "BLOCKED",
       "userId": "user-004"
@@ -32,56 +35,81 @@
   "users": [
     {
       "id": "user-001",
-      "displayName": "Nguyễn Hoàng Minh",
-      "avatarUrl": "/demo/avatars/user-001.jpg",
-      "bio": "Sinh viên Công nghệ thông tin, yêu thích lập trình web.",
-      "birthDate": "2003-09-12",
+      "email": "minh.demo@example.com",
+      "phoneNumber": null,
       "role": "USER",
       "status": "ACTIVE",
+      "profile": {
+        "displayName": "Nguyễn Hoàng Minh",
+        "avatarUrl": "/demo/avatars/user-001.jpg",
+        "dateOfBirth": "2003-09-12",
+        "bio": "Sinh viên Công nghệ thông tin, yêu thích lập trình web.",
+        "profileCompletedAt": "2026-06-20T08:00:00+07:00"
+      },
       "followerCount": 125,
       "followingCount": 48
     },
     {
       "id": "user-002",
-      "displayName": "Trần Ngọc Lan",
-      "avatarUrl": "/demo/avatars/user-002.jpg",
-      "bio": "Chia sẻ góc học tập và trải nghiệm sinh viên.",
-      "birthDate": "2003-04-24",
+      "email": "lan.demo@example.com",
+      "phoneNumber": null,
       "role": "USER",
       "status": "ACTIVE",
+      "profile": {
+        "displayName": "Trần Ngọc Lan",
+        "avatarUrl": "/demo/avatars/user-002.jpg",
+        "dateOfBirth": "2003-04-24",
+        "bio": "Chia sẻ góc học tập và trải nghiệm sinh viên.",
+        "profileCompletedAt": "2026-06-20T08:00:00+07:00"
+      },
       "followerCount": 210,
       "followingCount": 96
     },
     {
       "id": "user-003",
-      "displayName": "Quản trị viên Demo",
-      "avatarUrl": "/demo/avatars/admin.jpg",
-      "bio": "Tài khoản quản trị dùng trong môi trường demo.",
-      "birthDate": null,
+      "email": null,
+      "phoneNumber": "+84907654321",
       "role": "ADMIN",
       "status": "ACTIVE",
+      "profile": {
+        "displayName": "Quản trị viên Demo",
+        "avatarUrl": "/demo/avatars/admin.jpg",
+        "dateOfBirth": null,
+        "bio": "Tài khoản quản trị dùng trong môi trường demo.",
+        "profileCompletedAt": "2026-06-20T08:00:00+07:00"
+      },
       "followerCount": 0,
       "followingCount": 0
     },
     {
       "id": "user-004",
-      "displayName": "Tài khoản bị khóa",
-      "avatarUrl": "/demo/avatars/default.jpg",
-      "bio": "",
-      "birthDate": null,
+      "email": "blocked.demo@example.com",
+      "phoneNumber": "+84909998877",
       "role": "USER",
       "status": "BLOCKED",
+      "profile": {
+        "displayName": "Tài khoản bị khóa",
+        "avatarUrl": "/demo/avatars/default.jpg",
+        "dateOfBirth": null,
+        "bio": "",
+        "profileCompletedAt": "2026-06-20T08:00:00+07:00"
+      },
       "followerCount": 12,
       "followingCount": 8
     },
     {
       "id": "user-005",
-      "displayName": "Mai Anh",
-      "avatarUrl": "/demo/avatars/user-005.jpg",
-      "bio": "Thích đọc sách và chia sẻ kinh nghiệm học tập.",
-      "birthDate": "2002-12-02",
+      "email": "mai.anh@example.com",
+      "phoneNumber": null,
       "role": "USER",
       "status": "ACTIVE",
+      "profile": {
+        "displayName": "Mai Anh",
+        "avatarUrl": "/demo/avatars/user-005.jpg",
+        "dateOfBirth": "2002-12-02",
+        "bio": "Thích đọc sách và chia sẻ kinh nghiệm học tập.",
+        "profileCompletedAt": "2026-06-20T08:00:00+07:00"
+      },
       "followerCount": 88,
       "followingCount": 34
     }

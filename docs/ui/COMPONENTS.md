@@ -31,14 +31,18 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `initialValues`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. | Module auth. |
-| `RegisterForm` | Form đăng ký tài khoản MVP bằng một phương thức định danh là email hoặc số điện thoại. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
-| `OnboardingProfileForm` | Form hoàn tất hồ sơ sau đăng ký. | Onboarding hồ sơ. | `initialValues` gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; `errors`, `submitting`, `onSave`, `onComplete`. Tên hiển thị bắt buộc, các trường còn lại tùy chọn. | Module auth/profile. |
-| `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-04. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, P2/CẦN XÁC NHẬN. |
-| `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-05. | `errors`, `submitting`, `onSubmit`. | Module auth, P2/CẦN XÁC NHẬN. |
-| `AuthSuccessPanel` | Thông báo đăng ký/đặt lại mật khẩu thành công. | AUTH-03, AUTH-06. | `title`, `description`, `actionLabel`, `onAction`. | Module auth. |
+| `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `identifier`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
+| `RegisterForm` | Form đăng ký tài khoản MVP bằng một phương thức định danh là email hoặc số điện thoại. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
+| `SocialAuthButtons` | Hiển thị nút Google/Facebook theo ảnh nhưng chỉ báo chức năng đang phát triển. | AUTH-01, AUTH-02. | `actionLabel`, `onUnavailable(providerName)`. Không tạo user, không tạo session, không điều hướng. | Module auth, FUTURE_DEVELOPMENT UI. |
+| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; bước 1 bắt buộc tên hiển thị, bước 2/3 có thể bỏ qua. | Module auth/profile. |
+| `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
+| `OnboardingSuccessPage` | Màn hình hồ sơ đã sẵn sàng sau khi `profileCompletedAt` được cập nhật. | AUTH-06. | Nút chính điều hướng `/feed/for-you`. | Module auth/profile. |
+| `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, FUTURE_DEVELOPMENT. |
+| `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-P2-03. | `errors`, `submitting`, `onSubmit`. | Module auth, FUTURE_DEVELOPMENT. |
+| `RouteGuard` | Phân loại khách, user chưa hoàn tất hồ sơ và user đã hoàn tất hồ sơ. | Router Auth/Onboarding/User/Admin. | `currentUser.status`, `currentUser.profile.profileCompletedAt`, `role`. | Router. |
+| `Toast` hoặc inline message | Hiển thị lỗi form và thông báo future feature. | AUTH-01, AUTH-02, Onboarding. | `message`, `type`. | Có thể dùng inline trong MVP. |
 
-Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP; không tách thành component nghiệp vụ trong MVP.
+Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Facebook không thuộc tiêu chí nghiệm thu MVP; hiện chỉ có UI và thông báo "Tính năng đang được phát triển.".
 
 ## 4. Post component
 

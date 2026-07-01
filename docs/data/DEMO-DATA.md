@@ -26,14 +26,15 @@ Dùng để:
 - Đăng nhập bằng email hoặc số điện thoại và mật khẩu mô phỏng.
 - Mỗi tài khoản demo nên có ít nhất một phương thức định danh; có thể để `email` hoặc `phoneNumber` là `null` để mô phỏng đúng luồng đăng ký MVP.
 - Không dùng username trong dữ liệu demo.
-- Không render công khai email, số điện thoại hoặc passwordDemo.
+- Không render công khai email, số điện thoại, `passwordDemo` hoặc `passwordHash`.
+- `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 
 ### Cấu trúc `demoAccounts`
 
 - `id`
 - `email`
 - `phoneNumber`
-- `passwordDemo`
+- `passwordDemo` hoặc `passwordHash` chỉ dùng trong mock
 - `role`
 - `status`
 - `userId`
@@ -42,19 +43,35 @@ Quan hệ: `demoAccounts.userId -> users.id`.
 
 Quy tắc: `email` và `phoneNumber` là dữ liệu riêng tư. Mock data có thể chứa cả hai sau khi mô phỏng người dùng bổ sung phương thức còn thiếu, nhưng form đăng ký MVP chỉ gửi một `identifier`.
 
+Ghi chú: `passwordHash` trong Frontend React chỉ là mô phỏng để không lưu mật khẩu rõ trong localStorage khi đăng nhập lại tài khoản vừa đăng ký. Đây không phải cơ chế bảo mật thật; Backend thực tế phải dùng BCrypt.
+
 ### Cấu trúc `users`
 
 - `id`
-- `displayName`
-- `avatarUrl`
-- `bio`
-- `birthDate`
+- `email`
+- `phoneNumber`
 - `role`
 - `status`
+- `profile`
 - `followerCount`
 - `followingCount`
 
-Thông tin công khai chỉ dùng displayName, avatarUrl, bio, birthDate nếu cần, followerCount và followingCount.
+### Cấu trúc `users.profile`
+
+- `displayName`
+- `avatarUrl`
+- `dateOfBirth`
+- `bio`
+- `profileCompletedAt`
+
+Quy tắc hồ sơ:
+
+- User mới sau đăng ký có `profile.displayName = null`.
+- User mới sau đăng ký có `profile.profileCompletedAt = null`.
+- `profileCompletedAt = null` nghĩa là chưa được vào Feed hoặc chức năng mạng xã hội chính.
+- Tên hiển thị bắt buộc ở onboarding; avatar, ngày sinh và bio là tùy chọn.
+
+Thông tin công khai chỉ dùng displayName, avatarUrl, bio, dateOfBirth nếu cần, followerCount và followingCount.
 
 ## 4. Post
 
