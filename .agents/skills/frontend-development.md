@@ -65,11 +65,16 @@ Không bắt buộc tạo đầy đủ các thư mục trên nếu chưa dùng.
 - Không tự ý thêm Zustand hoặc Redux.
 - Không chuyển toàn bộ code sang TypeScript.
 - Không tự ý đổi tên thư mục hiện có.
-- Form đăng ký auth dùng email, số điện thoại, mật khẩu và xác nhận mật khẩu nếu cần.
+- Form đăng ký auth dùng một trường `identifier` cho email hoặc số điện thoại, mật khẩu và xác nhận mật khẩu.
+- Không bắt buộc nhập đồng thời email và số điện thoại trong MVP.
 - Không thêm trường `username` vào UI đăng ký MVP.
 - Form đăng nhập dùng một ô email hoặc số điện thoại.
 - Không dùng nhãn `Gmail`; luôn dùng `email`.
-- Ngày sinh chỉ đặt ở màn hình cập nhật hồ sơ, không đặt ở đăng ký.
+- Sau đăng ký điều hướng đến onboarding hồ sơ.
+- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Route guard phải chuyển người đã đăng nhập nhưng chưa hoàn tất hồ sơ về onboarding.
+- Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
+- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
 
 ## 6. Kiểm tra
 

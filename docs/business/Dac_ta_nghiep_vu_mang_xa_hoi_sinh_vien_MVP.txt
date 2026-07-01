@@ -66,28 +66,73 @@ II. PHẠM VI MVP
 
 1. Xác thực và tài khoản
 
-1.1. Đăng ký
+1.1. Đăng ký và hoàn tất hồ sơ ban đầu
 
-Người dùng đăng ký tài khoản bằng cách nhập đầy đủ các thông tin sau:
+Người dùng đăng ký tài khoản bằng một trong hai phương thức:
 
-- Email.
+- Email; hoặc
 - Số điện thoại.
+
+Form đăng ký tài khoản chỉ gồm:
+
+- Email hoặc số điện thoại.
 - Mật khẩu.
+- Xác nhận mật khẩu.
 
-Hệ thống không sử dụng tên định danh công khai riêng trong phạm vi MVP.
+Hệ thống không sử dụng username hoặc tên định danh đăng nhập riêng trong phạm vi MVP.
 
-Quy tắc:
+Sau khi đăng ký tài khoản thành công, hệ thống:
 
-- Email là thông tin bắt buộc.
-- Số điện thoại là thông tin bắt buộc.
-- Email phải đúng định dạng và không được trùng với tài khoản khác.
-- Số điện thoại phải đúng định dạng chuẩn hóa và không được trùng với tài khoản khác.
-- Backend phải chuẩn hóa email về chữ thường trước khi kiểm tra và lưu.
-- Backend phải chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra và lưu.
-- Mật khẩu phải có tối thiểu 8 ký tự, bao gồm chữ, số và ký tự đặc biệt.
+1. Tạo bản ghi tài khoản trong bảng users.
+2. Tạo đồng thời một bản ghi hồ sơ rỗng trong bảng user_profiles.
+3. Cấp phiên đăng nhập hoặc cho phép người dùng tiếp tục trong phiên đăng ký hiện tại.
+4. Điều hướng người dùng đến quy trình hoàn tất hồ sơ ban đầu.
+5. Chỉ cho phép truy cập Feed và các chức năng mạng xã hội sau khi hồ sơ được hoàn tất.
+
+Quy tắc đăng ký tài khoản:
+
+- Người dùng phải cung cấp đúng một phương thức định danh tại thời điểm đăng ký:
+  email hoặc số điện thoại.
+- Không được để trống đồng thời cả email và số điện thoại.
+- Request đăng ký không được chứa đồng thời cả email và số điện thoại.
+- Email phải đúng định dạng và không được trùng với tài khoản khác nếu được cung cấp.
+- Số điện thoại phải đúng định dạng, được chuẩn hóa và không được trùng với tài khoản khác
+  nếu được cung cấp.
+- Backend phải chuẩn hóa email về chữ thường và loại bỏ khoảng trắng trước khi kiểm tra, lưu.
+- Backend phải chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra, lưu.
+- Nếu đăng ký bằng email thì trường phone_number trong database được lưu NULL.
+- Nếu đăng ký bằng số điện thoại thì trường email trong database được lưu NULL.
+- Database cho phép một tài khoản có cả email và số điện thoại sau khi người dùng bổ sung
+  phương thức còn thiếu trong hướng phát triển, nhưng luôn yêu cầu tồn tại ít nhất một
+  phương thức định danh.
+- Mật khẩu phải có tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+- Mật khẩu và xác nhận mật khẩu phải trùng nhau.
 - Mật khẩu phải được băm một chiều trước khi lưu vào cơ sở dữ liệu.
-- Tài khoản mới được tạo ở trạng thái ACTIVE.
+- Việc tạo users và user_profiles phải nằm trong cùng một transaction.
+- Nếu tạo user_profiles thất bại thì phải rollback bản ghi users vừa tạo.
+- Tài khoản mới được tạo ở trạng thái ACTIVE trong phạm vi MVP.
+- MVP chưa triển khai gửi mã xác minh email hoặc SMS OTP.
+- Database chuẩn bị sẵn email_verified_at và phone_verified_at để phục vụ mở rộng sau này.
 - Email và số điện thoại không được hiển thị công khai trên hồ sơ.
+
+Quy trình hoàn tất hồ sơ ban đầu:
+
+- Người dùng bắt buộc phải hoàn tất quy trình hồ sơ trước khi sử dụng Feed, đăng bài,
+  Follow, Like, bình luận, lưu bài, tìm kiếm hoặc báo cáo.
+- Tên hiển thị là thông tin bắt buộc.
+- Ảnh đại diện là thông tin tùy chọn và người dùng được phép bỏ qua.
+- Ngày sinh là thông tin tùy chọn và người dùng được phép bỏ qua.
+- Giới thiệu cá nhân là thông tin tùy chọn và người dùng được phép bỏ qua.
+- Hồ sơ được xem là hoàn tất khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận
+  hoàn tất quy trình.
+- Khi hoàn tất, hệ thống cập nhật user_profiles.profile_completed_at.
+- users.status = ACTIVE chỉ thể hiện tài khoản không bị khóa; không đồng nghĩa hồ sơ đã
+  hoàn tất.
+- Nếu profile_completed_at là NULL, Backend chỉ cho phép sử dụng các API xác thực,
+  Refresh Token, đăng xuất và API hoàn tất hồ sơ.
+- Backend phải trả lỗi PROFILE_NOT_COMPLETED khi người dùng chưa hoàn tất hồ sơ nhưng
+  gọi các API mạng xã hội chính.
+
 
 1.2. Đăng nhập
 
@@ -138,9 +183,13 @@ Quy tắc:
 
 - Tất cả hồ sơ trong phiên bản MVP đều ở chế độ công khai.
 - Email, số điện thoại và các dữ liệu xác thực không được hiển thị công khai.
-- Ngày sinh được lưu trong hồ sơ người dùng.
-- Ngày sinh không được lớn hơn ngày hiện tại.
-- Ngày sinh là thông tin tùy chọn khi cập nhật hồ sơ, không bắt buộc trong form đăng ký.
+- Tên hiển thị là trường bắt buộc để hoàn tất hồ sơ ban đầu.
+- Ảnh đại diện, ngày sinh và giới thiệu cá nhân là các trường tùy chọn, có thể bỏ qua.
+- Ngày sinh không được lớn hơn ngày hiện tại nếu người dùng cung cấp.
+- Ngay sau khi đăng ký, user_profiles được tạo với display_name và
+  profile_completed_at bằng NULL.
+- Chỉ khi display_name hợp lệ và người dùng xác nhận hoàn tất, hệ thống mới cập nhật
+  profile_completed_at.
 - Chỉ chủ tài khoản được chỉnh sửa hồ sơ của mình.
 
 3. Theo dõi người dùng
@@ -493,7 +542,10 @@ IV. YÊU CẦU PHI CHỨC NĂNG
 
 3. Tính toàn vẹn dữ liệu
 
-- Email và số điện thoại là bắt buộc và phải duy nhất.
+- Mỗi tài khoản phải có ít nhất một trong hai phương thức: email hoặc số điện thoại.
+- Email phải duy nhất nếu có giá trị.
+- Số điện thoại phải duy nhất nếu có giá trị.
+- Một tài khoản được phép có cả email và số điện thoại sau khi bổ sung thông tin bảo mật.
 - Quan hệ Follow không được trùng.
 - Quan hệ Like không được trùng.
 - Quan hệ Save không được trùng.
@@ -501,6 +553,9 @@ IV. YÊU CẦU PHI CHỨC NĂNG
 - Các thao tác quan trọng phải được kiểm soát bằng transaction khi cần.
 - Các dữ liệu quan trọng sử dụng xóa mềm.
 - Các bảng dữ liệu chính phải có created_at và updated_at.
+- Mỗi users phải có đúng một user_profiles.
+- user_profiles.display_name được phép NULL trong thời gian onboarding.
+- user_profiles.profile_completed_at chỉ có giá trị khi display_name đã hợp lệ.
 
 4. Khả năng sử dụng
 
@@ -569,40 +624,55 @@ VII. TIÊU CHÍ NGHIỆM THU MVP
 
 Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí sau:
 
-1. Người dùng chỉ đăng ký thành công khi cung cấp đầy đủ email, số điện thoại và mật khẩu.
-2. Hệ thống từ chối đăng ký nếu email đã tồn tại.
-3. Hệ thống từ chối đăng ký nếu số điện thoại đã tồn tại.
-4. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.
-5. Access Token và Refresh Token hoạt động đúng.
-6. Tài khoản bị khóa không đăng nhập được.
-7. Người dùng cập nhật và xem hồ sơ thành công.
-8. Người dùng cập nhật ngày sinh hợp lệ và hệ thống từ chối ngày sinh nằm trong tương lai.
-9. Người dùng Follow và Unfollow thành công.
-10. Không tồn tại hai quan hệ Follow trùng nhau.
-11. Người dùng tạo bài có văn bản hoặc hình ảnh.
-12. Chỉ tác giả được sửa hoặc xóa bài của mình.
-13. Bài bị xóa hoặc bị ẩn không xuất hiện trên Feed.
-14. Người dùng Like và Unlike bài viết.
-15. Một người không Like một bài hai lần.
-16. Người dùng bình luận và xóa bình luận của mình.
-17. Người dùng lưu và bỏ lưu bài viết.
-18. Feed Following hiển thị bài của tài khoản đang theo dõi.
-19. Feed For You hiển thị các bài viết hợp lệ.
-20. Người dùng tìm được tài khoản và bài viết.
-21. Người dùng gửi được báo cáo bài viết.
-22. Admin xử lý được người dùng, bài viết và báo cáo.
-23. Các API danh sách đều có phân trang.
-24. API từ chối thao tác khi người dùng không có quyền.
-25. Mật khẩu không được lưu dưới dạng văn bản thuần.
-26. Hình ảnh không hợp lệ phải bị Backend từ chối.
+1. Người dùng đăng ký thành công khi cung cấp đúng một phương thức email hoặc số điện thoại,
+   mật khẩu và xác nhận mật khẩu hợp lệ.
+2. Hệ thống từ chối đăng ký khi để trống cả email và số điện thoại.
+3. Hệ thống từ chối request đăng ký chứa đồng thời cả email và số điện thoại.
+4. Hệ thống từ chối đăng ký nếu email được cung cấp đã tồn tại.
+5. Hệ thống từ chối đăng ký nếu số điện thoại được cung cấp đã tồn tại.
+6. Khi đăng ký bằng email, số điện thoại được lưu NULL; khi đăng ký bằng số điện thoại,
+   email được lưu NULL.
+7. Hệ thống tạo users và user_profiles trong cùng một transaction.
+8. Nếu tạo user_profiles thất bại thì bản ghi users phải được rollback.
+9. Sau đăng ký, user_profiles có display_name và profile_completed_at bằng NULL.
+10. Hệ thống điều hướng người dùng đến quy trình hoàn tất hồ sơ ban đầu.
+11. Người dùng không thể hoàn tất hồ sơ nếu chưa nhập tên hiển thị hợp lệ.
+12. Người dùng được phép bỏ qua ảnh đại diện, ngày sinh và giới thiệu cá nhân.
+13. Khi hoàn tất hồ sơ, profile_completed_at được cập nhật.
+14. Người dùng chưa hoàn tất hồ sơ không được sử dụng Feed và các chức năng mạng xã hội chính.
+15. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.
+16. Access Token và Refresh Token hoạt động đúng.
+17. Tài khoản bị khóa không đăng nhập được.
+18. Người dùng cập nhật và xem hồ sơ thành công.
+19. Nếu người dùng cung cấp ngày sinh, hệ thống từ chối ngày sinh nằm trong tương lai.
+20. Người dùng Follow và Unfollow thành công.
+21. Không tồn tại hai quan hệ Follow trùng nhau.
+22. Người dùng tạo bài có văn bản hoặc hình ảnh.
+23. Chỉ tác giả được sửa hoặc xóa bài của mình.
+24. Bài bị xóa hoặc bị ẩn không xuất hiện trên Feed.
+25. Người dùng Like và Unlike bài viết.
+26. Một người không Like một bài hai lần.
+27. Người dùng bình luận và xóa bình luận của mình.
+28. Người dùng lưu và bỏ lưu bài viết.
+29. Feed Following hiển thị bài của tài khoản đang theo dõi.
+30. Feed For You hiển thị các bài viết hợp lệ.
+31. Người dùng tìm được tài khoản và bài viết.
+32. Người dùng gửi được báo cáo bài viết.
+33. Admin xử lý được người dùng, bài viết và báo cáo.
+34. Các API danh sách đều có phân trang.
+35. API từ chối thao tác khi người dùng không có quyền.
+36. Mật khẩu không được lưu dưới dạng văn bản thuần.
+37. Hình ảnh không hợp lệ phải bị Backend từ chối.
 
 ================================================================================
+
 VIII. THỨ TỰ ƯU TIÊN TRIỂN KHAI
 ================================================================================
 
 MỨC P0 - BẮT BUỘC HOÀN THÀNH
 
 - Đăng ký, đăng nhập, đăng xuất.
+- Quy trình hoàn tất hồ sơ ban đầu.
 - JWT Access Token và Refresh Token.
 - Hồ sơ người dùng.
 - Follow và Unfollow.

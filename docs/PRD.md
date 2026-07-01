@@ -41,6 +41,7 @@ Không được sử dụng chức năng mạng xã hội.
 
 - Đã đăng nhập.
 - Tài khoản ở trạng thái ACTIVE.
+- Hồ sơ đã hoàn tất, tức `user_profiles.profile_completed_at` khác `NULL`.
 
 Được phép:
 
@@ -73,17 +74,26 @@ Ngoài quyền người dùng, Admin được phép:
 
 ### 4.1 Xác thực
 
-- Đăng ký bằng email, số điện thoại và mật khẩu.
-- Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi đăng ký.
-- Email duy nhất.
-- Số điện thoại duy nhất.
+- Đăng ký bằng đúng một phương thức định danh: email hoặc số điện thoại.
+- Form đăng ký chỉ gồm phương thức định danh, mật khẩu và xác nhận mật khẩu.
+- Tại thời điểm đăng ký, nếu dùng email thì `phone_number` lưu `NULL`; nếu dùng số điện thoại thì `email` lưu `NULL`.
+- Database cho phép tài khoản bổ sung phương thức còn thiếu trong tương lai, nhưng mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
+- Email duy nhất nếu có giá trị.
+- Số điện thoại duy nhất nếu có giá trị.
 - Backend chuẩn hóa email và số điện thoại trước khi kiểm tra trùng và lưu.
 - Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Tài khoản mới ở trạng thái ACTIVE.
+- Khi đăng ký hợp lệ, Backend tạo `users` và một `user_profiles` rỗng trong cùng transaction; nếu tạo hồ sơ thất bại thì rollback tài khoản.
+- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- Sau đăng ký, người dùng được điều hướng đến onboarding hồ sơ.
+- Cơ chế phiên ngay sau đăng ký cần chốt theo API triển khai: có thể cấp Access Token/Refresh Token ngay hoặc duy trì phiên đăng ký hợp lệ, nhưng không được bỏ qua bước onboarding.
 - Đăng nhập bằng email hoặc số điện thoại.
 - Cấp Access Token và Refresh Token.
 - Đăng xuất thu hồi Refresh Token.
 - Tài khoản BLOCKED không đăng nhập được.
+- MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
+- Email và số điện thoại không hiển thị trong API hồ sơ công khai.
+- Người chưa hoàn tất hồ sơ chỉ được dùng API xác thực, refresh token, đăng xuất và onboarding; API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED`.
 
 ### 4.2 Hồ sơ
 
@@ -94,12 +104,21 @@ Người dùng có thể:
 - Điều hướng hồ sơ bằng userId, trong đó `/profile/me` dành cho hồ sơ cá nhân và `/profile/:userId` dành cho hồ sơ người khác.
 - Cập nhật tên hiển thị.
 - Cập nhật avatar.
+- Cập nhật ngày sinh.
 - Cập nhật bio.
 - Xem số follower.
 - Xem số following.
 - Xem bài đã đăng.
 
 Tất cả hồ sơ công khai trong MVP.
+
+Hoàn tất hồ sơ ban đầu:
+
+- Tên hiển thị là bắt buộc.
+- Avatar, ngày sinh và bio là tùy chọn.
+- Hồ sơ chỉ hoàn tất sau khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận hoàn tất.
+- Backend cập nhật `user_profiles.profile_completed_at` khi hoàn tất.
+- `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 
 ### 4.3 Theo dõi
 
@@ -241,6 +260,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 ### P0
 
 - Đăng ký, đăng nhập, đăng xuất.
+- Hoàn tất hồ sơ ban đầu.
 - JWT/Refresh Token.
 - Hồ sơ.
 - Follow/Unfollow.
@@ -294,6 +314,10 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 ## 7. Tiêu chí nghiệm thu
 
 - Đăng ký và đăng nhập thành công.
+- Sau đăng ký tạo đồng thời `users` và `user_profiles` trong cùng transaction.
+- Hồ sơ ban đầu có `display_name` và `profile_completed_at` là `NULL`.
+- Người dùng phải hoàn tất hồ sơ bằng tên hiển thị hợp lệ trước khi dùng Feed và các chức năng mạng xã hội.
+- Backend trả `PROFILE_NOT_COMPLETED` khi tài khoản chưa hoàn tất hồ sơ gọi API mạng xã hội chính.
 - Token hoạt động đúng.
 - Tài khoản BLOCKED không đăng nhập được.
 - Cập nhật hồ sơ.

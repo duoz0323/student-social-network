@@ -1,10 +1,16 @@
 // =============================================================================
 // STUDENT SOCIAL NETWORK - DATABASE MODEL (DBML)
-// Đồng bộ với file student_social_network_db.sql phiên bản mới nhất.
+// Đồng bộ với file student_social_network_db_cap_nhat.sql sau khi cập nhật luồng đăng ký.
 // Phạm vi: MVP mạng xã hội tinh gọn dành cho sinh viên.
 // Lưu ý:
-// - Người dùng bắt buộc nhập cả email và số điện thoại khi đăng ký.
+// - Người dùng đăng ký bằng một trong hai phương thức: email hoặc số điện thoại.
+// - Email và số điện thoại đều có thể NULL, nhưng mỗi tài khoản phải có ít nhất một phương thức.
+// - Database cho phép bổ sung phương thức còn thiếu sau khi tài khoản đã được tạo.
+// - MVP chưa xác minh email/SMS OTP; các cột thời điểm xác minh được chuẩn bị cho hướng phát triển.
 // - Không sử dụng username.
+// - Sau đăng ký, hệ thống tạo user_profiles rỗng trong cùng transaction với users.
+// - Tên hiển thị bắt buộc để hoàn tất hồ sơ; avatar, ngày sinh và bio có thể bỏ qua.
+// - profile_completed_at xác định người dùng đã hoàn tất onboarding.
 // - Ngày sinh được lưu trong user_profiles.date_of_birth.
 // - Trigger, CHECK phức tạp, VIEW và FULLTEXT INDEX được mô tả bằng Note vì DBML
 //   chủ yếu dùng để biểu diễn bảng, khóa, index và quan hệ.
@@ -88,8 +94,10 @@ Enum admin_target_type {
 
 Table users {
   id bigint [pk, increment, not null, note: "Khóa chính."]
-  email varchar(255) [not null, unique, note: "Email đăng ký và đăng nhập; Backend chuẩn hóa về chữ thường."]
-  phone_number varchar(20) [not null, unique, note: "Số điện thoại đăng ký và đăng nhập; Backend chuẩn hóa trước khi lưu."]
+  email varchar(255) [unique, note: "Có thể NULL khi đăng ký bằng số điện thoại; Backend chuẩn hóa về chữ thường trước khi lưu."]
+  phone_number varchar(20) [unique, note: "Có thể NULL khi đăng ký bằng email; Backend chuẩn hóa về một định dạng thống nhất trước khi lưu."]
+  email_verified_at datetime(6) [note: "Thời điểm xác minh email; NULL khi chưa xác minh hoặc tài khoản chưa có email."]
+  phone_verified_at datetime(6) [note: "Thời điểm xác minh số điện thoại; NULL khi chưa xác minh hoặc tài khoản chưa có số điện thoại."]
   password_hash varchar(255) [not null, note: "Mật khẩu đã băm bằng BCrypt hoặc Argon2."]
   role user_role [not null, default: 'USER']
   status user_status [not null, default: 'ACTIVE']
@@ -102,20 +110,21 @@ Table users {
     (status, created_at, id) [name: "idx_users_status_created_at"]
   }
 
-  Note: "CHECK: email và phone_number không được rỗng. Khi status=BLOCKED thì blocked_at phải khác NULL."
+  Note: "CHECK trong file SQL: email/phone_number nếu có thì không được rỗng; phải tồn tại ít nhất một phương thức định danh; không được có thời điểm xác minh nếu phương thức tương ứng chưa tồn tại; status ACTIVE yêu cầu blocked_at NULL, status BLOCKED yêu cầu blocked_at khác NULL. Request đăng ký chỉ nhận đúng một phương thức, nhưng database cho phép có cả hai sau khi người dùng bổ sung thông tin bảo mật."
 }
 
 Table user_profiles {
   user_id bigint [pk, not null, note: "Khóa chính đồng thời là khóa ngoại tới users.id."]
-  display_name varchar(100) [not null, note: "Tên hiển thị công khai."]
-  avatar_url varchar(1000)
+  display_name varchar(100) [note: "NULL trong thời gian onboarding; bắt buộc để hoàn tất hồ sơ."]
+  avatar_url varchar(1000) [note: "Tùy chọn; NULL khi người dùng bỏ qua ảnh đại diện."]
   avatar_public_id varchar(255)
-  bio varchar(500)
-  date_of_birth date [note: "Ngày sinh tùy chọn; Backend từ chối ngày nằm trong tương lai."]
+  bio varchar(500) [note: "Tùy chọn; người dùng được phép bỏ qua."]
+  date_of_birth date [note: "Tùy chọn; Backend từ chối ngày nằm trong tương lai nếu có dữ liệu."]
+  profile_completed_at datetime(6) [note: "NULL khi chưa hoàn tất; được cập nhật sau khi display_name hợp lệ và người dùng xác nhận hoàn tất."]
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "MySQL tự cập nhật bằng ON UPDATE CURRENT_TIMESTAMP(6)."]
 
-  Note: "Có FULLTEXT INDEX trên display_name trong file SQL."
+  Note: "Một hồ sơ rỗng được tạo cùng transaction với users. CHECK trong file SQL: display_name nếu có không được rỗng; profile_completed_at chỉ có giá trị khi display_name khác NULL. Có FULLTEXT INDEX trên display_name."
 }
 
 Table refresh_tokens {

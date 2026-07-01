@@ -4,7 +4,7 @@
     {
       "id": "account-001",
       "email": "minh.demo@example.com",
-      "phoneNumber": "+84901234567",
+      "phoneNumber": null,
       "passwordDemo": "DemoUser123!",
       "role": "USER",
       "status": "ACTIVE",
@@ -12,7 +12,7 @@
     },
     {
       "id": "account-002",
-      "email": "admin.demo@example.com",
+      "email": null,
       "phoneNumber": "+84907654321",
       "passwordDemo": "DemoAdmin123!",
       "role": "ADMIN",

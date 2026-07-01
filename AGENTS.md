@@ -37,6 +37,7 @@ Luồng chính của MVP:
 
 Đăng ký
 → Đăng nhập
+→ Hoàn tất hồ sơ ban đầu
 → Quản lý hồ sơ
 → Follow/Unfollow
 → Tạo và quản lý bài viết
@@ -96,6 +97,21 @@ Không được:
 - Trả JPA Entity trực tiếp ra API.
 - Đặt logic nghiệp vụ trong Controller.
 - Gọi API trực tiếp trong component trình bày.
+
+## 4.1. Quy tắc Auth và onboarding MVP
+
+- Đăng ký chỉ dùng một trường định danh chung `identifier` cho email hoặc số điện thoại, kèm `password` và `confirmPassword`.
+- Không dùng username hoặc display name trong form/request đăng ký MVP.
+- Không gọi email là Gmail trong API, database hoặc tài liệu nghiệp vụ.
+- Đăng nhập dùng email hoặc số điện thoại kèm mật khẩu.
+- Sau đăng ký, Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
+- Nếu tạo `user_profiles` thất bại thì rollback `users`.
+- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- Sau đăng ký, Frontend điều hướng người dùng đến onboarding hồ sơ.
+- Tên hiển thị bắt buộc để hoàn tất hồ sơ; avatar, ngày sinh và bio là tùy chọn.
+- `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
+- Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
+- API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.
 
 ## 5. Quy tắc mã nguồn
 

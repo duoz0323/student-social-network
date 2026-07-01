@@ -8,20 +8,44 @@ Request:
 
 ```json
 {
-  "email": "minh@example.com",
-  "phoneNumber": "+84901234567",
-  "password": "Password123!"
+  "identifier": "minh@example.com",
+  "password": "Password123!",
+  "confirmPassword": "Password123!"
 }
 ```
+
+Hoặc:
+
+```json
+{
+  "identifier": "0901234567",
+  "password": "Password123!",
+  "confirmPassword": "Password123!"
+}
+```
+
+Quy tắc:
+
+- `identifier` là email hoặc số điện thoại.
+- Request đăng ký chỉ nhận đúng một phương thức định danh tại một thời điểm.
+- Request đăng ký không nhận `username`, `displayName`, avatar, ngày sinh hoặc bio.
+- Nếu đăng ký bằng email thì `phone_number` lưu `NULL`.
+- Nếu đăng ký bằng số điện thoại thì `email` lưu `NULL`.
+- Backend chuẩn hóa email hoặc số điện thoại trước khi kiểm tra trùng và lưu.
+- Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
+- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- Sau đăng ký, Frontend điều hướng đến onboarding hồ sơ.
+- Contract hiện chưa chốt đăng ký có cấp Access Token/Refresh Token ngay hay dùng phiên đăng ký hợp lệ; cần xác nhận khi triển khai, nhưng luồng vẫn phải đi đến onboarding.
+- MVP chưa triển khai xác minh email hoặc SMS OTP; tài khoản mới có trạng thái `ACTIVE`.
 
 Response 201:
 
 ```json
 {
   "userId": "user-001",
-  "displayName": "Nguyễn Hoàng Minh",
   "role": "USER",
-  "status": "ACTIVE"
+  "status": "ACTIVE",
+  "profileCompleted": false
 }
 ```
 
@@ -37,6 +61,15 @@ Request:
 ```
 
 `identifier` là email hoặc số điện thoại. Backend tự xác định loại định danh để truy vấn đúng trường.
+
+Ví dụ đăng nhập bằng số điện thoại:
+
+```json
+{
+  "identifier": "0901234567",
+  "password": "Password123!"
+}
+```
 
 Response 200:
 
@@ -54,7 +87,7 @@ Response 200:
 }
 ```
 
-### POST `/api/v1/auth/refresh`
+### POST `/api/v1/auth/refresh-token`
 
 Request:
 
@@ -75,6 +108,58 @@ Request:
 ```
 
 ## 2. User
+
+### GET `/api/v1/users/me/onboarding`
+
+Response 200:
+
+```json
+{
+  "profileCompleted": false,
+  "displayName": null,
+  "avatarUrl": null,
+  "dateOfBirth": null,
+  "bio": null
+}
+```
+
+### PUT `/api/v1/users/me/onboarding/profile`
+
+Request:
+
+```json
+{
+  "displayName": "Nguyễn Hoàng Minh",
+  "avatarUrl": null,
+  "dateOfBirth": null,
+  "bio": null
+}
+```
+
+Quy tắc:
+
+- `displayName` bắt buộc để hoàn tất hồ sơ.
+- `avatarUrl`, `dateOfBirth` và `bio` là tùy chọn.
+- `dateOfBirth` nếu có không được nằm trong tương lai.
+
+### POST `/api/v1/users/me/onboarding/complete`
+
+Quy tắc:
+
+- Backend chỉ cập nhật `profile_completed_at` khi tên hiển thị hợp lệ đã được lưu.
+- `users.status = ACTIVE` không đồng nghĩa hồ sơ đã hoàn tất.
+- API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` khi `profile_completed_at` còn `NULL`.
+
+Ví dụ lỗi:
+
+```json
+{
+  "success": false,
+  "code": "PROFILE_NOT_COMPLETED",
+  "message": "Bạn cần hoàn tất hồ sơ trước khi sử dụng chức năng này",
+  "timestamp": "2026-06-21T10:00:00"
+}
+```
 
 ### GET `/api/v1/users/{userId}`
 

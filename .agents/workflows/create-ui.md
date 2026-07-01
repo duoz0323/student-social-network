@@ -25,11 +25,16 @@ Ghi rõ:
 
 Với màn hình Auth MVP:
 
-- Đăng ký hiển thị email, số điện thoại, mật khẩu và xác nhận mật khẩu nếu cần.
+- Đăng ký hiển thị một trường email hoặc số điện thoại, mật khẩu và xác nhận mật khẩu.
+- Không yêu cầu nhập đồng thời email và số điện thoại.
 - Đăng ký không hiển thị tên người dùng hoặc username.
 - Đăng nhập hiển thị một ô email hoặc số điện thoại và một ô mật khẩu.
 - Không dùng nhãn Gmail, Google/Facebook login hoặc xác thực email trong MVP.
-- Ngày sinh chỉ đặt ở màn hình cập nhật hồ sơ, không đặt ở đăng ký.
+- Sau đăng ký chuyển sang onboarding hồ sơ.
+- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Route Guard tách trạng thái chưa đăng nhập, đã đăng nhập nhưng chưa hoàn tất hồ sơ, và đã đăng nhập hoàn tất hồ sơ.
+- Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
+- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
 
 ## Bước 3: Dựng bằng mock data
 

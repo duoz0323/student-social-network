@@ -24,6 +24,7 @@ Dùng để:
 - User BLOCKED.
 - Dữ liệu đăng nhập nằm trong `demoAccounts`.
 - Đăng nhập bằng email hoặc số điện thoại và mật khẩu mô phỏng.
+- Mỗi tài khoản demo nên có ít nhất một phương thức định danh; có thể để `email` hoặc `phoneNumber` là `null` để mô phỏng đúng luồng đăng ký MVP.
 - Không dùng username trong dữ liệu demo.
 - Không render công khai email, số điện thoại hoặc passwordDemo.
 
@@ -38,6 +39,8 @@ Dùng để:
 - `userId`
 
 Quan hệ: `demoAccounts.userId -> users.id`.
+
+Quy tắc: `email` và `phoneNumber` là dữ liệu riêng tư. Mock data có thể chứa cả hai sau khi mô phỏng người dùng bổ sung phương thức còn thiếu, nhưng form đăng ký MVP chỉ gửi một `identifier`.
 
 ### Cấu trúc `users`
 

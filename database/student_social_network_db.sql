@@ -3,16 +3,20 @@
 -- HỆ QUẢN TRỊ: MySQL 8.0+
 -- PHẠM VI: MVP mạng xã hội tinh gọn dành cho sinh viên
 -- GHI CHÚ:
--- 1. Người dùng bắt buộc nhập cả email và số điện thoại khi đăng ký.
--- 2. Hệ thống không sử dụng tên định danh công khai riêng trong phạm vi MVP.
--- 3. Người dùng đăng nhập bằng email hoặc số điện thoại.
--- 4. Ngày sinh được lưu trong bảng user_profiles.
--- 5. Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
+-- 1. Người dùng đăng ký bằng một trong hai phương thức: email hoặc số điện thoại.
+-- 2. Database yêu cầu ít nhất một phương thức định danh và cho phép bổ sung phương thức còn lại sau này.
+-- 3. Hệ thống không sử dụng username hoặc tên định danh đăng nhập riêng trong phạm vi MVP.
+-- 4. Người dùng đăng nhập bằng email hoặc số điện thoại.
+-- 5. Sau đăng ký, hệ thống tạo user_profiles rỗng và bắt buộc người dùng hoàn tất hồ sơ.
+-- 6. Tên hiển thị là bắt buộc để hoàn tất; ảnh đại diện, ngày sinh và bio có thể bỏ qua.
+-- 7. profile_completed_at phân biệt hồ sơ đã hoàn tất với tài khoản ACTIVE.
+-- 8. Ngày sinh được lưu trong bảng user_profiles.
+-- 9. Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
 --    được kiểm tra tại Service Layer để bảo đảm thông báo lỗi nghiệp vụ rõ ràng.
--- 6. Index được thiết kế theo các truy vấn thực tế: đăng nhập, hồ sơ, Feed,
+-- 10. Index được thiết kế theo các truy vấn thực tế: đăng nhập, hồ sơ, Feed,
 --    bình luận, bài đã lưu, tìm kiếm và màn hình quản trị.
--- 7. Các danh sách lớn nên dùng cursor pagination theo cặp (thời gian, id).
--- 8. Không dùng SELECT * trong API; chỉ lấy các cột cần thiết.
+-- 11. Các danh sách lớn nên dùng cursor pagination theo cặp (thời gian, id).
+-- 12. Không dùng SELECT * trong API; chỉ lấy các cột cần thiết.
 -- =============================================================================
 
 -- Tạo cơ sở dữ liệu với bộ ký tự utf8mb4 để lưu đầy đủ tiếng Việt và emoji.
@@ -55,13 +59,21 @@ CREATE TABLE users (
     -- Khóa chính dạng số lớn, thuận lợi cho index và quan hệ khóa ngoại.
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
-    -- Email bắt buộc dùng để đăng ký, đăng nhập và khôi phục tài khoản.
+    -- Email có thể để NULL khi người dùng đăng ký bằng số điện thoại.
     -- Backend phải chuẩn hóa email về chữ thường trước khi lưu.
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
 
-    -- Số điện thoại bắt buộc dùng để đăng ký, đăng nhập và khôi phục tài khoản.
+    -- Số điện thoại có thể để NULL khi người dùng đăng ký bằng email.
     -- Backend phải chuẩn hóa số điện thoại về định dạng thống nhất trước khi lưu.
-    phone_number VARCHAR(20) NOT NULL,
+    phone_number VARCHAR(20) NULL,
+
+    -- Thời điểm email được xác minh; NULL khi chưa xác minh hoặc chưa có email.
+    -- MVP chưa gửi mã xác minh nhưng giữ cột này để mở rộng mà không phải đổi cấu trúc bảng.
+    email_verified_at DATETIME(6) NULL,
+
+    -- Thời điểm số điện thoại được xác minh; NULL khi chưa xác minh hoặc chưa có số điện thoại.
+    -- MVP chưa tích hợp SMS OTP nhưng giữ cột này cho hướng phát triển.
+    phone_verified_at DATETIME(6) NULL,
 
     -- Mật khẩu đã băm một chiều bằng BCrypt hoặc Argon2.
     password_hash VARCHAR(255) NOT NULL,
@@ -94,14 +106,29 @@ CREATE TABLE users (
     -- Không cho phép hai tài khoản sử dụng cùng số điện thoại.
     CONSTRAINT uq_users_phone_number UNIQUE (phone_number),
 
-    -- Không cho phép lưu email là chuỗi rỗng.
+    -- Email được phép NULL, nhưng nếu có dữ liệu thì không được là chuỗi rỗng.
     CONSTRAINT chk_users_email_not_blank CHECK (
-        CHAR_LENGTH(TRIM(email)) > 0
+        email IS NULL OR CHAR_LENGTH(TRIM(email)) > 0
     ),
 
-    -- Không cho phép lưu số điện thoại là chuỗi rỗng.
+    -- Số điện thoại được phép NULL, nhưng nếu có dữ liệu thì không được là chuỗi rỗng.
     CONSTRAINT chk_users_phone_not_blank CHECK (
-        CHAR_LENGTH(TRIM(phone_number)) > 0
+        phone_number IS NULL OR CHAR_LENGTH(TRIM(phone_number)) > 0
+    ),
+
+    -- Mỗi tài khoản phải có ít nhất một phương thức định danh: email hoặc số điện thoại.
+    CONSTRAINT chk_users_contact_required CHECK (
+        email IS NOT NULL OR phone_number IS NOT NULL
+    ),
+
+    -- Không được ghi thời điểm xác minh email khi tài khoản chưa có email.
+    CONSTRAINT chk_users_email_verification_consistency CHECK (
+        email IS NOT NULL OR email_verified_at IS NULL
+    ),
+
+    -- Không được ghi thời điểm xác minh số điện thoại khi tài khoản chưa có số điện thoại.
+    CONSTRAINT chk_users_phone_verification_consistency CHECK (
+        phone_number IS NOT NULL OR phone_verified_at IS NULL
     ),
 
     -- Bảo đảm dữ liệu khóa tài khoản nhất quán với trạng thái.
@@ -116,43 +143,67 @@ CREATE TABLE users (
 CREATE INDEX idx_users_status_created_at
     ON users (status, created_at DESC, id DESC);
 
--- Các UNIQUE INDEX trên email và phone_number hỗ trợ trực tiếp
--- việc kiểm tra trùng và truy vấn đăng nhập theo từng loại định danh.
+-- Các UNIQUE CONSTRAINT trên email và phone_number vẫn ngăn dữ liệu bị trùng.
+-- MySQL cho phép nhiều giá trị NULL trong UNIQUE CONSTRAINT, phù hợp với nghiệp vụ
+-- đăng ký bằng một trong hai phương thức email hoặc số điện thoại.
 
 -- Bảng user_profiles tách dữ liệu hồ sơ công khai khỏi dữ liệu xác thực.
+-- Một bản ghi hồ sơ rỗng được tạo cùng transaction với users ngay sau đăng ký.
 CREATE TABLE user_profiles (
     -- Khóa chính đồng thời là khóa ngoại tới users để tạo quan hệ 1-1.
     user_id BIGINT UNSIGNED NOT NULL,
-    -- Tên hiển thị công khai của người dùng.
-    display_name VARCHAR(100) NOT NULL,
+
+    -- Tên hiển thị được phép NULL trong thời gian người dùng chưa hoàn tất onboarding.
+    -- Đây là trường bắt buộc duy nhất để xác nhận hoàn tất hồ sơ trong MVP.
+    display_name VARCHAR(100) NULL,
+
     -- Đường dẫn ảnh đại diện lưu trên dịch vụ lưu trữ tệp.
+    -- NULL khi người dùng bỏ qua bước ảnh đại diện.
     avatar_url VARCHAR(1000) NULL,
+
     -- Mã public_id của ảnh trên Cloudinary/S3 để hỗ trợ xóa tệp.
     avatar_public_id VARCHAR(255) NULL,
-    -- Nội dung giới thiệu cá nhân.
+
+    -- Nội dung giới thiệu cá nhân; người dùng được phép bỏ qua.
     bio VARCHAR(500) NULL,
 
-    -- Ngày tháng năm sinh của người dùng.
-    -- Cho phép NULL để người dùng có thể bổ sung sau trong trang hồ sơ.
-    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai.
+    -- Ngày tháng năm sinh; người dùng được phép bỏ qua.
+    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai khi có dữ liệu.
     date_of_birth DATE NULL,
+
+    -- NULL nghĩa là hồ sơ chưa hoàn tất.
+    -- Có giá trị sau khi tên hiển thị hợp lệ và người dùng xác nhận hoàn tất onboarding.
+    profile_completed_at DATETIME(6) NULL,
 
     -- Thời điểm tạo hồ sơ.
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
     -- Thời điểm cập nhật hồ sơ gần nhất.
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
         ON UPDATE CURRENT_TIMESTAMP(6),
+
     -- Khóa chính bảo đảm mỗi user chỉ có đúng một hồ sơ.
     CONSTRAINT pk_user_profiles PRIMARY KEY (user_id),
+
     -- Khóa ngoại liên kết hồ sơ với tài khoản.
     CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id)
         REFERENCES users (id)
         ON UPDATE RESTRICT
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    -- Tên hiển thị được phép NULL trong onboarding, nhưng nếu có thì không được rỗng.
+    CONSTRAINT chk_user_profiles_display_name_not_blank CHECK (
+        display_name IS NULL OR CHAR_LENGTH(TRIM(display_name)) > 0
+    ),
+
+    -- Không được đánh dấu hoàn tất nếu chưa có tên hiển thị hợp lệ.
+    CONSTRAINT chk_user_profiles_completion_consistency CHECK (
+        profile_completed_at IS NULL OR display_name IS NOT NULL
+    )
 ) ENGINE=InnoDB;
 
 -- FULLTEXT INDEX hỗ trợ tìm kiếm người dùng theo tên hiển thị trong phạm vi MVP.
--- Backend vẫn phải lọc trạng thái tài khoản sau khi JOIN với bảng users.
+-- Hồ sơ chưa hoàn tất có display_name NULL và phải bị Backend loại khỏi kết quả tìm kiếm.
 CREATE FULLTEXT INDEX ftx_user_profiles_display_name
     ON user_profiles (display_name);
 
@@ -236,11 +287,15 @@ CREATE INDEX idx_password_reset_tokens_user_state
     ON password_reset_tokens (user_id, used_at, expires_at, id);
 
 -- Quy tắc triển khai tại Backend:
--- 1. Form đăng ký bắt buộc nhập đồng thời email và số điện thoại.
--- 2. Backend chuẩn hóa và kiểm tra trùng cả email lẫn số điện thoại.
--- 3. Hệ thống không tạo thêm tên định danh đăng nhập riêng.
--- 4. Khi đăng nhập, Backend xác định dữ liệu nhập là email hay số điện thoại.
--- 5. Ngày sinh được cập nhật trong hồ sơ và phải được kiểm tra không nằm trong tương lai.
+-- 1. Form đăng ký nhận đúng một phương thức: email hoặc số điện thoại.
+-- 2. Backend chuẩn hóa và kiểm tra trùng phương thức được cung cấp.
+-- 3. Khi đăng ký bằng email, phone_number lưu NULL; khi đăng ký bằng số điện thoại, email lưu NULL.
+-- 4. Database chỉ bắt buộc ít nhất một phương thức để cho phép người dùng bổ sung phương thức còn lại sau này.
+-- 5. Hệ thống không tạo username hoặc tên định danh đăng nhập riêng.
+-- 6. Khi đăng nhập, Backend xác định dữ liệu nhập là email hay số điện thoại.
+-- 7. MVP chưa xác minh email/SMS OTP; email_verified_at và phone_verified_at để NULL cho đến khi triển khai.
+-- 8. Việc tạo users và user_profiles phải nằm trong cùng một transaction.
+-- 9. Ngày sinh được cập nhật trong hồ sơ và phải được kiểm tra không nằm trong tương lai.
 
 -- =============================================================================
 -- 2. NHÓM QUAN HỆ THEO DÕI
@@ -917,7 +972,8 @@ INNER JOIN users u
 INNER JOIN user_profiles up
     ON up.user_id = u.id
 WHERE p.status = 'PUBLISHED'
-  AND u.status = 'ACTIVE';
+  AND u.status = 'ACTIVE'
+  AND up.profile_completed_at IS NOT NULL;
 
 -- View nhẹ phục vụ các truy vấn Feed chỉ cần dữ liệu bài và tác giả cơ bản.
 -- Media, hashtag và trạng thái Like/Save nên được tải bằng truy vấn riêng theo danh sách ID
@@ -939,7 +995,8 @@ INNER JOIN users u
 INNER JOIN user_profiles up
     ON up.user_id = p.author_id
 WHERE p.status = 'PUBLISHED'
-  AND u.status = 'ACTIVE';
+  AND u.status = 'ACTIVE'
+  AND up.profile_completed_at IS NOT NULL;
 
 -- =============================================================================
 -- 8. DỮ LIỆU ADMIN MẪU TÙY CHỌN

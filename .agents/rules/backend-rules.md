@@ -21,16 +21,29 @@ Controller
 
 ## 3. Quy tắc Auth và tài khoản
 
-- API đăng ký nhận `email`, `phoneNumber` và `password`.
+- API đăng ký nhận `identifier`, `password` và `confirmPassword`.
 - Không nhận hoặc lưu `username` trong luồng đăng ký MVP.
+- `identifier` là email hoặc số điện thoại; request đăng ký chỉ được chứa đúng một phương thức định danh tại thời điểm tạo tài khoản.
 - Backend chuẩn hóa email về chữ thường trước khi kiểm tra trùng và lưu.
 - Backend chuẩn hóa số điện thoại về định dạng thống nhất trước khi kiểm tra trùng và lưu.
-- Email và số điện thoại đều bắt buộc, đúng định dạng và duy nhất.
+- Email phải đúng định dạng, được trim, chuẩn hóa chữ thường và duy nhất nếu được cung cấp.
+- Số điện thoại phải đúng định dạng, được chuẩn hóa thống nhất và duy nhất nếu được cung cấp.
+- Nếu đăng ký bằng email thì `phone_number` lưu `NULL`; nếu đăng ký bằng số điện thoại thì `email` lưu `NULL`.
+- Database cho phép tài khoản bổ sung phương thức còn thiếu trong tương lai, nhưng mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
 - Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt, sau đó băm một chiều trước khi lưu.
 - Tài khoản mới có trạng thái `ACTIVE` và role mặc định `USER`.
 - API đăng nhập nhận một định danh email hoặc số điện thoại kèm mật khẩu; Service tự xác định loại định danh để truy vấn đúng trường.
 - Không trả email, số điện thoại, password hash, refresh token hoặc dữ liệu xác thực trong response hồ sơ công khai.
-- Tên hiển thị là dữ liệu hồ sơ, không nằm trong request đăng ký và chỉ cập nhật ở luồng hồ sơ.
+- Tên hiển thị là dữ liệu hồ sơ, không nhận trong request đăng ký và chỉ lưu vào `user_profiles` khi onboarding/cập nhật hồ sơ.
+- Đăng ký thành công phải tạo `users` và `user_profiles` rỗng trong cùng transaction.
+- Nếu tạo `user_profiles` thất bại thì transaction phải rollback `users`.
+- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- Hoàn tất hồ sơ yêu cầu tên hiển thị hợp lệ và thao tác xác nhận hoàn tất từ người dùng.
+- Khi hoàn tất, Backend cập nhật `user_profiles.profile_completed_at`.
+- `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không thay thế kiểm tra `profile_completed_at`.
+- Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
+- Các API Feed, đăng bài, Follow, Like, bình luận, lưu bài, tìm kiếm, báo cáo và chức năng mạng xã hội chính phải trả `PROFILE_NOT_COMPLETED`.
+- MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
 - Ngày sinh chỉ xử lý trong cập nhật hồ sơ, là thông tin tùy chọn và không được nằm trong tương lai.
 
 ## 4. Controller
@@ -90,6 +103,7 @@ Repository chỉ chịu trách nhiệm truy cập dữ liệu.
 
 Cân nhắc `@Transactional` cho:
 
+- Đăng ký tài khoản kèm tạo `user_profiles`.
 - Tạo bài kèm media và hashtag.
 - Follow/Unfollow.
 - Like/Unlike.

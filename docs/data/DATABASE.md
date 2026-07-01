@@ -6,12 +6,21 @@
 
 Lưu:
 
-- Email.
-- Số điện thoại.
+- Email, có thể `NULL` nếu tài khoản đăng ký bằng số điện thoại.
+- Số điện thoại, có thể `NULL` nếu tài khoản đăng ký bằng email.
 - Password hash.
+- `email_verified_at`.
+- `phone_verified_at`.
 - Role.
 - Status.
 - Thời gian tạo/cập nhật.
+
+Quy tắc:
+
+- Mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
+- Tại thời điểm đăng ký, người dùng chỉ cung cấp đúng một phương thức định danh.
+- Database cho phép bổ sung phương thức còn thiếu trong tương lai.
+- Không dùng cột `verified` kiểu chuỗi để lưu trạng thái xác minh.
 
 ### user_profiles
 
@@ -22,6 +31,16 @@ Lưu:
 - Avatar URL.
 - Bio.
 - Birth date nếu cần hiển thị/cập nhật hồ sơ.
+- `profile_completed_at`.
+
+Quy tắc:
+
+- Bản ghi `user_profiles` được tạo rỗng cùng transaction với `users` ngay sau đăng ký.
+- `display_name` ban đầu được phép `NULL`.
+- `profile_completed_at` ban đầu phải `NULL`.
+- Tên hiển thị bắt buộc để hoàn tất hồ sơ.
+- Avatar, ngày sinh và bio là tùy chọn.
+- `profile_completed_at` xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
 
 ### refresh_tokens
 
@@ -155,8 +174,8 @@ Tùy chọn.
 
 ## 3. Unique Constraint
 
-- users.email.
-- users.phone_number.
+- users.email nếu có giá trị.
+- users.phone_number nếu có giá trị.
 - follows(follower_id, following_id).
 - post_likes(user_id, post_id).
 - saved_posts(user_id, post_id).

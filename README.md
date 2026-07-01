@@ -115,10 +115,15 @@ Quản trị viên có thể:
 
 ## ✨ Phạm vi chức năng MVP
 
-### 🔐 1. Xác thực và tài khoản
+### 🔐 1. Xác thực, đăng ký và hoàn tất hồ sơ
 
-* Đăng ký tài khoản bằng email, số điện thoại và mật khẩu.
+* Đăng ký tài khoản bằng một trong hai phương thức: email hoặc số điện thoại.
+* Form đăng ký chỉ gồm email hoặc số điện thoại, mật khẩu và xác nhận mật khẩu.
 * Đăng nhập bằng email hoặc số điện thoại.
+* Hệ thống không sử dụng username làm thông tin đăng ký hoặc đăng nhập trong phạm vi MVP.
+* Email và số điện thoại được phép bổ sung đồng thời sau này, nhưng tài khoản luôn phải có ít nhất một phương thức định danh.
+* Sau khi đăng ký, hệ thống tạo đồng thời `users` và một `user_profiles` rỗng trong cùng transaction.
+* Người dùng bắt buộc hoàn tất hồ sơ ban đầu trước khi truy cập Feed và các chức năng mạng xã hội.
 * Đăng xuất khỏi phiên hiện tại.
 * Xác thực bằng JWT Access Token.
 * Làm mới Access Token bằng Refresh Token.
@@ -126,18 +131,44 @@ Quản trị viên có thể:
 * Phân quyền người dùng và quản trị viên.
 * Khôi phục mật khẩu nếu đảm bảo tiến độ.
 
+Quy tắc đăng ký:
+
+* Request đăng ký chỉ nhận một giá trị định danh tại một thời điểm: email hoặc số điện thoại.
+* Khi đăng ký bằng email, `phone_number` được lưu `NULL`.
+* Khi đăng ký bằng số điện thoại, `email` được lưu `NULL`.
+* Backend chuẩn hóa email về chữ thường và chuẩn hóa số điện thoại trước khi kiểm tra trùng.
+* Database cho phép người dùng bổ sung phương thức còn thiếu trong tương lai.
+* MVP tạo tài khoản ở trạng thái `ACTIVE` và chưa triển khai xác minh email/SMS OTP.
+* Hai trường `email_verified_at` và `phone_verified_at` được chuẩn bị cho hướng phát triển.
+* Email và số điện thoại không được trả trong API hồ sơ công khai.
+* Nếu tạo `user_profiles` thất bại thì transaction phải rollback bản ghi `users`.
+
+Quy trình hoàn tất hồ sơ:
+
+* Sau đăng ký, Frontend điều hướng đến màn hình onboarding hồ sơ.
+* Tên hiển thị là thông tin bắt buộc.
+* Ảnh đại diện, ngày sinh và giới thiệu cá nhân là thông tin tùy chọn, có thể bỏ qua.
+* Hồ sơ chỉ được đánh dấu hoàn tất khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận hoàn tất.
+* Trạng thái hoàn tất được lưu tại `user_profiles.profile_completed_at`.
+* `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
+* Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép các API xác thực, làm mới token, đăng xuất và onboarding.
+* Các API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` cho tài khoản chưa hoàn tất hồ sơ.
+
+
 ### 👤 2. Hồ sơ người dùng
 
+* Hoàn tất hồ sơ ban đầu sau khi đăng ký.
 * Xem hồ sơ cá nhân.
 * Xem hồ sơ người dùng khác.
 * Cập nhật tên hiển thị.
 * Cập nhật ảnh đại diện.
 * Cập nhật phần giới thiệu cá nhân.
+* Cập nhật ngày sinh.
 * Xem số lượng người theo dõi.
 * Xem số lượng người đang theo dõi.
 * Xem danh sách bài viết đã đăng.
 
-Trong phiên bản MVP, tất cả hồ sơ người dùng đều được đặt ở chế độ công khai.
+Trong phiên bản MVP, tất cả hồ sơ người dùng đều được đặt ở chế độ công khai. Tên hiển thị là thông tin bắt buộc để hoàn tất hồ sơ; ảnh đại diện, ngày sinh và giới thiệu cá nhân là tùy chọn.
 
 ### 👥 3. Theo dõi người dùng
 
@@ -234,6 +265,7 @@ Phiên bản MVP không quản lý chủ đề nội dung riêng biệt.
 ### 🔍 8. Tìm kiếm
 
 * Tìm kiếm người dùng theo tên hiển thị.
+* Có thể lọc hoặc mở hồ sơ bằng mã người dùng nội bộ; không tìm kiếm bằng username trong MVP.
 * Tìm kiếm bài viết theo nội dung.
 * Tìm kiếm bài viết theo hashtag.
 * Hỗ trợ phân trang kết quả.
@@ -286,6 +318,7 @@ Việc gửi báo cáo không tự động làm ẩn bài viết. Quản trị v
 ### P0 – Bắt buộc hoàn thành
 
 * Đăng ký.
+* Hoàn tất hồ sơ ban đầu.
 * Đăng nhập.
 * Đăng xuất.
 * JWT Access Token và Refresh Token.
@@ -411,204 +444,176 @@ Database chỉ lưu URL và metadata của hình ảnh, không lưu trực tiế
 
 ## 📂 Cấu trúc thư mục dự án
 
-Cấu trúc tổng thể có thể thay đổi theo tiến độ triển khai. Riêng Frontend hiện tại sử dụng đúng cấu trúc được mô tả ở phần dưới.
-
-
-## 🧩 Cấu trúc Frontend thực tế
-
-Frontend hiện tại được tổ chức theo cấu trúc phẳng, gọn và phù hợp với tiến độ MVP:
-
 ```text
-FrontEnd/
-├── node_modules/
-├── public/
-├── src/
-│   ├── assets/
-│   ├── components/
-│   ├── config/
-│   ├── contexts/
-│   ├── features/
-│   ├── hooks/
-│   ├── router/
-│   ├── utils/
-│   ├── App.css
-│   ├── App.jsx
-│   ├── index.css
-│   └── main.jsx
-├── .env
+student-social-network/
+│
+├── frontend/
+│   ├── public/
+│   │
+│   ├── src/
+│   │   ├── assets/
+│   │   │   ├── icons/
+│   │   │   └── images/
+│   │   │
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   └── layout/
+│   │   │
+│   │   ├── config/
+│   │   │   ├── axios.js
+│   │   │   └── routes.js
+│   │   │
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   │   ├── components/
+│   │   │   │   ├── pages/
+│   │   │   │   ├── services/
+│   │   │   │   └── validation/
+│   │   │   │
+│   │   │   ├── profile/
+│   │   │   │   ├── components/
+│   │   │   │   ├── pages/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   ├── follow/
+│   │   │   │   ├── components/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   ├── post/
+│   │   │   │   ├── components/
+│   │   │   │   ├── pages/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   ├── feed/
+│   │   │   │   ├── components/
+│   │   │   │   ├── pages/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   ├── search/
+│   │   │   │   ├── components/
+│   │   │   │   ├── pages/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   ├── report/
+│   │   │   │   ├── components/
+│   │   │   │   └── services/
+│   │   │   │
+│   │   │   └── admin/
+│   │   │       ├── components/
+│   │   │       ├── pages/
+│   │   │       └── services/
+│   │   │
+│   │   ├── hooks/
+│   │   ├── routes/
+│   │   ├── store/
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   │
+│   ├── .env.example
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+│
+├── backend/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/
+│   │   │   │       └── studentsocialnetwork/
+│   │   │   │           ├── common/
+│   │   │   │           │   ├── config/
+│   │   │   │           │   ├── exception/
+│   │   │   │           │   ├── response/
+│   │   │   │           │   ├── security/
+│   │   │   │           │   └── util/
+│   │   │   │           │
+│   │   │   │           ├── auth/
+│   │   │   │           │   ├── controller/
+│   │   │   │           │   ├── dto/
+│   │   │   │           │   ├── entity/
+│   │   │   │           │   ├── mapper/
+│   │   │   │           │   ├── repository/
+│   │   │   │           │   └── service/
+│   │   │   │           │
+│   │   │   │           ├── user/
+│   │   │   │           ├── follow/
+│   │   │   │           ├── post/
+│   │   │   │           ├── comment/
+│   │   │   │           ├── reaction/
+│   │   │   │           ├── savedpost/
+│   │   │   │           ├── feed/
+│   │   │   │           ├── search/
+│   │   │   │           ├── report/
+│   │   │   │           ├── admin/
+│   │   │   │           └── StudentSocialNetworkApplication.java
+│   │   │   │
+│   │   │   └── resources/
+│   │   │       ├── application.yml
+│   │   │       ├── application-dev.yml
+│   │   │       └── application-prod.yml
+│   │   │
+│   │   └── test/
+│   │
+│   ├── .env.example
+│   └── pom.xml
+│
+├── database/
+│   ├── student_social_network_db.sql
+│   ├── seed_data.sql
+│   └── erd/
+│
+├── docs/
+│   ├── api/
+│   ├── database/
+│   ├── diagrams/
+│   ├── ui/
+│   └── business/
+│
 ├── .gitignore
-├── eslint.config.js
-├── index.html
-├── package-lock.json
-├── package.json
-├── README.md
-└── vite.config.js
+├── docker-compose.yml
+└── README.md
 ```
 
-### Vai trò từng thư mục
+---
 
-#### `src/assets/`
+## 🧩 Nguyên tắc tổ chức Frontend
 
-Chứa tài nguyên tĩnh được import vào mã nguồn:
+Frontend được tổ chức theo hướng **Feature-Based Structure**.
 
-* Hình ảnh.
-* Icon.
-* Logo.
-* Font hoặc file media nội bộ nếu có.
+Mỗi chức năng nghiệp vụ được đặt trong một thư mục riêng bên trong `features/`.
 
-#### `src/components/`
-
-Chứa component dùng chung cho nhiều tính năng:
-
-* Button.
-* Input.
-* Modal.
-* Loading.
-* Empty State.
-* Error State.
-* Layout dùng chung.
-* Header.
-* Sidebar.
-
-Không đặt component chỉ dùng riêng cho một nghiệp vụ vào đây nếu component đó phù hợp hơn với `features/`.
-
-#### `src/config/`
-
-Chứa cấu hình dùng chung:
-
-* Axios instance.
-* Axios Interceptor.
-* Biến môi trường.
-* Hằng số API.
-* Cấu hình ứng dụng.
-
-Ví dụ dự kiến:
+Ví dụ:
 
 ```text
-src/config/
-├── axios.js
-├── env.js
-└── constants.js
-```
-
-#### `src/contexts/`
-
-Chứa React Context dùng toàn ứng dụng:
-
-* Auth Context.
-* Theme Context nếu có.
-* Toast/Notification Context nếu cần.
-
-Chỉ tạo Context khi dữ liệu thực sự cần dùng ở nhiều khu vực. Không đưa mọi state vào Context.
-
-#### `src/features/`
-
-Chứa các module nghiệp vụ chính của hệ thống:
-
-```text
-src/features/
-├── auth/
-├── profile/
-├── follow/
-├── post/
-├── interaction/
-├── feed/
-├── search/
-├── report/
-└── admin/
-```
-
-Mỗi feature có thể tổ chức linh hoạt:
-
-```text
-src/features/post/
+features/post/
 ├── components/
+│   ├── CreatePostForm.jsx
+│   ├── PostCard.jsx
+│   └── PostList.jsx
 ├── pages/
+│   ├── PostDetailPage.jsx
+│   └── SavedPostsPage.jsx
 ├── services/
-├── hooks/
-├── utils/
+│   └── postApi.js
 └── validation/
+    └── postSchema.js
 ```
 
-Không bắt buộc feature nào cũng phải có đầy đủ mọi thư mục con. Chỉ tạo thư mục khi thực sự cần.
+Nguyên tắc:
 
-#### `src/hooks/`
+* `components/`: Chứa component thuộc riêng module.
+* `pages/`: Chứa các trang được khai báo trong Router.
+* `services/`: Chứa các hàm gọi RESTful API.
+* `validation/`: Chứa quy tắc kiểm tra dữ liệu biểu mẫu.
+* Component dùng chung toàn hệ thống đặt trong `src/components/common/`.
+* Cấu hình Axios và Interceptor đặt trong `src/config/axios.js`.
+* Không gọi Axios trực tiếp bên trong component giao diện.
+* Token được quản lý tập trung và tự động gắn vào request bằng Axios Interceptor.
 
-Chứa custom hook dùng chung cho nhiều feature:
-
-* `useAuth`.
-* `useDebounce`.
-* `usePagination`.
-* `useOutsideClick`.
-
-Hook chỉ dùng riêng một feature nên đặt trong chính feature đó.
-
-#### `src/router/`
-
-Chứa cấu hình điều hướng:
-
-* Router chính.
-* Public Route.
-* Protected Route.
-* Admin Route.
-* Danh sách route.
-
-Tên thư mục chính thức của dự án là `router/`, không dùng `routes/`.
-
-#### `src/utils/`
-
-Chứa hàm tiện ích dùng chung:
-
-* Format thời gian.
-* Xử lý chuỗi.
-* Chuẩn hóa hashtag.
-* Kiểm tra file.
-* Xử lý lỗi API.
-
-Không đặt logic nghiệp vụ phức tạp trong `utils/`.
-
-#### `App.jsx`
-
-Component gốc của ứng dụng.
-
-Nên chịu trách nhiệm:
-
-* Gắn Router.
-* Gắn Provider.
-* Khởi tạo layout cấp cao.
-
-Không đặt toàn bộ giao diện và nghiệp vụ trong `App.jsx`.
-
-#### `main.jsx`
-
-Điểm khởi tạo React:
-
-* Render ứng dụng.
-* Gắn StrictMode.
-* Import CSS toàn cục.
-* Gắn Provider cấp cao nếu cần.
-
-#### `App.css` và `index.css`
-
-* `index.css`: style toàn cục, Tailwind directives và reset CSS.
-* `App.css`: chỉ giữ style cấp ứng dụng nếu thật sự cần.
-
-Không để toàn bộ style của mọi component trong hai file này.
-
-### Nguyên tắc tổ chức Frontend
-
-* Dự án sử dụng cấu trúc `features/` theo nghiệp vụ.
-* `components/` chỉ chứa component dùng chung.
-* `contexts/` chỉ chứa state toàn cục thực sự cần thiết.
-* `hooks/` chỉ chứa hook dùng chung.
-* `router/` là nơi duy nhất quản lý route.
-* `config/` quản lý Axios và cấu hình môi trường.
-* `utils/` không chứa component hoặc logic gọi API.
-* Không gọi Axios trực tiếp trong JSX.
-* API của từng feature đặt trong `features/<feature>/services/`.
-* Component riêng của feature đặt trong `features/<feature>/components/`.
-* Page riêng của feature đặt trong `features/<feature>/pages/`.
-* Mọi màn hình gọi API phải có trạng thái loading, empty và error.
+---
 
 ## 🧩 Nguyên tắc tổ chức Backend
 
@@ -660,8 +665,9 @@ Các bảng dữ liệu dự kiến trong phạm vi MVP gồm:
 
 ### Tài khoản và hồ sơ
 
-* `users`
-* `user_profiles`
+* `users`: lưu email hoặc số điện thoại, mật khẩu băm, trạng thái xác minh, vai trò và trạng thái tài khoản.
+* `user_profiles`: lưu tên hiển thị, ảnh đại diện, giới thiệu, ngày sinh và `profile_completed_at`.
+  Bản ghi được tạo rỗng ngay sau đăng ký; `display_name` được phép `NULL` cho đến khi hoàn tất onboarding.
 * `refresh_tokens`
 * `password_reset_tokens`
 
@@ -773,6 +779,10 @@ POST   /api/v1/auth/login
 POST   /api/v1/auth/refresh-token
 POST   /api/v1/auth/logout
 
+GET    /api/v1/users/me/onboarding
+PUT    /api/v1/users/me/onboarding/profile
+POST   /api/v1/users/me/onboarding/complete
+
 GET    /api/v1/users/{userId}
 PUT    /api/v1/users/me/profile
 
@@ -795,6 +805,29 @@ GET    /api/v1/feeds/following
 GET    /api/v1/feeds/for-you
 ```
 
+Ví dụ request đăng ký:
+
+```json
+{
+  "identifier": "student@example.com",
+  "password": "Password@123",
+  "confirmPassword": "Password@123"
+}
+```
+
+Ví dụ cập nhật hồ sơ ban đầu:
+
+```json
+{
+  "displayName": "Nguyễn Văn A",
+  "avatarUrl": null,
+  "dateOfBirth": null,
+  "bio": null
+}
+```
+
+Ảnh đại diện, ngày sinh và giới thiệu có thể bỏ qua. Sau khi tên hiển thị hợp lệ, Frontend gọi API hoàn tất onboarding để Backend cập nhật `profile_completed_at`.
+
 Cấu trúc phản hồi API tham khảo:
 
 ```json
@@ -814,8 +847,8 @@ Cấu trúc phản hồi lỗi tham khảo:
   "message": "Dữ liệu không hợp lệ",
   "errors": [
     {
-      "field": "phoneNumber",
-      "message": "Số điện thoại đã tồn tại"
+      "field": "emailOrPhone",
+      "message": "Email hoặc số điện thoại đã được sử dụng"
     }
   ],
   "timestamp": "2026-06-21T10:00:00"
@@ -1024,6 +1057,7 @@ npm run preview
 Có thể sử dụng Postman để kiểm thử:
 
 * Đăng ký.
+* Hoàn tất hồ sơ ban đầu.
 * Đăng nhập.
 * Refresh Token.
 * Tạo bài viết.
@@ -1040,32 +1074,43 @@ Có thể sử dụng Postman để kiểm thử:
 
 Phiên bản MVP được xem là hoàn thành khi đáp ứng các tiêu chí sau:
 
-1. Người dùng đăng ký và đăng nhập thành công.
-2. Access Token và Refresh Token hoạt động đúng.
-3. Refresh Token bị thu hồi không thể cấp Access Token mới.
-4. Tài khoản bị khóa không thể đăng nhập.
-5. Người dùng cập nhật và xem hồ sơ thành công.
-6. Người dùng Follow và Unfollow thành công.
-7. Không tồn tại hai quan hệ Follow trùng nhau.
-8. Người dùng tạo được bài viết có văn bản hoặc hình ảnh.
-9. Chỉ tác giả được chỉnh sửa hoặc xóa bài viết.
-10. Bài viết bị ẩn hoặc xóa không xuất hiện trên Feed.
-11. Người dùng Like và Unlike bài viết.
-12. Một người không thể Like một bài hai lần.
-13. Người dùng bình luận và xóa bình luận của mình.
-14. Người dùng lưu và bỏ lưu bài viết.
-15. Feed Following hiển thị đúng bài của người đang theo dõi.
-16. Feed For You hiển thị các bài viết hợp lệ.
-17. Người dùng tìm kiếm được tài khoản và bài viết.
-18. Người dùng gửi được báo cáo bài viết.
-19. Admin quản lý được người dùng, bài viết và báo cáo.
-20. Các API danh sách đều hỗ trợ phân trang.
-21. Backend từ chối thao tác khi người dùng không có quyền.
-22. Mật khẩu không được lưu dưới dạng văn bản thuần.
-23. Hình ảnh không hợp lệ bị Backend từ chối.
-24. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
+1. Người dùng đăng ký thành công bằng email hoặc số điện thoại.
+2. Hệ thống từ chối khi thiếu cả hai phương thức, gửi đồng thời cả hai hoặc phương thức đã tồn tại.
+3. Hệ thống tạo `users` và `user_profiles` trong cùng một transaction.
+4. Nếu tạo hồ sơ thất bại, tài khoản vừa tạo phải được rollback.
+5. Sau đăng ký, `display_name` và `profile_completed_at` của hồ sơ bằng `NULL`.
+6. Hệ thống điều hướng người dùng đến quy trình hoàn tất hồ sơ.
+7. Người dùng bắt buộc nhập tên hiển thị hợp lệ trước khi hoàn tất hồ sơ.
+8. Người dùng có thể bỏ qua ảnh đại diện, ngày sinh và giới thiệu cá nhân.
+9. Khi hoàn tất hồ sơ, `profile_completed_at` được cập nhật.
+10. Tài khoản chưa hoàn tất hồ sơ không thể truy cập Feed hoặc các API mạng xã hội chính.
+11. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.
+12. Access Token và Refresh Token hoạt động đúng.
+13. Refresh Token bị thu hồi không thể cấp Access Token mới.
+14. Tài khoản bị khóa không thể đăng nhập.
+15. Người dùng cập nhật và xem hồ sơ thành công.
+16. Người dùng Follow và Unfollow thành công.
+17. Không tồn tại hai quan hệ Follow trùng nhau.
+18. Người dùng tạo được bài viết có văn bản hoặc hình ảnh.
+19. Chỉ tác giả được chỉnh sửa hoặc xóa bài viết.
+20. Bài viết bị ẩn hoặc xóa không xuất hiện trên Feed.
+21. Người dùng Like và Unlike bài viết.
+22. Một người không thể Like một bài hai lần.
+23. Người dùng bình luận và xóa bình luận của mình.
+24. Người dùng lưu và bỏ lưu bài viết.
+25. Feed Following hiển thị đúng bài của người đang theo dõi.
+26. Feed For You hiển thị các bài viết hợp lệ.
+27. Người dùng tìm kiếm được tài khoản và bài viết.
+28. Người dùng gửi được báo cáo bài viết.
+29. Admin quản lý được người dùng, bài viết và báo cáo.
+30. Các API danh sách đều hỗ trợ phân trang.
+31. Backend từ chối thao tác khi người dùng không có quyền.
+32. Mật khẩu không được lưu dưới dạng văn bản thuần.
+33. Hình ảnh không hợp lệ bị Backend từ chối.
+34. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
 
 ---
+
 
 ## 🔒 Yêu cầu bảo mật
 
@@ -1249,161 +1294,6 @@ Các tài liệu phân tích và thiết kế được lưu trong thư mục `do
 * Thiết kế giao diện.
 * Kịch bản kiểm thử.
 * Hướng dẫn sử dụng hệ thống.
-
----
-
-
-## 🤖 Tài liệu dành cho AI Coding Agent
-
-Dự án sử dụng bộ tài liệu hỗ trợ Codex, Antigravity và các AI Coding Agent khác.
-
-### Cấu trúc tài liệu AI
-
-```text
-.agents/
-├── rules/
-│   ├── general-rules.md
-│   ├── frontend-rules.md
-│   ├── backend-rules.md
-│   ├── database-rules.md
-│   └── security-rules.md
-│
-├── skills/
-│   ├── frontend-development.md
-│   ├── backend-development.md
-│   ├── database-design.md
-│   ├── api-design.md
-│   └── bug-fixing.md
-│
-└── workflows/
-    ├── implement-feature.md
-    ├── create-ui.md
-    ├── create-api.md
-    ├── fix-bug.md
-    └── review-code.md
-
-docs/
-├── data/
-│   ├── DATABASE.md
-│   ├── DATA-FLOW.md
-│   ├── API-CONTRACT.md
-│   ├── DEMO-DATA.md
-│   ├── demo-data.json
-│   └── demo-credentials.md
-│
-├── ui/
-│   ├── UI-DEMO.html
-│   ├── UI-FLOW.md
-│   ├── SCREEN-LIST.md
-│   ├── COMPONENTS.md
-│   └── DESIGN-SYSTEM.md
-│
-├── ARCHITECTURE.md
-├── PRD.md
-└── PROJECT-RULES.md
-
-AGENTS.md
-```
-
-### Vai trò của `AGENTS.md`
-
-`AGENTS.md` là file điều hướng chính mà AI Agent phải đọc trước khi code.
-
-File này quy định:
-
-* Thứ tự đọc tài liệu.
-* Phạm vi MVP.
-* Quy tắc bắt buộc.
-* Cách lập kế hoạch.
-* Cách báo cáo kết quả.
-* Các hành động Agent không được tự ý thực hiện.
-
-### Vai trò của `.agents/rules/`
-
-Chứa các quy tắc bắt buộc theo phạm vi:
-
-* Quy tắc chung.
-* Quy tắc Frontend.
-* Quy tắc Backend.
-* Quy tắc Database.
-* Quy tắc bảo mật.
-
-### Vai trò của `.agents/skills/`
-
-Chứa hướng dẫn chuyên môn để Agent triển khai đúng cách:
-
-* Phát triển Frontend.
-* Phát triển Backend.
-* Thiết kế Database.
-* Thiết kế API.
-* Phân tích và sửa lỗi.
-
-### Vai trò của `.agents/workflows/`
-
-Chứa trình tự làm việc bắt buộc:
-
-* Triển khai chức năng.
-* Tạo giao diện.
-* Tạo API.
-* Sửa lỗi.
-* Review code.
-
-### Vai trò của `docs/ui/`
-
-Chứa tài liệu giúp AI hiểu giao diện và luồng sử dụng:
-
-* Danh sách màn hình.
-* Luồng giao diện.
-* Danh sách component.
-* Design System.
-* File HTML demo.
-
-### Vai trò của `docs/data/`
-
-Chứa tài liệu giúp AI hiểu dữ liệu và API:
-
-* Mô tả database.
-* Luồng dữ liệu.
-* API Contract.
-* Mock data.
-* Tài khoản demo.
-
-### Thứ tự AI Agent phải đọc
-
-1. `AGENTS.md`
-2. `docs/PRD.md`
-3. `docs/ARCHITECTURE.md`
-4. `docs/PROJECT-RULES.md`
-5. Rule phù hợp trong `.agents/rules/`
-6. Skill phù hợp trong `.agents/skills/`
-7. Workflow phù hợp trong `.agents/workflows/`
-8. Tài liệu UI hoặc Data liên quan.
-
-### Prompt khởi đầu khuyến nghị
-
-```text
-Hãy đọc AGENTS.md và toàn bộ tài liệu liên quan đến nhiệm vụ.
-Chưa viết code.
-
-Hãy:
-1. Tóm tắt yêu cầu.
-2. Xác định phạm vi MVP.
-3. Liệt kê các file dự kiến tạo hoặc sửa.
-4. Đề xuất kế hoạch triển khai.
-5. Chỉ ra các rủi ro hoặc điểm chưa thống nhất.
-```
-
-### Nguyên tắc sử dụng AI Agent
-
-* Chỉ giao một chức năng nhỏ trong mỗi nhiệm vụ.
-* Yêu cầu Agent lập kế hoạch trước khi code.
-* Không cho Agent tự ý mở rộng ngoài MVP.
-* Không cho Agent tự ý đổi cấu trúc dự án.
-* Không cho Agent tự ý cài thư viện.
-* Không cho Agent tự ý thay đổi database.
-* Yêu cầu Agent báo cáo file đã tạo và sửa.
-* Luôn review code trước khi merge.
-
 
 ---
 

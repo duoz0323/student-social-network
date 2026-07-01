@@ -239,11 +239,18 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 ### Kết quả mong muốn
 
 - Đăng ký không dùng username.
+- Đăng ký không nhập tên hiển thị.
 - Đăng nhập không dùng username.
 - Search không tìm theo username.
 - Profile và PostCard hiển thị displayName.
 - Quan hệ dữ liệu dùng userId.
 - Không tạo trường thay thế như handle, userSlug hoặc publicUsername.
+
+### Ghi chú onboarding
+
+- Sau đăng ký phải chuyển người dùng đến onboarding hồ sơ.
+- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Người chưa hoàn tất hồ sơ không được vào Feed hoặc các chức năng mạng xã hội chính.
 
 ### Trạng thái
 

@@ -8,14 +8,21 @@ Tài liệu này mô tả các luồng có thể suy ra từ MVP, ảnh trong `d
 
 ```text
 AUTH-02 Đăng ký
-→ Nhập email, số điện thoại, mật khẩu, xác nhận mật khẩu nếu UI cần
+→ Nhập email hoặc số điện thoại
+→ Nhập mật khẩu và xác nhận mật khẩu
 → Đồng ý điều khoản nếu form yêu cầu
 → Gửi đăng ký
-→ AUTH-03 Đăng ký thành công
-→ AUTH-01 Đăng nhập
+→ AUTH-03 Đăng ký thành công nếu UI cần trạng thái trung gian
+→ Onboarding hồ sơ
+→ Nhập tên hiển thị bắt buộc
+→ Có thể bỏ qua avatar, ngày sinh và bio
+→ Xác nhận hoàn tất
+→ FEED-01 Feed người dùng
 ```
 
-Ghi chú: Không dùng username, Google hoặc Facebook trong MVP. Tên hiển thị là dữ liệu hồ sơ, người dùng cập nhật sau khi tạo tài khoản.
+Ghi chú: Không dùng username, displayName, Google hoặc Facebook trong form đăng ký MVP. Người dùng chỉ cung cấp đúng một phương thức định danh tại thời điểm đăng ký. Tên hiển thị được lưu trong `user_profiles` ở onboarding và có thể chỉnh sửa sau khi hoàn tất hồ sơ.
+
+Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`.
 
 ### 1.2 Đăng nhập
 
@@ -25,7 +32,8 @@ AUTH-01 Đăng nhập
 → Nhập mật khẩu
 → Gửi đăng nhập
 → Nhận Access Token và Refresh Token
-→ FEED-01 Feed người dùng
+→ Nếu hồ sơ chưa hoàn tất thì đến onboarding
+→ Nếu hồ sơ đã hoàn tất thì đến FEED-01 Feed người dùng
 ```
 
 Trường hợp phiên hết hạn:

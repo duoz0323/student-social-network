@@ -32,7 +32,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `initialValues`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. | Module auth. |
-| `RegisterForm` | Form đăng ký tài khoản MVP bằng email, số điện thoại và mật khẩu. | AUTH-02. | `initialValues`, `errors`, `submitting`, `onSubmit`. | Module auth. |
+| `RegisterForm` | Form đăng ký tài khoản MVP bằng một phương thức định danh là email hoặc số điện thoại. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
+| `OnboardingProfileForm` | Form hoàn tất hồ sơ sau đăng ký. | Onboarding hồ sơ. | `initialValues` gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; `errors`, `submitting`, `onSave`, `onComplete`. Tên hiển thị bắt buộc, các trường còn lại tùy chọn. | Module auth/profile. |
 | `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-04. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, P2/CẦN XÁC NHẬN. |
 | `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-05. | `errors`, `submitting`, `onSubmit`. | Module auth, P2/CẦN XÁC NHẬN. |
 | `AuthSuccessPanel` | Thông báo đăng ký/đặt lại mật khẩu thành công. | AUTH-03, AUTH-06. | `title`, `description`, `actionLabel`, `onAction`. | Module auth. |

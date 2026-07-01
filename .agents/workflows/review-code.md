@@ -15,6 +15,16 @@ Kiểm tra:
 - Comment.
 - Tài liệu.
 
+Riêng Auth/Profile MVP cần kiểm tra thêm:
+
+- Register không nhận `username` hoặc `displayName`.
+- Register chỉ nhận đúng một định danh email hoặc số điện thoại.
+- `users` và `user_profiles` được tạo trong cùng transaction.
+- `display_name` và `profile_completed_at` ban đầu là `NULL`.
+- Người chưa hoàn tất hồ sơ bị chặn khỏi API mạng xã hội chính bằng `PROFILE_NOT_COMPLETED`.
+- Route guard không cho người đã đăng nhập nhưng chưa hoàn tất hồ sơ vào Feed.
+- API hồ sơ công khai không lộ email hoặc số điện thoại.
+
 ## 2. Mức độ vấn đề
 
 - Critical: lỗ hổng, mất dữ liệu, sai quyền nghiêm trọng.
