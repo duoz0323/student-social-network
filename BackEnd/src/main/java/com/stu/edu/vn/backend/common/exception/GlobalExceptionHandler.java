@@ -111,13 +111,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(HttpServletRequest request) {
+        ErrorCode errorCode = request.getRequestURI().startsWith("/api/v1/posts")
+                ? ErrorCode.POST_IMAGE_TOO_LARGE
+                : ErrorCode.AVATAR_FILE_TOO_LARGE;
         ErrorResponse response = ErrorResponse.of(
-                ErrorCode.AVATAR_FILE_TOO_LARGE.name(),
-                ErrorCode.AVATAR_FILE_TOO_LARGE.getDefaultMessage(),
-                ErrorCode.AVATAR_FILE_TOO_LARGE.getHttpStatus().value(),
+                errorCode.name(),
+                errorCode.getDefaultMessage(),
+                errorCode.getHttpStatus().value(),
                 request.getRequestURI()
         );
-        return ResponseEntity.status(ErrorCode.AVATAR_FILE_TOO_LARGE.getHttpStatus()).body(response);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 
     @ExceptionHandler(Exception.class)

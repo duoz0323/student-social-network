@@ -11,12 +11,14 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserAvatarService;
 import com.stu.edu.vn.backend.user.service.UserOnboardingService;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Xử lý nghiệp vụ onboarding, đảm bảo profile_completed_at chỉ được set một lần.
@@ -30,6 +32,7 @@ public class UserOnboardingServiceImpl implements UserOnboardingService {
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final UserAvatarService userAvatarService;
     private final UserProfileValidationSupport validationSupport;
     private final Clock clock;
 
@@ -37,12 +40,14 @@ public class UserOnboardingServiceImpl implements UserOnboardingService {
             CurrentUserProvider currentUserProvider,
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
+            UserAvatarService userAvatarService,
             UserProfileValidationSupport validationSupport,
             Clock clock
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.userAvatarService = userAvatarService;
         this.validationSupport = validationSupport;
         this.clock = clock;
     }
@@ -58,7 +63,7 @@ public class UserOnboardingServiceImpl implements UserOnboardingService {
 
     @Override
     @Transactional
-    public CompleteOnboardingResponse completeOnboarding(CompleteOnboardingRequest request) {
+    public CompleteOnboardingResponse completeOnboarding(CompleteOnboardingRequest request, MultipartFile avatar) {
         if (request == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
@@ -72,6 +77,10 @@ public class UserOnboardingServiceImpl implements UserOnboardingService {
         String displayName = validationSupport.normalizeAndValidateDisplayName(request.displayName());
         LocalDate dateOfBirth = validationSupport.validateDateOfBirth(request.dateOfBirth());
         String bio = validationSupport.normalizeAndValidateBio(request.bio());
+        if (avatar != null && !avatar.isEmpty()) {
+            // Tái sử dụng luồng upload avatar hiện có để giữ nguyên validation file và cleanup Cloudinary.
+            userAvatarService.uploadMyAvatar(avatar);
+        }
 
         profile.setDisplayName(displayName);
         profile.setDateOfBirth(dateOfBirth);

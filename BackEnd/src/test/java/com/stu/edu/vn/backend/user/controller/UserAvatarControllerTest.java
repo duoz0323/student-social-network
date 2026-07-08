@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class UserAvatarControllerTest {
@@ -33,7 +34,7 @@ class UserAvatarControllerTest {
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[]{1});
         when(userAvatarService.uploadMyAvatar(any())).thenReturn(new AvatarResponse("https://cdn.example/avatar.png", true));
 
-        mockMvc.perform(multipart("/api/v1/users/me/avatar").file(file))
+        mockMvc.perform(putMultipart("/api/v1/users/me/avatar").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example/avatar.png"))
@@ -42,9 +43,16 @@ class UserAvatarControllerTest {
 
     @Test
     void uploadMyAvatarReturnsFileRequiredWhenFilePartMissing() throws Exception {
-        mockMvc.perform(multipart("/api/v1/users/me/avatar"))
+        mockMvc.perform(putMultipart("/api/v1/users/me/avatar"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("AVATAR_FILE_REQUIRED"));
+    }
+
+    private MockMultipartHttpServletRequestBuilder putMultipart(String path) {
+        return multipart(path).with(request -> {
+            request.setMethod("PUT");
+            return request;
+        });
     }
 }

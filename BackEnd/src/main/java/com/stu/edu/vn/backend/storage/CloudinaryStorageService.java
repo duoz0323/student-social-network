@@ -9,5 +9,7 @@ public interface CloudinaryStorageService {
 
     CloudinaryUploadResult uploadAvatar(MultipartFile file);
 
+    CloudinaryUploadResult uploadPostImage(MultipartFile file);
+
     void deleteImage(String publicId);
 }

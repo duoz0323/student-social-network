@@ -12,6 +12,7 @@ public class CloudinaryProperties {
     private String apiKey;
     private String apiSecret;
     private String avatarFolder = "student-social-network/avatars";
+    private String postFolder = "student-social-network/posts";
 
     public String getCloudName() {
         return cloudName;
@@ -43,6 +44,14 @@ public class CloudinaryProperties {
 
     public void setAvatarFolder(String avatarFolder) {
         this.avatarFolder = avatarFolder;
+    }
+
+    public String getPostFolder() {
+        return postFolder;
+    }
+
+    public void setPostFolder(String postFolder) {
+        this.postFolder = postFolder;
     }
 
     public boolean isConfigured() {

@@ -5,12 +5,15 @@ import com.stu.edu.vn.backend.user.dto.request.CompleteOnboardingRequest;
 import com.stu.edu.vn.backend.user.dto.response.CompleteOnboardingResponse;
 import com.stu.edu.vn.backend.user.dto.response.OnboardingStatusResponse;
 import com.stu.edu.vn.backend.user.service.UserOnboardingService;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Controller onboarding chỉ nhận request của người dùng hiện tại và ủy quyền nghiệp vụ cho Service.
@@ -31,11 +34,12 @@ public class UserOnboardingController {
         return ResponseEntity.ok(ApiResponse.success("Lấy trạng thái onboarding thành công", response));
     }
 
-    @PutMapping
+    @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CompleteOnboardingResponse>> completeOnboarding(
-            @RequestBody CompleteOnboardingRequest request
+            @Valid @RequestPart("request") CompleteOnboardingRequest request,
+            @RequestPart(value = "avatar", required = false) MultipartFile avatar
     ) {
-        CompleteOnboardingResponse response = userOnboardingService.completeOnboarding(request);
+        CompleteOnboardingResponse response = userOnboardingService.completeOnboarding(request, avatar);
         return ResponseEntity.ok(ApiResponse.success("Hoàn tất hồ sơ ban đầu thành công", response));
     }
 }
