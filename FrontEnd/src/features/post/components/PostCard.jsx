@@ -7,6 +7,16 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 import { shortTime, formatNumber } from '../../../utils/formatters.js';
 import ReportPostFlow from './ReportPostFlow.jsx';
 
+function SuccessIcon() {
+  return (
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-[var(--app-text)]">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </div>
+  );
+}
+
 // === SVG Icon Components — thay thế Unicode ký tự cho chuyên nghiệp hơn ===
 
 function HeartIcon({ filled }) {
@@ -102,7 +112,7 @@ export default function PostCard({ post, detail = false }) {
   const { currentUserId, getUserById, data, toggleLike, toggleSave, updatePost, deletePost } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(null); // null | 'confirm' | 'success'
   const [reporting, setReporting] = useState(false);
   const [draft, setDraft] = useState(post.content);
   const [tags, setTags] = useState(post.hashtags.join(', '));
@@ -133,8 +143,12 @@ export default function PostCard({ post, detail = false }) {
   }
 
   function confirmDelete() {
+    setDeleteStep('success');
+  }
+
+  function executeDelete() {
     deletePost(post.id);
-    setDeleting(false);
+    setDeleteStep(null);
     if (detail) navigate('/feed/for-you');
   }
 
@@ -145,7 +159,7 @@ export default function PostCard({ post, detail = false }) {
   }
 
   return (
-    <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border-b border-[var(--app-border-strong)] bg-white px-5 py-4">
+    <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border-b border-[var(--app-border-strong)] bg-[var(--app-surface)] px-5 py-4">
       {/* Avatar tác giả — bấm vào điều hướng đến trang cá nhân */}
       <Link to={author.id === currentUserId ? '/profile/me' : `/profile/${author.id}`} className="pt-0.5">
         <Avatar src={author.avatarUrl} name={author.displayName} />
@@ -190,7 +204,7 @@ export default function PostCard({ post, detail = false }) {
                       <span>Chỉnh sửa bài viết</span>
                       <EditIcon />
                     </button>
-                    <button className="danger-item" onClick={() => menuAction(() => setDeleting(true))}>
+                    <button onClick={() => menuAction(() => setDeleteStep('confirm'))}>
                       <span>Xóa</span>
                       <TrashIcon />
                     </button>
@@ -290,23 +304,34 @@ export default function PostCard({ post, detail = false }) {
         />
       </Modal>
 
-      {/* Modal xác nhận xóa — thiết kế theo mockup model-delete-post.jpg */}
+      {/* Modal xác nhận xóa hoặc xóa thành công */}
       <Modal
-        open={deleting}
-        title="Xóa bài viết?"
-        onClose={() => setDeleting(false)}
+        open={Boolean(deleteStep)}
+        title={deleteStep === 'confirm' ? "Xóa bài viết?" : ""}
+        onClose={() => deleteStep === 'confirm' ? setDeleteStep(null) : executeDelete()}
         size="sm"
         footer={
-          <div className="flex w-full items-center gap-3">
-            <Button variant="secondary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={() => setDeleting(false)}>Hủy</Button>
-            <Button variant="danger" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={confirmDelete}>Xóa bài viết</Button>
-          </div>
+          deleteStep === 'confirm' ? (
+            <div className="flex w-full items-center gap-3">
+              <Button variant="secondary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={() => setDeleteStep(null)}>Hủy</Button>
+              <Button variant="primary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={confirmDelete}>Xóa bài viết</Button>
+            </div>
+          ) : (
+            <Button className="w-full !rounded-xl !h-[44px] text-[15px] font-bold" onClick={executeDelete}>Xong</Button>
+          )
         }
         footerClassName="!border-none !pt-2 !pb-6"
       >
-        <p className="text-sm text-[var(--app-muted)] leading-relaxed">
-          Bài viết sẽ không còn xuất hiện trên trang cá nhân, bảng tin và kết quả tìm kiếm. Bạn không thể hoàn tác thao tác này.
-        </p>
+        {deleteStep === 'confirm' ? (
+          <p className="text-sm text-[var(--app-muted)] leading-relaxed">
+            Bài viết sẽ không còn xuất hiện trên trang cá nhân, bảng tin và kết quả tìm kiếm. Bạn không thể hoàn tác thao tác này.
+          </p>
+        ) : (
+          <div className="flex flex-col items-center py-2 text-center">
+            <SuccessIcon />
+            <h3 className="text-[16px] font-bold text-[var(--app-text)]">Đã xóa bài viết</h3>
+          </div>
+        )}
       </Modal>
 
       {/* Flow báo cáo bài viết */}

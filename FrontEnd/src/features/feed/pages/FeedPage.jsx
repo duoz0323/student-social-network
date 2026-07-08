@@ -74,7 +74,7 @@ export default function FeedPage() {
           )}
         </div>
       </ContentShell>
-      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
+      <PostComposer mode={composerOpen ? 'modal' : null} onClose={() => setComposerOpen(false)} />
     </>
   );
 }

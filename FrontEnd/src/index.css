@@ -28,6 +28,20 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #000000;
+    --app-surface: #121212;
+    --app-surface-soft: #1e1e1e;
+    --app-border: #27272a;
+    --app-border-strong: #3f3f46;
+    --app-text: #f4f4f5;
+    --app-muted: #a1a1aa;
+    --app-active: #ffffff;
+    --app-brand: #7c5cff;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

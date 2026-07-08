@@ -8,6 +8,7 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import PostCard from '../../post/components/PostCard.jsx';
 import PostComposer from '../../post/components/PostComposer.jsx';
+import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
 
 export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
@@ -18,6 +19,7 @@ export default function ProfilePage({ self = false }) {
   const [followModal, setFollowModal] = useState(null);
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
   const [activeTab, setActiveTab] = useState('threads');
+  const [unfollowTarget, setUnfollowTarget] = useState(null);
   const profile = self ? currentUser : getUserById(userId);
   const [draft, setDraft] = useState({ displayName: currentUser?.displayName ?? '', bio: currentUser?.bio ?? '', avatarUrl: currentUser?.avatarUrl ?? '' });
 
@@ -48,6 +50,21 @@ export default function ProfilePage({ self = false }) {
       setModalUsers({ followers, following });
     }
     setFollowModal(type);
+  }
+
+  function handleFollowClick(userTarget, isCurrentlyFollowing) {
+    if (isCurrentlyFollowing) {
+      setUnfollowTarget(userTarget);
+    } else {
+      toggleFollow(userTarget.id);
+    }
+  }
+
+  function confirmUnfollow() {
+    if (unfollowTarget) {
+      toggleFollow(unfollowTarget.id);
+      setUnfollowTarget(null);
+    }
   }
 
   const profileHeaderNav = (
@@ -118,11 +135,11 @@ export default function ProfilePage({ self = false }) {
 
           <div className="mt-6">
             {isSelf ? (
-              <Button variant="secondary" className="w-full !rounded-xl !font-semibold !border-zinc-300 !h-[36px] text-[15px] text-black" onClick={openEdit}>
+              <Button variant="secondary" className="w-full !rounded-xl !font-semibold !border-[var(--app-border-strong)] !h-[36px] text-[15px] text-[var(--app-text)]" onClick={openEdit}>
                 Chỉnh sửa trang cá nhân
               </Button>
             ) : (
-              <Button className="w-full !rounded-xl !font-semibold !h-[36px] text-[15px]" onClick={() => toggleFollow(profile.id)}>
+              <Button className="w-full !rounded-xl !font-semibold !h-[36px] text-[15px]" onClick={() => handleFollowClick(profile, isFollowing)}>
                 {isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
               </Button>
             )}
@@ -133,7 +150,7 @@ export default function ProfilePage({ self = false }) {
               onClick={() => setActiveTab('threads')}
               className={`flex-1 pb-3 text-center transition ${activeTab === 'threads' ? 'border-b-[1.5px] border-[var(--app-text)] text-[var(--app-text)]' : 'border-b-[1px] border-[var(--app-border)] hover:text-[var(--app-text)]'}`}
             >
-              Thread
+              Bài đăng
             </button>
             <button 
               onClick={() => setActiveTab('replies')}
@@ -193,7 +210,7 @@ export default function ProfilePage({ self = false }) {
           <Button 
             disabled={!draft.displayName.trim()} 
             onClick={saveProfile}
-            className="w-full !bg-black !text-white hover:!bg-zinc-800 !rounded-xl !h-[50px] !font-bold text-[16px]"
+            className="w-full !bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80 !rounded-xl !h-[50px] !font-bold text-[16px]"
           >
             Xong
           </Button>
@@ -222,7 +239,7 @@ export default function ProfilePage({ self = false }) {
         <div className="mb-5">
           <label className="text-[15px] font-semibold text-[var(--app-text)] mb-1.5 block">Tên người dùng</label>
           <input 
-            className="w-full rounded-xl border border-transparent bg-zinc-100 text-zinc-500 px-3.5 py-3 text-[15px] outline-none cursor-not-allowed" 
+            className="w-full rounded-xl border border-transparent bg-[var(--app-surface-soft)] text-[var(--app-muted)] px-3.5 py-3 text-[15px] outline-none cursor-not-allowed" 
             value={handle.replace('@', '')} 
             disabled 
           />
@@ -252,7 +269,7 @@ export default function ProfilePage({ self = false }) {
             </button>
           </div>
           <p className="text-[13px] text-[var(--app-muted)] leading-relaxed">
-            Nếu bạn chuyển sang chế độ công khai, bất kỳ ai cũng có thể nhìn thấy thread và thread trả lời của bạn.
+            Nếu bạn chuyển sang chế độ công khai, bất kỳ ai cũng có thể nhìn thấy bài đăng và bài đăng trả lời của bạn.
           </p>
         </div>
       </Modal>
@@ -298,8 +315,8 @@ export default function ProfilePage({ self = false }) {
                 {user.id !== currentUserId && (
                   <Button 
                     variant={isUserFollowing ? "secondary" : "primary"} 
-                    className={`!rounded-xl !h-[34px] px-5 font-bold text-[14px] ${isUserFollowing ? '!border-zinc-300 text-[var(--app-text)]' : '!bg-black !text-white hover:!bg-zinc-800'}`}
-                    onClick={() => toggleFollow(user.id)}
+                    className={`!rounded-xl !h-[34px] px-5 font-bold text-[14px] ${isUserFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}
+                    onClick={() => handleFollowClick(user, isUserFollowing)}
                   >
                     {isUserFollowing ? 'Đang theo dõi' : 'Theo dõi'}
                   </Button>
@@ -311,7 +328,14 @@ export default function ProfilePage({ self = false }) {
         </div>
       </Modal>
 
-      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
+      <UnfollowConfirmModal 
+        open={Boolean(unfollowTarget)}
+        user={unfollowTarget}
+        onClose={() => setUnfollowTarget(null)}
+        onConfirm={confirmUnfollow}
+      />
+
+      <PostComposer mode={composerOpen ? 'modal' : null} onClose={() => setComposerOpen(false)} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 export default function Button({ children, type = 'button', variant = 'primary', size = 'md', disabled = false, onClick, className = '' }) {
   const variants = {
-    primary: 'bg-[var(--app-active)] text-white hover:bg-zinc-800',
-    secondary: 'border border-[var(--app-border)] bg-white text-[var(--app-text)] hover:bg-[var(--app-surface-soft)]',
+    primary: 'bg-[var(--app-active)] text-[var(--app-surface)] hover:opacity-80',
+    secondary: 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-surface-soft)]',
     ghost: 'text-zinc-700 hover:bg-[var(--app-surface-soft)]',
     danger: 'bg-red-600 text-white hover:bg-red-700',
   };

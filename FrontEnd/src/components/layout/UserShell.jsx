@@ -101,8 +101,8 @@ export default function UserShell() {
         {/* Navigation Items */}
         <nav className="grid gap-1 mt-2">
           {navItems.map((item) => {
-            const buttonClass = `flex min-h-[52px] items-center gap-4 rounded-[12px] px-4 transition-colors hover:bg-black/5 ${
-              item.active ? 'bg-black/5 font-bold text-[var(--app-text)]' : 'font-normal text-[var(--app-text)]'
+            const buttonClass = `flex min-h-[52px] items-center gap-4 rounded-[12px] px-4 transition-colors hover:bg-[var(--app-surface-soft)] ${
+              item.active ? 'bg-[var(--app-surface-soft)] font-bold text-[var(--app-text)]' : 'font-normal text-[var(--app-text)]'
             }`;
 
             if (item.action) {
@@ -127,8 +127,8 @@ export default function UserShell() {
           <MoreMenu open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} onLogout={logout} />
           <button
             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-            className={`flex min-h-[52px] w-full items-center gap-4 rounded-[12px] px-4 font-normal text-[var(--app-text)] transition-colors hover:bg-black/5 ${
-              moreMenuOpen ? 'bg-black/5' : ''
+            className={`flex min-h-[52px] w-full items-center gap-4 rounded-[12px] px-4 font-normal text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-soft)] ${
+              moreMenuOpen ? 'bg-[var(--app-surface-soft)]' : ''
             }`}
           >
             <span className="flex w-6 justify-center"><MoreIcon /></span>
@@ -138,7 +138,7 @@ export default function UserShell() {
       </aside>
 
       {/* Mobile header */}
-      <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-4 lg:hidden">
         <Link to="/feed/for-you" className="flex items-center gap-2">
           <img src={logo} alt="UniShare" className="h-7 w-7 object-contain" />
           <span className="text-[20px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
@@ -146,7 +146,7 @@ export default function UserShell() {
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-red-50 hover:text-red-600"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-red-500/10 hover:text-red-600"
             onClick={logout}
             aria-label="Đăng xuất"
           >
@@ -164,9 +164,9 @@ export default function UserShell() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-white text-center text-xs font-semibold lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
         {navItems.filter(item => item.to.startsWith('/') && item.to !== '#activity').map((item) => (
-          <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-zinc-950' : 'text-zinc-500'}`}>
+          <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
             <span aria-hidden="true" className="h-5 w-5">{item.icon}</span>
             <span>{item.label}</span>
           </NavLink>
@@ -177,7 +177,7 @@ export default function UserShell() {
       
       {/* Nút + nổi ở góc dưới phải */}
       <button 
-        className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-white text-zinc-950 border border-zinc-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-105 hover:bg-zinc-50 hover:shadow-[0_12px_40px_rgb(0,0,0,0.2)] active:scale-95"
+        className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-[var(--app-surface)] text-[var(--app-text)] border border-[var(--app-border)] shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-105 hover:bg-[var(--app-surface-soft)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.2)] active:scale-95"
         onClick={() => setComposerMode('floating')}
         aria-label="Tạo bài viết mới"
       >
@@ -193,7 +193,7 @@ export default function UserShell() {
         onClose={() => setSessionExpired(false)}
         footer={<Button onClick={() => navigate('/login')}>Đăng nhập lại</Button>}
       >
-        <p className="text-sm text-zinc-600">Vui lòng đăng nhập lại để tiếp tục sử dụng UniShare.</p>
+        <p className="text-sm text-[var(--app-muted)]">Vui lòng đăng nhập lại để tiếp tục sử dụng UniShare.</p>
       </Modal>
     </div>
   );
