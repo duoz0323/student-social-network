@@ -5,7 +5,7 @@ import { normalizeText } from '../utils/formatters.js';
 
 const AppContext = createContext(null);
 const SESSION_KEY = 'unishare.react.session';
-const DATA_KEY = 'unishare.react.mock-data';
+const DATA_KEY = 'unishare.react.mock-data-v2';
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 8;
 
 function makeId(prefix) {
@@ -153,7 +153,7 @@ export function AppProvider({ children }) {
     async function login(identifier, password) {
       const normalized = normalizeIdentifier(identifier);
       if (!normalized) {
-        return { ok: false, message: 'Email hoac so dien thoai khong hop le.' };
+        return { ok: false, message: 'Email hoặc số điện thoại không hợp lệ.' };
       }
 
       const passwordHash = await sha256(password);
@@ -164,12 +164,12 @@ export function AppProvider({ children }) {
       });
 
       if (!account) {
-        return { ok: false, message: 'Email/so dien thoai hoac mat khau khong dung.' };
+        return { ok: false, message: 'Email/số điện thoại hoặc mật khẩu không đúng.' };
       }
 
       const user = getRawUserById(account.userId);
       if (!user || account.status === 'BLOCKED' || user.status === 'BLOCKED') {
-        return { ok: false, message: 'Tai khoan da bi khoa, vui long lien he quan tri vien.' };
+        return { ok: false, message: 'Tài khoản đã bị khóa, vui lòng liên hệ quản trị viên.' };
       }
 
       saveSession(user);
@@ -181,7 +181,7 @@ export function AppProvider({ children }) {
     async function register(payload) {
       const normalized = normalizeIdentifier(payload.identifier);
       if (!normalized) {
-        return { ok: false, message: 'Email hoac so dien thoai khong hop le.' };
+        return { ok: false, message: 'Email hoặc số điện thoại không hợp lệ.' };
       }
 
       const duplicated = data.demoAccounts.some(
@@ -191,7 +191,7 @@ export function AppProvider({ children }) {
       );
 
       if (duplicated) {
-        return { ok: false, message: 'Email hoac so dien thoai da ton tai.' };
+        return { ok: false, message: 'Email hoặc số điện thoại đã tồn tại.' };
       }
 
       const userId = makeId('user');
@@ -240,22 +240,22 @@ export function AppProvider({ children }) {
       setCurrentUserId(null);
     }
 
-    function createPost({ content, hashtags }) {
+    function createPost({ content, hashtags, imageUrls = [] }) {
       const cleanContent = content.trim();
       const normalizedHashtags = hashtags
         .split(/[,\s]+/)
         .map((tag) => tag.replace('#', '').trim().toLowerCase())
         .filter(Boolean);
 
-      if (!cleanContent) {
-        return { ok: false, message: 'Bai viet can co noi dung trong MVP mock.' };
+      if (!cleanContent && (!imageUrls || imageUrls.length === 0)) {
+        return { ok: false, message: 'Bài viết cần có nội dung hoặc hình ảnh.' };
       }
 
       const post = {
         id: makeId('post'),
         authorId: currentUserId,
         content: cleanContent,
-        imageUrls: [],
+        imageUrls: imageUrls,
         hashtags: [...new Set(normalizedHashtags)].slice(0, 8),
         status: 'PUBLISHED',
         likeCount: 0,
@@ -386,7 +386,7 @@ export function AppProvider({ children }) {
     function completeOnboarding(payload) {
       const displayName = payload.displayName.trim();
       if (!displayName) {
-        return { ok: false, message: 'Ten hien thi la bat buoc de hoan tat ho so.' };
+        return { ok: false, message: 'Tên hiển thị là bắt buộc để hoàn tất hồ sơ.' };
       }
 
       setData((prev) => ({
@@ -400,7 +400,7 @@ export function AppProvider({ children }) {
                   displayName,
                   avatarUrl: payload.avatarUrl || null,
                   dateOfBirth: payload.dateOfBirth || null,
-                  bio: payload.bio.trim() || null,
+                  bio: (payload.bio || '').trim() || null,
                   profileCompletedAt: new Date().toISOString(),
                 },
               }
@@ -414,7 +414,7 @@ export function AppProvider({ children }) {
       const existed = data.reports.some(
         (report) => report.postId === postId && report.reporterId === currentUserId && report.status === 'PENDING',
       );
-      if (existed) return { ok: false, message: 'Ban da gui bao cao dang cho xu ly cho bai viet nay.' };
+      if (existed) return { ok: false, message: 'Bạn đã gửi báo cáo đang chờ xử lý cho bài viết này.' };
 
       setData((prev) => ({
         ...prev,
@@ -451,7 +451,7 @@ export function AppProvider({ children }) {
     }
 
     function handleFutureSocialAuth() {
-      return { ok: false, message: 'Tinh nang dang duoc phat trien.' };
+      return { ok: false, message: 'Tính năng đang được phát triển.' };
     }
 
     return {

@@ -35,14 +35,16 @@ function GuestRoute({ children }) {
   return currentUser ? <Navigate to={getHomePath(currentUser)} replace /> : children;
 }
 
-function OnboardingRoute({ children, requireCompleted = false }) {
+function OnboardingRoute({ children, requireCompleted = false, allowCompleted = false }) {
   const { currentUser } = useApp();
   if (!currentUser) return <Navigate to="/login" replace />;
   if (currentUser.status !== 'ACTIVE') return <Navigate to="/login" replace />;
 
   const completed = Boolean(currentUser.profileCompletedAt);
+  // requireCompleted: trang chỉ cho phép khi đã hoàn tất hồ sơ
   if (requireCompleted && !completed) return <Navigate to="/onboarding/profile" replace />;
-  if (!requireCompleted && completed) return <Navigate to={getHomePath(currentUser)} replace />;
+  // Nếu không có allowCompleted: redirect sang feed khi đã hoàn tất để tránh quay lại trang onboarding
+  if (!requireCompleted && !allowCompleted && completed) return <Navigate to={getHomePath(currentUser)} replace />;
   return children;
 }
 
@@ -90,7 +92,8 @@ export const router = createBrowserRouter([
   {
     path: '/onboarding/success',
     element: (
-      <OnboardingRoute requireCompleted>
+      // allowCompleted: cho phép truy cập sau khi hoàn tất hồ sơ — không redirect sang feed
+      <OnboardingRoute allowCompleted>
         <OnboardingSuccessPage />
       </OnboardingRoute>
     ),
@@ -125,8 +128,7 @@ export const router = createBrowserRouter([
       { path: 'reports/:reportId', element: <AdminReportDetailPage /> },
     ],
   },
-  { path: '/register/success', element: <Navigate to="/onboarding/profile" replace /> },
-  { path: '/403', element: <ErrorPage code="403" title="Khong co quyen" description="Ban khong co quyen truy cap khu vuc nay." /> },
-  { path: '/500', element: <ErrorPage code="500" title="Loi he thong" description="Da co loi bat thuong trong qua trinh xu ly." /> },
-  { path: '*', element: <ErrorPage code="404" title="Khong tim thay" description="Trang hoac tai nguyen khong ton tai." /> },
+  { path: '/403', element: <ErrorPage code="403" title="Không có quyền" description="Bạn không có quyền truy cập khu vực này." /> },
+  { path: '/500', element: <ErrorPage code="500" title="Lỗi hệ thống" description="Đã có lỗi bất thường trong quá trình xử lý." /> },
+  { path: '*', element: <ErrorPage code="404" title="Không tìm thấy" description="Trang hoặc tài nguyên không tồn tại." /> },
 ]);

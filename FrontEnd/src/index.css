@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&display=swap');
 
 :root {
   --app-bg: #f7f7f8;
   --app-surface: #ffffff;
   --app-surface-soft: #f3f4f6;
   --app-border: #e5e7eb;
-  --app-border-strong: #d1d5db;
+  --app-border-strong: #c4c4c4;
   --app-text: #111111;
   --app-muted: #6b7280;
   --app-active: #111111;
@@ -73,12 +74,30 @@ a {
   box-shadow: 0 18px 45px rgba(17, 17, 17, 0.14);
 }
 
-.feed-shell {
+.content-shell {
   width: min(100%, var(--feed-width));
   min-height: 100vh;
-  border-left: 1px solid var(--app-border);
-  border-right: 1px solid var(--app-border);
   background: var(--app-surface);
+}
+
+@media (max-width: 1023px) {
+  .content-shell {
+    border-left: 1px solid var(--app-border-strong);
+    border-right: 1px solid var(--app-border-strong);
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-shell {
+    min-height: auto;
+    border-left: 1px solid var(--app-border-strong);
+    border-right: 1px solid var(--app-border-strong);
+    border-bottom: 1px solid var(--app-border-strong);
+    border-top: none;
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
 }
 
 .icon-mark {
@@ -89,6 +108,12 @@ a {
   line-height: 1;
 }
 
+.brand-text {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Thanh hành động (like, comment, repost, share) dưới mỗi bài viết */
 .post-action {
   display: inline-flex;
   align-items: center;
@@ -96,4 +121,160 @@ a {
   color: var(--app-muted);
   font-size: 13px;
   font-weight: 700;
+  padding: 6px 2px;
+  border-radius: 8px;
+  transition: color 0.15s ease;
+}
+
+.post-action:hover {
+  color: var(--app-text);
+}
+
+/* Dropdown menu overlay cho nút "..." trên PostCard */
+.post-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+.post-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+  transition: background 0.12s ease;
+}
+
+.post-menu-dropdown button:hover {
+  background: var(--app-surface-soft);
+}
+
+.post-menu-dropdown button.danger-item {
+  color: #dc2626;
+}
+
+.post-menu-dropdown button.danger-item:hover {
+  background: #fef2f2;
+}
+
+/* Menu overlay tối mờ — click để đóng menu */
+.post-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+}
+
+/* Animation mở menu mượt */
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+
+  50% {
+    transform: translateY(-18px) scale(1.03);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Custom Scrollbar with Arrows for Onboarding */
+.custom-scrollbar-with-arrows::-webkit-scrollbar {
+  width: 14px;
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.8);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.9);
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-button:single-button {
+  background-color: transparent;
+  display: block;
+  height: 16px;
+  width: 14px;
+  background-size: 10px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M12 8l-6 6h12z'/></svg>");
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-button:single-button:vertical:decrement:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'><path d='M12 8l-6 6h12z'/></svg>");
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M12 16l6-6H6z'/></svg>");
+}
+
+.custom-scrollbar-with-arrows::-webkit-scrollbar-button:single-button:vertical:increment:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'><path d='M12 16l6-6H6z'/></svg>");
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-modal-in {
+  animation: modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
