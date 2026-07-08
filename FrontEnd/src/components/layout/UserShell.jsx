@@ -71,14 +71,14 @@ function MoreIcon() {
 
 export default function UserShell() {
   const { logout, sessionExpired, setSessionExpired } = useApp();
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerMode, setComposerMode] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const navItems = [
     { to: '/feed/for-you', label: 'Dành cho bạn', icon: <HomeIcon />, active: location.pathname.startsWith('/feed') },
-    { to: '#create', label: 'Tạo bài viết', icon: <CreateIcon />, active: false, action: () => setComposerOpen(true) },
+    { to: '#create', label: 'Tạo bài viết', icon: <CreateIcon />, active: false, action: () => setComposerMode('modal') },
     { to: '/search', label: 'Tìm kiếm', icon: <SearchIcon />, active: location.pathname === '/search' },
     { to: '#activity', label: 'Hoạt động', icon: <ActivityIcon />, active: false }, // MVP không có trang hoạt động riêng
     { to: '/profile/me', label: 'Trang cá nhân', icon: <ProfileIcon />, active: location.pathname === '/profile/me' },
@@ -91,7 +91,7 @@ export default function UserShell() {
         Sửa màu nền sidebar trùng với nền web (xóa bg-white và border), 
         thay đổi cách hiển thị chữ in đậm cho tab đang active.
       */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-[var(--sidebar-width)] bg-[var(--app-bg)] px-4 py-5 lg:flex lg:flex-col">
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[var(--sidebar-width)] bg-[var(--app-bg)] px-4 py-5 lg:flex lg:flex-col">
         {/* Logo */}
         <Link to="/feed/for-you" className="flex items-center gap-3 px-4 mb-8">
           <img src={logo} alt="UniShare" className="h-9 w-9 object-contain" />
@@ -144,7 +144,7 @@ export default function UserShell() {
           <span className="text-[20px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
         </Link>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => setComposerOpen(true)}>Đăng bài</Button>
+          <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-red-50 hover:text-red-600"
             onClick={logout}
@@ -173,12 +173,12 @@ export default function UserShell() {
         ))}
       </nav>
 
-      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
+      <PostComposer mode={composerMode} onClose={() => setComposerMode(null)} />
       
       {/* Nút + nổi ở góc dưới phải */}
       <button 
-        className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-white text-zinc-950 border border-zinc-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-zinc-50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)] transition-all"
-        onClick={() => setComposerOpen(true)}
+        className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-white text-zinc-950 border border-zinc-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-105 hover:bg-zinc-50 hover:shadow-[0_12px_40px_rgb(0,0,0,0.2)] active:scale-95"
+        onClick={() => setComposerMode('floating')}
         aria-label="Tạo bài viết mới"
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
