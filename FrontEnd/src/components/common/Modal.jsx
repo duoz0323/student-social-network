@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function Modal({ open, title, customHeader, children, footer, footerClassName, onClose, size = 'md' }) {
+export default function Modal({ open, title, customHeader, children, footer, footerClassName, bodyClassName, className, onClose, size = 'md' }) {
   useEffect(() => {
     function closeByEscape(event) {
       if (event.key === 'Escape') onClose?.();
@@ -34,7 +34,7 @@ export default function Modal({ open, title, customHeader, children, footer, foo
         @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
       <section 
-        className={`animate-modal-in flex max-h-[90vh] w-full flex-col overflow-visible rounded-3xl bg-[var(--app-surface)] shadow-2xl ${sizes[size]}`}
+        className={`animate-modal-in flex max-h-[90vh] w-full flex-col overflow-visible rounded-3xl bg-[var(--app-surface)] shadow-2xl ${sizes[size]} ${className || ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {customHeader ? customHeader : (
@@ -45,7 +45,7 @@ export default function Modal({ open, title, customHeader, children, footer, foo
             </button>
           </header>
         )}
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className={`flex-1 overflow-y-auto ${bodyClassName ?? 'px-5 py-4'}`}>{children}</div>
         {footer ? <footer className={`shrink-0 flex justify-end gap-2 border-t border-[var(--app-border)] px-5 py-4 ${footerClassName || ''}`}>{footer}</footer> : null}
       </section>
     </div>,

@@ -20,7 +20,7 @@ export default function MoreMenu({ open, onClose, onLogout }) {
   return (
     <div
       ref={menuRef}
-      className="absolute bottom-0 left-[calc(100%+12px)] w-max min-w-[260px] rounded-[16px] border border-[var(--app-border)] bg-white py-2 shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-50"
+      className="absolute bottom-0 left-[calc(100%+12px)] w-max min-w-[260px] rounded-[16px] border border-[var(--app-border)] bg-[var(--app-surface)] py-2 shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-50"
     >
       <button className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
         Giao diện

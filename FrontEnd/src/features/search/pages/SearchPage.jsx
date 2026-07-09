@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
+import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import PostCard from '../../post/components/PostCard.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
@@ -10,6 +11,7 @@ import ContentShell from '../../../components/layout/ContentShell.jsx';
 export default function SearchPage() {
   const { data, publicPosts, currentUserId, toggleFollow } = useApp();
   const [query, setQuery] = useState('');
+  const [unfollowTarget, setUnfollowTarget] = useState(null);
   const navigate = useNavigate();
   const normalized = query.trim().toLowerCase();
 
@@ -36,7 +38,7 @@ export default function SearchPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Tìm kiếm"
-          className="h-[44px] w-full rounded-full bg-zinc-100/80 pl-11 pr-4 text-[15px] text-[var(--app-text)] placeholder:text-zinc-400 outline-none border border-transparent focus:border-zinc-300 focus:bg-white transition"
+          className="h-[44px] w-full rounded-full bg-[var(--app-surface-soft)] pl-11 pr-4 text-[15px] text-[var(--app-text)] placeholder:text-[var(--app-muted)] outline-none border border-transparent focus:border-[var(--app-border-strong)] focus:bg-[var(--app-surface)] transition"
         />
       </div>
     </div>
@@ -56,7 +58,7 @@ export default function SearchPage() {
                   { title: 'Việc làm thêm cho sinh viên', sub: 'Hơn 500 cơ hội' }, 
                   { title: 'Tài liệu giải tích 2', sub: 'PDF & Notes' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 py-3 border-b border-[var(--app-border)] last:border-0 cursor-pointer hover:bg-zinc-50" onClick={() => setQuery(item.title)}>
+                  <div key={idx} className="flex items-center gap-4 py-3 border-b border-[var(--app-border)] last:border-0 cursor-pointer hover:bg-[var(--app-surface-soft)] transition" onClick={() => setQuery(item.title)}>
                     <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-[var(--app-border)] text-[var(--app-text)]">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                     </div>
@@ -93,8 +95,8 @@ export default function SearchPage() {
                       </div>
                       <Button 
                         variant={isFollowing ? "secondary" : "primary"} 
-                        className={`shrink-0 !rounded-xl !h-[34px] px-5 font-bold text-[14px] mt-1 ${isFollowing ? '!border-zinc-300 text-[var(--app-text)]' : '!bg-black !text-white hover:!bg-zinc-800'}`}
-                        onClick={() => toggleFollow(user.id)}
+                        className={`shrink-0 !rounded-xl !h-[34px] px-5 font-bold text-[14px] mt-1 ${isFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}
+                        onClick={() => isFollowing ? setUnfollowTarget(user) : toggleFollow(user.id)}
                       >
                         {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
                       </Button>
@@ -113,7 +115,7 @@ export default function SearchPage() {
                   {results.users.map((user) => {
                     const userHandle = user.email ? `@${user.email.split('@')[0]}` : `@user${user.id.slice(-4)}`;
                     return (
-                      <div key={user.id} className="flex items-center gap-3 py-2 cursor-pointer hover:bg-zinc-50 rounded-lg px-2 -mx-2" onClick={() => navigate(user.id === currentUserId ? '/profile/me' : `/profile/${user.id}`)}>
+                      <div key={user.id} className="flex items-center gap-3 py-2 cursor-pointer hover:bg-[var(--app-surface-soft)] transition rounded-lg px-2 -mx-2" onClick={() => navigate(user.id === currentUserId ? '/profile/me' : `/profile/${user.id}`)}>
                         <Avatar src={user.avatarUrl} name={user.displayName} size="md" className="!w-10 !h-10 text-sm" />
                         <div className="flex flex-col">
                           <span className="text-[15px] font-semibold text-[var(--app-text)]">{user.displayName}</span>
@@ -129,7 +131,7 @@ export default function SearchPage() {
             {results.hashtags.length > 0 && (
               <div className="px-6 py-4 border-b border-[var(--app-border)] flex flex-wrap gap-2">
                 {results.hashtags.map((tag) => (
-                  <span key={tag} className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-[14px] font-semibold text-black cursor-pointer hover:bg-zinc-100 transition" onClick={() => setQuery(`#${tag}`)}>
+                  <span key={tag} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-2 text-[14px] font-semibold text-[var(--app-text)] cursor-pointer hover:opacity-80 transition" onClick={() => setQuery(`#${tag}`)}>
                     #{tag}
                   </span>
                 ))}
@@ -148,6 +150,16 @@ export default function SearchPage() {
           </div>
         )}
       </div>
+
+      <UnfollowConfirmModal 
+        open={Boolean(unfollowTarget)}
+        user={unfollowTarget}
+        onClose={() => setUnfollowTarget(null)}
+        onConfirm={() => {
+          toggleFollow(unfollowTarget.id);
+          setUnfollowTarget(null);
+        }}
+      />
     </ContentShell>
   );
 }
