@@ -1,13 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&display=swap');
 
 :root {
-  --app-bg: #f7f7f8;
+  --app-bg: #f9fafb;
   --app-surface: #ffffff;
   --app-surface-soft: #f3f4f6;
   --app-border: #e5e7eb;
   --app-border-strong: #c4c4c4;
-  --app-text: #111111;
+  --app-text: #111827;
   --app-muted: #6b7280;
   --app-active: #111111;
   --app-brand: #5b2cff;
@@ -40,6 +40,18 @@
     --app-active: #ffffff;
     --app-brand: #7c5cff;
   }
+}
+
+/* Force light theme variables for Admin area regardless of OS preference */
+.admin-theme {
+  --app-bg: #f9fafb;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4f6;
+  --app-border: #e5e7eb;
+  --app-border-strong: #c4c4c4;
+  --app-text: #111827;
+  --app-muted: #6b7280;
+  --app-active: #111111;
 }
 
 * {
@@ -291,4 +303,28 @@ a {
 }
 .animate-modal-in {
   animation: modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up-delayed-1 {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-slide-up-delayed-2 {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-slide-up-delayed-3 {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  opacity: 0;
 }
