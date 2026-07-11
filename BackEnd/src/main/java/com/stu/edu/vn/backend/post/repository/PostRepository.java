@@ -18,6 +18,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // Tìm bài theo id và trạng thái để loại bài HIDDEN/DELETED khỏi truy vấn thông thường.
     Optional<Post> findByIdAndStatus(Long id, PostStatus status);
 
+    // Lấy riêng trạng thái để Like/Unlike phân biệt post không tồn tại với post HIDDEN/DELETED.
+    @Query("select p.status from Post p where p.id = :postId")
+    Optional<PostStatus> findStatusById(@Param("postId") Long postId);
+
+    // Đọc like_count mới nhất từ database sau khi trigger post_likes chạy, Service không tự cộng/trừ bộ đếm.
+    @Query(
+            value = "SELECT like_count FROM posts WHERE id = :postId",
+            nativeQuery = true
+    )
+    Optional<Integer> findLikeCountById(@Param("postId") Long postId);
+
     // Kiểm tra quyền sở hữu bài viết trước khi cho phép tác giả sửa hoặc xóa mềm.
     boolean existsByIdAndAuthor_Id(Long id, Long authorId);
 

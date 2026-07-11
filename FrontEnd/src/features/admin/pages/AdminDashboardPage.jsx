@@ -16,8 +16,7 @@ export default function AdminDashboardPage() {
     <section>
       {/* Header */}
       <div className="mb-8 animate-slide-up">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Tổng quan hệ thống</h1>
-        <p className="mt-1.5 text-sm text-gray-500">Xin chào, Admin! Dưới đây là tình hình hoạt động hôm nay.</p>
+        <h1 className="text-4xl font-bold text-gray-900">Bảng điều khiển</h1>
       </div>
 
       {/* Stats Grid */}

@@ -5,7 +5,7 @@ import { normalizeText } from '../utils/formatters.js';
 
 const AppContext = createContext(null);
 const SESSION_KEY = 'unishare.react.session';
-const DATA_KEY = 'unishare.react.mock-data-v2';
+const DATA_KEY = 'unishare.react.mock-data-v3';
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 8;
 
 function makeId(prefix) {
