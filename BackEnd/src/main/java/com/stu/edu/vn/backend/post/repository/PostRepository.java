@@ -22,6 +22,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("select p.status from Post p where p.id = :postId")
     Optional<PostStatus> findStatusById(@Param("postId") Long postId);
 
+    // Tải một lần bài viết, tác giả và media để Report tạo snapshot nhất quán, tránh N+1.
+    @EntityGraph(attributePaths = {"author", "media"})
+    @Query("select distinct p from Post p where p.id = :postId")
+    Optional<Post> findReportSnapshotById(@Param("postId") Long postId);
+
     // Đọc like_count mới nhất từ database sau khi trigger post_likes chạy, Service không tự cộng/trừ bộ đếm.
     @Query(
             value = "SELECT like_count FROM posts WHERE id = :postId",
