@@ -15,4 +15,7 @@ public interface PostMediaRepository extends JpaRepository<PostMedia, Long> {
 
     // Lấy media theo danh sách id và post_id để kiểm tra media giữ lại có thật sự thuộc bài đang sửa.
     List<PostMedia> findByPost_IdAndIdIn(Long postId, Collection<Long> ids);
+
+    // Tải media của cả trang trong một query và giữ thứ tự hiển thị ổn định cho từng bài viết.
+    List<PostMedia> findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(Collection<Long> postIds);
 }

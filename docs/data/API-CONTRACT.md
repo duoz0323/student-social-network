@@ -375,7 +375,110 @@ Request:
 
 ### GET `/api/v1/search/users?q=minh&page=0&size=20`
 
-### GET `/api/v1/search/posts?q=hoctap&page=0&size=20`
+Actor:
+
+- Người dùng đã đăng nhập, có tài khoản `ACTIVE` và đã hoàn tất hồ sơ.
+
+Quy tắc:
+
+- Chỉ tìm theo một phần `display_name`; không tìm email, số điện thoại hoặc username.
+- `q` được trim, bắt buộc có giá trị và tối đa 100 ký tự.
+- `page` mặc định `0` và không được âm.
+- `size` mặc định `20`, nhận giá trị từ `1` đến `100`.
+- Chỉ trả tài khoản `ACTIVE` có `profile_completed_at` khác `NULL`.
+- Ưu tiên tên bắt đầu bằng từ khóa, sau đó tên chứa từ khóa và `userId` giảm dần.
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "message": "Tìm kiếm người dùng thành công",
+  "data": {
+    "content": [
+      {
+        "userId": 12,
+        "displayName": "Nguyễn Minh",
+        "avatarUrl": "https://example.com/avatar.jpg",
+        "bio": "Sinh viên CNTT"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "first": true,
+    "last": true
+  },
+  "timestamp": "2026-07-13T00:00:00"
+}
+```
+
+Danh sách không có kết quả vẫn trả HTTP 200 với `content` rỗng.
+
+### GET `/api/v1/search/posts?q=java&type=CONTENT&page=0&size=20`
+
+Actor:
+
+- Người dùng đã đăng nhập, có tài khoản `ACTIVE` và đã hoàn tất hồ sơ.
+
+Query parameter:
+
+- `q`: bắt buộc, được trim và tối đa 100 ký tự.
+- `type`: bắt buộc, chỉ nhận `CONTENT` hoặc `HASHTAG`.
+- `page`: mặc định `0`, không được âm.
+- `size`: mặc định `20`, từ `1` đến `100`.
+
+Quy tắc:
+
+- `CONTENT` dùng FULLTEXT MySQL trên `posts.content`.
+- `HASHTAG` bỏ các ký tự `#` liên tiếp ở đầu, chuyển lowercase và tìm exact `normalized_name`.
+- Chỉ trả bài `PUBLISHED` của tác giả `ACTIVE` đã hoàn tất hồ sơ.
+- Media, hashtag, Like và Save được tải theo batch cho cả trang.
+- Danh sách không có kết quả trả HTTP 200 với `content` rỗng.
+
+Ví dụ tìm hashtag:
+
+```http
+GET /api/v1/search/posts?q=%23SinhVien&type=HASHTAG&page=0&size=20
+```
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "message": "Tìm kiếm bài viết thành công",
+  "data": {
+    "content": [
+      {
+        "postId": 100,
+        "content": "Học Java cùng sinh viên CNTT",
+        "isEdited": false,
+        "likeCount": 3,
+        "commentCount": 2,
+        "publishedAt": "2026-07-13T01:00:00",
+        "author": {
+          "id": 20,
+          "displayName": "Nguyễn Minh",
+          "avatarUrl": "https://example.com/avatar.jpg"
+        },
+        "media": [],
+        "hashtags": ["java", "sinhvien"],
+        "likedByCurrentUser": true,
+        "savedByCurrentUser": false
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "first": true,
+    "last": true
+  },
+  "timestamp": "2026-07-13T01:00:00"
+}
+```
 
 ## 8. Report
 

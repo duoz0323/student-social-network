@@ -6,6 +6,9 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    SEARCH_HASHTAG_INVALID(HttpStatus.BAD_REQUEST, "Hashtag tìm kiếm không hợp lệ"),
+    SEARCH_KEYWORD_REQUIRED(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được để trống"),
+    SEARCH_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được vượt quá 100 ký tự"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ"),
     INVALID_IDENTIFIER(HttpStatus.BAD_REQUEST, "Email hoặc số điện thoại không hợp lệ"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email, số điện thoại hoặc mật khẩu không đúng"),

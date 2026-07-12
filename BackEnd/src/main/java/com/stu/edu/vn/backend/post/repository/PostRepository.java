@@ -4,6 +4,8 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +16,72 @@ import org.springframework.data.repository.query.Param;
  * Repository truy vấn bài viết theo id, trạng thái và tác giả mà không chứa nghiệp vụ.
  */
 public interface PostRepository extends JpaRepository<Post, Long> {
+
+    /**
+     * Tìm nội dung bằng FULLTEXT MySQL nhưng chỉ trả bài công khai của tác giả đang hoạt động và đã hoàn tất hồ sơ.
+     */
+    @Query(
+            value = """
+                    SELECT p.*
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND p.content IS NOT NULL
+                      AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
+                    ORDER BY MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) DESC,
+                             p.published_at DESC,
+                             p.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND p.content IS NOT NULL
+                      AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
+                    """,
+            nativeQuery = true
+    )
+    Page<Post> searchPublishedPostsByContent(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * Tìm bài theo exact normalized hashtag, không join collection hiển thị để pagination và totalElements luôn chính xác.
+     */
+    @Query(
+            value = """
+                    SELECT p.*
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    JOIN post_hashtags ph ON ph.post_id = p.id
+                    JOIN hashtags h ON h.id = ph.hashtag_id
+                    WHERE p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND h.normalized_name = :normalizedName
+                    ORDER BY p.published_at DESC, p.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    JOIN post_hashtags ph ON ph.post_id = p.id
+                    JOIN hashtags h ON h.id = ph.hashtag_id
+                    WHERE p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND h.normalized_name = :normalizedName
+                    """,
+            nativeQuery = true
+    )
+    Page<Post> searchPublishedPostsByHashtag(@Param("normalizedName") String normalizedName, Pageable pageable);
 
     // Tìm bài theo id và trạng thái để loại bài HIDDEN/DELETED khỏi truy vấn thông thường.
     Optional<Post> findByIdAndStatus(Long id, PostStatus status);
