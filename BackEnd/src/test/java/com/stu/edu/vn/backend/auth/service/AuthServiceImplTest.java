@@ -215,6 +215,73 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void activeAdminLoginReturnsAdminRoleAndCompletedProfile() {
+        User admin = new User("admin@example.com", null, "admin-bcrypt-hash");
+        ReflectionTestUtils.setField(admin, "id", 24L);
+        admin.setRole(UserRole.ADMIN);
+        UserProfile profile = new UserProfile(admin);
+        profile.setProfileCompletedAt(LocalDateTime.now(clock));
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("AdminPassword@1", "admin-bcrypt-hash")).thenReturn(true);
+        when(userProfileRepository.findById(24L)).thenReturn(Optional.of(profile));
+        when(jwtService.generateAccessToken(24L, UserRole.ADMIN.name())).thenReturn("admin-access-token");
+        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LoginResponse response = authService.login(
+                new LoginRequest("ADMIN@EXAMPLE.COM", "AdminPassword@1", null, null),
+                null
+        );
+
+        assertThat(response.accessToken()).isEqualTo("admin-access-token");
+        assertThat(response.profileCompleted()).isTrue();
+        assertThat(response.user().role()).isEqualTo(UserRole.ADMIN);
+        verify(jwtService).generateAccessToken(24L, UserRole.ADMIN.name());
+        verify(refreshTokenRepository).saveAndFlush(any(RefreshToken.class));
+    }
+
+    @Test
+    void blockedAdminCannotLogin() {
+        User admin = new User("blocked-admin@example.com", null, "admin-bcrypt-hash");
+        ReflectionTestUtils.setField(admin, "id", 25L);
+        admin.setRole(UserRole.ADMIN);
+        admin.setStatus(UserStatus.BLOCKED);
+        when(userRepository.findByEmail("blocked-admin@example.com")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("AdminPassword@1", "admin-bcrypt-hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("blocked-admin@example.com", "AdminPassword@1", null, null),
+                null
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_BLOCKED);
+
+        verify(userProfileRepository, never()).findById(25L);
+        verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
+    }
+
+    @Test
+    void adminLoginRejectsWrongPassword() {
+        User admin = new User("admin@example.com", null, "admin-bcrypt-hash");
+        ReflectionTestUtils.setField(admin, "id", 26L);
+        admin.setRole(UserRole.ADMIN);
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("WrongPassword@1", "admin-bcrypt-hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("admin@example.com", "WrongPassword@1", null, null),
+                null
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+
+        verify(userProfileRepository, never()).findById(26L);
+        verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
+    }
+
+    @Test
     void loginRejectsMissingUserAndWrongPasswordWithSameErrorCode() {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
@@ -286,6 +353,33 @@ class AuthServiceImplTest {
         assertThat(response.tokenType()).isEqualTo(RefreshTokenResponse.BEARER_TOKEN_TYPE);
         assertThat(response.accessTokenExpiresIn()).isEqualTo(900);
         assertThat(response.profileCompleted()).isTrue();
+        verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
+    }
+
+    @Test
+    void adminRefreshTokenUsesSharedFlowAndKeepsAdminRoleInNewAccessToken() {
+        User admin = new User("admin@example.com", null, "admin-bcrypt-hash");
+        ReflectionTestUtils.setField(admin, "id", 35L);
+        admin.setRole(UserRole.ADMIN);
+        UserProfile profile = new UserProfile(admin);
+        profile.setProfileCompletedAt(LocalDateTime.now(clock));
+        String rawRefreshToken = "admin-refresh-token";
+        String tokenHash = tokenHashService.sha256Hex(rawRefreshToken);
+        RefreshToken refreshToken = new RefreshToken(
+                admin,
+                tokenHash,
+                LocalDateTime.now(clock).plusMinutes(30)
+        );
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+        when(userRepository.findById(35L)).thenReturn(Optional.of(admin));
+        when(userProfileRepository.findById(35L)).thenReturn(Optional.of(profile));
+        when(jwtService.generateAccessToken(35L, UserRole.ADMIN.name())).thenReturn("new-admin-access-token");
+
+        RefreshTokenResponse response = authService.refreshAccessToken(new RefreshTokenRequest(rawRefreshToken));
+
+        assertThat(response.accessToken()).isEqualTo("new-admin-access-token");
+        assertThat(response.profileCompleted()).isTrue();
+        verify(jwtService).generateAccessToken(35L, UserRole.ADMIN.name());
         verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
     }
 

@@ -495,15 +495,57 @@ Request:
 
 ## 9. Admin
 
-### GET `/api/v1/admin/users?page=0&size=20`
+### GET `/api/v1/admin/users?keyword=&status=&page=0&size=20`
 
-### PATCH `/api/v1/admin/users/{userId}/status`
+- Chỉ `ADMIN` đang `ACTIVE` được truy cập.
+- `keyword` tùy chọn, tìm theo email, số điện thoại hoặc tên hiển thị; blank sau trim được xem như không truyền.
+- `status` tùy chọn: `ACTIVE` hoặc `BLOCKED`.
+- `size` mặc định 20, tối đa 100.
+- Chỉ trả tài khoản role `USER`, sắp xếp `createdAt DESC, userId DESC`.
+
+Mỗi phần tử gồm `userId`, `displayName`, `avatarUrl`, `email`, `phoneNumber`, `status`,
+`profileCompleted`, `createdAt`.
+
+### GET `/api/v1/admin/users/{userId}`
+
+- Chỉ cho xem target role `USER`.
+- Không tồn tại trả `ADMIN_USER_NOT_FOUND`.
+- Target role `ADMIN` trả `ADMIN_USER_MANAGEMENT_FORBIDDEN`.
+- Response không chứa `passwordHash`, token hoặc `avatarPublicId`.
+
+Response data gồm `userId`, `displayName`, `avatarUrl`, `bio`, `email`, `phoneNumber`, `status`,
+`profileCompleted`, `profileCompletedAt`, `blockedAt`, `blockedReason`, `createdAt`, `updatedAt`.
+
+### PATCH `/api/v1/admin/users/{userId}/block`
+
+Request chỉ gồm mã lý do cố định:
 
 ```json
 {
-  "status": "BLOCKED"
+  "reasonCode": "SPAM"
 }
 ```
+
+`reasonCode` nhận một trong: `SPAM`, `HARASSMENT`, `HARMFUL_CONTENT`, `FAKE_ACCOUNT`,
+`REPEATED_VIOLATION`, `OTHER`. Không nhận `note` hoặc reason tự do.
+
+Thao tác chuyển `ACTIVE → BLOCKED`, thu hồi Refresh Token còn hiệu lực và ghi đồng thời
+`account_status_histories`, `admin_actions` trong một transaction.
+
+### PATCH `/api/v1/admin/users/{userId}/unblock`
+
+- Không có request body.
+- Chuyển `BLOCKED → ACTIVE`, xóa `blockedAt`/`blockedReason` hiện tại.
+- Không khôi phục Refresh Token cũ.
+- Lịch sử và action dùng reason/note `ADMIN_UNBLOCK`.
+
+Response hai API gồm `userId`, `status`, `blockedAt`, `blockedReason`, `updatedAt`.
+
+Mã lỗi nghiệp vụ: `ADMIN_USER_NOT_FOUND`, `ADMIN_USER_MANAGEMENT_FORBIDDEN`,
+`ADMIN_SELF_ACTION_FORBIDDEN`, `ADMIN_USER_ALREADY_BLOCKED`, `ADMIN_USER_ALREADY_ACTIVE`,
+`ADMIN_BLOCK_REASON_REQUIRED`.
+
+Giai đoạn này chưa cung cấp API xem lịch sử trạng thái hoặc danh sách admin action.
 
 ### GET `/api/v1/admin/posts?page=0&size=20`
 

@@ -36,3 +36,9 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET:}
   avatar-folder: ${CLOUDINARY_AVATAR_FOLDER:student-social-network/avatars}
   post-folder: ${CLOUDINARY_POST_FOLDER:student-social-network/posts}
+
+bootstrap-admin:
+  enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+  email: ${BOOTSTRAP_ADMIN_EMAIL:}
+  password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  display-name: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:Quản trị viên}

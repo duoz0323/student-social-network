@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.search.service.impl;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.common.util.LikePatternEscaper;
 import com.stu.edu.vn.backend.search.dto.response.SearchUserResponse;
 import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
@@ -44,7 +45,6 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
 
     private static final int MAX_KEYWORD_LENGTH = 100;
-    private static final String LIKE_ESCAPE = "=";
     private static final Pattern HASHTAG_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_]+$");
 
     private final CurrentUserProvider currentUserProvider;
@@ -184,9 +184,8 @@ public class SearchServiceImpl implements SearchService {
     }
 
     private String escapeLikePattern(String keyword) {
-        return keyword.replace(LIKE_ESCAPE, LIKE_ESCAPE + LIKE_ESCAPE)
-                .replace("%", LIKE_ESCAPE + "%")
-                .replace("_", LIKE_ESCAPE + "_");
+        // Dùng cùng quy tắc escape LIKE với các module có hỗ trợ tìm kiếm khác.
+        return LikePatternEscaper.escape(keyword);
     }
 
     private SearchUserResponse toResponse(UserProfile profile) {

@@ -149,11 +149,20 @@ Lưu:
 
 ### account_status_histories
 
-Tùy chọn.
+Lưu lịch sử bất biến cho mỗi lần ADMIN khóa hoặc mở khóa tài khoản USER:
+
+- Trạng thái cũ và mới.
+- ADMIN thực hiện thay đổi.
+- Lý do chuẩn hóa.
+- Thời điểm do database tạo.
+
+Bản ghi được tạo cùng transaction với thay đổi `users`; không sửa hoặc xóa lịch sử cũ khi mở khóa.
 
 ### admin_actions
 
-Tùy chọn.
+Lưu dấu vết thao tác quản trị. Luồng trạng thái tài khoản dùng `BLOCK_USER` hoặc `UNBLOCK_USER`,
+target type `USER`, target ID là tài khoản bị tác động. `old_data` và `new_data` để `NULL`
+trong phạm vi này.
 
 ## 2. Quan hệ
 

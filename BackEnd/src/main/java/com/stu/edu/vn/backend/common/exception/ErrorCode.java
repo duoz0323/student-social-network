@@ -6,6 +6,12 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    ADMIN_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản người dùng cần quản lý"),
+    ADMIN_USER_MANAGEMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "Không được phép quản lý tài khoản ADMIN"),
+    ADMIN_SELF_ACTION_FORBIDDEN(HttpStatus.FORBIDDEN, "ADMIN không được phép thay đổi trạng thái tài khoản của chính mình"),
+    ADMIN_USER_ALREADY_BLOCKED(HttpStatus.CONFLICT, "Tài khoản người dùng đã bị khóa"),
+    ADMIN_USER_ALREADY_ACTIVE(HttpStatus.CONFLICT, "Tài khoản người dùng đang hoạt động"),
+    ADMIN_BLOCK_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do khóa tài khoản là bắt buộc"),
     SEARCH_HASHTAG_INVALID(HttpStatus.BAD_REQUEST, "Hashtag tìm kiếm không hợp lệ"),
     SEARCH_KEYWORD_REQUIRED(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được để trống"),
     SEARCH_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được vượt quá 100 ký tự"),
