@@ -6,6 +6,19 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    ADMIN_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo cần quản lý"),
+    ADMIN_REPORT_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa báo cáo quản trị không được vượt quá 100 ký tự"),
+    ADMIN_REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "Báo cáo đã được xử lý"),
+    ADMIN_REPORT_RESOLUTION_NOTE_REQUIRED(HttpStatus.BAD_REQUEST, "Ghi chú xử lý báo cáo là bắt buộc"),
+    ADMIN_REPORT_RESOLUTION_NOTE_TOO_LONG(HttpStatus.BAD_REQUEST, "Ghi chú xử lý báo cáo không được vượt quá 500 ký tự"),
+    ADMIN_REPORT_HIDE_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do ẩn bài viết là bắt buộc"),
+    ADMIN_REPORT_HIDE_REASON_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Không được gửi lý do ẩn khi không yêu cầu ẩn bài viết"),
+    ADMIN_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bài viết cần quản lý"),
+    ADMIN_POST_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa bài viết quản trị không được vượt quá 100 ký tự"),
+    ADMIN_POST_ALREADY_HIDDEN(HttpStatus.CONFLICT, "Bài viết đã bị ẩn"),
+    ADMIN_POST_ALREADY_PUBLISHED(HttpStatus.CONFLICT, "Bài viết đang ở trạng thái công khai"),
+    ADMIN_POST_DELETED_ACTION_FORBIDDEN(HttpStatus.CONFLICT, "Không thể thay đổi bài viết đã bị xóa"),
+    ADMIN_POST_HIDE_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do ẩn bài viết là bắt buộc"),
     ADMIN_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản người dùng cần quản lý"),
     ADMIN_USER_MANAGEMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "Không được phép quản lý tài khoản ADMIN"),
     ADMIN_SELF_ACTION_FORBIDDEN(HttpStatus.FORBIDDEN, "ADMIN không được phép thay đổi trạng thái tài khoản của chính mình"),

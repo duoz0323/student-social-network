@@ -115,6 +115,40 @@ public class Report extends BaseAuditEntity {
         return status;
     }
 
+    public User getResolvedBy() {
+        return resolvedBy;
+    }
+
+    public LocalDateTime getResolvedAt() {
+        return resolvedAt;
+    }
+
+    public String getResolutionNote() {
+        return resolutionNote;
+    }
+
+    public void resolve(User admin, LocalDateTime resolvedAt, String resolutionNote) {
+        // Gom các trường kết quả để entity không rơi vào trạng thái RESOLVED thiếu người hoặc thời điểm xử lý.
+        markProcessed(ReportStatus.RESOLVED, admin, resolvedAt, resolutionNote);
+    }
+
+    public void reject(User admin, LocalDateTime resolvedAt, String resolutionNote) {
+        // REJECTED vẫn lưu đầy đủ người xử lý và ghi chú theo cùng invariant của schema.
+        markProcessed(ReportStatus.REJECTED, admin, resolvedAt, resolutionNote);
+    }
+
+    private void markProcessed(
+            ReportStatus targetStatus,
+            User admin,
+            LocalDateTime resolvedAt,
+            String resolutionNote
+    ) {
+        this.status = targetStatus;
+        this.resolvedBy = admin;
+        this.resolvedAt = resolvedAt;
+        this.resolutionNote = resolutionNote;
+    }
+
     public String getPostContentSnapshot() {
         return postContentSnapshot;
     }

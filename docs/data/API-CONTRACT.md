@@ -547,15 +547,67 @@ Mã lỗi nghiệp vụ: `ADMIN_USER_NOT_FOUND`, `ADMIN_USER_MANAGEMENT_FORBIDDE
 
 Giai đoạn này chưa cung cấp API xem lịch sử trạng thái hoặc danh sách admin action.
 
-### GET `/api/v1/admin/posts?page=0&size=20`
+### GET `/api/v1/admin/posts`
 
-### PATCH `/api/v1/admin/posts/{postId}/status`
+Query parameter:
+
+- `keyword`: tùy chọn, trim, tối đa 100 ký tự; blank được xem là không truyền; tìm không phân biệt hoa thường theo nội dung hoặc tên tác giả.
+- `status`: tùy chọn, nhận `PUBLISHED`, `HIDDEN` hoặc `DELETED`.
+- `authorId`: tùy chọn, phải là số dương.
+- `reportedOnly`: mặc định `false`; khi `true` chỉ trả bài có ít nhất một report `PENDING`.
+- `page`: mặc định `0`, không âm.
+- `size`: mặc định `20`, từ `1` đến `100`.
+
+Chỉ `ADMIN` đang `ACTIVE` được truy cập. Danh sách không loại tác giả `BLOCKED` và sắp xếp
+`createdAt DESC, postId DESC`.
+
+Mỗi phần tử gồm `postId`, `contentPreview`, `status`, `authorId`, `authorDisplayName`,
+`authorAvatarUrl`, `authorAccountStatus`, `thumbnailUrl`, `mediaCount`, `likeCount`,
+`commentCount`, `pendingReportCount`, `createdAt`, `updatedAt`.
+
+### GET `/api/v1/admin/posts/{postId}`
+
+- Xem được bài ở cả ba trạng thái `PUBLISHED`, `HIDDEN`, `DELETED`.
+- Không tồn tại trả `ADMIN_POST_NOT_FOUND`.
+- Media sắp xếp `sortOrder ASC, mediaId ASC`; hashtag là duy nhất và có thứ tự ổn định.
+- Response không chứa password, token, `avatarPublicId`, `storagePublicId` hoặc metadata cloud nội bộ.
+
+Response data gồm `postId`, `content`, `status`, `author`, `media`, `hashtags`, `likeCount`,
+`commentCount`, `pendingReportCount`, `totalReportCount`, `hiddenAt`, `hiddenReason`, `hiddenBy`,
+`deletedAt`, `createdAt`, `updatedAt`.
+
+Mã lỗi riêng: `ADMIN_POST_NOT_FOUND`, `ADMIN_POST_KEYWORD_TOO_LONG`.
+
+### PATCH `/api/v1/admin/posts/{postId}/hide`
+
+Request chỉ gồm mã lý do cố định:
 
 ```json
 {
-  "status": "HIDDEN"
+  "reasonCode": "SPAM"
 }
 ```
+
+`reasonCode` nhận một trong: `SPAM`, `HARASSMENT`, `HARMFUL_CONTENT`, `VIOLENCE`,
+`MISINFORMATION`, `SCHOOL_POLICY_VIOLATION`, `INAPPROPRIATE_CONTENT`, `OTHER`.
+Không nhận `note`, reason tự do hoặc `adminId`.
+
+Chỉ chuyển `PUBLISHED → HIDDEN`. Backend lưu `hiddenBy`, `hiddenAt`, `hiddenReason` và action
+`HIDE_POST` trong cùng transaction.
+
+### PATCH `/api/v1/admin/posts/{postId}/restore`
+
+- Không có request body.
+- Chỉ chuyển `HIDDEN → PUBLISHED`.
+- Xóa `hiddenBy`, `hiddenAt`, `hiddenReason` hiện tại nhưng không sửa action `HIDE_POST` cũ.
+- Ghi action `RESTORE_POST` với note `ADMIN_RESTORE` trong cùng transaction.
+
+Response hai API gồm `postId`, `status`, `hiddenAt`, `hiddenReason`, `hiddenBy`, `updatedAt`.
+
+Mã lỗi mutation: `ADMIN_POST_ALREADY_HIDDEN`, `ADMIN_POST_ALREADY_PUBLISHED`,
+`ADMIN_POST_DELETED_ACTION_FORBIDDEN`, `ADMIN_POST_HIDE_REASON_REQUIRED`.
+
+Giai đoạn này chưa xử lý hoặc tự động thay đổi trạng thái Report.
 
 ### GET `/api/v1/admin/reports?status=PENDING&page=0&size=20`
 
