@@ -20,7 +20,8 @@ Register Form
 ```text
 Onboarding Page
 → GET /api/v1/users/me/onboarding
-→ Nhập tên hiển thị bắt buộc, avatar/ngày sinh/bio tùy chọn
+→ Nhập tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
+→ Backend kiểm tra ngày sinh hợp lệ và người dùng đủ 18 tuổi
 → PUT /api/v1/users/me/onboarding/profile
 → POST /api/v1/users/me/onboarding/complete
 → Backend cập nhật user_profiles.profile_completed_at

@@ -146,9 +146,10 @@ Quy tắc đăng ký:
 Quy trình hoàn tất hồ sơ:
 
 * Sau đăng ký, Frontend điều hướng đến màn hình onboarding hồ sơ.
-* Tên hiển thị là thông tin bắt buộc.
-* Ảnh đại diện, ngày sinh và giới thiệu cá nhân là thông tin tùy chọn, có thể bỏ qua.
-* Hồ sơ chỉ được đánh dấu hoàn tất khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận hoàn tất.
+* Tên hiển thị và ngày sinh là thông tin bắt buộc.
+* Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
+* Ảnh đại diện và giới thiệu cá nhân là thông tin tùy chọn, có thể bỏ qua.
+* Hồ sơ chỉ được đánh dấu hoàn tất khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, sau đó người dùng xác nhận hoàn tất.
 * Trạng thái hoàn tất được lưu tại `user_profiles.profile_completed_at`.
 * `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 * Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép các API xác thực, làm mới token, đăng xuất và onboarding.
@@ -168,7 +169,7 @@ Quy trình hoàn tất hồ sơ:
 * Xem số lượng người đang theo dõi.
 * Xem danh sách bài viết đã đăng.
 
-Trong phiên bản MVP, tất cả hồ sơ người dùng đều được đặt ở chế độ công khai. Tên hiển thị là thông tin bắt buộc để hoàn tất hồ sơ; ảnh đại diện, ngày sinh và giới thiệu cá nhân là tùy chọn.
+Trong phiên bản MVP, tất cả hồ sơ người dùng đều được đặt ở chế độ công khai. Tên hiển thị và ngày sinh hợp lệ của người dùng đủ 18 tuổi là thông tin bắt buộc để hoàn tất hồ sơ; ảnh đại diện và giới thiệu cá nhân là tùy chọn.
 
 ### 👥 3. Theo dõi người dùng
 
@@ -672,7 +673,7 @@ Các bảng dữ liệu dự kiến trong phạm vi MVP gồm:
 
 * `users`: lưu email hoặc số điện thoại, mật khẩu băm, trạng thái xác minh, vai trò và trạng thái tài khoản.
 * `user_profiles`: lưu tên hiển thị, ảnh đại diện, giới thiệu, ngày sinh và `profile_completed_at`.
-  Bản ghi được tạo rỗng ngay sau đăng ký; `display_name` được phép `NULL` cho đến khi hoàn tất onboarding.
+  Bản ghi được tạo rỗng ngay sau đăng ký; `display_name` và `date_of_birth` được phép `NULL` trong hồ sơ rỗng nhưng phải có giá trị hợp lệ trước khi hoàn tất onboarding.
 * `refresh_tokens`
 * `password_reset_tokens`
 
@@ -826,12 +827,12 @@ Ví dụ cập nhật hồ sơ ban đầu:
 {
   "displayName": "Nguyễn Văn A",
   "avatarUrl": null,
-  "dateOfBirth": null,
+  "dateOfBirth": "2000-01-01",
   "bio": null
 }
 ```
 
-Ảnh đại diện, ngày sinh và giới thiệu có thể bỏ qua. Sau khi tên hiển thị hợp lệ, Frontend gọi API hoàn tất onboarding để Backend cập nhật `profile_completed_at`.
+Ảnh đại diện và giới thiệu có thể bỏ qua. Ngày sinh bắt buộc, không được nằm trong tương lai và người dùng phải đủ 18 tuổi tại ngày xử lý. Sau khi tên hiển thị và ngày sinh hợp lệ, Frontend gọi API hoàn tất onboarding để Backend cập nhật `profile_completed_at`.
 
 Cấu trúc phản hồi API tham khảo:
 
@@ -1083,10 +1084,10 @@ Phiên bản MVP được xem là hoàn thành khi đáp ứng các tiêu chí s
 2. Hệ thống từ chối khi thiếu cả hai phương thức, gửi đồng thời cả hai hoặc phương thức đã tồn tại.
 3. Hệ thống tạo `users` và `user_profiles` trong cùng một transaction.
 4. Nếu tạo hồ sơ thất bại, tài khoản vừa tạo phải được rollback.
-5. Sau đăng ký, `display_name` và `profile_completed_at` của hồ sơ bằng `NULL`.
+5. Sau đăng ký, `display_name`, `date_of_birth` và `profile_completed_at` của hồ sơ bằng `NULL`.
 6. Hệ thống điều hướng người dùng đến quy trình hoàn tất hồ sơ.
-7. Người dùng bắt buộc nhập tên hiển thị hợp lệ trước khi hoàn tất hồ sơ.
-8. Người dùng có thể bỏ qua ảnh đại diện, ngày sinh và giới thiệu cá nhân.
+7. Người dùng bắt buộc nhập tên hiển thị và ngày sinh hợp lệ trước khi hoàn tất hồ sơ.
+8. Người dùng phải đủ 18 tuổi; chỉ ảnh đại diện và giới thiệu cá nhân có thể bỏ qua.
 9. Khi hoàn tất hồ sơ, `profile_completed_at` được cập nhật.
 10. Tài khoản chưa hoàn tất hồ sơ không thể truy cập Feed hoặc các API mạng xã hội chính.
 11. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.

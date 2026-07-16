@@ -59,6 +59,12 @@ Body:
 }
 ```
 
+Quy tắc ngày sinh:
+
+- `dateOfBirth` là bắt buộc.
+- Người dùng phải đủ 18 tuổi tại ngày gửi request.
+- Ngày sinh trong tương lai hoặc người dùng chưa đủ 18 tuổi phải nhận lỗi nghiệp vụ tương ứng.
+
 Kỳ vọng:
 
 - `profileCompleted: true`

@@ -8,7 +8,7 @@
 -- 3. Hệ thống không sử dụng username hoặc tên định danh đăng nhập riêng trong phạm vi MVP.
 -- 4. Người dùng đăng nhập bằng email hoặc số điện thoại.
 -- 5. Sau đăng ký, hệ thống tạo user_profiles rỗng và bắt buộc người dùng hoàn tất hồ sơ.
--- 6. Tên hiển thị là bắt buộc để hoàn tất; ảnh đại diện, ngày sinh và bio có thể bỏ qua.
+-- 6. Tên hiển thị và ngày sinh là bắt buộc để hoàn tất; ảnh đại diện và bio có thể bỏ qua.
 -- 7. profile_completed_at phân biệt hồ sơ đã hoàn tất với tài khoản ACTIVE.
 -- 8. Ngày sinh được lưu trong bảng user_profiles.
 -- 9. Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
@@ -154,7 +154,7 @@ CREATE TABLE user_profiles (
     user_id BIGINT UNSIGNED NOT NULL,
 
     -- Tên hiển thị được phép NULL trong thời gian người dùng chưa hoàn tất onboarding.
-    -- Đây là trường bắt buộc duy nhất để xác nhận hoàn tất hồ sơ trong MVP.
+    -- Đây là một trong hai trường bắt buộc để xác nhận hoàn tất hồ sơ trong MVP.
     display_name VARCHAR(100) NULL,
 
     -- Đường dẫn ảnh đại diện lưu trên dịch vụ lưu trữ tệp.
@@ -167,12 +167,12 @@ CREATE TABLE user_profiles (
     -- Nội dung giới thiệu cá nhân; người dùng được phép bỏ qua.
     bio VARCHAR(500) NULL,
 
-    -- Ngày tháng năm sinh; người dùng được phép bỏ qua.
-    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai khi có dữ liệu.
+    -- Ngày tháng năm sinh; NULL trong hồ sơ rỗng ngay sau đăng ký nhưng bắt buộc trước khi hoàn tất onboarding.
+    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai và người dùng đủ 18 tuổi tại ngày xử lý.
     date_of_birth DATE NULL,
 
     -- NULL nghĩa là hồ sơ chưa hoàn tất.
-    -- Có giá trị sau khi tên hiển thị hợp lệ và người dùng xác nhận hoàn tất onboarding.
+    -- Có giá trị sau khi tên hiển thị, ngày sinh hợp lệ, điều kiện đủ 18 tuổi và thao tác xác nhận hoàn tất onboarding.
     profile_completed_at DATETIME(6) NULL,
 
     -- Thời điểm tạo hồ sơ.
@@ -196,9 +196,11 @@ CREATE TABLE user_profiles (
         display_name IS NULL OR CHAR_LENGTH(TRIM(display_name)) > 0
     ),
 
-    -- Không được đánh dấu hoàn tất nếu chưa có tên hiển thị hợp lệ.
+    -- Không được đánh dấu hoàn tất nếu chưa có tên hiển thị và ngày sinh hợp lệ.
+    -- Điều kiện đủ 18 tuổi do Backend kiểm tra vì phụ thuộc ngày xử lý hiện tại.
     CONSTRAINT chk_user_profiles_completion_consistency CHECK (
-        profile_completed_at IS NULL OR display_name IS NOT NULL
+        profile_completed_at IS NULL
+        OR (display_name IS NOT NULL AND date_of_birth IS NOT NULL)
     )
 ) ENGINE=InnoDB;
 
@@ -295,7 +297,7 @@ CREATE INDEX idx_password_reset_tokens_user_state
 -- 6. Khi đăng nhập, Backend xác định dữ liệu nhập là email hay số điện thoại.
 -- 7. MVP chưa xác minh email/SMS OTP; email_verified_at và phone_verified_at để NULL cho đến khi triển khai.
 -- 8. Việc tạo users và user_profiles phải nằm trong cùng một transaction.
--- 9. Ngày sinh được cập nhật trong hồ sơ và phải được kiểm tra không nằm trong tương lai.
+-- 9. Ngày sinh bắt buộc khi hoàn tất/cập nhật hồ sơ; Backend kiểm tra không nằm trong tương lai và người dùng đủ 18 tuổi.
 
 -- =============================================================================
 -- 2. NHÓM QUAN HỆ THEO DÕI
@@ -1030,4 +1032,3 @@ WHERE p.status = 'PUBLISHED'
 --
 -- 6. Chỉ tạo thêm index khi có truy vấn thật sự cần đến.
 --    Quá nhiều index sẽ làm chậm INSERT, UPDATE và tăng dung lượng lưu trữ.
-

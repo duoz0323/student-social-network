@@ -52,14 +52,15 @@ Không đặt enum của một module vào package chung. Chỉ dùng `common/en
 - Tên hiển thị là dữ liệu hồ sơ, không nhận trong request đăng ký và chỉ lưu vào `user_profiles` khi onboarding/cập nhật hồ sơ.
 - Đăng ký thành công phải tạo `users` và `user_profiles` rỗng trong cùng transaction.
 - Nếu tạo `user_profiles` thất bại thì transaction phải rollback `users`.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
-- Hoàn tất hồ sơ yêu cầu tên hiển thị hợp lệ và thao tác xác nhận hoàn tất từ người dùng.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- Hoàn tất hồ sơ yêu cầu tên hiển thị hợp lệ, ngày sinh hợp lệ của người dùng đủ 18 tuổi và thao tác xác nhận hoàn tất từ người dùng.
 - Khi hoàn tất, Backend cập nhật `user_profiles.profile_completed_at`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không thay thế kiểm tra `profile_completed_at`.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - Các API Feed, đăng bài, Follow, Like, bình luận, lưu bài, tìm kiếm, báo cáo và chức năng mạng xã hội chính phải trả `PROFILE_NOT_COMPLETED`.
 - MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
-- Ngày sinh chỉ xử lý trong cập nhật hồ sơ, là thông tin tùy chọn và không được nằm trong tương lai.
+- Ngày sinh không nằm trong request đăng ký nhưng bắt buộc trong onboarding và cập nhật hồ sơ.
+- Backend phải từ chối ngày sinh `NULL`, ngày sinh trong tương lai và người dùng chưa đủ 18 tuổi tại ngày xử lý.
 
 ## 4. Controller
 

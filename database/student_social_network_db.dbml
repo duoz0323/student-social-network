@@ -9,7 +9,8 @@
 // - MVP chưa xác minh email/SMS OTP; các cột thời điểm xác minh được chuẩn bị cho hướng phát triển.
 // - Không sử dụng username.
 // - Sau đăng ký, hệ thống tạo user_profiles rỗng trong cùng transaction với users.
-// - Tên hiển thị bắt buộc để hoàn tất hồ sơ; avatar, ngày sinh và bio có thể bỏ qua.
+// - Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ; avatar và bio có thể bỏ qua.
+// - Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
 // - profile_completed_at xác định người dùng đã hoàn tất onboarding.
 // - Ngày sinh được lưu trong user_profiles.date_of_birth.
 // - Trigger, CHECK phức tạp, VIEW và FULLTEXT INDEX được mô tả bằng Note vì DBML
@@ -119,12 +120,12 @@ Table user_profiles {
   avatar_url varchar(1000) [note: "Tùy chọn; NULL khi người dùng bỏ qua ảnh đại diện."]
   avatar_public_id varchar(255)
   bio varchar(500) [note: "Tùy chọn; người dùng được phép bỏ qua."]
-  date_of_birth date [note: "Tùy chọn; Backend từ chối ngày nằm trong tương lai nếu có dữ liệu."]
-  profile_completed_at datetime(6) [note: "NULL khi chưa hoàn tất; được cập nhật sau khi display_name hợp lệ và người dùng xác nhận hoàn tất."]
+  date_of_birth date [note: "NULL trong hồ sơ rỗng; bắt buộc trước khi hoàn tất onboarding. Backend từ chối ngày tương lai và người dùng chưa đủ 18 tuổi."]
+  profile_completed_at datetime(6) [note: "NULL khi chưa hoàn tất; được cập nhật sau khi display_name, date_of_birth hợp lệ, người dùng đủ 18 tuổi và xác nhận hoàn tất."]
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "MySQL tự cập nhật bằng ON UPDATE CURRENT_TIMESTAMP(6)."]
 
-  Note: "Một hồ sơ rỗng được tạo cùng transaction với users. CHECK trong file SQL: display_name nếu có không được rỗng; profile_completed_at chỉ có giá trị khi display_name khác NULL. Có FULLTEXT INDEX trên display_name."
+  Note: "Một hồ sơ rỗng được tạo cùng transaction với users. CHECK trong file SQL: display_name nếu có không được rỗng; profile_completed_at chỉ có giá trị khi display_name và date_of_birth khác NULL. Điều kiện đủ 18 tuổi do Backend kiểm tra. Có FULLTEXT INDEX trên display_name."
 }
 
 Table refresh_tokens {

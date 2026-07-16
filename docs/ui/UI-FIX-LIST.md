@@ -249,7 +249,7 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 ### Ghi chú onboarding
 
 - Sau đăng ký phải chuyển người dùng đến onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Onboarding yêu cầu tên hiển thị và ngày sinh; người dùng phải đủ 18 tuổi; avatar và bio có thể bỏ qua.
 - Người chưa hoàn tất hồ sơ không được vào Feed hoặc các chức năng mạng xã hội chính.
 
 ### Trạng thái
@@ -320,7 +320,7 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 - Đăng ký chỉ dùng một trường `identifier`, `password` và `confirmPassword`.
 - Sau đăng ký tạo mock user, mock profile rỗng và session React hợp lệ.
 - User chưa có `profileCompletedAt` phải vào `/onboarding/profile`.
-- Onboarding dùng ba bước nội bộ: tên hiển thị, avatar, ngày sinh/bio.
+- Onboarding dùng ba bước nội bộ: tên hiển thị bắt buộc, avatar tùy chọn, ngày sinh bắt buộc/bio tùy chọn.
 - `/onboarding/success` dùng ảnh `docs/ui/screens/auth/update-profile-success.jpg`.
 - Route `/register/success` không còn là luồng chính.
 - Google/Facebook chỉ hiển thị trên UI, bấm chỉ báo “Tính năng đang được phát triển.”.

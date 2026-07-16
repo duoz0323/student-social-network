@@ -80,7 +80,7 @@ Quy tắc:
 - Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Tài khoản mới có trạng thái `ACTIVE` và role mặc định `USER`.
 - Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
 - Sau đăng ký, người dùng tiếp tục onboarding hồ sơ.
 - MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
 - Response không trả password hash, refresh token, email hoặc số điện thoại nếu response được dùng cho hồ sơ công khai.
@@ -102,8 +102,8 @@ Backend tự xác định `identifier` là email hay số điện thoại để 
 - `GET /api/v1/users/me/onboarding` trả trạng thái hoàn tất hồ sơ.
 - `PUT /api/v1/users/me/onboarding/profile` cập nhật tên hiển thị, avatar, ngày sinh và bio.
 - `POST /api/v1/users/me/onboarding/complete` xác nhận hoàn tất và cập nhật `profile_completed_at`.
-- Tên hiển thị là bắt buộc để hoàn tất; avatar, ngày sinh và bio là tùy chọn.
-- Ngày sinh nếu có không được nằm trong tương lai.
+- Tên hiển thị và ngày sinh là bắt buộc để hoàn tất; avatar và bio là tùy chọn.
+- Ngày sinh không được nằm trong tương lai và phải thể hiện người dùng đủ 18 tuổi tại ngày Backend xử lý.
 - API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` khi `profile_completed_at` còn `NULL`.
 
 ### Hồ sơ và tìm kiếm

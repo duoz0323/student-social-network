@@ -119,12 +119,12 @@ Quy trình hoàn tất hồ sơ ban đầu:
 
 - Người dùng bắt buộc phải hoàn tất quy trình hồ sơ trước khi sử dụng Feed, đăng bài,
   Follow, Like, bình luận, lưu bài, tìm kiếm hoặc báo cáo.
-- Tên hiển thị là thông tin bắt buộc.
+- Tên hiển thị và ngày sinh là thông tin bắt buộc.
 - Ảnh đại diện là thông tin tùy chọn và người dùng được phép bỏ qua.
-- Ngày sinh là thông tin tùy chọn và người dùng được phép bỏ qua.
 - Giới thiệu cá nhân là thông tin tùy chọn và người dùng được phép bỏ qua.
-- Hồ sơ được xem là hoàn tất khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận
-  hoàn tất quy trình.
+- Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
+- Hồ sơ được xem là hoàn tất khi tên hiển thị và ngày sinh hợp lệ đã được lưu, người dùng
+  đủ 18 tuổi và xác nhận hoàn tất quy trình.
 - Khi hoàn tất, hệ thống cập nhật user_profiles.profile_completed_at.
 - users.status = ACTIVE chỉ thể hiện tài khoản không bị khóa; không đồng nghĩa hồ sơ đã
   hoàn tất.
@@ -183,13 +183,13 @@ Quy tắc:
 
 - Tất cả hồ sơ trong phiên bản MVP đều ở chế độ công khai.
 - Email, số điện thoại và các dữ liệu xác thực không được hiển thị công khai.
-- Tên hiển thị là trường bắt buộc để hoàn tất hồ sơ ban đầu.
-- Ảnh đại diện, ngày sinh và giới thiệu cá nhân là các trường tùy chọn, có thể bỏ qua.
-- Ngày sinh không được lớn hơn ngày hiện tại nếu người dùng cung cấp.
-- Ngay sau khi đăng ký, user_profiles được tạo với display_name và
+- Tên hiển thị và ngày sinh là các trường bắt buộc để hoàn tất hồ sơ ban đầu.
+- Ảnh đại diện và giới thiệu cá nhân là các trường tùy chọn, có thể bỏ qua.
+- Ngày sinh không được lớn hơn ngày hiện tại và phải thể hiện người dùng đủ 18 tuổi tại ngày Backend xử lý.
+- Ngay sau khi đăng ký, user_profiles được tạo với display_name, date_of_birth và
   profile_completed_at bằng NULL.
-- Chỉ khi display_name hợp lệ và người dùng xác nhận hoàn tất, hệ thống mới cập nhật
-  profile_completed_at.
+- Chỉ khi display_name và date_of_birth hợp lệ, người dùng đủ 18 tuổi và xác nhận hoàn tất,
+  hệ thống mới cập nhật profile_completed_at.
 - Chỉ chủ tài khoản được chỉnh sửa hồ sơ của mình.
 
 3. Theo dõi người dùng
@@ -555,7 +555,8 @@ IV. YÊU CẦU PHI CHỨC NĂNG
 - Các bảng dữ liệu chính phải có created_at và updated_at.
 - Mỗi users phải có đúng một user_profiles.
 - user_profiles.display_name được phép NULL trong thời gian onboarding.
-- user_profiles.profile_completed_at chỉ có giá trị khi display_name đã hợp lệ.
+- user_profiles.profile_completed_at chỉ có giá trị khi display_name và date_of_birth đã hợp lệ,
+  đồng thời người dùng đủ 18 tuổi tại ngày Backend xử lý.
 
 4. Khả năng sử dụng
 
@@ -634,17 +635,17 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
    email được lưu NULL.
 7. Hệ thống tạo users và user_profiles trong cùng một transaction.
 8. Nếu tạo user_profiles thất bại thì bản ghi users phải được rollback.
-9. Sau đăng ký, user_profiles có display_name và profile_completed_at bằng NULL.
+9. Sau đăng ký, user_profiles có display_name, date_of_birth và profile_completed_at bằng NULL.
 10. Hệ thống điều hướng người dùng đến quy trình hoàn tất hồ sơ ban đầu.
-11. Người dùng không thể hoàn tất hồ sơ nếu chưa nhập tên hiển thị hợp lệ.
-12. Người dùng được phép bỏ qua ảnh đại diện, ngày sinh và giới thiệu cá nhân.
+11. Người dùng không thể hoàn tất hồ sơ nếu chưa nhập tên hiển thị và ngày sinh hợp lệ.
+12. Người dùng phải đủ 18 tuổi; chỉ ảnh đại diện và giới thiệu cá nhân được phép bỏ qua.
 13. Khi hoàn tất hồ sơ, profile_completed_at được cập nhật.
 14. Người dùng chưa hoàn tất hồ sơ không được sử dụng Feed và các chức năng mạng xã hội chính.
 15. Người dùng đăng nhập thành công bằng email hoặc số điện thoại.
 16. Access Token và Refresh Token hoạt động đúng.
 17. Tài khoản bị khóa không đăng nhập được.
 18. Người dùng cập nhật và xem hồ sơ thành công.
-19. Nếu người dùng cung cấp ngày sinh, hệ thống từ chối ngày sinh nằm trong tương lai.
+19. Hệ thống từ chối ngày sinh thiếu, nằm trong tương lai hoặc khiến người dùng chưa đủ 18 tuổi.
 20. Người dùng Follow và Unfollow thành công.
 21. Không tồn tại hai quan hệ Follow trùng nhau.
 22. Người dùng tạo bài có văn bản hoặc hình ảnh.

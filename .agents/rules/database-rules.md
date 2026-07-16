@@ -42,10 +42,11 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 - Không dùng `username` làm định danh công khai trong MVP.
 - `display_name` thuộc `user_profiles`, không thuộc `users`.
 - Sau đăng ký phải có một bản ghi `user_profiles` tương ứng với `users`.
-- `user_profiles.display_name` ban đầu được phép `NULL`.
-- `user_profiles.profile_completed_at` ban đầu phải `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
 - `profile_completed_at` là dữ liệu xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
-- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
+- Ngày sinh thuộc hồ sơ người dùng và được phép `NULL` trong hồ sơ rỗng ngay sau đăng ký.
+- Khi `profile_completed_at` khác `NULL`, `display_name` và `date_of_birth` đều phải khác `NULL`.
+- Backend phải bảo đảm ngày sinh không nằm trong tương lai và người dùng đủ 18 tuổi tại ngày xử lý.
 - Người dùng không được Follow chính mình.
 - Bài viết phải có nội dung hoặc hình ảnh.
 - Bài viết tối đa 500 ký tự.

@@ -40,16 +40,17 @@ Mục tiêu của MVP là hoàn thiện luồng mạng xã hội cốt lõi, ổ
 - Tên hiển thị là dữ liệu hồ sơ, không nhập trong form đăng ký và được lưu trong `user_profiles` ở bước onboarding.
 - Sau đăng ký, Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
 - Nếu tạo `user_profiles` thất bại thì phải rollback `users`.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
 - Sau đăng ký, Frontend điều hướng người dùng đến onboarding hồ sơ.
-- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận hoàn tất.
-- Avatar, ngày sinh và bio là tùy chọn trong onboarding.
+- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, sau đó người dùng xác nhận hoàn tất.
+- Avatar và bio là tùy chọn trong onboarding; ngày sinh là bắt buộc.
 - `users.status = ACTIVE` không đồng nghĩa hồ sơ đã hoàn tất.
 - Khi `profile_completed_at` còn `NULL`, người dùng chỉ được dùng API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.
 - MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
 - Không tạo trường hoặc thuật ngữ `gmail`; Gmail chỉ là một nhà cung cấp email.
-- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn khi cập nhật hồ sơ và không bắt buộc trong form đăng ký.
+- Ngày sinh thuộc hồ sơ người dùng, không nằm trong form đăng ký nhưng bắt buộc khi hoàn tất onboarding và khi cập nhật hồ sơ.
+- Backend phải từ chối ngày sinh `NULL`, ngày sinh trong tương lai hoặc ngày sinh khiến người dùng chưa đủ 18 tuổi tại ngày xử lý.
 
 ## 4. Nguyên tắc làm việc
 

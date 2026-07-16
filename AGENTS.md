@@ -106,9 +106,10 @@ Không được:
 - Đăng nhập dùng email hoặc số điện thoại kèm mật khẩu.
 - Sau đăng ký, Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
 - Nếu tạo `user_profiles` thất bại thì rollback `users`.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
 - Sau đăng ký, Frontend điều hướng người dùng đến onboarding hồ sơ.
-- Tên hiển thị bắt buộc để hoàn tất hồ sơ; avatar, ngày sinh và bio là tùy chọn.
+- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ; avatar và bio là tùy chọn.
+- Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.

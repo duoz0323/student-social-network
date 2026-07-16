@@ -31,10 +31,11 @@ Với màn hình Auth MVP:
 - Đăng nhập hiển thị một ô email hoặc số điện thoại và một ô mật khẩu.
 - Không dùng nhãn Gmail, Google/Facebook login hoặc xác thực email trong MVP.
 - Sau đăng ký chuyển sang onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Onboarding yêu cầu tên hiển thị và ngày sinh; avatar và bio có thể bỏ qua.
+- Ngày sinh phải thể hiện người dùng đủ 18 tuổi tại ngày hiện tại.
 - Route Guard tách trạng thái chưa đăng nhập, đã đăng nhập nhưng chưa hoàn tất hồ sơ, và đã đăng nhập hoàn tất hồ sơ.
 - Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
-- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
+- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký và không được phép bỏ trống.
 
 ## Bước 3: Dựng bằng mock data
 

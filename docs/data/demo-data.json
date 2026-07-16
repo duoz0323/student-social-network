@@ -74,7 +74,7 @@
       "profile": {
         "displayName": "Quản trị viên Demo",
         "avatarUrl": "/demo/avatars/admin.jpg",
-        "dateOfBirth": null,
+        "dateOfBirth": "1990-01-01",
         "bio": "Tài khoản quản trị dùng trong môi trường demo.",
         "profileCompletedAt": "2026-06-20T08:00:00+07:00"
       },
@@ -90,7 +90,7 @@
       "profile": {
         "displayName": "Tài khoản bị khóa",
         "avatarUrl": "/demo/avatars/default.jpg",
-        "dateOfBirth": null,
+        "dateOfBirth": "2001-06-15",
         "bio": "",
         "profileCompletedAt": "2026-06-20T08:00:00+07:00"
       },

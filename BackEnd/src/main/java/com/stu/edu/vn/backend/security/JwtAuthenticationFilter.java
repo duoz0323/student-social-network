@@ -23,7 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Filter xác thực Bearer Access Token và đưa người dùng hiện tại vào SecurityContext.
  */
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class    JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 

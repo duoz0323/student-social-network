@@ -23,12 +23,12 @@
 - Email và số điện thoại không hiển thị công khai.
 - Chỉ chủ tài khoản cập nhật hồ sơ.
 - Khi đăng ký hợp lệ, Backend phải tạo ngay `user_profiles` rỗng trong cùng transaction với `users`.
-- `user_profiles.display_name` ban đầu được phép `NULL`.
-- `user_profiles.profile_completed_at` ban đầu phải `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
 - Tên hiển thị thuộc `user_profiles`, không thuộc `users`.
-- Tên hiển thị bắt buộc để hoàn tất hồ sơ ban đầu.
-- Avatar, ngày sinh và bio là tùy chọn và có thể bỏ qua.
-- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
+- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ ban đầu.
+- Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
+- Avatar và bio là tùy chọn và có thể bỏ qua.
+- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - API mạng xã hội chính phải trả lỗi nghiệp vụ `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.

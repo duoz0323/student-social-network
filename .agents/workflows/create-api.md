@@ -38,7 +38,7 @@ Với API Auth MVP:
 - Exception.
 - Entity hoặc migration nếu cần.
 
-Với Auth/Profile, phải đối chiếu database trước khi thiết kế DTO để xác nhận `users.email`, `users.phone_number`, `user_profiles.display_name` và `user_profiles.profile_completed_at`.
+Với Auth/Profile, phải đối chiếu database trước khi thiết kế DTO để xác nhận `users.email`, `users.phone_number`, `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at`.
 
 ## Bước 3: Triển khai
 

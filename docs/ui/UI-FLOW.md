@@ -18,7 +18,7 @@ AUTH-02 Đăng ký
 → /onboarding/profile
 → AUTH-03 Onboarding bước 1: nhập tên hiển thị bắt buộc
 → AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
-→ AUTH-05 Onboarding bước 3: nhập hoặc bỏ qua ngày sinh và bio
+→ AUTH-05 Onboarding bước 3: nhập ngày sinh bắt buộc, kiểm tra đủ 18 tuổi; bio có thể bỏ qua
 → Cập nhật profileCompletedAt
 → AUTH-06 /onboarding/success
 → FEED-01 Feed người dùng

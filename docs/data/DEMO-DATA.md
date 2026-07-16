@@ -69,7 +69,8 @@ Quy tắc hồ sơ:
 - User mới sau đăng ký có `profile.displayName = null`.
 - User mới sau đăng ký có `profile.profileCompletedAt = null`.
 - `profileCompletedAt = null` nghĩa là chưa được vào Feed hoặc chức năng mạng xã hội chính.
-- Tên hiển thị bắt buộc ở onboarding; avatar, ngày sinh và bio là tùy chọn.
+- Tên hiển thị và ngày sinh bắt buộc ở onboarding; avatar và bio là tùy chọn.
+- Mọi user có `profileCompletedAt` khác `null` phải có `dateOfBirth` và đủ 18 tuổi tại thời điểm demo.
 
 Thông tin công khai chỉ dùng displayName, avatarUrl, bio, dateOfBirth nếu cần, followerCount và followingCount.
 

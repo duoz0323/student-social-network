@@ -33,7 +33,7 @@ Quy tắc:
 - Nếu đăng ký bằng số điện thoại thì `email` lưu `NULL`.
 - Backend chuẩn hóa email hoặc số điện thoại trước khi kiểm tra trùng và lưu.
 - Backend tạo `users` và `user_profiles` rỗng trong cùng transaction.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
 - Sau đăng ký, Frontend điều hướng đến onboarding hồ sơ.
 - Contract hiện chưa chốt đăng ký có cấp Access Token/Refresh Token ngay hay dùng phiên đăng ký hợp lệ; cần xác nhận khi triển khai, nhưng luồng vẫn phải đi đến onboarding.
 - MVP chưa triển khai xác minh email hoặc SMS OTP; tài khoản mới có trạng thái `ACTIVE`.
@@ -244,22 +244,22 @@ Request:
 {
   "displayName": "Nguyễn Hoàng Minh",
   "avatarUrl": null,
-  "dateOfBirth": null,
+  "dateOfBirth": "2000-01-01",
   "bio": null
 }
 ```
 
 Quy tắc:
 
-- `displayName` bắt buộc để hoàn tất hồ sơ.
-- `avatarUrl`, `dateOfBirth` và `bio` là tùy chọn.
-- `dateOfBirth` nếu có không được nằm trong tương lai.
+- `displayName` và `dateOfBirth` bắt buộc để hoàn tất hồ sơ.
+- `avatarUrl` và `bio` là tùy chọn.
+- `dateOfBirth` không được nằm trong tương lai và người dùng phải đủ 18 tuổi tại ngày Backend xử lý.
 
 ### POST `/api/v1/users/me/onboarding/complete`
 
 Quy tắc:
 
-- Backend chỉ cập nhật `profile_completed_at` khi tên hiển thị hợp lệ đã được lưu.
+- Backend chỉ cập nhật `profile_completed_at` khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu.
 - `users.status = ACTIVE` không đồng nghĩa hồ sơ đã hoàn tất.
 - API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` khi `profile_completed_at` còn `NULL`.
 

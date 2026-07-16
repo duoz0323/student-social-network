@@ -30,16 +30,17 @@ Lưu:
 - Display name.
 - Avatar URL.
 - Bio.
-- Birth date nếu cần hiển thị/cập nhật hồ sơ.
+- Ngày sinh; được phép `NULL` trong hồ sơ rỗng ngay sau đăng ký nhưng bắt buộc trước khi hoàn tất onboarding.
 - `profile_completed_at`.
 
 Quy tắc:
 
 - Bản ghi `user_profiles` được tạo rỗng cùng transaction với `users` ngay sau đăng ký.
-- `display_name` ban đầu được phép `NULL`.
-- `profile_completed_at` ban đầu phải `NULL`.
-- Tên hiển thị bắt buộc để hoàn tất hồ sơ.
-- Avatar, ngày sinh và bio là tùy chọn.
+- `display_name`, `date_of_birth` và `profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
+- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ.
+- Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
+- Avatar và bio là tùy chọn.
+- Database bảo đảm profile đã hoàn tất phải có `display_name` và `date_of_birth`; điều kiện đủ 18 tuổi do Backend kiểm tra vì phụ thuộc ngày xử lý.
 - `profile_completed_at` xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
 
 ### refresh_tokens

@@ -71,10 +71,11 @@ Không bắt buộc tạo đầy đủ các thư mục trên nếu chưa dùng.
 - Form đăng nhập dùng một ô email hoặc số điện thoại.
 - Không dùng nhãn `Gmail`; luôn dùng `email`.
 - Sau đăng ký điều hướng đến onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
+- Onboarding yêu cầu tên hiển thị và ngày sinh; avatar và bio có thể bỏ qua.
+- Frontend phải validate người dùng đủ 18 tuổi trước khi gửi request hoàn tất/cập nhật hồ sơ.
 - Route guard phải chuyển người đã đăng nhập nhưng chưa hoàn tất hồ sơ về onboarding.
 - Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
-- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
+- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký; đây là trường bắt buộc của hồ sơ hoàn tất.
 
 ## 6. Kiểm tra
 

@@ -77,7 +77,7 @@ export const initialData = {
       profile: {
         displayName: 'Quan tri vien Demo',
         avatarUrl: '/demo/avatars/admin.jpg',
-        dateOfBirth: null,
+        dateOfBirth: '1990-01-01',
         bio: 'Tai khoan quan tri dung trong moi truong demo.',
         profileCompletedAt: completedAt,
       },
@@ -93,7 +93,7 @@ export const initialData = {
       profile: {
         displayName: 'Tai khoan bi khoa',
         avatarUrl: '/demo/avatars/default.jpg',
-        dateOfBirth: null,
+        dateOfBirth: '2001-06-15',
         bio: '',
         profileCompletedAt: completedAt,
       },

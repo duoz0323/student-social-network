@@ -32,6 +32,7 @@
 - Email được chuẩn hóa chữ thường trước khi lưu.
 - Số điện thoại được chuẩn hóa về một định dạng thống nhất trước khi lưu.
 - Không dùng `username` làm định danh công khai trong MVP.
-- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
+- Ngày sinh thuộc hồ sơ người dùng, được phép `NULL` trong hồ sơ rỗng nhưng bắt buộc khi `profile_completed_at` khác `NULL`.
+- Backend kiểm tra ngày sinh không nằm trong tương lai và người dùng đủ 18 tuổi tại ngày xử lý.
 - Quan hệ xóa phù hợp.
 - Index phục vụ truy vấn chính.

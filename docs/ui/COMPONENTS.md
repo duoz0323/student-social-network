@@ -34,7 +34,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `identifier`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
 | `RegisterForm` | Form đăng ký tài khoản MVP bằng một phương thức định danh là email hoặc số điện thoại. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
 | `SocialAuthButtons` | Hiển thị nút Google/Facebook theo ảnh nhưng chỉ báo chức năng đang phát triển. | AUTH-01, AUTH-02. | `actionLabel`, `onUnavailable(providerName)`. Không tạo user, không tạo session, không điều hướng. | Module auth, FUTURE_DEVELOPMENT UI. |
-| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; bước 1 bắt buộc tên hiển thị, bước 2/3 có thể bỏ qua. | Module auth/profile. |
+| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; tên hiển thị và ngày sinh bắt buộc, ngày sinh phải cho thấy người dùng đủ 18 tuổi; avatar và bio có thể bỏ qua. | Module auth/profile. |
 | `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
 | `OnboardingSuccessPage` | Màn hình hồ sơ đã sẵn sàng sau khi `profileCompletedAt` được cập nhật. | AUTH-06. | Nút chính điều hướng `/feed/for-you`. | Module auth/profile. |
 | `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, FUTURE_DEVELOPMENT. |
@@ -64,7 +64,7 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Faceb
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `ProfileHeader` | Hiển thị thông tin hồ sơ, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `userId` hoặc `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`. | Module profile. |
-| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh nếu UI cần. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username. | Module profile. |
+| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh bắt buộc. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username; không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi. | Module profile. |
 | `ProfileTabs` | Chuyển nhóm nội dung trong hồ sơ. | PROFILE-01, PROFILE-02. | `activeTab`, `tabs`, `onChange`. | Module profile. |
 | `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`, `onOpenProfile(userId)`. | Module follow/profile. |
 | `FollowButton` | Theo dõi hoặc bỏ theo dõi. | PROFILE-02, PROFILE-04, SEARCH-01. | `isFollowing`, `loading`, `onClick`. | Dùng chung profile/search. |

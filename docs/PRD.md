@@ -84,7 +84,7 @@ Ngoài quyền người dùng, Admin được phép:
 - Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Tài khoản mới ở trạng thái ACTIVE.
 - Khi đăng ký hợp lệ, Backend tạo `users` và một `user_profiles` rỗng trong cùng transaction; nếu tạo hồ sơ thất bại thì rollback tài khoản.
-- `user_profiles.display_name` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
+- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
 - Sau đăng ký, người dùng được điều hướng đến onboarding hồ sơ.
 - Cơ chế phiên ngay sau đăng ký cần chốt theo API triển khai: có thể cấp Access Token/Refresh Token ngay hoặc duy trì phiên đăng ký hợp lệ, nhưng không được bỏ qua bước onboarding.
 - Đăng nhập bằng email hoặc số điện thoại.
@@ -114,9 +114,10 @@ Tất cả hồ sơ công khai trong MVP.
 
 Hoàn tất hồ sơ ban đầu:
 
-- Tên hiển thị là bắt buộc.
-- Avatar, ngày sinh và bio là tùy chọn.
-- Hồ sơ chỉ hoàn tất sau khi tên hiển thị hợp lệ đã được lưu và người dùng xác nhận hoàn tất.
+- Tên hiển thị và ngày sinh là bắt buộc.
+- Người dùng phải đủ 18 tuổi tại ngày hoàn tất hoặc cập nhật hồ sơ.
+- Avatar và bio là tùy chọn.
+- Hồ sơ chỉ hoàn tất sau khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, sau đó người dùng xác nhận hoàn tất.
 - Backend cập nhật `user_profiles.profile_completed_at` khi hoàn tất.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 
@@ -315,8 +316,8 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 - Đăng ký và đăng nhập thành công.
 - Sau đăng ký tạo đồng thời `users` và `user_profiles` trong cùng transaction.
-- Hồ sơ ban đầu có `display_name` và `profile_completed_at` là `NULL`.
-- Người dùng phải hoàn tất hồ sơ bằng tên hiển thị hợp lệ trước khi dùng Feed và các chức năng mạng xã hội.
+- Hồ sơ ban đầu có `display_name`, `date_of_birth` và `profile_completed_at` là `NULL`.
+- Người dùng phải hoàn tất hồ sơ bằng tên hiển thị và ngày sinh hợp lệ, đồng thời đủ 18 tuổi, trước khi dùng Feed và các chức năng mạng xã hội.
 - Backend trả `PROFILE_NOT_COMPLETED` khi tài khoản chưa hoàn tất hồ sơ gọi API mạng xã hội chính.
 - Token hoạt động đúng.
 - Tài khoản BLOCKED không đăng nhập được.

@@ -55,7 +55,7 @@ Thư mục `enums/` chỉ tạo khi module có enum nghiệp vụ. Các trạng 
 - Service phải trả `PROFILE_NOT_COMPLETED` khi người chưa hoàn tất hồ sơ gọi API Feed, đăng bài, Follow, Like, bình luận, lưu bài, tìm kiếm hoặc báo cáo.
 - Đăng nhập dùng một định danh email hoặc số điện thoại kèm mật khẩu.
 - MVP chưa triển khai xác minh email hoặc SMS OTP; tài khoản mới được tạo `ACTIVE`.
-- Ngày sinh chỉ xử lý ở hồ sơ, không bắt buộc khi đăng ký.
+- Ngày sinh không nhận ở đăng ký nhưng bắt buộc khi onboarding/cập nhật hồ sơ; Backend từ chối `NULL`, ngày tương lai và người dùng chưa đủ 18 tuổi.
 
 ## 5. Kiểm tra
 

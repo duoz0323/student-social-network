@@ -32,12 +32,12 @@ Nếu chức năng thuộc Auth hoặc hồ sơ, phải xác định rõ:
 - Không dùng `username` trong MVP.
 - Không nhận tên hiển thị trong form/request đăng ký.
 - Tạo `users` và `user_profiles` trong cùng transaction.
-- Tên hiển thị bắt buộc ở onboarding; avatar, ngày sinh và bio tùy chọn.
+- Tên hiển thị và ngày sinh bắt buộc ở onboarding; avatar và bio tùy chọn.
 - `profile_completed_at` là điều kiện để dùng chức năng mạng xã hội chính.
 - Backend trả `PROFILE_NOT_COMPLETED` khi hồ sơ chưa hoàn tất.
 - Email/số điện thoại không hiển thị công khai.
 - Tài khoản mới được tạo `ACTIVE`; MVP chưa triển khai xác minh email hoặc SMS OTP.
-- Ngày sinh chỉ thuộc cập nhật hồ sơ và là tùy chọn.
+- Ngày sinh không thuộc đăng ký nhưng bắt buộc ở onboarding/cập nhật hồ sơ; người dùng phải đủ 18 tuổi.
 
 ## Bước 3: Lập kế hoạch
 
@@ -83,11 +83,10 @@ Test tối thiểu cho Auth/Profile MVP:
 - Mật khẩu không đạt yêu cầu.
 - Confirm password không khớp.
 - Rollback khi tạo `user_profiles` thất bại.
-- `display_name` ban đầu `NULL`.
-- `profile_completed_at` ban đầu `NULL`.
-- Không hoàn tất khi thiếu tên hiển thị.
-- Cho phép bỏ qua avatar, ngày sinh và bio.
-- Từ chối ngày sinh trong tương lai.
+- `display_name`, `date_of_birth` và `profile_completed_at` ban đầu `NULL`.
+- Không hoàn tất khi thiếu tên hiển thị hoặc ngày sinh.
+- Cho phép bỏ qua avatar và bio.
+- Từ chối ngày sinh trong tương lai hoặc người dùng chưa đủ 18 tuổi.
 - Chặn Feed khi `profile_completed_at` là `NULL`.
 - Trả `PROFILE_NOT_COMPLETED`.
 - Cho phép API onboarding khi chưa hoàn tất hồ sơ.
