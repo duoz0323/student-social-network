@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.admin.mapper.AdminPostMapper;
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
 import com.stu.edu.vn.backend.admin.repository.AdminPostRepository;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostDetailProjection;
+import com.stu.edu.vn.backend.admin.repository.projection.AdminPostHashtagProjection;
 import com.stu.edu.vn.backend.admin.service.AdminPostService;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
@@ -26,6 +27,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +84,7 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_POST_NOT_FOUND));
         // Hai query con có số lượng cố định và chỉ chọn trường an toàn, không phụ thuộc số phần tử.
         return adminPostMapper.toDetail(detail, adminPostRepository.findAdminPostMedia(postId),
-                adminPostRepository.findAdminPostHashtags(postId));
+                readSingleHashtag(postId));
     }
 
     @Override
@@ -184,5 +186,14 @@ public class AdminPostServiceImpl implements AdminPostService {
         if (authorId != null && authorId <= 0) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
+    }
+
+    private String readSingleHashtag(Long postId) {
+        List<AdminPostHashtagProjection> hashtags = adminPostRepository.findAdminPostHashtags(postId);
+        if (hashtags.size() > 1) {
+            // Dữ liệu vi phạm invariant phải được phát hiện rõ thay vì âm thầm chọn một hashtag.
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+        return hashtags.isEmpty() ? null : hashtags.get(0).getName();
     }
 }

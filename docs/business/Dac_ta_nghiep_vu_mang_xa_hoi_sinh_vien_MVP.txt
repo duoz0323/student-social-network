@@ -216,7 +216,7 @@ Người dùng có thể tạo bài viết gồm:
 
 - Nội dung văn bản tối đa 500 ký tự.
 - Tối đa 4 hình ảnh.
-- Nhiều hashtag.
+- 1 hashtag.
 
 Bài viết phải có ít nhất nội dung văn bản hoặc một hình ảnh.
 
@@ -249,10 +249,7 @@ hoặc hồ sơ công khai.
 
 Chỉ tác giả được chỉnh sửa bài viết.
 
-Tác giả được phép chỉnh sửa:
-
-- Nội dung văn bản.
-- Hashtag.
+Tác giả được phép chỉnh sửa trong 15 phút sau khi đăng bài :
 
 Sau khi chỉnh sửa, bài viết phải lưu thời gian cập nhật và hiển thị trạng thái
 “Đã chỉnh sửa”.
@@ -355,9 +352,13 @@ Trọng số được cấu hình trong Backend và có thể điều chỉnh kh
 Người dùng có thể gắn hashtag trong bài viết.
 
 Quy tắc:
-
-- Hashtag được chuẩn hóa về chữ thường.
-- Một bài viết có thể có nhiều hashtag.
+- Một bài viết có tối đa 1 hashtag; hashtag là tùy chọn và có thể được nhiều bài viết dùng chung.
+- Hashtag nhập ở field riêng, không cần dấu #. Backend loại bỏ mọi dấu # trước khi lưu.
+- Backend trim Unicode whitespace, gộp khoảng trắng liên tiếp thành một dấu cách, chuẩn hóa NFC
+  và chuyển chữ thường bằng Locale.ROOT.
+- Hashtag được chứa chữ tiếng Việt có dấu, chữ số, dấu gạch dưới và nhiều từ; tối đa 100 ký tự
+  sau chuẩn hóa và không được rỗng.
+- Bài viết vẫn phải có nội dung hoặc ít nhất một ảnh; chỉ hashtag không đủ để tạo bài.
 - Người dùng có thể xem danh sách bài viết theo một hashtag.
 - Hệ thống không quản lý chủ đề nội dung riêng biệt trong phiên bản MVP.
 

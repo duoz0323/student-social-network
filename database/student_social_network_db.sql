@@ -487,7 +487,7 @@ CREATE TABLE hashtags (
 CREATE INDEX idx_hashtags_post_count
     ON hashtags (post_count DESC, id DESC);
 
--- Bảng post_hashtags là bảng trung gian cho quan hệ N-N giữa posts và hashtags.
+-- Bảng post_hashtags cho phép mỗi bài có tối đa một hashtag; một hashtag dùng chung cho nhiều bài.
 CREATE TABLE post_hashtags (
     -- Bài viết được gắn hashtag.
     post_id BIGINT UNSIGNED NOT NULL,
@@ -497,6 +497,8 @@ CREATE TABLE post_hashtags (
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     -- Khóa chính kép chống gắn trùng hashtag trong cùng bài.
     CONSTRAINT pk_post_hashtags PRIMARY KEY (post_id, hashtag_id),
+    -- UNIQUE post_id enforces at most one hashtag for each post at database level.
+    CONSTRAINT uq_post_hashtags_post UNIQUE (post_id),
     -- Khóa ngoại liên kết tới bài viết.
     CONSTRAINT fk_post_hashtags_post FOREIGN KEY (post_id)
         REFERENCES posts (id)

@@ -16,13 +16,13 @@ import org.springframework.stereotype.Component;
 public class SearchPostMapper {
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
-                                         List<String> hashtags, boolean liked, boolean saved) {
+                                         String hashtag, boolean liked, boolean saved) {
         PostAuthorResponse author = new PostAuthorResponse(
                 authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl());
         List<PostMediaResponse> mediaResponses = media.stream().map(this::toMediaResponse).toList();
         return new SearchPostResponse(
                 post.getId(), post.getContent(), post.isEdited(), post.getLikeCount(), post.getCommentCount(),
-                post.getPublishedAt(), author, mediaResponses, hashtags, liked, saved
+                post.getPublishedAt(), author, mediaResponses, hashtag, liked, saved
         );
     }
 

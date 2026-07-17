@@ -19,6 +19,6 @@ public record PostResponse(
         LocalDateTime updatedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
-        List<String> hashtags
+        String hashtag
 ) {
 }

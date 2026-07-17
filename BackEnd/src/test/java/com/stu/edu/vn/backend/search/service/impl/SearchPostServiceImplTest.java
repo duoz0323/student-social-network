@@ -19,6 +19,7 @@ import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
+import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -52,7 +53,8 @@ class SearchPostServiceImplTest {
     void setUp() {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
-                postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper());
+                postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
+                new HashtagNormalizer());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));
@@ -85,7 +87,7 @@ class SearchPostServiceImplTest {
         assertThat(item.postId()).isEqualTo(100L);
         assertThat(item.author().id()).isEqualTo(20L);
         assertThat(item.media()).extracting("displayOrder").containsExactly(0, 1);
-        assertThat(item.hashtags()).containsExactly("java");
+        assertThat(item.hashtag()).isEqualTo("java");
         assertThat(item.likedByCurrentUser()).isTrue();
         assertThat(item.savedByCurrentUser()).isTrue();
         verify(postMediaRepository, times(1)).findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(any());

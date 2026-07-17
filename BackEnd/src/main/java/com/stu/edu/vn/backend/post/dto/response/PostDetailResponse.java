@@ -17,7 +17,7 @@ public record PostDetailResponse(
         LocalDateTime updatedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
-        List<String> hashtags,
+        String hashtag,
         PostViewerResponse viewer
 ) {
 }

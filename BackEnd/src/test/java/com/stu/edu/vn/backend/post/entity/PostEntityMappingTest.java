@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.io.Serializable;
 import org.junit.jupiter.api.Test;
 
@@ -73,6 +74,11 @@ class PostEntityMappingTest {
         // Bảng post_hashtags dùng khóa kép post_id và hashtag_id thay vì id riêng.
         assertThat(Serializable.class).isAssignableFrom(PostHashtagId.class);
         assertThat(PostHashtag.class.getAnnotation(Table.class).name()).isEqualTo("post_hashtags");
+        assertThat(PostHashtag.class.getAnnotation(Table.class).uniqueConstraints())
+                .extracting(UniqueConstraint::name)
+                .containsExactly("uq_post_hashtags_post");
+        assertThat(PostHashtag.class.getAnnotation(Table.class).uniqueConstraints()[0].columnNames())
+                .containsExactly("post_id");
         assertThat(PostHashtag.class.getDeclaredField("id").getAnnotation(EmbeddedId.class)).isNotNull();
         assertThat(new PostHashtagId(1L, 2L)).isEqualTo(new PostHashtagId(1L, 2L));
         assertThat(new PostHashtagId(1L, 2L)).hasSameHashCodeAs(new PostHashtagId(1L, 2L));

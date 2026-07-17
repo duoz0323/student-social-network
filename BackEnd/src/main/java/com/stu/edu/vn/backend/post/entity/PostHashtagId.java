@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Khóa chính kép của bảng post_hashtags, bảo đảm một bài không gắn trùng một hashtag.
+ * Khóa chính kép của bảng post_hashtags; UNIQUE(post_id) mới bảo đảm mỗi bài có tối đa một hashtag.
  */
 @Embeddable
 public class PostHashtagId implements Serializable {

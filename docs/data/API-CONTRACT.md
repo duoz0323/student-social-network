@@ -307,37 +307,70 @@ Route UI tương ứng:
 
 ### POST `/api/v1/posts`
 
-Request:
+Request `multipart/form-data`:
 
-```json
-{
-  "content": "Nội dung bài viết",
-  "imageUrls": [
-    "https://example.com/image-1.jpg"
-  ],
-  "hashtags": [
-    "sinhvien",
-    "hoctap"
-  ]
-}
-```
+- `content`: tùy chọn, tối đa 500 ký tự.
+- `images`: tùy chọn, tối đa 4 file ảnh.
+- `hashtag`: tùy chọn, một chuỗi scalar.
 
 ### GET `/api/v1/posts/{postId}`
 
-### PATCH `/api/v1/posts/{postId}`
+### PUT `/api/v1/posts/{postId}`
 
-Request:
+Request `multipart/form-data`:
+
+- `content`: nội dung sau cập nhật.
+- `keepMediaIds`: danh sách ID ảnh cũ cần giữ.
+- `newImages`: ảnh mới cần thêm, tổng số ảnh sau cập nhật tối đa 4.
+- `hashtag`: field có ba trạng thái được mô tả bên dưới.
+
+`hashtag` là field multipart tùy chọn, tối đa một giá trị và không cần dấu `#`. Backend loại bỏ mọi
+dấu `#`, trim Unicode whitespace, gộp mỗi nhóm khoảng trắng bên trong thành một dấu cách, chuẩn hóa
+Unicode NFC rồi chuyển chữ thường bằng `Locale.ROOT`. Giá trị sau chuẩn hóa phải khác rỗng, chỉ gồm
+chữ Unicode, dấu kết hợp, chữ số, `_` và dấu cách giữa các từ, tối đa 100 code point.
+
+Khi update: không gửi field `hashtag` thì giữ nguyên; gửi raw chỉ gồm Unicode whitespace thì xóa;
+gửi giá trị khác thì chuẩn hóa và thay thế. Raw không blank nhưng thành rỗng sau khi bỏ `#` là không hợp lệ.
+Bài viết ở cả create và update vẫn phải có content hoặc ít nhất một ảnh; riêng hashtag không đủ.
+
+### DELETE `/api/v1/posts/{postId}`
+
+### GET `/api/v1/hashtags/suggestions?keyword=doan`
+
+Actor:
+
+- Người dùng đã đăng nhập, có tài khoản `ACTIVE` và đã hoàn tất hồ sơ.
+
+Quy tắc:
+
+- `keyword` được trim, bỏ một hoặc nhiều ký tự `#` ở đầu, chuyển chữ thường và chuẩn hóa Unicode NFC.
+- Keyword dưới 2 ký tự sau chuẩn hóa trả danh sách rỗng; trên 100 ký tự trả lỗi `HASHTAG_SUGGESTION_KEYWORD_TOO_LONG`.
+- API không nhận `page`, `size` hoặc `limit`; Backend giới hạn cố định tối đa 10 kết quả ngay tại database.
+- Ưu tiên `normalized_name` bắt đầu bằng keyword, sau đó chứa keyword ở vị trí khác, `post_count DESC`, `id DESC`.
+- API chỉ đọc hashtag đã tồn tại, không tạo hashtag, không cập nhật `post_count` và không tạo `post_hashtags`.
+
+Response 200:
 
 ```json
 {
-  "content": "Nội dung đã sửa",
-  "hashtags": [
-    "doan"
-  ]
+  "success": true,
+  "message": "Lấy gợi ý hashtag thành công",
+  "data": {
+    "keyword": "Doan",
+    "normalizedKeyword": "doan",
+    "exactMatch": false,
+    "suggestions": [
+      {
+        "hashtagId": 1,
+        "name": "doantruong",
+        "postCount": 100
+      }
+    ],
+    "canUseAsNewHashtag": true
+  },
+  "timestamp": "2026-07-16T10:00:00"
 }
 ```
-
-### DELETE `/api/v1/posts/{postId}`
 
 ## 5. Interaction
 
@@ -432,7 +465,7 @@ Query parameter:
 Quy tắc:
 
 - `CONTENT` dùng FULLTEXT MySQL trên `posts.content`.
-- `HASHTAG` bỏ các ký tự `#` liên tiếp ở đầu, chuyển lowercase và tìm exact `normalized_name`.
+- `HASHTAG` dùng cùng pipeline chuẩn hóa hashtag của create/update và tìm exact `normalized_name`.
 - Chỉ trả bài `PUBLISHED` của tác giả `ACTIVE` đã hoàn tất hồ sơ.
 - Media, hashtag, Like và Save được tải theo batch cho cả trang.
 - Danh sách không có kết quả trả HTTP 200 với `content` rỗng.
@@ -464,7 +497,7 @@ Response 200:
           "avatarUrl": "https://example.com/avatar.jpg"
         },
         "media": [],
-        "hashtags": ["java", "sinhvien"],
+        "hashtag": "java",
         "likedByCurrentUser": true,
         "savedByCurrentUser": false
       }
@@ -569,10 +602,10 @@ Mỗi phần tử gồm `postId`, `contentPreview`, `status`, `authorId`, `autho
 
 - Xem được bài ở cả ba trạng thái `PUBLISHED`, `HIDDEN`, `DELETED`.
 - Không tồn tại trả `ADMIN_POST_NOT_FOUND`.
-- Media sắp xếp `sortOrder ASC, mediaId ASC`; hashtag là duy nhất và có thứ tự ổn định.
+- Media sắp xếp `sortOrder ASC, mediaId ASC`; `hashtag` là scalar nullable.
 - Response không chứa password, token, `avatarPublicId`, `storagePublicId` hoặc metadata cloud nội bộ.
 
-Response data gồm `postId`, `content`, `status`, `author`, `media`, `hashtags`, `likeCount`,
+Response data gồm `postId`, `content`, `status`, `author`, `media`, `hashtag`, `likeCount`,
 `commentCount`, `pendingReportCount`, `totalReportCount`, `hiddenAt`, `hiddenReason`, `hiddenBy`,
 `deletedAt`, `createdAt`, `updatedAt`.
 
@@ -619,3 +652,22 @@ Giai đoạn này chưa xử lý hoặc tự động thay đổi trạng thái R
   "hidePost": true
 }
 ```
+
+### GET `/api/v1/admin/actions`
+
+- Chỉ `ADMIN` đang `ACTIVE` được truy cập.
+- Filter tùy chọn: `actionType`, `targetType`, `adminId`, `from`, `to`.
+- `page` mặc định `0`; `size` mặc định `20` và tối đa `100`.
+- Nếu có cả `from` và `to` thì `from` không được sau `to`.
+- Sắp xếp cố định `createdAt DESC, actionId DESC` và phân trang tại database.
+- Target đã bị xóa vẫn giữ bản ghi lịch sử với `targetAvailable = false`.
+- Danh sách không trả `oldData` hoặc `newData`.
+
+Mỗi phần tử gồm `actionId`, `actionType`, `actionLabel`, `admin`, `target`, `note`, `createdAt`.
+
+### GET `/api/v1/admin/actions/{actionId}`
+
+- Trả toàn bộ trường của phần tử danh sách và bổ sung `oldData`, `newData` dạng JSON.
+- JSON được lọc đệ quy để không trả password, token, secret hoặc credential.
+- Không tồn tại trả `ADMIN_ACTION_NOT_FOUND`.
+- Hai API lịch sử chỉ đọc; không có API tạo, sửa hoặc xóa `admin_actions`.

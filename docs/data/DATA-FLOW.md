@@ -67,7 +67,7 @@ Create Post Form
 → PostService
 → Lưu posts
 → Lưu post_media
-→ Lưu hashtag/post_hashtags
+→ Chuẩn hóa và lưu tối đa một hashtag/post_hashtags
 → Trả PostResponse
 ```
 

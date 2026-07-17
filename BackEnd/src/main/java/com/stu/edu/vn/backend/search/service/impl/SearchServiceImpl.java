@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
+import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -31,10 +32,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -45,7 +44,6 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
 
     private static final int MAX_KEYWORD_LENGTH = 100;
-    private static final Pattern HASHTAG_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_]+$");
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
@@ -56,12 +54,13 @@ public class SearchServiceImpl implements SearchService {
     private final PostLikeRepository postLikeRepository;
     private final SavedPostRepository savedPostRepository;
     private final SearchPostMapper searchPostMapper;
+    private final HashtagNormalizer hashtagNormalizer;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
                              UserProfileRepository userProfileRepository, PostRepository postRepository,
                              PostMediaRepository postMediaRepository, PostHashtagRepository postHashtagRepository,
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
-                             SearchPostMapper searchPostMapper) {
+                             SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -71,6 +70,7 @@ public class SearchServiceImpl implements SearchService {
         this.postLikeRepository = postLikeRepository;
         this.savedPostRepository = savedPostRepository;
         this.searchPostMapper = searchPostMapper;
+        this.hashtagNormalizer = hashtagNormalizer;
     }
 
     @Override
@@ -90,15 +90,17 @@ public class SearchServiceImpl implements SearchService {
     public PageResponse<SearchPostResponse> searchPosts(String keyword, SearchPostType type, int page, int size) {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanSearch(currentUserId);
-        String normalizedKeyword = normalizeKeyword(keyword);
         if (type == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
+        String normalizedKeyword = type == SearchPostType.CONTENT
+                ? normalizeKeyword(keyword)
+                : normalizeHashtag(keyword);
 
         PageRequest pageable = PageRequest.of(page, size);
         Page<Post> posts = type == SearchPostType.CONTENT
                 ? postRepository.searchPublishedPostsByContent(normalizedKeyword, pageable)
-                : postRepository.searchPublishedPostsByHashtag(normalizeHashtag(normalizedKeyword), pageable);
+                : postRepository.searchPublishedPostsByHashtag(normalizedKeyword, pageable);
         if (posts.isEmpty()) {
             // Không chạy các batch query khi trang rỗng vì không có dữ liệu cần enrichment.
             return new PageResponse<>(List.of(), posts.getNumber(), posts.getSize(), posts.getTotalElements(),
@@ -108,7 +110,7 @@ public class SearchServiceImpl implements SearchService {
         List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
         Map<Long, UserProfile> authorProfiles = loadAuthorProfiles(posts.getContent());
         Map<Long, List<PostMedia>> mediaByPostId = loadMedia(postIds);
-        Map<Long, List<String>> hashtagsByPostId = loadHashtags(postIds);
+        Map<Long, String> hashtagsByPostId = loadHashtags(postIds);
         Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(currentUserId, postIds));
         Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(currentUserId, postIds));
 
@@ -116,7 +118,7 @@ public class SearchServiceImpl implements SearchService {
                 post,
                 authorProfiles.get(post.getAuthor().getId()),
                 mediaByPostId.getOrDefault(post.getId(), List.of()),
-                hashtagsByPostId.getOrDefault(post.getId(), List.of()),
+                hashtagsByPostId.get(post.getId()),
                 likedPostIds.contains(post.getId()),
                 savedPostIds.contains(post.getId())
         ));
@@ -138,25 +140,34 @@ public class SearchServiceImpl implements SearchService {
         return result;
     }
 
-    private Map<Long, List<String>> loadHashtags(List<Long> postIds) {
-        Map<Long, List<String>> result = new HashMap<>();
+    private Map<Long, String> loadHashtags(List<Long> postIds) {
+        Map<Long, String> result = new HashMap<>();
         for (PostHashtag relation : postHashtagRepository.findWithHashtagByPostIds(postIds)) {
-            result.computeIfAbsent(relation.getPost().getId(), ignored -> new ArrayList<>())
-                    .add(relation.getHashtag().getNormalizedName());
+            String previous = result.put(relation.getPost().getId(), relation.getHashtag().getNormalizedName());
+            if (previous != null) {
+                // Không che giấu dữ liệu cũ vi phạm invariant một hashtag cho mỗi bài viết.
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            }
         }
         return result;
     }
 
     private String normalizeHashtag(String keyword) {
-        int firstNonHash = 0;
-        while (firstNonHash < keyword.length() && keyword.charAt(firstNonHash) == '#') {
-            firstNonHash++;
+        try {
+            String normalized = hashtagNormalizer.normalizeOptional(keyword);
+            if (normalized == null) {
+                throw new BusinessException(ErrorCode.SEARCH_KEYWORD_REQUIRED);
+            }
+            return normalized;
+        } catch (BusinessException exception) {
+            if (exception.getErrorCode() == ErrorCode.POST_HASHTAG_INVALID) {
+                throw new BusinessException(ErrorCode.SEARCH_HASHTAG_INVALID);
+            }
+            if (exception.getErrorCode() == ErrorCode.POST_HASHTAG_TOO_LONG) {
+                throw new BusinessException(ErrorCode.SEARCH_KEYWORD_TOO_LONG);
+            }
+            throw exception;
         }
-        String normalized = keyword.substring(firstNonHash).toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty() || !HASHTAG_PATTERN.matcher(normalized).matches()) {
-            throw new BusinessException(ErrorCode.SEARCH_HASHTAG_INVALID);
-        }
-        return normalized;
     }
 
     private void ensureCurrentUserCanSearch(Long currentUserId) {

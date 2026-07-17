@@ -11,10 +11,11 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * Entity post_hashtags biểu diễn quan hệ nhiều-nhiều giữa bài viết và hashtag dùng chung.
+ * Entity post_hashtags biểu diễn hashtag tùy chọn của bài viết; hashtag có thể dùng chung cho nhiều bài.
  */
 @Entity
-@Table(name = "post_hashtags")
+@Table(name = "post_hashtags", uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+        name = "uq_post_hashtags_post", columnNames = "post_id"))
 public class PostHashtag {
 
     @EmbeddedId

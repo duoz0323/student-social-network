@@ -135,7 +135,7 @@ Bài viết gồm:
 
 - Nội dung tối đa 500 ký tự.
 - Tối đa 4 ảnh.
-- Nhiều hashtag.
+- Tối đa một hashtag tùy chọn.
 
 Quy tắc:
 
@@ -190,7 +190,7 @@ Quy tắc:
 ### 4.7 Hashtag
 
 - Chuẩn hóa chữ thường.
-- Một bài có nhiều hashtag.
+- Một bài có tối đa một hashtag; một hashtag có thể dùng chung cho nhiều bài.
 - Xem bài theo hashtag.
 
 ### 4.8 Tìm kiếm

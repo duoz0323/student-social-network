@@ -192,7 +192,7 @@ Quy tắc nghiệp vụ:
 * Xóa mềm bài viết.
 * Đăng nội dung văn bản tối đa 500 ký tự.
 * Tải lên tối đa 4 hình ảnh.
-* Gắn nhiều hashtag vào bài viết.
+* Gắn tối đa một hashtag vào bài viết.
 
 Bài viết phải có ít nhất một trong hai thành phần:
 
@@ -257,7 +257,7 @@ Các trọng số được cấu hình trong Backend và có thể điều chỉ
 
 * Gắn hashtag vào bài viết.
 * Chuẩn hóa hashtag về chữ thường.
-* Một bài viết có thể có nhiều hashtag.
+* Một bài viết có tối đa một hashtag; một hashtag có thể được nhiều bài viết dùng chung.
 * Xem danh sách bài viết theo hashtag.
 
 Phiên bản MVP không quản lý chủ đề nội dung riêng biệt.

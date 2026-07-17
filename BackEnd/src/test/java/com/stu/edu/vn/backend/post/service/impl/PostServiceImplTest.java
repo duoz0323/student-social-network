@@ -105,8 +105,11 @@ class PostServiceImplTest {
         });
         when(postRepository.saveAndFlush(any(Post.class))).thenAnswer(invocation -> savedPost(invocation.getArgument(0)));
         when(postMediaRepository.saveAllAndFlush(any())).thenAnswer(invocation -> saveMedia(invocation.getArgument(0)));
-        when(postHashtagRepository.saveAllAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(hashtagRepository.findByNormalizedNameIn(any())).thenAnswer(invocation -> hashtagsFor(invocation.getArgument(0)));
+        when(postHashtagRepository.saveAndFlush(any(PostHashtag.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(hashtagRepository.findByNormalizedName(any())).thenAnswer(invocation -> {
+            String normalizedName = invocation.getArgument(0);
+            return Optional.of(hashtag(normalizedName, Math.abs((long) normalizedName.hashCode())));
+        });
     }
 
     @Test
@@ -121,7 +124,7 @@ class PostServiceImplTest {
         assertThat(response.content()).isEqualTo("Xin chao sinh vien");
         assertThat(response.author().id()).isEqualTo(10L);
         assertThat(response.media()).isEmpty();
-        assertThat(response.hashtags()).isEmpty();
+        assertThat(response.hashtag()).isNull();
     }
 
     @Test
@@ -139,7 +142,7 @@ class PostServiceImplTest {
     }
 
     @Test
-    void createPostWithContentHashtagsAndFourImagesKeepsImageOrderAndNormalizedHashtags() {
+    void createPostWithContentHashtagAndFourImagesKeepsImageOrderAndNormalizedHashtag() {
         List<MultipartFile> images = List.of(png("1.png"), jpeg("2.jpg"), webp("3.webp"), png("4.png"));
         for (int index = 0; index < images.size(); index++) {
             when(cloudinaryStorageService.uploadPostImage(images.get(index)))
@@ -148,15 +151,14 @@ class PostServiceImplTest {
 
         PostResponse response = postService.createPost(new CreatePostRequest(
                 "  Noi dung  ",
-                List.of("#SinhVien", "HocTap"),
+                "#Sinh   #Viên",
                 images
         ));
 
         assertThat(response.content()).isEqualTo("Noi dung");
-        assertThat(response.hashtags()).containsExactly("sinhvien", "hoctap");
+        assertThat(response.hashtag()).isEqualTo("sinh viên");
         assertThat(response.media()).extracting("displayOrder").containsExactly(0, 1, 2, 3);
-        verify(hashtagRepository).insertIfAbsent("sinhvien", "sinhvien");
-        verify(hashtagRepository).insertIfAbsent("hoctap", "hoctap");
+        verify(hashtagRepository).insertIfAbsent("sinh viên", "sinh viên");
     }
 
     @Test
@@ -167,6 +169,17 @@ class PostServiceImplTest {
                 .isEqualTo(ErrorCode.POST_CONTENT_OR_IMAGE_REQUIRED);
 
         verify(cloudinaryStorageService, never()).uploadPostImage(any());
+        verify(transactionTemplate, never()).execute(any());
+    }
+
+    @Test
+    void createPostRejectsHashtagOnlyBecauseItIsNotPostContent() {
+        assertThatThrownBy(() -> postService.createPost(new CreatePostRequest("   ", "sinh viên", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_CONTENT_OR_IMAGE_REQUIRED);
+
+        verify(postHashtagRepository, never()).saveAndFlush(any(PostHashtag.class));
         verify(transactionTemplate, never()).execute(any());
     }
 
@@ -220,26 +233,24 @@ class PostServiceImplTest {
     }
 
     @Test
-    void createPostCreatesOnePostHashtagWhenHashtagsDuplicateAfterNormalize() {
-        postService.createPost(new CreatePostRequest("Noi dung", List.of("#SinhVien", "sinhvien"), null));
+    void createPostCreatesExactlyOnePostHashtagAfterNormalization() {
+        postService.createPost(new CreatePostRequest("Noi dung", "#Sinh #Vien", null));
 
-        ArgumentCaptor<Iterable<PostHashtag>> captor = ArgumentCaptor.forClass(Iterable.class);
-        verify(postHashtagRepository).saveAllAndFlush(captor.capture());
-        List<PostHashtag> relations = toList(captor.getValue());
-        assertThat(relations).hasSize(1);
-        assertThat(relations.getFirst().getHashtag().getNormalizedName()).isEqualTo("sinhvien");
+        ArgumentCaptor<PostHashtag> captor = ArgumentCaptor.forClass(PostHashtag.class);
+        verify(postHashtagRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getHashtag().getNormalizedName()).isEqualTo("sinh vien");
     }
 
     @Test
     void createPostCanReuseHashtagWhenTwoRequestsCreateSameNormalizedName() {
-        CreatePostRequest firstRequest = new CreatePostRequest("Bai 1", List.of("#DoAn"), null);
-        CreatePostRequest secondRequest = new CreatePostRequest("Bai 2", List.of("doan"), null);
+        CreatePostRequest firstRequest = new CreatePostRequest("Bai 1", "#DoAn", null);
+        CreatePostRequest secondRequest = new CreatePostRequest("Bai 2", "doan", null);
 
         PostResponse firstResponse = postService.createPost(firstRequest);
         PostResponse secondResponse = postService.createPost(secondRequest);
 
-        assertThat(firstResponse.hashtags()).containsExactly("doan");
-        assertThat(secondResponse.hashtags()).containsExactly("doan");
+        assertThat(firstResponse.hashtag()).isEqualTo("doan");
+        assertThat(secondResponse.hashtag()).isEqualTo("doan");
         verify(hashtagRepository, times(2)).insertIfAbsent("doan", "doan");
     }
 
@@ -261,7 +272,7 @@ class PostServiceImplTest {
         assertThat(response.author().id()).isEqualTo(10L);
         assertThat(response.viewer().owner()).isTrue();
         assertThat(response.media()).extracting("displayOrder").containsExactly(0, 1);
-        assertThat(response.hashtags()).containsExactly("sinhvien");
+        assertThat(response.hashtag()).isEqualTo("sinhvien");
     }
 
     @Test
@@ -317,21 +328,79 @@ class PostServiceImplTest {
                 .thenReturn(List.of(kept, removed))
                 .thenReturn(List.of(kept, newMedia));
         when(postMediaRepository.findByPost_IdAndIdIn(any(), any())).thenReturn(List.of(kept));
+        when(postHashtagRepository.findWithHashtagByPostId(1L))
+                .thenReturn(List.of(new PostHashtag(post, hashtag("cu", 400L))));
         when(cloudinaryStorageService.uploadPostImage(newImage))
                 .thenReturn(upload("https://cdn.example/new.png", "post/new", 100, 100));
 
         var response = postService.updatePost(
                 1L,
-                new UpdatePostRequest("  Noi dung moi  ", List.of("#DoAn"), List.of(301L), List.of(newImage))
+                new UpdatePostRequest("  Noi dung moi  ", "#DoAn", List.of(301L), List.of(newImage))
         );
 
         assertThat(post.getContent()).isEqualTo("Noi dung moi");
         assertThat(post.isEdited()).isTrue();
         assertThat(response.media()).extracting("id").containsExactly(301L, 303L);
-        assertThat(response.hashtags()).containsExactly("doan");
+        assertThat(response.hashtag()).isEqualTo("doan");
         verify(postMediaRepository).deleteAll(List.of(removed));
         verify(postHashtagRepository).deleteByPostId(1L);
         verify(postRepository).markEdited(1L);
+    }
+
+    @Test
+    void updatePostKeepsHashtagWhenFieldIsAbsent() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        PostHashtag current = new PostHashtag(post, hashtag("do an", 401L));
+        prepareSimpleUpdate(post, List.of(current));
+
+        var response = postService.updatePost(1L, new UpdatePostRequest("Noi dung moi", null, null, null));
+
+        assertThat(response.hashtag()).isEqualTo("do an");
+        verify(postHashtagRepository, never()).deleteByPostId(any());
+        verify(postHashtagRepository, never()).saveAndFlush(any(PostHashtag.class));
+    }
+
+    @Test
+    void updatePostDeletesHashtagWhenFieldContainsOnlyWhitespace() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        PostHashtag current = new PostHashtag(post, hashtag("do an", 401L));
+        prepareSimpleUpdate(post, List.of(current));
+
+        var response = postService.updatePost(1L, new UpdatePostRequest("Noi dung moi", " \u00A0 ", null, null));
+
+        assertThat(response.hashtag()).isNull();
+        verify(postHashtagRepository).deleteByPostId(1L);
+        verify(postHashtagRepository).flush();
+        verify(postHashtagRepository, never()).saveAndFlush(any(PostHashtag.class));
+    }
+
+    @Test
+    void updatePostDoesNotRewriteSameNormalizedHashtag() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        PostHashtag current = new PostHashtag(post, hashtag("đồ án", 401L));
+        prepareSimpleUpdate(post, List.of(current));
+
+        var response = postService.updatePost(1L, new UpdatePostRequest("Noi dung moi", " #Đồ   Án ", null, null));
+
+        assertThat(response.hashtag()).isEqualTo("đồ án");
+        verify(postHashtagRepository, never()).deleteByPostId(any());
+        verify(postHashtagRepository, never()).saveAndFlush(any(PostHashtag.class));
+    }
+
+    @Test
+    void getPostDetailFailsWhenLegacyDataHasMultipleHashtags() {
+        User author = user(10L);
+        Post post = existingPost(1L, author, completedProfile(10L));
+        when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
+        when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
+        when(postHashtagRepository.findWithHashtagByPostId(1L)).thenReturn(List.of(
+                new PostHashtag(post, hashtag("mot", 401L)),
+                new PostHashtag(post, hashtag("hai", 402L))));
+
+        assertThatThrownBy(() -> postService.getPostDetail(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INTERNAL_ERROR);
     }
 
     @Test
@@ -463,6 +532,12 @@ class PostServiceImplTest {
         return post;
     }
 
+    private void prepareSimpleUpdate(Post post, List<PostHashtag> currentHashtags) {
+        when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
+        when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
+        when(postHashtagRepository.findWithHashtagByPostId(1L)).thenReturn(currentHashtags);
+    }
+
     private List<PostMedia> saveMedia(Iterable<PostMedia> mediaItems) {
         List<PostMedia> media = toList(mediaItems);
         for (PostMedia item : media) {
@@ -471,16 +546,6 @@ class PostServiceImplTest {
             }
         }
         return media;
-    }
-
-    private List<Hashtag> hashtagsFor(List<String> normalizedNames) {
-        List<Hashtag> hashtags = new ArrayList<>();
-        for (String normalizedName : normalizedNames) {
-            Hashtag hashtag = new Hashtag(normalizedName, normalizedName);
-            ReflectionTestUtils.setField(hashtag, "id", Math.abs((long) normalizedName.hashCode()));
-            hashtags.add(hashtag);
-        }
-        return hashtags;
     }
 
     private Post existingPost(Long postId, User author, UserProfile authorProfile) {

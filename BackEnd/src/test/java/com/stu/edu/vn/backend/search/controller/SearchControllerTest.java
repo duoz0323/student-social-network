@@ -79,7 +79,7 @@ class SearchControllerTest {
     void searchPostsSupportsContentAndHashtagWithPageResponse() throws Exception {
         SearchPostResponse post = new SearchPostResponse(
                 100L, "Học Java", false, 3, 2, null,
-                new PostAuthorResponse(20L, "Minh", null), List.of(), List.of("java"), true, false);
+                new PostAuthorResponse(20L, "Minh", null), List.of(), "java", true, false);
         PageResponse<SearchPostResponse> page = new PageResponse<>(List.of(post), 0, 20, 1, 1, true, true);
         when(searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20)).thenReturn(page);
         when(searchService.searchPosts("#java", SearchPostType.HASHTAG, 0, 20)).thenReturn(page);
@@ -89,7 +89,7 @@ class SearchControllerTest {
                 .andExpect(jsonPath("$.data.content[0].likedByCurrentUser").value(true))
                 .andExpect(jsonPath("$.data.content[0].email").doesNotExist());
         mockMvc.perform(get("/api/v1/search/posts").param("q", "#java").param("type", "HASHTAG"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].hashtags[0]").value("java"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].hashtag").value("java"));
     }
 
     @Test

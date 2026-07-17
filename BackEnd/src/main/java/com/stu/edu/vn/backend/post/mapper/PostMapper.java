@@ -21,7 +21,7 @@ public class PostMapper {
             Post post,
             UserProfile authorProfile,
             List<PostMedia> media,
-            List<String> hashtags
+            String hashtag
     ) {
         // Response chỉ gồm dữ liệu công khai, không chứa publicId ảnh hoặc dữ liệu xác thực.
         return new PostResponse(
@@ -36,7 +36,7 @@ public class PostMapper {
                 post.getUpdatedAt(),
                 toAuthorResponse(authorProfile),
                 media.stream().map(this::toMediaResponse).toList(),
-                hashtags
+                hashtag
         );
     }
 
@@ -44,7 +44,7 @@ public class PostMapper {
             Post post,
             UserProfile authorProfile,
             List<PostMedia> media,
-            List<String> hashtags,
+            String hashtag,
             boolean owner
     ) {
         // Response chi tiết chỉ dùng cho bài PUBLISHED đã qua kiểm tra ở Service, nên không trả status ẩn/xóa ra API công khai.
@@ -59,7 +59,7 @@ public class PostMapper {
                 post.getUpdatedAt(),
                 toAuthorResponse(authorProfile),
                 media.stream().map(this::toMediaResponse).toList(),
-                hashtags,
+                hashtag,
                 new PostViewerResponse(owner)
         );
     }

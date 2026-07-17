@@ -34,9 +34,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import org.slf4j.Logger;
@@ -108,9 +106,9 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {
-        CreatePostCommand command = validateRequest(request);
         Long authorId = currentUserProvider.getCurrentUserId();
         AuthorContext authorContext = ensureAuthorCanCreatePost(authorId);
+        CreatePostCommand command = validateRequest(request);
 
         List<UploadedPostImage> uploadedImages = uploadImages(command.images());
         try {
@@ -136,14 +134,10 @@ public class PostServiceImpl implements PostService {
         }
 
         List<PostMedia> media = postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId());
-        List<String> hashtags = postHashtagRepository.findWithHashtagByPostId(post.getId())
-                .stream()
-                .map(PostHashtag::getHashtag)
-                .map(Hashtag::getNormalizedName)
-                .toList();
+        String hashtag = readSingleHashtag(post.getId());
         boolean owner = post.getAuthor().getId().equals(viewerId);
 
-        return postMapper.toDetailResponse(post, post.getAuthorProfile(), media, hashtags, owner);
+        return postMapper.toDetailResponse(post, post.getAuthorProfile(), media, hashtag, owner);
     }
 
     @Override
@@ -161,10 +155,15 @@ public class PostServiceImpl implements PostService {
         List<UploadedPostImage> uploadedImages = uploadImages(command.newImages());
         registerStorageCleanup(uploadedImages, command.removedMedia());
 
-        List<PostMedia> updatedMedia = updatePostInDatabase(post, command, uploadedImages);
-        List<String> hashtags = command.hashtags();
+        UpdatedPostData updatedData = updatePostInDatabase(post, command, uploadedImages);
         boolean owner = post.getAuthor().getId().equals(viewerId);
-        return postMapper.toDetailResponse(post, post.getAuthorProfile(), updatedMedia, hashtags, owner);
+        return postMapper.toDetailResponse(
+                post,
+                post.getAuthorProfile(),
+                updatedData.media(),
+                updatedData.hashtag(),
+                owner
+        );
     }
 
     @Override
@@ -196,8 +195,8 @@ public class PostServiceImpl implements PostService {
 
         int imageCount = postImageFileValidator.countValidImageSlots(images);
         String content = postValidationSupport.validateForCreate(request == null ? null : request.content(), imageCount);
-        List<String> hashtags = hashtagNormalizer.normalize(request == null ? null : request.hashtags());
-        return new CreatePostCommand(content, hashtags, images == null ? List.of() : images);
+        String hashtag = hashtagNormalizer.normalizeOptional(request == null ? null : request.hashtag());
+        return new CreatePostCommand(content, hashtag, images == null ? List.of() : images);
     }
 
     private AuthorContext ensureAuthorCanCreatePost(Long authorId) {
@@ -263,7 +262,8 @@ public class PostServiceImpl implements PostService {
         postImageFileValidator.validate(newImages);
 
         String content = postValidationSupport.normalizeContent(request == null ? null : request.content());
-        List<String> hashtags = hashtagNormalizer.normalize(request == null ? null : request.hashtags());
+        boolean hashtagProvided = request != null && request.hashtag() != null;
+        String hashtag = hashtagProvided ? hashtagNormalizer.normalizeOptional(request.hashtag()) : null;
         List<PostMedia> currentMedia = postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId());
         List<PostMedia> keptMedia = resolveKeptMedia(post.getId(), currentMedia, request == null ? null : request.keepMediaIds());
         List<PostMedia> removedMedia = currentMedia.stream()
@@ -277,7 +277,7 @@ public class PostServiceImpl implements PostService {
         if ((content == null || content.isBlank()) && finalImageCount == 0) {
             throw new BusinessException(ErrorCode.POST_CONTENT_REQUIRED);
         }
-        return new UpdatePostCommand(content, hashtags, keptMedia, removedMedia, newImages);
+        return new UpdatePostCommand(content, hashtagProvided, hashtag, keptMedia, removedMedia, newImages);
     }
 
     private List<PostMedia> resolveKeptMedia(Long postId, List<PostMedia> currentMedia, List<Long> keepMediaIds) {
@@ -300,7 +300,7 @@ public class PostServiceImpl implements PostService {
         return keptMedia;
     }
 
-    private List<PostMedia> updatePostInDatabase(
+    private UpdatedPostData updatePostInDatabase(
             Post post,
             UpdatePostCommand command,
             List<UploadedPostImage> uploadedImages
@@ -316,14 +316,16 @@ public class PostServiceImpl implements PostService {
 
         List<PostMedia> keptMedia = reorderKeptMedia(command.keptMedia());
         savePostMedia(post, uploadedImages, keptMedia.size());
-        postHashtagRepository.deleteByPostId(post.getId());
-        savePostHashtags(post, command.hashtags());
+        String hashtag = updatePostHashtag(post, command.hashtagProvided(), command.hashtag());
 
         // Bảo đảm updated_at của posts đổi cả khi chỉ sửa hashtag/ảnh, vì hai phần này nằm ở bảng liên quan.
         postRepository.markEdited(post.getId());
         entityManager.flush();
         entityManager.refresh(post);
-        return postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId());
+        return new UpdatedPostData(
+                postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId()),
+                hashtag
+        );
     }
 
     private List<PostMedia> reorderKeptMedia(List<PostMedia> keptMedia) {
@@ -387,11 +389,11 @@ public class PostServiceImpl implements PostService {
     ) {
         Post post = postRepository.saveAndFlush(new Post(authorContext.author(), command.content()));
         List<PostMedia> media = savePostMedia(post, uploadedImages);
-        savePostHashtags(post, command.hashtags());
+        savePostHashtag(post, command.hashtag());
 
         // Refresh để lấy các giá trị do MySQL tự sinh như created_at, updated_at và published_at.
         entityManager.refresh(post);
-        return postMapper.toResponse(post, authorContext.profile(), media, command.hashtags());
+        return postMapper.toResponse(post, authorContext.profile(), media, command.hashtag());
     }
 
     private List<PostMedia> savePostMedia(Post post, List<UploadedPostImage> uploadedImages) {
@@ -423,36 +425,54 @@ public class PostServiceImpl implements PostService {
         return media;
     }
 
-    private void savePostHashtags(Post post, List<String> normalizedHashtags) {
-        if (normalizedHashtags.isEmpty()) {
+    private void savePostHashtag(Post post, String normalizedHashtag) {
+        if (normalizedHashtag == null) {
             return;
         }
-
-        Map<String, Hashtag> hashtagsByName = resolveHashtags(normalizedHashtags);
-        List<PostHashtag> postHashtags = normalizedHashtags.stream()
-                .map(hashtagsByName::get)
-                .map(hashtag -> new PostHashtag(post, hashtag))
-                .toList();
-        postHashtagRepository.saveAllAndFlush(postHashtags);
+        Hashtag hashtag = resolveHashtag(normalizedHashtag);
+        postHashtagRepository.saveAndFlush(new PostHashtag(post, hashtag));
     }
 
-    private Map<String, Hashtag> resolveHashtags(List<String> normalizedHashtags) {
-        for (String normalizedHashtag : normalizedHashtags) {
-            // MySQL unique key bảo đảm chỉ một request tạo được hashtag; request còn lại tái sử dụng bản ghi.
-            hashtagRepository.insertIfAbsent(normalizedHashtag, normalizedHashtag);
+    private String updatePostHashtag(Post post, boolean hashtagProvided, String normalizedHashtag) {
+        List<PostHashtag> currentRelations = postHashtagRepository.findWithHashtagByPostId(post.getId());
+        PostHashtag currentRelation = requireSingleRelation(currentRelations);
+        String currentName = currentRelation == null ? null : currentRelation.getHashtag().getNormalizedName();
+
+        if (!hashtagProvided || java.util.Objects.equals(currentName, normalizedHashtag)) {
+            // Field absent hoặc giá trị chuẩn hóa không đổi đều giữ nguyên quan hệ và không làm trigger chạy thừa.
+            return currentName;
+        }
+        if (currentRelation != null) {
+            postHashtagRepository.deleteByPostId(post.getId());
+            postHashtagRepository.flush();
+        }
+        if (normalizedHashtag == null) {
+            return null;
         }
 
-        List<Hashtag> hashtags = hashtagRepository.findByNormalizedNameIn(normalizedHashtags);
-        Map<String, Hashtag> hashtagsByName = new LinkedHashMap<>();
-        for (Hashtag hashtag : hashtags) {
-            hashtagsByName.put(hashtag.getNormalizedName(), hashtag);
+        Hashtag hashtag = resolveHashtag(normalizedHashtag);
+        postHashtagRepository.saveAndFlush(new PostHashtag(post, hashtag));
+        return normalizedHashtag;
+    }
+
+    private Hashtag resolveHashtag(String normalizedHashtag) {
+        // Upsert chỉ bỏ qua unique normalized_name; các lỗi database khác vẫn được Spring truyền ra ngoài.
+        hashtagRepository.insertIfAbsent(normalizedHashtag, normalizedHashtag);
+        return hashtagRepository.findByNormalizedName(normalizedHashtag)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR));
+    }
+
+    private String readSingleHashtag(Long postId) {
+        PostHashtag relation = requireSingleRelation(postHashtagRepository.findWithHashtagByPostId(postId));
+        return relation == null ? null : relation.getHashtag().getNormalizedName();
+    }
+
+    private PostHashtag requireSingleRelation(List<PostHashtag> relations) {
+        if (relations.size() > 1) {
+            // Không âm thầm lấy phần tử đầu vì nhiều quan hệ là dữ liệu vi phạm invariant của module.
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
-        for (String normalizedHashtag : normalizedHashtags) {
-            if (!hashtagsByName.containsKey(normalizedHashtag)) {
-                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
-            }
-        }
-        return hashtagsByName;
+        return relations.isEmpty() ? null : relations.get(0);
     }
 
     private void cleanupUploadedImages(List<UploadedPostImage> uploadedImages) {
@@ -479,17 +499,24 @@ public class PostServiceImpl implements PostService {
 
     private record CreatePostCommand(
             String content,
-            List<String> hashtags,
+            String hashtag,
             List<MultipartFile> images
     ) {
     }
 
     private record UpdatePostCommand(
             String content,
-            List<String> hashtags,
+            boolean hashtagProvided,
+            String hashtag,
             List<PostMedia> keptMedia,
             List<PostMedia> removedMedia,
             List<MultipartFile> newImages
+    ) {
+    }
+
+    private record UpdatedPostData(
+            List<PostMedia> media,
+            String hashtag
     ) {
     }
 

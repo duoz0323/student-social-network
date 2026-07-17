@@ -17,7 +17,7 @@ public record SearchPostResponse(
         LocalDateTime publishedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
-        List<String> hashtags,
+        String hashtag,
         boolean likedByCurrentUser,
         boolean savedByCurrentUser
 ) {

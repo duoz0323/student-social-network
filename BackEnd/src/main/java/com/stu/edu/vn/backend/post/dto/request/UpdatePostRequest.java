@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public record UpdatePostRequest(
         String content,
-        List<String> hashtags,
+        String hashtag,
         List<Long> keepMediaIds,
         List<MultipartFile> newImages
 ) {

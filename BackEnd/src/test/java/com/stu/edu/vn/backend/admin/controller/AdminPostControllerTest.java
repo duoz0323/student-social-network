@@ -95,7 +95,7 @@ class AdminPostControllerTest {
     void detailReturnsNestedSafeDataForAnyStatus() throws Exception {
         var detail = new AdminPostDetailResponse(11L, "content", PostStatus.DELETED,
                 new AdminPostAuthorResponse(9L, "Author", "avatar", "a@example.com", null, UserStatus.BLOCKED),
-                List.of(new AdminPostMediaResponse(21L, "url", 0)), List.of("tag"),
+                List.of(new AdminPostMediaResponse(21L, "url", 0)), "tag",
                 3, 4, 1, 2, null, null, null, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(service.getPostDetail(11L)).thenReturn(detail);
 

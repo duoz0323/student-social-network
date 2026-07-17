@@ -7,7 +7,6 @@ import com.stu.edu.vn.backend.admin.dto.response.AdminPostListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminPostMediaResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminPostStatusResponse;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostDetailProjection;
-import com.stu.edu.vn.backend.admin.repository.projection.AdminPostHashtagProjection;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostListProjection;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostMediaProjection;
 import com.stu.edu.vn.backend.post.entity.Post;
@@ -37,7 +36,7 @@ public class AdminPostMapper {
     }
 
     public AdminPostDetailResponse toDetail(AdminPostDetailProjection source,
-            List<AdminPostMediaProjection> media, List<AdminPostHashtagProjection> hashtags) {
+            List<AdminPostMediaProjection> media, String hashtag) {
         AdminPostAuthorResponse author = new AdminPostAuthorResponse(source.getAuthorId(),
                 source.getAuthorDisplayName(), source.getAuthorAvatarUrl(), source.getAuthorEmail(),
                 source.getAuthorPhoneNumber(), UserStatus.valueOf(source.getAuthorAccountStatus()));
@@ -48,9 +47,8 @@ public class AdminPostMapper {
         List<AdminPostMediaResponse> mediaResponses = media.stream()
                 .map(item -> new AdminPostMediaResponse(item.getMediaId(), item.getMediaUrl(), item.getSortOrder()))
                 .toList();
-        List<String> hashtagResponses = hashtags.stream().map(AdminPostHashtagProjection::getName).toList();
         return new AdminPostDetailResponse(source.getPostId(), source.getContent(),
-                PostStatus.valueOf(source.getStatus()), author, mediaResponses, hashtagResponses,
+                PostStatus.valueOf(source.getStatus()), author, mediaResponses, hashtag,
                 source.getLikeCount(), source.getCommentCount(), source.getPendingReportCount(),
                 source.getTotalReportCount(), source.getHiddenAt(), source.getHiddenReason(), hiddenBy,
                 source.getDeletedAt(), source.getCreatedAt(), source.getUpdatedAt());

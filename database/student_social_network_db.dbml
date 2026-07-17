@@ -249,8 +249,11 @@ Table post_hashtags {
 
   Indexes {
     (post_id, hashtag_id) [pk, name: "pk_post_hashtags"]
+    (post_id) [unique, name: "uq_post_hashtags_post"]
     (hashtag_id, post_id) [name: "idx_post_hashtags_hashtag_post"]
   }
+
+  Note: "Moi post co toi da mot dong; mot hashtag co the duoc nhieu post dung chung."
 }
 
 // =============================================================================

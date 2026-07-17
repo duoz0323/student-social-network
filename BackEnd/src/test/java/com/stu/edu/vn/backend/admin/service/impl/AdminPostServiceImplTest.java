@@ -111,22 +111,21 @@ class AdminPostServiceImplTest {
     }
 
     @Test
-    void detailMapsBlockedAuthorModerationFieldsOrderedMediaAndStableHashtags() {
+    void detailMapsBlockedAuthorModerationFieldsOrderedMediaAndSingleHashtag() {
         var detail = detailProjection();
         var secondMedia = mediaProjection(22L, "second.jpg", 1);
         var firstMedia = mediaProjection(21L, "first.jpg", 0);
         var alpha = hashtagProjection("alpha");
-        var beta = hashtagProjection("beta");
         when(repository.findAdminPostDetail(11L)).thenReturn(Optional.of(detail));
         when(repository.findAdminPostMedia(11L)).thenReturn(List.of(firstMedia, secondMedia));
-        when(repository.findAdminPostHashtags(11L)).thenReturn(List.of(alpha, beta));
+        when(repository.findAdminPostHashtags(11L)).thenReturn(List.of(alpha));
 
         var response = service.getPostDetail(11L);
 
         assertThat(response.status()).isEqualTo(PostStatus.HIDDEN);
         assertThat(response.author().accountStatus()).isEqualTo(UserStatus.BLOCKED);
         assertThat(response.media()).extracting("mediaId").containsExactly(21L, 22L);
-        assertThat(response.hashtags()).containsExactly("alpha", "beta");
+        assertThat(response.hashtag()).isEqualTo("alpha");
         assertThat(response.pendingReportCount()).isEqualTo(2);
         assertThat(response.totalReportCount()).isEqualTo(4);
         assertThat(response.hiddenBy().adminId()).isEqualTo(1L);

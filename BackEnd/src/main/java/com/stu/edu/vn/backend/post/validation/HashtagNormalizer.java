@@ -2,50 +2,48 @@ package com.stu.edu.vn.backend.post.validation;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.text.Normalizer;
 import java.util.Locale;
-import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * Chuẩn hóa hashtag bài viết về dạng lưu database: lowercase, không có ký tự # và không trùng.
+ * Chuẩn hóa hashtag về một giá trị duy nhất dùng thống nhất cho Create, Update, Search và Suggestion.
  */
 @Component
 public class HashtagNormalizer {
 
-    private static final int MAX_HASHTAG_COUNT = 10;
     private static final int MAX_HASHTAG_LENGTH = 100;
-    private static final Pattern HASHTAG_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_]+$");
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("[\\p{Z}\\s]+", Pattern.UNICODE_CHARACTER_CLASS);
+    private static final Pattern HASHTAG_PATTERN = Pattern.compile(
+            "^[\\p{L}\\p{M}\\p{N}_]+(?: [\\p{L}\\p{M}\\p{N}_]+)*$"
+    );
 
-    public List<String> normalize(List<String> hashtags) {
-        // Null hoặc list rỗng nghĩa là bài viết không gắn hashtag.
-        if (hashtags == null || hashtags.isEmpty()) {
-            return List.of();
+    public String normalizeOptional(String rawHashtag) {
+        // Null hoặc raw chỉ có khoảng trắng biểu diễn field tùy chọn không có giá trị.
+        if (rawHashtag == null || isOnlyUnicodeWhitespace(rawHashtag)) {
+            return null;
         }
-        Set<String> normalizedHashtags = new LinkedHashSet<>();
-        for (String hashtag : hashtags) {
-            String normalizedHashtag = normalizeOne(hashtag);
-            normalizedHashtags.add(normalizedHashtag);
-        }
-        if (normalizedHashtags.size() > MAX_HASHTAG_COUNT) {
-            throw new BusinessException(ErrorCode.POST_HASHTAG_LIMIT_EXCEEDED);
-        }
-        return new ArrayList<>(normalizedHashtags);
+        return normalizeRequired(rawHashtag);
     }
 
-    private String normalizeOne(String hashtag) {
-        // Hashtag được trim, bỏ toàn bộ dấu # ở đầu và chuyển lowercase để chống trùng.
-        if (hashtag == null) {
-            throw new BusinessException(ErrorCode.POST_HASHTAG_INVALID);
-        }
-        String normalizedHashtag = removeLeadingHashes(hashtag.trim()).toLowerCase(Locale.ROOT);
+    public String normalizeSuggestionKeyword(String keyword) {
+        // Suggestion dùng đúng pipeline ghi dữ liệu; null/blank vẫn trả chuỗi rỗng để giữ contract từ khóa ngắn.
+        String normalizedKeyword = normalizeOptional(keyword);
+        return normalizedKeyword == null ? "" : normalizedKeyword;
+    }
+
+    private String normalizeRequired(String rawHashtag) {
+        // Loại bỏ mọi dấu # vì hashtag được nhập ở field riêng và database không lưu ký tự trình bày này.
+        String withoutHashes = rawHashtag.replace("#", "");
+        String stripped = stripUnicodeWhitespace(withoutHashes);
+        String collapsedWhitespace = WHITESPACE_PATTERN.matcher(stripped).replaceAll(" ");
+        String normalizedHashtag = Normalizer.normalize(collapsedWhitespace, Normalizer.Form.NFC)
+                .toLowerCase(Locale.ROOT);
         if (normalizedHashtag.isEmpty()) {
             throw new BusinessException(ErrorCode.POST_HASHTAG_INVALID);
         }
-        if (normalizedHashtag.length() > MAX_HASHTAG_LENGTH) {
+        if (normalizedHashtag.codePointCount(0, normalizedHashtag.length()) > MAX_HASHTAG_LENGTH) {
             throw new BusinessException(ErrorCode.POST_HASHTAG_TOO_LONG);
         }
         if (!HASHTAG_PATTERN.matcher(normalizedHashtag).matches()) {
@@ -54,12 +52,32 @@ public class HashtagNormalizer {
         return normalizedHashtag;
     }
 
-    private String removeLeadingHashes(String value) {
-        // Chỉ bỏ ký tự # ở đầu, không cho phép # ở giữa vì đó là ký tự đặc biệt không hợp lệ.
-        int index = 0;
-        while (index < value.length() && value.charAt(index) == '#') {
-            index++;
+    private String stripUnicodeWhitespace(String value) {
+        // Character.isSpaceChar bổ sung các separator như non-breaking space mà String.trim không xử lý.
+        int start = 0;
+        int end = value.length();
+        while (start < end) {
+            int codePoint = value.codePointAt(start);
+            if (!isUnicodeWhitespace(codePoint)) {
+                break;
+            }
+            start += Character.charCount(codePoint);
         }
-        return value.substring(index);
+        while (end > start) {
+            int codePoint = value.codePointBefore(end);
+            if (!isUnicodeWhitespace(codePoint)) {
+                break;
+            }
+            end -= Character.charCount(codePoint);
+        }
+        return value.substring(start, end);
+    }
+
+    private boolean isUnicodeWhitespace(int codePoint) {
+        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
+    }
+
+    private boolean isOnlyUnicodeWhitespace(String value) {
+        return value.codePoints().allMatch(this::isUnicodeWhitespace);
     }
 }

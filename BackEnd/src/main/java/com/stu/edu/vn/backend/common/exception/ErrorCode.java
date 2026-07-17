@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    HASHTAG_SUGGESTION_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa gợi ý hashtag không được vượt quá 100 ký tự"),
+    ADMIN_ACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lịch sử thao tác quản trị"),
     ADMIN_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo cần quản lý"),
     ADMIN_REPORT_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa báo cáo quản trị không được vượt quá 100 ký tự"),
     ADMIN_REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "Báo cáo đã được xử lý"),

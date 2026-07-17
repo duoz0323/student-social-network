@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class HashtagNormalizerTest {
@@ -13,62 +12,42 @@ class HashtagNormalizerTest {
     private final HashtagNormalizer normalizer = new HashtagNormalizer();
 
     @Test
-    void normalizeTrimsRemovesHashLowercasesAndRemovesDuplicates() {
-        // Hashtag được chuẩn hóa trước khi lưu để tránh trùng dữ liệu.
-        List<String> result = normalizer.normalize(List.of("  #SinhVien  ", "sinhvien", "HocTap"));
-
-        assertThat(result).containsExactly("sinhvien", "hoctap");
+    void normalizeRemovesEveryHashTrimsCollapsesWhitespaceAndLowercases() {
+        // Field hashtag không lưu ký tự # và chỉ giữ đúng một space giữa các từ.
+        assertThat(normalizer.normalizeOptional(" \u00A0#Sinh   #Viên\t "))
+                .isEqualTo("sinh viên");
     }
 
     @Test
-    void normalizeAcceptsVietnameseHashtag() {
-        // Regex dùng Unicode letter nên hashtag tiếng Việt hợp lệ.
-        List<String> result = normalizer.normalize(List.of("#ĐồÁn_TốtNghiệp2026"));
-
-        assertThat(result).containsExactly("đồán_tốtnghiệp2026");
+    void normalizeAcceptsVietnameseMultipleWordsAndNfcUnicode() {
+        // Chuỗi decomposed được đưa về NFC để cùng một hashtag có đúng một normalized_name.
+        assertThat(normalizer.normalizeOptional("Đồ a\u0301n Tốt Nghiệp 2026"))
+                .isEqualTo("đồ án tốt nghiệp 2026");
     }
 
     @Test
-    void normalizeRejectsWhitespaceOrSpecialCharactersInsideHashtag() {
-        // Hashtag không được chứa khoảng trắng hoặc ký tự đặc biệt ngoài dấu gạch dưới.
-        assertThatThrownBy(() -> normalizer.normalize(List.of("hoc tap")))
+    void normalizeTreatsNullAndUnicodeWhitespaceAsAbsent() {
+        assertThat(normalizer.normalizeOptional(null)).isNull();
+        assertThat(normalizer.normalizeOptional(" \t\u00A0\n")).isNull();
+    }
+
+    @Test
+    void normalizeRejectsNonBlankInputThatBecomesEmptyAndSpecialCharacters() {
+        assertError("###", ErrorCode.POST_HASHTAG_INVALID);
+        assertError("hoc-tap", ErrorCode.POST_HASHTAG_INVALID);
+    }
+
+    @Test
+    void normalizeChecksMaximumLengthAfterNormalizationByCodePoint() {
+        String exactlyOneHundred = "a".repeat(99) + "á";
+        assertThat(normalizer.normalizeOptional(exactlyOneHundred)).isEqualTo(exactlyOneHundred);
+        assertError(exactlyOneHundred + "b", ErrorCode.POST_HASHTAG_TOO_LONG);
+    }
+
+    private void assertError(String rawHashtag, ErrorCode errorCode) {
+        assertThatThrownBy(() -> normalizer.normalizeOptional(rawHashtag))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_HASHTAG_INVALID);
-
-        assertThatThrownBy(() -> normalizer.normalize(List.of("hoc-tap")))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_HASHTAG_INVALID);
-    }
-
-    @Test
-    void normalizeRejectsMoreThanTenUniqueHashtags() {
-        // Giới hạn 10 hashtag được tính sau khi chuẩn hóa và loại trùng.
-        List<String> hashtags = List.of("h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "h10", "h11");
-
-        assertThatThrownBy(() -> normalizer.normalize(hashtags))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_HASHTAG_LIMIT_EXCEEDED);
-    }
-
-    @Test
-    void normalizeRejectsHashtagLongerThanOneHundredCharacters() {
-        // Mỗi hashtag khớp độ dài cột normalized_name/display_name trong database.
-        String longHashtag = "a".repeat(101);
-
-        assertThatThrownBy(() -> normalizer.normalize(List.of(longHashtag)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_HASHTAG_TOO_LONG);
-    }
-
-    @Test
-    void normalizeAcceptsExactlyOneHundredCharacters() {
-        // Độ dài 100 ký tự là hợp lệ theo schema.
-        String hashtag = "a".repeat(100);
-
-        assertThat(normalizer.normalize(List.of(hashtag))).containsExactly(hashtag);
+                .isEqualTo(errorCode);
     }
 }

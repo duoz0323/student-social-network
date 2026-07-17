@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public record CreatePostRequest(
         String content,
-        List<String> hashtags,
+        String hashtag,
         List<MultipartFile> images
 ) {
 }

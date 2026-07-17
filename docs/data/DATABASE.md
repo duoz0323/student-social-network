@@ -95,7 +95,7 @@ Lưu:
 
 ### post_hashtags
 
-Bảng trung gian Post ↔ Hashtag.
+Bảng liên kết Post → Hashtag: mỗi Post có tối đa một dòng, một Hashtag có thể được nhiều Post dùng chung.
 
 ### post_likes
 
@@ -171,7 +171,7 @@ trong phạm vi này.
 - users N-N users qua follows.
 - users 1-N posts.
 - posts 1-N post_media.
-- posts N-N hashtags qua post_hashtags.
+- posts có tối đa một hashtag qua post_hashtags; UNIQUE(post_id) bảo vệ invariant ở database.
 - users N-N posts qua post_likes.
 - users 1-N comments.
 - posts 1-N comments.

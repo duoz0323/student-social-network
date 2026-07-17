@@ -31,7 +31,6 @@ class PostRepositoryContractTest {
         // Repository phụ hỗ trợ lấy media đúng thứ tự và lấy/xóa quan hệ hashtag của một bài.
         assertThat(PostMediaRepository.class.getMethod("findByPost_IdOrderByDisplayOrderAsc", Long.class)).isNotNull();
         assertThat(HashtagRepository.class.getMethod("findByNormalizedName", String.class)).isNotNull();
-        assertThat(HashtagRepository.class.getMethod("findByNormalizedNameIn", java.util.Collection.class)).isNotNull();
         assertThat(PostHashtagRepository.class.getMethod("findByPost_Id", Long.class)).isNotNull();
         assertThat(PostHashtagRepository.class.getMethod("deleteByPostId", Long.class).getAnnotation(Modifying.class))
                 .isNotNull();

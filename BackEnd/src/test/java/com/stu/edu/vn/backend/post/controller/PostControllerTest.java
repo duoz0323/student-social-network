@@ -53,19 +53,19 @@ class PostControllerTest {
                 now,
                 new PostAuthorResponse(10L, "Nguyen Van A", "https://cdn.example/avatar.png"),
                 List.of(),
-                List.of("sinhvien")
+                "sinhvien"
         ));
         MockMultipartFile image = new MockMultipartFile("images", "one.png", "image/png", new byte[]{1});
 
         mockMvc.perform(multipart("/api/v1/posts")
                         .file(image)
                         .param("content", "Noi dung")
-                        .param("hashtags", "sinhvien"))
+                        .param("hashtag", "sinhvien"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.author.id").value(10))
-                .andExpect(jsonPath("$.data.hashtags[0]").value("sinhvien"));
+                .andExpect(jsonPath("$.data.hashtag").value("sinhvien"));
     }
 
     @Test
@@ -82,7 +82,7 @@ class PostControllerTest {
                 now,
                 new PostAuthorResponse(10L, "Nguyen Van A", "https://cdn.example/avatar.png"),
                 List.of(),
-                List.of("sinhvien"),
+                "sinhvien",
                 new PostViewerResponse(true)
         ));
 
@@ -91,7 +91,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.viewer.owner").value(true))
-                .andExpect(jsonPath("$.data.hashtags[0]").value("sinhvien"));
+                .andExpect(jsonPath("$.data.hashtag").value("sinhvien"));
 
         verify(postService).getPostDetail(1L);
     }
@@ -110,7 +110,7 @@ class PostControllerTest {
                 now,
                 new PostAuthorResponse(10L, "Nguyen Van A", "https://cdn.example/avatar.png"),
                 List.of(),
-                List.of("doan"),
+                "doan",
                 new PostViewerResponse(true)
         ));
         MockMultipartFile image = new MockMultipartFile("newImages", "new.png", "image/png", new byte[]{1});
@@ -118,7 +118,7 @@ class PostControllerTest {
         mockMvc.perform(multipart("/api/v1/posts/1")
                         .file(image)
                         .param("content", "Noi dung moi")
-                        .param("hashtags", "doan")
+                        .param("hashtag", "doan")
                         .param("keepMediaIds", "10")
                         .with(request -> {
                             request.setMethod("PUT");
@@ -128,7 +128,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.isEdited").value(true))
-                .andExpect(jsonPath("$.data.hashtags[0]").value("doan"));
+                .andExpect(jsonPath("$.data.hashtag").value("doan"));
 
         verify(postService).updatePost(any(), any());
     }
