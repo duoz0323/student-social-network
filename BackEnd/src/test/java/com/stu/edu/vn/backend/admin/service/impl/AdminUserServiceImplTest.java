@@ -37,7 +37,8 @@ class AdminUserServiceImplTest {
                 org.mockito.Mockito.mock(com.stu.edu.vn.backend.admin.repository.AccountStatusHistoryRepository.class),
                 org.mockito.Mockito.mock(com.stu.edu.vn.backend.admin.repository.AdminActionRepository.class),
                 java.time.Clock.systemUTC(),
-                org.mockito.Mockito.mock(jakarta.persistence.EntityManager.class)
+                org.mockito.Mockito.mock(jakarta.persistence.EntityManager.class),
+                org.mockito.Mockito.mock(com.stu.edu.vn.backend.notification.service.NotificationService.class)
         );
     }
 

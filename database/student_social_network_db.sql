@@ -33,6 +33,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Xóa các bảng theo thứ tự phụ thuộc ngược để tránh lỗi khóa ngoại.
 DROP TABLE IF EXISTS admin_actions;
 DROP TABLE IF EXISTS account_status_histories;
+DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS saved_posts;
 DROP TABLE IF EXISTS comments;
@@ -619,6 +620,94 @@ CREATE INDEX idx_comments_post_parent_created
 CREATE INDEX idx_comments_user_created
     ON comments (user_id, status, created_at DESC, id DESC);
 
+-- Bảng notifications lưu thông báo tương tác và kết quả quản trị.
+CREATE TABLE notifications (
+    -- Khóa chính tự tăng của thông báo.
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    -- Người sở hữu duy nhất và được phép đọc thông báo.
+    recipient_id BIGINT UNSIGNED NOT NULL,
+    -- Người thực hiện tương tác; có thể NULL nếu tài khoản actor bị xóa vật lý trong tương lai.
+    actor_id BIGINT UNSIGNED NULL,
+    -- Loại thông báo được giới hạn theo các luồng nghiệp vụ đã hỗ trợ.
+    type ENUM(
+        'FOLLOW', 'POST_LIKE', 'POST_COMMENT', 'COMMENT_REPLY',
+        'REPORT_RESOLVED', 'REPORT_REJECTED',
+        'POST_HIDDEN_BY_ADMIN', 'POST_RESTORED_BY_ADMIN',
+        'ACCOUNT_BLOCKED', 'ACCOUNT_UNBLOCKED'
+    ) NOT NULL,
+    -- Bài viết liên quan đến Like hoặc bình luận.
+    post_id BIGINT UNSIGNED NULL,
+    -- Bình luận gốc hoặc reply tạo ra thông báo tương ứng.
+    comment_id BIGINT UNSIGNED NULL,
+    -- Báo cáo liên quan đến kết quả xử lý của Admin.
+    report_id BIGINT UNSIGNED NULL,
+    -- NULL nghĩa là chưa đọc; có giá trị sau khi người nhận đánh dấu đã đọc.
+    read_at DATETIME(6) NULL,
+    -- Xóa mềm khỏi hộp thông báo cá nhân.
+    deleted_at DATETIME(6) NULL,
+    -- Thời điểm tạo thông báo do MySQL quản lý.
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    -- Thời điểm cập nhật trạng thái đọc/xóa gần nhất.
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT pk_notifications PRIMARY KEY (id),
+    CONSTRAINT fk_notifications_recipient FOREIGN KEY (recipient_id)
+        REFERENCES users (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE,
+    CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_id)
+        REFERENCES users (id)
+        ON UPDATE RESTRICT
+        ON DELETE SET NULL,
+    CONSTRAINT fk_notifications_post FOREIGN KEY (post_id)
+        REFERENCES posts (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE,
+    CONSTRAINT fk_notifications_comment FOREIGN KEY (comment_id)
+        REFERENCES comments (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE,
+    -- Không cho phép lưu thông báo do chính người nhận tạo ra.
+    CONSTRAINT chk_notifications_not_self CHECK (
+        actor_id IS NULL OR actor_id <> recipient_id
+    ),
+    -- Mỗi loại chỉ được tham chiếu đúng đối tượng nghiệp vụ cần thiết.
+    CONSTRAINT chk_notifications_target_by_type CHECK (
+        (type IN ('FOLLOW', 'ACCOUNT_BLOCKED', 'ACCOUNT_UNBLOCKED')
+            AND post_id IS NULL AND comment_id IS NULL AND report_id IS NULL)
+        OR
+        (type IN ('POST_LIKE', 'POST_HIDDEN_BY_ADMIN', 'POST_RESTORED_BY_ADMIN')
+            AND post_id IS NOT NULL AND comment_id IS NULL AND report_id IS NULL)
+        OR
+        (type IN ('POST_COMMENT', 'COMMENT_REPLY')
+            AND post_id IS NOT NULL AND comment_id IS NOT NULL AND report_id IS NULL)
+        OR
+        (type IN ('REPORT_RESOLVED', 'REPORT_REJECTED')
+            AND post_id IS NULL AND comment_id IS NULL AND report_id IS NOT NULL)
+    )
+) ENGINE=InnoDB;
+
+-- Danh sách thông báo của một người dùng theo thời gian mới nhất.
+CREATE INDEX idx_notifications_recipient_created
+    ON notifications (recipient_id, deleted_at, created_at DESC, id DESC);
+
+-- Đếm thông báo chưa đọc mà không quét toàn bộ hộp thông báo.
+CREATE INDEX idx_notifications_recipient_unread
+    ON notifications (recipient_id, deleted_at, read_at);
+
+-- Các index nguồn phục vụ xóa thông báo tương ứng khi hành động chính bị hoàn tác.
+CREATE INDEX idx_notifications_follow_source
+    ON notifications (actor_id, recipient_id, type);
+
+CREATE INDEX idx_notifications_post_source
+    ON notifications (actor_id, post_id, type);
+
+CREATE INDEX idx_notifications_comment_source
+    ON notifications (comment_id, type);
+
+CREATE INDEX idx_notifications_report_source
+    ON notifications (report_id, type);
+
 -- Bảng saved_posts là bảng trung gian N-N giữa users và posts.
 CREATE TABLE saved_posts (
     -- Người dùng lưu bài viết.
@@ -740,6 +829,13 @@ CREATE INDEX idx_reports_post_status
 -- Index hỗ trợ người dùng xem lịch sử báo cáo của chính mình.
 CREATE INDEX idx_reports_reporter_created
     ON reports (reporter_id, created_at DESC, id DESC);
+
+-- Khóa ngoại được thêm sau khi reports đã tồn tại trong script khởi tạo mới.
+ALTER TABLE notifications
+    ADD CONSTRAINT fk_notifications_report FOREIGN KEY (report_id)
+        REFERENCES reports (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE;
 
 -- Bảng account_status_histories lưu lịch sử khóa/mở khóa tài khoản.
 CREATE TABLE account_status_histories (
@@ -1038,7 +1134,7 @@ WHERE p.status = 'PUBLISHED'
 --
 -- 5. Sau khi nhập dữ liệu lớn, có thể chạy ANALYZE TABLE để cập nhật thống kê:
 --    ANALYZE TABLE users, user_profiles, follows, posts, comments,
---                  post_likes, saved_posts, reports;
+--                  post_likes, notifications, saved_posts, reports;
 --
 -- 6. Chỉ tạo thêm index khi có truy vấn thật sự cần đến.
 --    Quá nhiều index sẽ làm chậm INSERT, UPDATE và tăng dung lượng lưu trữ.

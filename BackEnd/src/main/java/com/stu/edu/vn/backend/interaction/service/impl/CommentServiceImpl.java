@@ -11,9 +11,11 @@ import com.stu.edu.vn.backend.interaction.enums.CommentStatus;
 import com.stu.edu.vn.backend.interaction.mapper.CommentMapper;
 import com.stu.edu.vn.backend.interaction.repository.CommentRepository;
 import com.stu.edu.vn.backend.interaction.service.CommentService;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -43,6 +45,7 @@ public class CommentServiceImpl implements CommentService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final CommentMapper commentMapper;
+    private final NotificationService notificationService;
     private final EntityManager entityManager;
     private final Clock clock;
 
@@ -53,6 +56,7 @@ public class CommentServiceImpl implements CommentService {
             PostRepository postRepository,
             CommentRepository commentRepository,
             CommentMapper commentMapper,
+            NotificationService notificationService,
             EntityManager entityManager,
             Clock clock
     ) {
@@ -62,6 +66,7 @@ public class CommentServiceImpl implements CommentService {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.commentMapper = commentMapper;
+        this.notificationService = notificationService;
         this.entityManager = entityManager;
         this.clock = clock;
     }
@@ -72,11 +77,19 @@ public class CommentServiceImpl implements CommentService {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
-        ensurePostIsPublished(postId);
+        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
 
         // Dùng reference để tạo khóa ngoại post_id mà không cần tải toàn bộ entity bài viết.
         Post postReference = postRepository.getReferenceById(postId);
         Comment comment = commentRepository.saveAndFlush(new Comment(postReference, currentUser, content));
+
+        // Bình luận gốc thông báo cho tác giả Post; reply có luồng COMMENT_REPLY riêng.
+        notificationService.createPostCommentNotification(
+                userId,
+                target.getAuthorId(),
+                postId,
+                comment.getId()
+        );
 
         // Refresh để lấy created_at do MySQL tự sinh và authorProfile phục vụ response.
         entityManager.refresh(comment);
@@ -105,6 +118,12 @@ public class CommentServiceImpl implements CommentService {
         // post_id luôn lấy từ bình luận cha để Client không thể gắn reply sang bài viết khác.
         Comment reply = commentRepository.saveAndFlush(
                 new Comment(parentComment.getPost(), currentUser, parentComment, content)
+        );
+        notificationService.createCommentReplyNotification(
+                userId,
+                parentComment.getAuthor().getId(),
+                postId,
+                reply.getId()
         );
         entityManager.refresh(reply);
         return commentMapper.toResponse(reply);
@@ -174,6 +193,7 @@ public class CommentServiceImpl implements CommentService {
         if (updatedRows == 0) {
             throw new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
         }
+        notificationService.deleteCommentNotification(commentId);
         return new DeleteCommentResponse(commentId, true);
     }
 
@@ -198,6 +218,15 @@ public class CommentServiceImpl implements CommentService {
         if (status != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }
+    }
+
+    private PostInteractionTargetProjection findPublishedInteractionTarget(Long postId) {
+        PostInteractionTargetProjection target = postRepository.findInteractionTargetById(postId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        if (target.getStatus() != PostStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
+        }
+        return target;
     }
 
     private String validateCommentContent(CreateCommentRequest request) {

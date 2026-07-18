@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostLike;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -34,6 +36,7 @@ class PostLikeServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
 
     private PostLikeServiceImpl postLikeService;
 
@@ -44,13 +47,15 @@ class PostLikeServiceImplTest {
                 userRepository,
                 userProfileRepository,
                 postRepository,
-                postLikeRepository
+                postLikeRepository,
+                notificationService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(10L)));
-        when(postRepository.findStatusById(1L)).thenReturn(Optional.of(PostStatus.PUBLISHED));
+        PostInteractionTargetProjection publishedTarget = target(PostStatus.PUBLISHED, 20L);
+        when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.of(publishedTarget));
         when(postRepository.getReferenceById(1L)).thenReturn(post(1L));
         when(postRepository.findLikeCountById(1L)).thenReturn(Optional.of(6));
     }
@@ -64,6 +69,7 @@ class PostLikeServiceImplTest {
         ArgumentCaptor<PostLike> captor = ArgumentCaptor.forClass(PostLike.class);
         verify(currentUserProvider).getCurrentUserId();
         verify(postLikeRepository).saveAndFlush(captor.capture());
+        verify(notificationService).createPostLikeNotification(10L, 20L, 1L);
         assertThat(captor.getValue().getId().getUserId()).isEqualTo(10L);
         assertThat(captor.getValue().getId().getPostId()).isEqualTo(1L);
         assertThat(response.postId()).isEqualTo(1L);
@@ -86,7 +92,8 @@ class PostLikeServiceImplTest {
 
     @Test
     void likePostRejectsHiddenOrDeletedPostAsNotAvailable() {
-        when(postRepository.findStatusById(1L)).thenReturn(Optional.of(PostStatus.HIDDEN));
+        PostInteractionTargetProjection hiddenTarget = target(PostStatus.HIDDEN, 20L);
+        when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.of(hiddenTarget));
 
         assertThatThrownBy(() -> postLikeService.likePost(1L))
                 .isInstanceOf(BusinessException.class)
@@ -98,7 +105,7 @@ class PostLikeServiceImplTest {
 
     @Test
     void likePostReturnsNotFoundWhenPostDoesNotExist() {
-        when(postRepository.findStatusById(1L)).thenReturn(Optional.empty());
+        when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> postLikeService.likePost(1L))
                 .isInstanceOf(BusinessException.class)
@@ -117,7 +124,7 @@ class PostLikeServiceImplTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PROFILE_NOT_COMPLETED);
 
-        verify(postRepository, never()).findStatusById(any());
+        verify(postRepository, never()).findInteractionTargetById(any());
     }
 
     @Test
@@ -129,6 +136,7 @@ class PostLikeServiceImplTest {
         PostLikeResponse response = postLikeService.unlikePost(1L);
 
         verify(postLikeRepository).deleteByUserIdAndPostId(10L, 1L);
+        verify(notificationService).deletePostLikeNotification(10L, 1L);
         assertThat(response.postId()).isEqualTo(1L);
         assertThat(response.likedByCurrentUser()).isFalse();
         assertThat(response.likeCount()).isEqualTo(5);
@@ -144,6 +152,7 @@ class PostLikeServiceImplTest {
                 .isEqualTo(ErrorCode.POST_NOT_LIKED);
 
         verify(postLikeRepository, never()).deleteByUserIdAndPostId(any(), any());
+        verify(notificationService, never()).deletePostLikeNotification(any(), any());
     }
 
     private User user(Long userId) {
@@ -164,5 +173,13 @@ class PostLikeServiceImplTest {
         Post post = new Post(user(20L), "Noi dung");
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
+    }
+
+    private PostInteractionTargetProjection target(PostStatus status, Long authorId) {
+        PostInteractionTargetProjection target = org.mockito.Mockito.mock(PostInteractionTargetProjection.class);
+        when(target.getPostId()).thenReturn(1L);
+        when(target.getAuthorId()).thenReturn(authorId);
+        when(target.getStatus()).thenReturn(status);
+        return target;
     }
 }

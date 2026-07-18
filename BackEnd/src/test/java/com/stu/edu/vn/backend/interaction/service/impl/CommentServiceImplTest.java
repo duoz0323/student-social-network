@@ -18,9 +18,11 @@ import com.stu.edu.vn.backend.interaction.enums.CommentStatus;
 import com.stu.edu.vn.backend.interaction.mapper.CommentMapper;
 import com.stu.edu.vn.backend.interaction.repository.CommentRepository;
 import com.stu.edu.vn.backend.interaction.repository.projection.CommentReplyCountProjection;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -48,6 +50,7 @@ class CommentServiceImplTest {
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
     private final CommentRepository commentRepository = org.mockito.Mockito.mock(CommentRepository.class);
     private final CommentMapper commentMapper = org.mockito.Mockito.mock(CommentMapper.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
 
@@ -62,6 +65,7 @@ class CommentServiceImplTest {
                 postRepository,
                 commentRepository,
                 commentMapper,
+                notificationService,
                 entityManager,
                 clock
         );
@@ -70,6 +74,8 @@ class CommentServiceImplTest {
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(10L)));
         when(postRepository.findStatusById(1L)).thenReturn(Optional.of(PostStatus.PUBLISHED));
+        PostInteractionTargetProjection publishedTarget = target(PostStatus.PUBLISHED, 20L);
+        when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.of(publishedTarget));
         when(postRepository.getReferenceById(1L)).thenReturn(post(1L));
     }
 
@@ -82,6 +88,7 @@ class CommentServiceImplTest {
 
         ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
         verify(commentRepository).saveAndFlush(captor.capture());
+        verify(notificationService).createPostCommentNotification(10L, 20L, 1L, 100L);
         assertThat(captor.getValue().getAuthor().getId()).isEqualTo(10L);
         assertThat(captor.getValue().getPost().getId()).isEqualTo(1L);
         assertThat(captor.getValue().getParentComment()).isNull();
@@ -104,6 +111,8 @@ class CommentServiceImplTest {
 
         ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
         verify(commentRepository).saveAndFlush(captor.capture());
+        verify(notificationService).createCommentReplyNotification(10L, 20L, 1L, 100L);
+        verify(notificationService, never()).createPostCommentNotification(any(), any(), any(), any());
         assertThat(captor.getValue().getParentComment()).isSameAs(parent);
         assertThat(captor.getValue().getPost().getId()).isEqualTo(1L);
         assertThat(captor.getValue().getContent()).isEqualTo("Noi dung tra loi");
@@ -148,7 +157,8 @@ class CommentServiceImplTest {
 
     @Test
     void createCommentRejectsHiddenOrDeletedPost() {
-        when(postRepository.findStatusById(1L)).thenReturn(Optional.of(PostStatus.DELETED));
+        PostInteractionTargetProjection deletedTarget = target(PostStatus.DELETED, 20L);
+        when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.of(deletedTarget));
 
         assertThatThrownBy(() -> commentService.createComment(1L, new CreateCommentRequest("Noi dung")))
                 .isInstanceOf(BusinessException.class)
@@ -210,6 +220,7 @@ class CommentServiceImplTest {
 
         ArgumentCaptor<LocalDateTime> deletedAtCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(commentRepository).softDeletePublishedComment(eq(100L), deletedAtCaptor.capture());
+        verify(notificationService).deleteCommentNotification(100L);
         assertThat(deletedAtCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 7, 3, 1, 10));
         assertThat(response.commentId()).isEqualTo(100L);
         assertThat(response.deleted()).isTrue();
@@ -291,5 +302,13 @@ class CommentServiceImplTest {
                 replyCount,
                 deleted
         );
+    }
+
+    private PostInteractionTargetProjection target(PostStatus status, Long authorId) {
+        PostInteractionTargetProjection target = org.mockito.Mockito.mock(PostInteractionTargetProjection.class);
+        when(target.getPostId()).thenReturn(1L);
+        when(target.getAuthorId()).thenReturn(authorId);
+        when(target.getStatus()).thenReturn(status);
+        return target;
     }
 }

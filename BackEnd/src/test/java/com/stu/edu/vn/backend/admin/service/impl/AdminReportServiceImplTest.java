@@ -26,6 +26,7 @@ import com.stu.edu.vn.backend.admin.repository.projection.AdminReportDetailProje
 import com.stu.edu.vn.backend.admin.repository.projection.AdminReportListProjection;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.report.entity.Report;
@@ -57,6 +58,7 @@ class AdminReportServiceImplTest {
     private final AdminActionRepository actionRepository = org.mockito.Mockito.mock(AdminActionRepository.class);
     private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private AdminReportServiceImpl service;
     private User admin;
 
@@ -69,7 +71,8 @@ class AdminReportServiceImplTest {
         when(postRepository.findAdminDisplayName(1L)).thenReturn(Optional.of("Admin"));
         service = new AdminReportServiceImpl(repository, new AdminReportMapper(new ObjectMapper()),
                 postRepository, actionRepository, currentUserProvider, entityManager,
-                Clock.fixed(Instant.parse("2026-07-15T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")));
+                Clock.fixed(Instant.parse("2026-07-15T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")),
+                notificationService);
     }
 
     @Test
@@ -171,6 +174,7 @@ class AdminReportServiceImplTest {
         assertThat(post.getStatus()).isEqualTo(PostStatus.PUBLISHED);
         assertThat(response.resolvedBy()).extracting("adminId", "displayName").containsExactly(1L, "Admin");
         assertActions(action(AdminActionType.REJECT_REPORT, AdminTargetType.REPORT, 31L, "Không vi phạm"));
+        verify(notificationService).createReportRejectedNotification(9L, 31L);
         verify(postRepository, never()).findByIdForUpdate(anyLong());
         verify(entityManager).flush();
     }
@@ -188,6 +192,7 @@ class AdminReportServiceImplTest {
         assertThat(post.getStatus()).isEqualTo(PostStatus.PUBLISHED);
         assertThat(response.post().status()).isEqualTo(PostStatus.PUBLISHED);
         assertActions(action(AdminActionType.RESOLVE_REPORT, AdminTargetType.REPORT, 31L, "Hợp lệ"));
+        verify(notificationService).createReportResolvedNotification(9L, 31L);
         verify(postRepository, never()).findByIdForUpdate(anyLong());
     }
 
@@ -209,6 +214,8 @@ class AdminReportServiceImplTest {
         assertActions(
                 action(AdminActionType.RESOLVE_REPORT, AdminTargetType.REPORT, 31L, "Hợp lệ"),
                 action(AdminActionType.HIDE_POST, AdminTargetType.POST, 11L, "SPAM"));
+        verify(notificationService).createReportResolvedNotification(9L, 31L);
+        verify(notificationService).createPostHiddenByAdminNotification(8L, 11L);
     }
 
     @Test

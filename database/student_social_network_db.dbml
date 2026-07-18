@@ -64,6 +64,19 @@ Enum comment_status {
   DELETED
 }
 
+Enum notification_type {
+  FOLLOW
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+  REPORT_RESOLVED
+  REPORT_REJECTED
+  POST_HIDDEN_BY_ADMIN
+  POST_RESTORED_BY_ADMIN
+  ACCOUNT_BLOCKED
+  ACCOUNT_UNBLOCKED
+}
+
 Enum report_reason {
   SPAM
   HARASSMENT
@@ -300,6 +313,31 @@ Table comments {
   Note: "CHECK: content không rỗng; trạng thái DELETED phải có deleted_at."
 }
 
+Table notifications {
+  id bigint [pk, increment, not null]
+  recipient_id bigint [not null, note: "Người sở hữu và được phép đọc thông báo."]
+  actor_id bigint [note: "Người thực hiện tương tác; có thể NULL nếu actor bị xóa vật lý."]
+  type notification_type [not null]
+  post_id bigint [note: "Bài viết liên quan đến Like hoặc bình luận."]
+  comment_id bigint [note: "Bình luận gốc hoặc reply liên quan."]
+  report_id bigint [note: "Báo cáo liên quan đến kết quả xử lý."]
+  read_at datetime(6) [note: "NULL nghĩa là chưa đọc."]
+  deleted_at datetime(6) [note: "Thời điểm người nhận ẩn thông báo khỏi danh sách."]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "MySQL tự cập nhật bằng ON UPDATE CURRENT_TIMESTAMP(6)."]
+
+  Indexes {
+    (recipient_id, deleted_at, created_at, id) [name: "idx_notifications_recipient_created"]
+    (recipient_id, deleted_at, read_at) [name: "idx_notifications_recipient_unread"]
+    (actor_id, recipient_id, type) [name: "idx_notifications_follow_source"]
+    (actor_id, post_id, type) [name: "idx_notifications_post_source"]
+    (comment_id, type) [name: "idx_notifications_comment_source"]
+    (report_id, type) [name: "idx_notifications_report_source"]
+  }
+
+  Note: "CHECK trong SQL chặn tự thông báo và bảo đảm target phù hợp với từng loại."
+}
+
 Table saved_posts {
   user_id bigint [not null]
   post_id bigint [not null]
@@ -402,6 +440,12 @@ Ref: post_likes.post_id > posts.id [delete: cascade, update: restrict]
 Ref: comments.post_id > posts.id [delete: cascade, update: restrict]
 Ref: comments.user_id > users.id [delete: restrict, update: restrict]
 Ref: comments.parent_comment_id > comments.id [delete: cascade, update: restrict]
+
+Ref: notifications.recipient_id > users.id [delete: cascade, update: restrict]
+Ref: notifications.actor_id > users.id [delete: set null, update: restrict]
+Ref: notifications.post_id > posts.id [delete: cascade, update: restrict]
+Ref: notifications.comment_id > comments.id [delete: cascade, update: restrict]
+Ref: notifications.report_id > reports.id [delete: cascade, update: restrict]
 
 Ref: saved_posts.user_id > users.id [delete: cascade, update: restrict]
 Ref: saved_posts.post_id > posts.id [delete: cascade, update: restrict]

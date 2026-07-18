@@ -8,6 +8,7 @@ import com.stu.edu.vn.backend.follow.entity.Follow;
 import com.stu.edu.vn.backend.follow.mapper.FollowMapper;
 import com.stu.edu.vn.backend.follow.repository.FollowRepository;
 import com.stu.edu.vn.backend.follow.service.FollowService;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -30,19 +31,22 @@ public class FollowServiceImpl implements FollowService {
     private final UserProfileRepository userProfileRepository;
     private final FollowRepository followRepository;
     private final FollowMapper followMapper;
+    private final NotificationService notificationService;
 
     public FollowServiceImpl(
             CurrentUserProvider currentUserProvider,
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
             FollowRepository followRepository,
-            FollowMapper followMapper
+            FollowMapper followMapper,
+            NotificationService notificationService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.followRepository = followRepository;
         this.followMapper = followMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -64,6 +68,8 @@ public class FollowServiceImpl implements FollowService {
             // Không để lộ tên constraint hoặc SQL; lỗi cạnh tranh được chuẩn hóa thành mã nghiệp vụ ổn định.
             throw new BusinessException(ErrorCode.FOLLOW_ALREADY_EXISTS);
         }
+        // Chỉ tạo sau khi quan hệ Follow mới đã được flush thành công.
+        notificationService.createFollowNotification(currentUserId, userId);
         return new FollowStatusResponse(userId, true);
     }
 
@@ -79,6 +85,7 @@ public class FollowServiceImpl implements FollowService {
         if (deletedRows == 0) {
             throw new BusinessException(ErrorCode.FOLLOW_NOT_FOUND);
         }
+        notificationService.deleteFollowNotification(currentUserId, userId);
         return new FollowStatusResponse(userId, false);
     }
 

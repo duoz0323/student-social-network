@@ -20,6 +20,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.util.LikePatternEscaper;
 import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.report.entity.Report;
 import com.stu.edu.vn.backend.report.enums.ReportReason;
@@ -50,6 +51,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final CurrentUserProvider currentUserProvider;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final NotificationService notificationService;
 
     public AdminReportServiceImpl(
             AdminReportRepository adminReportRepository,
@@ -58,7 +60,8 @@ public class AdminReportServiceImpl implements AdminReportService {
             AdminActionRepository adminActionRepository,
             CurrentUserProvider currentUserProvider,
             EntityManager entityManager,
-            Clock clock
+            Clock clock,
+            NotificationService notificationService
     ) {
         this.adminReportRepository = adminReportRepository;
         this.adminReportMapper = adminReportMapper;
@@ -67,6 +70,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         this.currentUserProvider = currentUserProvider;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -120,6 +124,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         report.reject(adminReference, now, resolutionNote);
         adminActionRepository.save(new AdminAction(adminReference, AdminActionType.REJECT_REPORT,
                 AdminTargetType.REPORT, report.getId(), resolutionNote));
+        notificationService.createReportRejectedNotification(report.getReporter().getId(), report.getId());
 
         // Flush chủ động để lỗi constraint hoặc audit rollback Report trước khi trả response.
         entityManager.flush();
@@ -156,7 +161,9 @@ public class AdminReportServiceImpl implements AdminReportService {
         if (postHiddenNow) {
             adminActionRepository.save(new AdminAction(adminReference, AdminActionType.HIDE_POST,
                     AdminTargetType.POST, post.getId(), hideReason.name()));
+            notificationService.createPostHiddenByAdminNotification(post.getAuthor().getId(), post.getId());
         }
+        notificationService.createReportResolvedNotification(report.getReporter().getId(), report.getId());
 
         // Report, Post và các action cùng flush trong transaction; một lỗi sẽ rollback toàn bộ.
         entityManager.flush();

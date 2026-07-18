@@ -2,12 +2,14 @@ package com.stu.edu.vn.backend.post.service.impl;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostLike;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.post.service.PostLikeService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -30,19 +32,22 @@ public class PostLikeServiceImpl implements PostLikeService {
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
+    private final NotificationService notificationService;
 
     public PostLikeServiceImpl(
             CurrentUserProvider currentUserProvider,
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
             PostRepository postRepository,
-            PostLikeRepository postLikeRepository
+            PostLikeRepository postLikeRepository,
+            NotificationService notificationService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -50,7 +55,7 @@ public class PostLikeServiceImpl implements PostLikeService {
     public PostLikeResponse likePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanInteract(userId);
-        ensurePostIsPublished(postId);
+        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
 
         if (postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_ALREADY_LIKED);
@@ -65,6 +70,8 @@ public class PostLikeServiceImpl implements PostLikeService {
             throw new BusinessException(ErrorCode.POST_ALREADY_LIKED);
         }
 
+        notificationService.createPostLikeNotification(userId, target.getAuthorId(), postId);
+
         int likeCount = getLatestLikeCount(postId);
         return new PostLikeResponse(postId, true, likeCount);
     }
@@ -74,7 +81,7 @@ public class PostLikeServiceImpl implements PostLikeService {
     public PostLikeResponse unlikePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanInteract(userId);
-        ensurePostIsPublished(postId);
+        findPublishedInteractionTarget(postId);
 
         if (!postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_NOT_LIKED);
@@ -85,6 +92,8 @@ public class PostLikeServiceImpl implements PostLikeService {
         if (deletedRows == 0) {
             throw new BusinessException(ErrorCode.POST_NOT_LIKED);
         }
+
+        notificationService.deletePostLikeNotification(userId, postId);
 
         int likeCount = getLatestLikeCount(postId);
         return new PostLikeResponse(postId, false, likeCount);
@@ -105,12 +114,13 @@ public class PostLikeServiceImpl implements PostLikeService {
         return currentUser;
     }
 
-    private void ensurePostIsPublished(Long postId) {
-        PostStatus status = postRepository.findStatusById(postId)
+    private PostInteractionTargetProjection findPublishedInteractionTarget(Long postId) {
+        PostInteractionTargetProjection target = postRepository.findInteractionTargetById(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
-        if (status != PostStatus.PUBLISHED) {
+        if (target.getStatus() != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }
+        return target;
     }
 
     private int getLatestLikeCount(Long postId) {

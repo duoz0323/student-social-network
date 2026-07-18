@@ -21,6 +21,7 @@ import com.stu.edu.vn.backend.admin.repository.AdminUserRepository;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -48,6 +49,7 @@ class AdminUserStatusServiceImplTest {
             org.mockito.Mockito.mock(AccountStatusHistoryRepository.class);
     private final AdminActionRepository actionRepository = org.mockito.Mockito.mock(AdminActionRepository.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final User admin = user(1L, UserRole.ADMIN, UserStatus.ACTIVE);
     private AdminUserServiceImpl service;
 
@@ -56,7 +58,7 @@ class AdminUserStatusServiceImplTest {
         Clock clock = Clock.fixed(Instant.parse("2026-07-14T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
         service = new AdminUserServiceImpl(
                 adminUserRepository, new AdminUserMapper(), currentUserProvider, refreshTokenRepository,
-                historyRepository, actionRepository, clock, entityManager);
+                historyRepository, actionRepository, clock, entityManager, notificationService);
         when(currentUserProvider.getCurrentUser())
                 .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
         when(entityManager.getReference(User.class, 1L)).thenReturn(admin);
@@ -73,6 +75,7 @@ class AdminUserStatusServiceImplTest {
                 .extracting("userId", "status", "blockedAt", "blockedReason")
                 .containsExactly(10L, UserStatus.BLOCKED, NOW, "SPAM");
         verify(refreshTokenRepository).revokeActiveTokensByUserId(10L, NOW);
+        verify(notificationService).createAccountBlockedNotification(10L);
 
         ArgumentCaptor<AccountStatusHistory> historyCaptor = ArgumentCaptor.forClass(AccountStatusHistory.class);
         verify(historyRepository).save(historyCaptor.capture());
@@ -156,6 +159,7 @@ class AdminUserStatusServiceImplTest {
         assertThat(actionCaptor.getValue())
                 .extracting("actionType", "targetType", "targetId", "note")
                 .containsExactly(AdminActionType.UNBLOCK_USER, AdminTargetType.USER, 10L, "ADMIN_UNBLOCK");
+        verify(notificationService).createAccountUnblockedNotification(10L);
     }
 
     @Test

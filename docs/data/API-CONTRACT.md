@@ -575,7 +575,41 @@ Request:
 }
 ```
 
-## 9. Admin
+## 9. Notification
+
+Hỗ trợ `FOLLOW`, `POST_LIKE`, `POST_COMMENT`, `COMMENT_REPLY`, `REPORT_RESOLVED`,
+`REPORT_REJECTED`, `POST_HIDDEN_BY_ADMIN`, `POST_RESTORED_BY_ADMIN`, `ACCOUNT_BLOCKED` và
+`ACCOUNT_UNBLOCKED`. Không có API tạo notification công khai,
+WebSocket hoặc message broker. Current user phải `ACTIVE` và đã hoàn tất hồ sơ.
+
+### GET `/api/v1/notifications?page=0&size=20`
+
+- `page` mặc định `0`; `size` mặc định `20` và tối đa `100`.
+- Chỉ trả notification của current user chưa bị ẩn.
+- Sắp xếp `createdAt DESC, notificationId DESC`.
+- Mỗi phần tử gồm `notificationId`, `type`, actor công khai, `postId`, `commentId`,
+  `reportId`, `readAt`, `createdAt`.
+- Thông báo quản trị có `actor = null` để không làm lộ danh tính Admin hoặc người báo cáo.
+- Repository dùng projection để không phát sinh N+1.
+
+### GET `/api/v1/notifications/unread-count`
+
+Trả `unreadCount`, không tính notification đã đọc hoặc đã bị ẩn.
+
+### PATCH `/api/v1/notifications/{notificationId}/read`
+
+Chỉ đánh dấu notification thuộc current user. Thao tác lặp lại giữ nguyên `readAt` đầu tiên.
+
+### PATCH `/api/v1/notifications/read-all`
+
+Đánh dấu toàn bộ notification chưa đọc và chưa bị ẩn của current user; trả `updatedCount`.
+
+### DELETE `/api/v1/notifications/{notificationId}`
+
+Ẩn mềm notification khỏi danh sách cá nhân. Không cho phép xóa notification của người dùng khác.
+Notification không tồn tại, đã ẩn hoặc không thuộc current user đều trả `NOTIFICATION_NOT_FOUND`.
+
+## 10. Admin
 
 ### GET `/api/v1/admin/users?keyword=&status=&page=0&size=20`
 

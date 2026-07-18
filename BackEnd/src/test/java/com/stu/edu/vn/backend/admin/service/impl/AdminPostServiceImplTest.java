@@ -23,6 +23,7 @@ import com.stu.edu.vn.backend.admin.repository.projection.AdminPostListProjectio
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostMediaProjection;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -49,6 +50,7 @@ class AdminPostServiceImplTest {
     private final AdminActionRepository actionRepository = org.mockito.Mockito.mock(AdminActionRepository.class);
     private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private AdminPostServiceImpl service;
     private User admin;
 
@@ -62,7 +64,8 @@ class AdminPostServiceImplTest {
         when(entityManager.getReference(User.class, 1L)).thenReturn(admin);
         service = new AdminPostServiceImpl(repository, new AdminPostMapper(), actionRepository,
                 currentUserProvider, entityManager,
-                Clock.fixed(Instant.parse("2026-07-15T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")));
+                Clock.fixed(Instant.parse("2026-07-15T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")),
+                notificationService);
     }
 
     @Test
@@ -154,6 +157,7 @@ class AdminPostServiceImplTest {
         assertThat(post.getHiddenReason()).isEqualTo("SPAM");
         assertThat(response.hiddenBy()).extracting("adminId", "displayName").containsExactly(1L, "Admin");
         assertAction(AdminActionType.HIDE_POST, "SPAM");
+        verify(notificationService).createPostHiddenByAdminNotification(8L, 11L);
         verify(entityManager).flush();
         verify(entityManager).refresh(post);
     }
@@ -203,6 +207,7 @@ class AdminPostServiceImplTest {
         assertThat(post.getHiddenReason()).isNull();
         assertThat(response.hiddenBy()).isNull();
         assertAction(AdminActionType.RESTORE_POST, "ADMIN_RESTORE");
+        verify(notificationService).createPostRestoredByAdminNotification(8L, 11L);
         verify(repository, never()).findAdminDisplayName(any());
     }
 
@@ -230,6 +235,7 @@ class AdminPostServiceImplTest {
 
     private Post post(Long id, PostStatus status) {
         User author = new User("author" + id + "@example.com", null, "hash");
+        ReflectionTestUtils.setField(author, "id", 8L);
         Post post = new Post(author, "content");
         ReflectionTestUtils.setField(post, "id", id);
         post.setStatus(status);

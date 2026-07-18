@@ -19,6 +19,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.util.LikePatternEscaper;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -49,6 +50,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final AdminActionRepository adminActionRepository;
     private final Clock clock;
     private final EntityManager entityManager;
+    private final NotificationService notificationService;
 
     public AdminUserServiceImpl(
             AdminUserRepository adminUserRepository,
@@ -58,7 +60,8 @@ public class AdminUserServiceImpl implements AdminUserService {
             AccountStatusHistoryRepository accountStatusHistoryRepository,
             AdminActionRepository adminActionRepository,
             Clock clock,
-            EntityManager entityManager
+            EntityManager entityManager,
+            NotificationService notificationService
     ) {
         this.adminUserRepository = adminUserRepository;
         this.adminUserMapper = adminUserMapper;
@@ -68,6 +71,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         this.adminActionRepository = adminActionRepository;
         this.clock = clock;
         this.entityManager = entityManager;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -130,6 +134,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 target, UserStatus.ACTIVE, UserStatus.BLOCKED, adminReference, reason));
         adminActionRepository.save(new AdminAction(
                 adminReference, AdminActionType.BLOCK_USER, AdminTargetType.USER, target.getId(), reason));
+        notificationService.createAccountBlockedNotification(target.getId());
 
         return flushRefreshAndMap(target);
     }
@@ -154,6 +159,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         adminActionRepository.save(new AdminAction(
                 adminReference, AdminActionType.UNBLOCK_USER, AdminTargetType.USER,
                 target.getId(), UNBLOCK_REASON));
+        notificationService.createAccountUnblockedNotification(target.getId());
 
         // Không gọi repository Refresh Token: token cũ đã revoke phải giữ nguyên sau khi mở khóa.
         return flushRefreshAndMap(target);

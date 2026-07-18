@@ -16,6 +16,7 @@ import com.stu.edu.vn.backend.follow.entity.Follow;
 import com.stu.edu.vn.backend.follow.mapper.FollowMapper;
 import com.stu.edu.vn.backend.follow.repository.FollowRepository;
 import com.stu.edu.vn.backend.follow.repository.FollowUserProjection;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -38,6 +39,7 @@ class FollowServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final FollowMapper followMapper = new FollowMapper();
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
 
     private FollowServiceImpl followService;
 
@@ -48,7 +50,8 @@ class FollowServiceImplTest {
                 userRepository,
                 userProfileRepository,
                 followRepository,
-                followMapper
+                followMapper,
+                notificationService
         );
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
@@ -63,6 +66,7 @@ class FollowServiceImplTest {
         ArgumentCaptor<Follow> captor = ArgumentCaptor.forClass(Follow.class);
         verify(currentUserProvider).getCurrentUserId();
         verify(followRepository).saveAndFlush(captor.capture());
+        verify(notificationService).createFollowNotification(10L, 20L);
         assertThat(captor.getValue().getId().getFollowerId()).isEqualTo(10L);
         assertThat(captor.getValue().getId().getFollowingId()).isEqualTo(20L);
         assertThat(response).isEqualTo(new FollowStatusResponse(20L, true));
@@ -112,6 +116,7 @@ class FollowServiceImplTest {
         FollowStatusResponse response = followService.unfollowUser(20L);
 
         verify(followRepository).deleteFollow(10L, 20L);
+        verify(notificationService).deleteFollowNotification(10L, 20L);
         verify(userRepository, never()).findById(20L);
         assertThat(response).isEqualTo(new FollowStatusResponse(20L, false));
     }
@@ -121,6 +126,7 @@ class FollowServiceImplTest {
         when(followRepository.deleteFollow(10L, 20L)).thenReturn(0);
 
         assertBusinessError(() -> followService.unfollowUser(20L), ErrorCode.FOLLOW_NOT_FOUND);
+        verify(notificationService, never()).deleteFollowNotification(any(), any());
     }
 
     @Test

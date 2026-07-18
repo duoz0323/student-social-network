@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.util.LikePatternEscaper;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -45,6 +46,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final CurrentUserProvider currentUserProvider;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final NotificationService notificationService;
 
     public AdminPostServiceImpl(
             AdminPostRepository adminPostRepository,
@@ -52,7 +54,8 @@ public class AdminPostServiceImpl implements AdminPostService {
             AdminActionRepository adminActionRepository,
             CurrentUserProvider currentUserProvider,
             EntityManager entityManager,
-            Clock clock
+            Clock clock,
+            NotificationService notificationService
     ) {
         this.adminPostRepository = adminPostRepository;
         this.adminPostMapper = adminPostMapper;
@@ -60,6 +63,7 @@ public class AdminPostServiceImpl implements AdminPostService {
         this.currentUserProvider = currentUserProvider;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -110,6 +114,7 @@ public class AdminPostServiceImpl implements AdminPostService {
         // Audit và trạng thái Post cùng thuộc transaction; lỗi lưu hoặc flush sẽ rollback cả hai.
         adminActionRepository.save(new AdminAction(adminReference, AdminActionType.HIDE_POST,
                 AdminTargetType.POST, post.getId(), reason));
+        notificationService.createPostHiddenByAdminNotification(post.getAuthor().getId(), post.getId());
         return flushRefreshAndMap(post, principal.getUserId());
     }
 
@@ -134,6 +139,7 @@ public class AdminPostServiceImpl implements AdminPostService {
         // Không sửa action HIDE_POST cũ; mỗi lần khôi phục ghi một action độc lập.
         adminActionRepository.save(new AdminAction(adminReference, AdminActionType.RESTORE_POST,
                 AdminTargetType.POST, post.getId(), RESTORE_NOTE));
+        notificationService.createPostRestoredByAdminNotification(post.getAuthor().getId(), post.getId());
         return flushRefreshAndMap(post, principal.getUserId());
     }
 

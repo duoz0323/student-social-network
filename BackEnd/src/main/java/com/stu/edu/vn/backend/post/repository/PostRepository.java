@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.post.repository;
 
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -89,6 +90,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // Lấy riêng trạng thái để Like/Unlike phân biệt post không tồn tại với post HIDDEN/DELETED.
     @Query("select p.status from Post p where p.id = :postId")
     Optional<PostStatus> findStatusById(@Param("postId") Long postId);
+
+    // Lấy trạng thái và tác giả trong một query để tạo Notification không phát sinh truy vấn lazy ngoài ý muốn.
+    @Query("""
+            SELECT post.id AS postId,
+                   post.author.id AS authorId,
+                   post.status AS status
+            FROM Post post
+            WHERE post.id = :postId
+            """)
+    Optional<PostInteractionTargetProjection> findInteractionTargetById(@Param("postId") Long postId);
 
     // Tải một lần bài viết, tác giả và media để Report tạo snapshot nhất quán, tránh N+1.
     @EntityGraph(attributePaths = {"author", "media"})

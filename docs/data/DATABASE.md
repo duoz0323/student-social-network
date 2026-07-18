@@ -116,6 +116,20 @@ Lưu:
 - Created at.
 - Deleted state nếu cần.
 
+### notifications
+
+Lưu thông báo nội bộ từ tương tác và kết quả quản trị:
+
+- Người nhận.
+- Người thực hiện tương tác.
+- Loại Follow, Like, Comment, Reply, kết quả Report, kiểm duyệt Post hoặc trạng thái tài khoản.
+- Post, Comment và Report liên quan nếu có.
+- Thời điểm đọc.
+- Thời điểm người nhận ẩn thông báo.
+
+Notification được tạo/xóa trong cùng transaction với nghiệp vụ nguồn. Không tạo khi actor cũng là
+recipient; không có API công khai để Client tự tạo notification.
+
 ### post_mentions
 
 FUTURE_DEVELOPMENT.
@@ -180,6 +194,10 @@ trong phạm vi này.
 - users N-N posts qua post_likes.
 - users 1-N comments.
 - posts 1-N comments.
+- users 1-N notifications theo recipient và actor.
+- posts 1-N notifications.
+- comments 1-N notifications.
+- reports 1-N notifications.
 - users N-N posts qua saved_posts.
 - users 1-N reports.
 - posts 1-N reports.
@@ -207,6 +225,8 @@ trong phạm vi này.
 - post_likes(post_id).
 - saved_posts(user_id, created_at).
 - reports(status, created_at).
+- notifications(recipient_id, deleted_at, created_at, id).
+- notifications(recipient_id, deleted_at, read_at).
 
 ## 5. Xóa mềm
 

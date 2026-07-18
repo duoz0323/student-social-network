@@ -90,6 +90,7 @@ public enum ErrorCode {
     COMMENT_PARENT_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "Bình luận này không còn khả dụng để trả lời"),
     COMMENT_REPLY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "Chỉ được trả lời bình luận tối đa một cấp"),
     COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền xóa bình luận này"),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"),
     FOLLOW_SELF_FORBIDDEN(HttpStatus.BAD_REQUEST, "Bạn không thể theo dõi chính mình"),
     FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "Bạn đã theo dõi người dùng này"),
     FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy quan hệ theo dõi"),
