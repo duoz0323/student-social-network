@@ -10,6 +10,6 @@ public record UpdatePostRequest(
         String content,
         String hashtag,
         List<Long> keepMediaIds,
-        List<MultipartFile> newImages
+        List<MultipartFile> newMediaFiles
 ) {
 }

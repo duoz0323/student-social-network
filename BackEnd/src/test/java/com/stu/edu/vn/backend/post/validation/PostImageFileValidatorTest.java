@@ -22,6 +22,49 @@ class PostImageFileValidatorTest {
     }
 
     @Test
+    void validateAcceptsOneMp4OrWebmVideo() {
+        validator.validate(List.of(mp4("video.mp4")));
+        validator.validate(List.of(webm("video.webm")));
+    }
+
+    @Test
+    void validateAcceptsOneVideoWithUpToThreeImagesAndRejectsTwoVideos() {
+        validator.validate(List.of(
+                png("one.png"), jpeg("two.jpg"), webp("three.webp"), mp4("video.mp4")
+        ));
+
+        assertThatThrownBy(() -> validator.validate(List.of(mp4("one.mp4"), webm("two.webm"))))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_VIDEO_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    void validateRejectsMoreThanFourMixedMedia() {
+        assertThatThrownBy(() -> validator.validate(List.of(
+                png("one.png"), png("two.png"), png("three.png"), png("four.png"), mp4("video.mp4")
+        )))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    void validateRejectsFakeVideoSignatureAndWrongMimeType() {
+        MockMultipartFile fake = new MockMultipartFile("mediaFiles", "fake.mp4", "video/mp4", "fake".getBytes());
+        assertThatThrownBy(() -> validator.validate(List.of(fake)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_VIDEO_SIGNATURE_INVALID);
+
+        MockMultipartFile wrongMime = new MockMultipartFile("mediaFiles", "video.mp4", "text/plain", mp4Bytes());
+        assertThatThrownBy(() -> validator.validate(List.of(wrongMime)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_VIDEO_MIME_TYPE_INVALID);
+    }
+
+    @Test
     void validateRejectsFiveImages() {
         // MVP chỉ cho tối đa 4 ảnh trong một bài viết.
         List<MultipartFile> files = List.of(png("1.png"), png("2.png"), png("3.png"), png("4.png"), png("5.png"));
@@ -115,5 +158,18 @@ class PostImageFileValidatorTest {
 
     private byte[] pngBytes() {
         return new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    }
+
+    private MockMultipartFile mp4(String filename) {
+        return new MockMultipartFile("mediaFiles", filename, "video/mp4", mp4Bytes());
+    }
+
+    private MockMultipartFile webm(String filename) {
+        return new MockMultipartFile("mediaFiles", filename, "video/webm",
+                new byte[]{0x1A, 0x45, (byte) 0xDF, (byte) 0xA3});
+    }
+
+    private byte[] mp4Bytes() {
+        return new byte[]{0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D};
     }
 }

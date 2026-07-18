@@ -218,7 +218,7 @@ Không đưa vào `UI-DEMO.html` và Frontend MVP hiện tại:
 - Follow Request.
 - Repost.
 - Trích dẫn bài viết.
-- Video hoặc tài liệu trong bài viết.
+- Tài liệu đính kèm trong bài viết.
 - Elasticsearch.
 - Dashboard nâng cao.
 - Các chức năng ngoài tài liệu MVP đã chốt.

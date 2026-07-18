@@ -121,8 +121,9 @@ export default function PostCard({ post, detail = false }) {
   const isOwner = post.authorId === currentUserId;
   const liked = data.likes.some((like) => like.postId === post.id && like.userId === currentUserId);
   const saved = data.savedPosts.some((item) => item.postId === post.id && item.userId === currentUserId);
-
-  if (!author) return null;
+  const mediaItems = post.media?.length
+    ? post.media
+    : (post.imageUrls ?? []).map((url) => ({ url, mediaType: 'IMAGE' }));
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
@@ -136,8 +137,10 @@ export default function PostCard({ post, detail = false }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  if (!author) return null;
+
   function saveEdit() {
-    // Chỉ cập nhật nội dung và hashtag vì MVP không cho sửa ảnh sau khi đăng.
+    // Card hiện chỉ cập nhật nội dung và hashtag; modal quản lý media sẽ dùng contract update riêng.
     updatePost(post.id, { content: draft, hashtags: tags });
     setEditing(false);
   }
@@ -231,8 +234,10 @@ export default function PostCard({ post, detail = false }) {
         </header>
 
         {/* Nội dung bài viết — bấm vào mở chi tiết nếu không phải trang detail */}
-        <button className="mt-1 block w-full text-left" onClick={() => !detail && navigate(`/posts/${post.id}`)}>
-          <p className="whitespace-pre-line text-[15px] leading-6 text-[var(--app-text)]">{post.content}</p>
+        <div className="mt-1 block w-full text-left">
+          <button className="block w-full text-left" onClick={() => !detail && navigate(`/posts/${post.id}`)}>
+            <p className="whitespace-pre-line text-[15px] leading-6 text-[var(--app-text)]">{post.content}</p>
+          </button>
           {post.hashtags.length ? (
             <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
               {post.hashtags.map((tag) => (
@@ -240,12 +245,28 @@ export default function PostCard({ post, detail = false }) {
               ))}
             </div>
           ) : null}
-          {post.imageUrls.length ? (
-            <div className="mt-3 overflow-hidden rounded-[14px] bg-[var(--app-surface-soft)]">
-              <img src={post.imageUrls[0]} alt="Ảnh bài viết" className="w-full object-cover" />
+          {mediaItems.length ? (
+            <div className={`mt-3 grid overflow-hidden rounded-[14px] bg-[var(--app-surface-soft)] ${mediaItems.length > 1 ? 'grid-cols-2 gap-0.5' : 'grid-cols-1'}`}>
+              {mediaItems.map((item, index) => item.mediaType === 'VIDEO' ? (
+                <video
+                  key={item.id ?? `${item.url}-${index}`}
+                  src={item.url}
+                  poster={item.thumbnailUrl || undefined}
+                  controls
+                  preload="metadata"
+                  className={`${mediaItems.length > 1 ? 'aspect-square' : 'max-h-[560px]'} h-full w-full bg-black object-contain`}
+                />
+              ) : (
+                <img
+                  key={item.id ?? `${item.url}-${index}`}
+                  src={item.url}
+                  alt={`Ảnh bài viết ${index + 1}`}
+                  className={`${mediaItems.length > 1 ? 'aspect-square' : 'max-h-[560px]'} h-full w-full object-cover`}
+                />
+              ))}
             </div>
           ) : null}
-        </button>
+        </div>
 
         {/* Thanh hành động: like, comment, repost (visual), share */}
         <footer className="mt-3 flex items-center gap-6">

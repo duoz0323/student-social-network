@@ -1,6 +1,6 @@
 # Luồng giao diện
 
-Tài liệu này mô tả các luồng có thể suy ra từ MVP, ảnh trong `docs/ui/screens/` và điều hướng mẫu trong `UI-DEMO.html`. Không mô tả luồng cho nhắn tin, Discovery Map, Feed tùy chỉnh, Follow Request, Repost, video/tài liệu, Elasticsearch hoặc dashboard nâng cao.
+Tài liệu này mô tả các luồng có thể suy ra từ MVP, ảnh trong `docs/ui/screens/` và điều hướng mẫu trong `UI-DEMO.html`. Không mô tả luồng cho nhắn tin, Discovery Map, Feed tùy chỉnh, Follow Request, Repost, tài liệu đính kèm, Elasticsearch hoặc dashboard nâng cao.
 
 ## 1. Luồng MVP hiện tại
 
@@ -91,7 +91,7 @@ FEED-01 hoặc sidebar Tạo bài viết
 → Bài xuất hiện trên Feed/Profile nếu PUBLISHED
 ```
 
-Quy tắc: bài phải có nội dung hoặc ít nhất một ảnh; tối đa 4 ảnh; chỉ hỗ trợ JPG, JPEG, PNG, WEBP theo MVP.
+Quy tắc: bài phải có nội dung hoặc media; tổng tối đa 4 media và tối đa 1 video, cho phép kết hợp 1 video với tối đa 3 ảnh. Ảnh hỗ trợ JPG/JPEG/PNG/WEBP; video hỗ trợ MP4/WebM tối đa 100 MB và 3 phút.
 
 ### 1.5 Xem chi tiết bài viết
 
@@ -129,7 +129,7 @@ PostCard của chính mình
 → Bài không còn hiển thị trong Feed/Profile/Search thông thường
 ```
 
-Quy tắc: chỉ tác giả được sửa/xóa; sau khi đăng không chỉnh sửa ảnh.
+Quy tắc: chỉ tác giả được sửa/xóa; media sau cập nhật có tổng tối đa 4 và tối đa 1 video.
 
 ### 1.7 Like, bình luận và lưu bài
 
@@ -308,7 +308,7 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 - Follow Request.
 - Repost.
 - Trích dẫn bài viết.
-- Video hoặc tài liệu trong bài viết.
+- Tài liệu đính kèm trong bài viết.
 - Elasticsearch.
 - Dashboard nâng cao.
 - Thông báo thời gian thực.

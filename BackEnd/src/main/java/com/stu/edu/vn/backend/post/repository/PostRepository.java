@@ -113,7 +113,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("status") PostStatus status
     );
 
-    // Cập nhật cờ đã chỉnh sửa và updated_at ngay cả khi người dùng chỉ đổi hashtag hoặc ảnh.
+    // Cập nhật cờ đã chỉnh sửa và updated_at ngay cả khi người dùng chỉ đổi hashtag hoặc media.
     @Modifying
     @Query(
             value = "UPDATE posts SET is_edited = TRUE, updated_at = CURRENT_TIMESTAMP(6) WHERE id = :postId",

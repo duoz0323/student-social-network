@@ -51,7 +51,7 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Faceb
 | `PostCard` | Hiển thị bài viết trong feed, profile, saved và search. | FEED-01, PROFILE-01/02, POST-07, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
 | `PostAuthor` | Hiển thị tác giả bài viết bằng displayName và avatar. | FEED-01, POST-01, PROFILE-01/02, POST-07. | `authorId` hoặc `user`, `onOpenProfile`. Điều hướng bằng `/profile/:userId`. | Dùng chung module post/profile. |
 | `PostDetail` | Hiển thị bài viết đầy đủ và khu vực bình luận. | POST-01. | `post`, `comments`, `currentUser`, action callbacks. | Module post. |
-| `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxImages`, `submitting`, `onSubmit`. | Module post. |
+| `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxMedia`, `maxVideos`, `submitting`, `onSubmit`. | Module post. |
 | `EditPostForm` | Sửa nội dung và hashtag của bài đã đăng. | POST-03. | `post`, `maxLength`, `submitting`, `onSave`, `onCancel`. | Module post. |
 | `PostActionMenu` | Menu hành động theo quyền với bài viết. | POST-04, PostCard. | `post`, `isOwner`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Module post. |
 | `DeletePostDialog` | Xác nhận xóa mềm bài viết. | POST-05. | `post`, `submitting`, `onConfirm`, `onCancel`. | Module post. |

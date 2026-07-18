@@ -29,8 +29,9 @@ public class SearchPostMapper {
     private PostMediaResponse toMediaResponse(PostMedia media) {
         // Không ánh xạ storagePublicId vì đây là khóa quản trị nội bộ của dịch vụ lưu trữ.
         return new PostMediaResponse(
-                media.getId(), media.getMediaUrl(), media.getMimeType(), media.getFileSizeBytes(),
-                media.getWidthPx(), media.getHeightPx(), media.getDisplayOrder()
+                media.getId(), media.getMediaUrl(), media.getMediaType(), media.getMimeType(),
+                media.getFileSizeBytes(), media.getWidthPx(), media.getHeightPx(),
+                media.getDurationSeconds(), media.getThumbnailUrl(), media.getDisplayOrder()
         );
     }
 }

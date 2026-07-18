@@ -38,10 +38,10 @@ public class PostController {
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "hashtag", required = false) String hashtag,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images
+            @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
     ) {
         // Request không có authorId; Service lấy tác giả hiện tại từ SecurityContext.
-        PostResponse response = postService.createPost(new CreatePostRequest(content, hashtag, images));
+        PostResponse response = postService.createPost(new CreatePostRequest(content, hashtag, mediaFiles));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo bài viết thành công", response));
@@ -60,12 +60,12 @@ public class PostController {
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "hashtag", required = false) String hashtag,
             @RequestParam(value = "keepMediaIds", required = false) List<Long> keepMediaIds,
-            @RequestParam(value = "newImages", required = false) List<MultipartFile> newImages
+            @RequestParam(value = "newMediaFiles", required = false) List<MultipartFile> newMediaFiles
     ) {
         // Controller không tự kiểm tra quyền; mọi rule tác giả, trạng thái và 15 phút nằm trong Service.
         PostDetailResponse response = postService.updatePost(
                 postId,
-                new UpdatePostRequest(content, hashtag, keepMediaIds, newImages)
+                new UpdatePostRequest(content, hashtag, keepMediaIds, newMediaFiles)
         );
         return ResponseEntity.ok(ApiResponse.success("Cập nhật bài viết thành công", response));
     }

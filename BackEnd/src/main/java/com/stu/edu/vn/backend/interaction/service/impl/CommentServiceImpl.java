@@ -1,5 +1,6 @@
 package com.stu.edu.vn.backend.interaction.service.impl;
 
+import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.interaction.dto.request.CreateCommentRequest;
@@ -23,11 +24,15 @@ import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Triển khai bình luận cấp 1 cho bài viết, không tự cập nhật posts.comment_count vì database trigger đã xử lý.
+ * Triển khai bình luận và reply một cấp, không tự cập nhật posts.comment_count vì database trigger đã xử lý.
  */
 @Service
 public class CommentServiceImpl implements CommentService {
@@ -79,16 +84,74 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
+    public CommentResponse createReply(Long parentCommentId, CreateCommentRequest request) {
+        Long userId = currentUserProvider.getCurrentUserId();
+        User currentUser = ensureCurrentUserCanInteract(userId);
+        String content = validateCommentContent(request);
+
+        Comment parentComment = commentRepository.findForReplyCreationById(parentCommentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_PARENT_NOT_FOUND));
+        if (parentComment.getStatus() != CommentStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.COMMENT_PARENT_NOT_AVAILABLE);
+        }
+        if (parentComment.getParentComment() != null) {
+            throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
+        }
+
+        Long postId = parentComment.getPost().getId();
+        ensurePostIsPublished(postId);
+
+        // post_id luôn lấy từ bình luận cha để Client không thể gắn reply sang bài viết khác.
+        Comment reply = commentRepository.saveAndFlush(
+                new Comment(parentComment.getPost(), currentUser, parentComment, content)
+        );
+        entityManager.refresh(reply);
+        return commentMapper.toResponse(reply);
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public List<CommentResponse> getPublishedComments(Long postId) {
+    public PageResponse<CommentResponse> getPublishedComments(Long postId, int page, int size) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanInteract(userId);
         ensurePostIsPublished(postId);
 
-        return commentRepository.findByPost_IdAndStatusOrderByCreatedAtAscIdAsc(postId, CommentStatus.PUBLISHED)
-                .stream()
-                .map(commentMapper::toResponse)
-                .toList();
+        Page<Comment> comments = commentRepository.findVisibleRootComments(
+                postId,
+                CommentStatus.PUBLISHED,
+                PageRequest.of(page, size)
+        );
+        List<Long> commentIds = comments.getContent().stream().map(Comment::getId).toList();
+        Map<Long, Long> replyCounts = getPublishedReplyCounts(commentIds);
+
+        return PageResponse.from(comments.map(comment -> commentMapper.toResponse(
+                comment,
+                replyCounts.getOrDefault(comment.getId(), 0L)
+        )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getPublishedReplies(Long parentCommentId, int page, int size) {
+        Long userId = currentUserProvider.getCurrentUserId();
+        ensureCurrentUserCanInteract(userId);
+
+        Comment parentComment = commentRepository.findWithPostAndParentById(parentCommentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
+        if (parentComment.getParentComment() != null) {
+            throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
+        }
+        ensurePostIsPublished(parentComment.getPost().getId());
+
+        Page<CommentResponse> replies = commentRepository
+                .findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
+                        parentCommentId,
+                        CommentStatus.PUBLISHED,
+                        PageRequest.of(page, size)
+                )
+                .map(commentMapper::toResponse);
+        return PageResponse.from(replies);
     }
 
     @Override
@@ -147,5 +210,17 @@ public class CommentServiceImpl implements CommentService {
             throw new BusinessException(ErrorCode.COMMENT_CONTENT_TOO_LONG);
         }
         return normalizedContent;
+    }
+
+    private Map<Long, Long> getPublishedReplyCounts(List<Long> commentIds) {
+        if (commentIds.isEmpty()) {
+            return Map.of();
+        }
+        return commentRepository.countRepliesByParentIdsAndStatus(commentIds, CommentStatus.PUBLISHED)
+                .stream()
+                .collect(Collectors.toMap(
+                        projection -> projection.getCommentId(),
+                        projection -> projection.getReplyCount()
+                ));
     }
 }

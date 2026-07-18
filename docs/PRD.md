@@ -134,15 +134,16 @@ Hoàn tất hồ sơ ban đầu:
 Bài viết gồm:
 
 - Nội dung tối đa 500 ký tự.
-- Tối đa 4 ảnh.
+- Tổng tối đa 4 media và tối đa 1 video; cho phép kết hợp 1 video với tối đa 3 ảnh.
 - Tối đa một hashtag tùy chọn.
 
 Quy tắc:
 
-- Phải có nội dung hoặc ít nhất một ảnh.
-- Chỉ hỗ trợ JPG, JPEG, PNG, WEBP.
+- Phải có nội dung hoặc ít nhất một media.
+- Ảnh hỗ trợ JPG, JPEG, PNG, WEBP và tối đa 10 MB mỗi file.
+- Video hỗ trợ MP4, WebM, tối đa 100 MB và tối đa 3 phút.
 - Chỉ tác giả được sửa/xóa.
-- Sau khi đăng không chỉnh sửa ảnh.
+- Khi cập nhật, media còn lại và media mới phải có tổng tối đa 4 và tối đa 1 video.
 - Chỉ sửa nội dung và hashtag.
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 - Xóa bài là xóa mềm.
@@ -160,7 +161,9 @@ Quy tắc:
 - Thêm bình luận.
 - Xem bình luận.
 - Xóa bình luận của mình.
-- Reply một cấp thuộc P2.
+- Reply một cấp thuộc P2: reply chỉ được liên kết trực tiếp với bình luận gốc, không tạo reply cấp hai.
+- Khi bình luận gốc đã xóa nhưng còn reply đang hiển thị, hệ thống giữ một tombstone để không xóa nội dung của người trả lời.
+- Danh sách bình luận gốc và danh sách reply được phân trang độc lập.
 
 #### Lưu bài
 
@@ -295,7 +298,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Hồ sơ riêng tư.
 - Follow Request.
 - Block/Restrict.
-- Video/tài liệu.
+- Tài liệu đính kèm.
 - Bản nháp.
 - Mention.
 - Repost.

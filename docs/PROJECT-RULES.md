@@ -43,11 +43,12 @@
 ## 4. Bài viết
 
 - Tối đa 500 ký tự.
-- Tối đa 4 ảnh.
-- Phải có nội dung hoặc ảnh.
-- Ảnh: JPG, JPEG, PNG, WEBP.
+- Tổng tối đa 4 media và tối đa 1 video; có thể kết hợp 1 video với tối đa 3 ảnh.
+- Phải có nội dung hoặc media.
+- Ảnh: JPG, JPEG, PNG, WEBP, tối đa 10 MB.
+- Video: MP4, WebM, tối đa 100 MB và 3 phút.
 - Chỉ tác giả sửa/xóa.
-- Không sửa ảnh sau khi đăng.
+- Media được quản lý qua danh sách ID cần giữ khi cập nhật bài.
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 
 ## 5. Like
@@ -60,6 +61,10 @@
 - Chỉ user đăng nhập được comment.
 - Chỉ tác giả comment được xóa comment.
 - Không comment bài HIDDEN/DELETED.
+- Reply chỉ được tạo trực tiếp dưới bình luận gốc PUBLISHED; không hỗ trợ reply cấp hai.
+- Backend tự suy ra bài viết từ bình luận cha khi tạo reply, không nhận postId từ Client cho thao tác này.
+- Xóa bình luận gốc không được tự động xóa reply của người dùng khác; bình luận gốc được hiển thị dạng đã xóa khi còn reply PUBLISHED.
+- Danh sách bình luận gốc và reply phải phân trang độc lập.
 
 ## 7. Save
 

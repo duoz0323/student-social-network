@@ -240,15 +240,25 @@ export function AppProvider({ children }) {
       setCurrentUserId(null);
     }
 
-    function createPost({ content, hashtags, imageUrls = [] }) {
+    function createPost({ content, hashtags, imageUrls = [], media = [] }) {
       const cleanContent = content.trim();
       const normalizedHashtags = hashtags
         .split(/[,\s]+/)
         .map((tag) => tag.replace('#', '').trim().toLowerCase())
         .filter(Boolean);
 
-      if (!cleanContent && (!imageUrls || imageUrls.length === 0)) {
-        return { ok: false, message: 'Bài viết cần có nội dung hoặc hình ảnh.' };
+      const normalizedMedia = media.length
+        ? media
+        : imageUrls.map((url) => ({ url, mediaType: 'IMAGE', mimeType: 'image/jpeg' }));
+
+      if (!cleanContent && normalizedMedia.length === 0) {
+        return { ok: false, message: 'Bài viết cần có nội dung hoặc media.' };
+      }
+      if (normalizedMedia.length > 4) {
+        return { ok: false, message: 'Mỗi bài viết chỉ được có tối đa 4 media.' };
+      }
+      if (normalizedMedia.filter((item) => item.mediaType === 'VIDEO').length > 1) {
+        return { ok: false, message: 'Mỗi bài viết chỉ được có tối đa 1 video.' };
       }
 
       const post = {
@@ -256,6 +266,7 @@ export function AppProvider({ children }) {
         authorId: currentUserId,
         content: cleanContent,
         imageUrls: imageUrls,
+        media: normalizedMedia,
         hashtags: [...new Set(normalizedHashtags)].slice(0, 8),
         status: 'PUBLISHED',
         likeCount: 0,

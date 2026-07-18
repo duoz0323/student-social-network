@@ -21,6 +21,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -95,7 +96,8 @@ class AdminPostControllerTest {
     void detailReturnsNestedSafeDataForAnyStatus() throws Exception {
         var detail = new AdminPostDetailResponse(11L, "content", PostStatus.DELETED,
                 new AdminPostAuthorResponse(9L, "Author", "avatar", "a@example.com", null, UserStatus.BLOCKED),
-                List.of(new AdminPostMediaResponse(21L, "url", 0)), "tag",
+                List.of(new AdminPostMediaResponse(21L, "url", PostMediaType.IMAGE,
+                        "image/jpeg", null, null, 0)), "tag",
                 3, 4, 1, 2, null, null, null, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(service.getPostDetail(11L)).thenReturn(detail);
 

@@ -50,6 +50,13 @@ Enum post_media_mime_type {
   "image/jpeg"
   "image/png"
   "image/webp"
+  "video/mp4"
+  "video/webm"
+}
+
+Enum post_media_type {
+  IMAGE
+  VIDEO
 }
 
 Enum comment_status {
@@ -213,10 +220,13 @@ Table post_media {
   post_id bigint [not null]
   media_url varchar(1000) [not null]
   storage_public_id varchar(255) [not null, unique]
+  media_type post_media_type [not null]
   mime_type post_media_mime_type [not null]
   file_size_bytes bigint [not null]
   width_px int
   height_px int
+  duration_seconds smallint
+  thumbnail_url varchar(1000)
   display_order tinyint [not null]
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
 
@@ -224,7 +234,7 @@ Table post_media {
     (post_id, display_order) [unique, name: "uq_post_media_post_order"]
   }
 
-  Note: "CHECK: display_order từ 0 đến 3; file_size_bytes > 0."
+  Note: "CHECK: display_order từ 0 đến 3; file_size_bytes > 0; video dài 1-180 giây, ảnh có duration_seconds NULL."
 }
 
 Table hashtags {

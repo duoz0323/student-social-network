@@ -85,6 +85,11 @@ Lưu:
 - MIME type.
 - Size.
 - Sort order.
+- Media type (`IMAGE` hoặc `VIDEO`).
+- Duration seconds và thumbnail URL cho video.
+
+Một bài có tối đa 4 media và tối đa 1 video; có thể kết hợp 1 video với tối đa 3 ảnh. Database lưu metadata; file thật nằm
+trên Cloudinary. Migration thủ công nằm tại `database/migrations/V2__support_post_video.sql`.
 
 ### hashtags
 

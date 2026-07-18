@@ -10,6 +10,7 @@ import com.stu.edu.vn.backend.admin.repository.projection.AdminPostDetailProject
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostListProjection;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminPostMediaProjection;
 import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import java.util.List;
@@ -45,7 +46,11 @@ public class AdminPostMapper {
 
         // Tạo danh sách DTO mới để response không giữ projection do persistence provider quản lý.
         List<AdminPostMediaResponse> mediaResponses = media.stream()
-                .map(item -> new AdminPostMediaResponse(item.getMediaId(), item.getMediaUrl(), item.getSortOrder()))
+                .map(item -> new AdminPostMediaResponse(item.getMediaId(), item.getMediaUrl(),
+                        item.getMediaType() == null ? PostMediaType.IMAGE
+                                : PostMediaType.valueOf(item.getMediaType()),
+                        item.getMimeType(), item.getDurationSeconds(),
+                        item.getThumbnailUrl(), item.getSortOrder()))
                 .toList();
         return new AdminPostDetailResponse(source.getPostId(), source.getContent(),
                 PostStatus.valueOf(source.getStatus()), author, mediaResponses, hashtag,

@@ -31,7 +31,7 @@ public interface AdminPostRepository extends Repository<Post, Long> {
             SELECT p.id AS postId, p.content AS contentPreview, p.status AS status,
                    a.id AS authorId, ap.display_name AS authorDisplayName,
                    ap.avatar_url AS authorAvatarUrl, a.status AS authorAccountStatus,
-                   (SELECT pm.media_url FROM post_media pm WHERE pm.post_id = p.id
+                   (SELECT COALESCE(pm.thumbnail_url, pm.media_url) FROM post_media pm WHERE pm.post_id = p.id
                     ORDER BY pm.display_order ASC, pm.id ASC LIMIT 1) AS thumbnailUrl,
                    (SELECT COUNT(*) FROM post_media pmc WHERE pmc.post_id = p.id) AS mediaCount,
                    p.like_count AS likeCount, p.comment_count AS commentCount,
@@ -92,7 +92,9 @@ public interface AdminPostRepository extends Repository<Post, Long> {
     Optional<AdminPostDetailProjection> findAdminPostDetail(@Param("postId") Long postId);
 
     @Query(value = """
-            SELECT pm.id AS mediaId, pm.media_url AS mediaUrl, pm.display_order AS sortOrder
+            SELECT pm.id AS mediaId, pm.media_url AS mediaUrl, pm.media_type AS mediaType,
+                   pm.mime_type AS mimeType, pm.duration_seconds AS durationSeconds,
+                   pm.thumbnail_url AS thumbnailUrl, pm.display_order AS sortOrder
             FROM post_media pm
             WHERE pm.post_id = :postId
             ORDER BY pm.display_order ASC, pm.id ASC

@@ -1,7 +1,11 @@
 package com.stu.edu.vn.backend.post.entity;
 
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,7 +16,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * Entity post_media chỉ lưu metadata và URL ảnh, không lưu file ảnh dạng BLOB.
+ * Entity post_media lưu metadata ảnh/video; file thật nằm trên Cloudinary, không lưu BLOB.
  */
 @Entity
 @Table(name = "post_media")
@@ -25,7 +29,7 @@ public class PostMedia {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id", nullable = false)
-    // Bài viết sở hữu media, dùng LAZY để không tải bài khi chỉ cần metadata ảnh.
+    // Bài viết sở hữu media, dùng LAZY để không tải bài khi chỉ cần metadata file.
     private Post post;
 
     @Column(name = "media_url", nullable = false, length = 1000)
@@ -35,6 +39,11 @@ public class PostMedia {
     @Column(name = "storage_public_id", nullable = false, length = 255, unique = true)
     // Public ID hoặc object key dùng để quản lý/xóa file trên dịch vụ lưu trữ.
     private String storagePublicId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "media_type", nullable = false, length = 10)
+    // Loại media quyết định cách Frontend render và resource_type khi xóa trên Cloudinary.
+    private PostMediaType mediaType;
 
     @Column(name = "mime_type", nullable = false, length = 20)
     // MIME type thực tế đã được Backend kiểm tra trước khi lưu metadata.
@@ -51,6 +60,14 @@ public class PostMedia {
     @Column(name = "height_px")
     // Chiều cao ảnh theo pixel, có thể NULL nếu dịch vụ lưu trữ không trả metadata này.
     private Integer heightPx;
+
+    @Column(name = "duration_seconds")
+    // Thời lượng chỉ có với video; ảnh luôn để NULL.
+    private Integer durationSeconds;
+
+    @Column(name = "thumbnail_url", length = 1000)
+    // Ảnh đại diện video phục vụ Feed/Admin; ảnh thường không cần thumbnail riêng.
+    private String thumbnailUrl;
 
     @Column(name = "display_order", nullable = false)
     // Thứ tự hiển thị ảnh trong bài, schema giới hạn từ 0 đến 3.
@@ -76,9 +93,32 @@ public class PostMedia {
         this.post = post;
         this.mediaUrl = mediaUrl;
         this.storagePublicId = storagePublicId;
+        this.mediaType = PostMediaType.IMAGE;
         this.mimeType = mimeType;
         this.fileSizeBytes = fileSizeBytes;
         this.displayOrder = displayOrder == null ? null : displayOrder.byteValue();
+    }
+
+    public PostMedia(
+            Post post,
+            String mediaUrl,
+            String storagePublicId,
+            PostMediaType mediaType,
+            String mimeType,
+            Long fileSizeBytes,
+            Integer widthPx,
+            Integer heightPx,
+            Integer durationSeconds,
+            String thumbnailUrl,
+            Integer displayOrder
+    ) {
+        // Constructor đầy đủ dùng chung cho ảnh và video sau khi Cloudinary trả metadata tin cậy.
+        this(post, mediaUrl, storagePublicId, mimeType, fileSizeBytes, displayOrder);
+        this.mediaType = mediaType;
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
+        this.durationSeconds = durationSeconds;
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     public Long getId() {
@@ -113,6 +153,14 @@ public class PostMedia {
         return mimeType;
     }
 
+    public PostMediaType getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(PostMediaType mediaType) {
+        this.mediaType = mediaType;
+    }
+
     public void setMimeType(String mimeType) {
         this.mimeType = mimeType;
     }
@@ -135,6 +183,22 @@ public class PostMedia {
 
     public Integer getHeightPx() {
         return heightPx;
+    }
+
+    public Integer getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Integer durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     public void setHeightPx(Integer heightPx) {

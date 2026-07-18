@@ -57,7 +57,9 @@ class AdminPostRepositoryContractTest {
                 .doesNotContain("p.status = 'PUBLISHED'", "a.status = 'ACTIVE'", "password_hash",
                         "avatar_public_id", "storage_public_id", "SELECT p.*");
         assertThat(media.value()).contains("ORDER BY pm.display_order ASC, pm.id ASC")
-                .doesNotContain("storage_public_id", "mime_type", "file_size_bytes");
+                .contains("pm.media_type AS mediaType", "pm.mime_type AS mimeType",
+                        "pm.duration_seconds AS durationSeconds", "pm.thumbnail_url AS thumbnailUrl")
+                .doesNotContain("storage_public_id", "file_size_bytes");
         assertThat(hashtags.value()).contains("SELECT DISTINCT h.normalized_name AS name",
                 "ORDER BY h.normalized_name ASC");
     }

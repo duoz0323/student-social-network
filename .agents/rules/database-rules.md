@@ -47,10 +47,10 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 - `profile_completed_at` là dữ liệu xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
 - Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
 - Người dùng không được Follow chính mình.
-- Bài viết phải có nội dung hoặc hình ảnh.
+- Bài viết phải có nội dung hoặc ít nhất một media.
 - Bài viết tối đa 500 ký tự.
-- Bài có tối đa 4 hình ảnh.
-- Chỉ lưu metadata và URL ảnh.
+- Bài có tổng tối đa 4 media và tối đa 1 video; có thể kết hợp 1 video với tối đa 3 ảnh.
+- Chỉ lưu metadata và URL media; không lưu trực tiếp dữ liệu ảnh hoặc video dạng BLOB.
 - Bài HIDDEN hoặc DELETED không xuất hiện trong truy vấn thông thường.
 
 ## 5. Index đề xuất

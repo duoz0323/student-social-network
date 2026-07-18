@@ -60,13 +60,13 @@ Axios nhận 401
 ```text
 Create Post Form
 → Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra nội dung và ảnh
-→ Upload ảnh
+→ Kiểm tra nội dung và danh sách media (tổng tối đa 4, tối đa 1 video)
+→ Upload ảnh hoặc video
 → Nhận URL
 → POST /api/v1/posts
 → PostService
 → Lưu posts
-→ Lưu post_media
+→ Kiểm tra ảnh/video, upload Cloudinary và lưu metadata post_media
 → Chuẩn hóa và lưu tối đa một hashtag/post_hashtags
 → Trả PostResponse
 ```

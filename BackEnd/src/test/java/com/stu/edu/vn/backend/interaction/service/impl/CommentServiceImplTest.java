@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.interaction.entity.Comment;
 import com.stu.edu.vn.backend.interaction.enums.CommentStatus;
 import com.stu.edu.vn.backend.interaction.mapper.CommentMapper;
 import com.stu.edu.vn.backend.interaction.repository.CommentRepository;
+import com.stu.edu.vn.backend.interaction.repository.projection.CommentReplyCountProjection;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
@@ -35,6 +36,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class CommentServiceImplTest {
@@ -89,6 +92,51 @@ class CommentServiceImplTest {
     }
 
     @Test
+    void createReplyUsesParentPostAndCreatesOnlyOneReplyLevel() {
+        Comment parent = savedComment(new Comment(post(1L), user(20L), "Binh luan goc"), 90L);
+        when(commentRepository.findForReplyCreationById(90L)).thenReturn(Optional.of(parent));
+        when(commentRepository.saveAndFlush(any(Comment.class)))
+                .thenAnswer(invocation -> savedComment(invocation.getArgument(0), 100L));
+        when(commentMapper.toResponse(any(Comment.class)))
+                .thenReturn(response(100L, 1L, 90L, 10L, "Noi dung tra loi", 0L, false));
+
+        CommentResponse response = commentService.createReply(90L, new CreateCommentRequest("  Noi dung tra loi  "));
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getParentComment()).isSameAs(parent);
+        assertThat(captor.getValue().getPost().getId()).isEqualTo(1L);
+        assertThat(captor.getValue().getContent()).isEqualTo("Noi dung tra loi");
+        assertThat(response.parentCommentId()).isEqualTo(90L);
+    }
+
+    @Test
+    void createReplyRejectsReplyToAnotherReply() {
+        Comment root = savedComment(new Comment(post(1L), user(20L), "Binh luan goc"), 90L);
+        Comment reply = savedComment(new Comment(post(1L), user(21L), root, "Tra loi"), 91L);
+        when(commentRepository.findForReplyCreationById(91L)).thenReturn(Optional.of(reply));
+
+        assertThatThrownBy(() -> commentService.createReply(91L, new CreateCommentRequest("Cap hai")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
+
+        verify(commentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createReplyRejectsDeletedParent() {
+        Comment parent = savedComment(new Comment(post(1L), user(20L), "Binh luan goc"), 90L);
+        ReflectionTestUtils.setField(parent, "status", CommentStatus.DELETED);
+        when(commentRepository.findForReplyCreationById(90L)).thenReturn(Optional.of(parent));
+
+        assertThatThrownBy(() -> commentService.createReply(90L, new CreateCommentRequest("Tra loi")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.COMMENT_PARENT_NOT_AVAILABLE);
+    }
+
+    @Test
     void createCommentRejectsBlankContent() {
         assertThatThrownBy(() -> commentService.createComment(1L, new CreateCommentRequest("   ")))
                 .isInstanceOf(BusinessException.class)
@@ -111,18 +159,45 @@ class CommentServiceImplTest {
     }
 
     @Test
-    void getPublishedCommentsReturnsOnlyPublishedCommentsInRepositoryOrder() {
+    void getPublishedCommentsReturnsPaginatedRootsWithReplyCounts() {
         Comment first = savedComment(new Comment(post(1L), user(20L), "Binh luan 1"), 101L);
         Comment second = savedComment(new Comment(post(1L), user(21L), "Binh luan 2"), 102L);
-        when(commentRepository.findByPost_IdAndStatusOrderByCreatedAtAscIdAsc(1L, CommentStatus.PUBLISHED))
-                .thenReturn(List.of(first, second));
-        when(commentMapper.toResponse(first)).thenReturn(response(101L, 1L, 20L, "Binh luan 1"));
-        when(commentMapper.toResponse(second)).thenReturn(response(102L, 1L, 21L, "Binh luan 2"));
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(commentRepository.findVisibleRootComments(1L, CommentStatus.PUBLISHED, pageable))
+                .thenReturn(new PageImpl<>(List.of(first, second), pageable, 2));
+        CommentReplyCountProjection replyCount = org.mockito.Mockito.mock(CommentReplyCountProjection.class);
+        when(replyCount.getCommentId()).thenReturn(101L);
+        when(replyCount.getReplyCount()).thenReturn(2L);
+        when(commentRepository.countRepliesByParentIdsAndStatus(List.of(101L, 102L), CommentStatus.PUBLISHED))
+                .thenReturn(List.of(replyCount));
+        when(commentMapper.toResponse(first, 2L))
+                .thenReturn(response(101L, 1L, null, 20L, "Binh luan 1", 2L, false));
+        when(commentMapper.toResponse(second, 0L))
+                .thenReturn(response(102L, 1L, null, 21L, "Binh luan 2", 0L, false));
 
-        List<CommentResponse> responses = commentService.getPublishedComments(1L);
+        var responses = commentService.getPublishedComments(1L, 0, 20);
 
-        assertThat(responses).extracting(CommentResponse::commentId).containsExactly(101L, 102L);
-        verify(commentRepository).findByPost_IdAndStatusOrderByCreatedAtAscIdAsc(1L, CommentStatus.PUBLISHED);
+        assertThat(responses.content()).extracting(CommentResponse::commentId).containsExactly(101L, 102L);
+        assertThat(responses.content().getFirst().replyCount()).isEqualTo(2L);
+        verify(commentRepository).findVisibleRootComments(1L, CommentStatus.PUBLISHED, pageable);
+    }
+
+    @Test
+    void getPublishedRepliesReturnsOnlyRepliesOfRequestedRoot() {
+        Comment parent = savedComment(new Comment(post(1L), user(20L), "Binh luan goc"), 90L);
+        Comment reply = savedComment(new Comment(post(1L), user(21L), parent, "Tra loi"), 100L);
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(commentRepository.findWithPostAndParentById(90L)).thenReturn(Optional.of(parent));
+        when(commentRepository.findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
+                90L, CommentStatus.PUBLISHED, pageable
+        )).thenReturn(new PageImpl<>(List.of(reply), pageable, 1));
+        when(commentMapper.toResponse(reply))
+                .thenReturn(response(100L, 1L, 90L, 21L, "Tra loi", 0L, false));
+
+        var responses = commentService.getPublishedReplies(90L, 0, 20);
+
+        assertThat(responses.content()).extracting(CommentResponse::commentId).containsExactly(100L);
+        assertThat(responses.content().getFirst().parentCommentId()).isEqualTo(90L);
     }
 
     @Test
@@ -192,14 +267,29 @@ class CommentServiceImplTest {
     }
 
     private CommentResponse response(Long commentId, Long postId, Long userId, String content) {
+        return response(commentId, postId, null, userId, content, 0L, false);
+    }
+
+    private CommentResponse response(
+            Long commentId,
+            Long postId,
+            Long parentCommentId,
+            Long userId,
+            String content,
+            long replyCount,
+            boolean deleted
+    ) {
         return new CommentResponse(
                 commentId,
                 postId,
+                parentCommentId,
                 userId,
                 "Nguyen Van A",
                 "https://cdn.example/avatar.png",
                 content,
-                LocalDateTime.of(2026, 7, 3, 1, 0)
+                LocalDateTime.of(2026, 7, 3, 1, 0),
+                replyCount,
+                deleted
         );
     }
 }

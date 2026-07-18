@@ -215,14 +215,14 @@ Quy tắc:
 Người dùng có thể tạo bài viết gồm:
 
 - Nội dung văn bản tối đa 500 ký tự.
-- Tối đa 4 hình ảnh.
+- Tối đa 4 media; tối đa 1 video, vì vậy có thể kết hợp 1 video và 3 ảnh.
 - 1 hashtag.
 
-Bài viết phải có ít nhất nội dung văn bản hoặc một hình ảnh.
+Bài viết phải có ít nhất nội dung văn bản hoặc một media.
 
 4.2. Media bài viết
 
-Hệ thống chỉ hỗ trợ hình ảnh trong phiên bản MVP.
+Hệ thống hỗ trợ ảnh JPG/JPEG/PNG/WEBP và video MP4/WebM trong bài viết.
 
 Định dạng cho phép:
 
@@ -358,7 +358,7 @@ Quy tắc:
   và chuyển chữ thường bằng Locale.ROOT.
 - Hashtag được chứa chữ tiếng Việt có dấu, chữ số, dấu gạch dưới và nhiều từ; tối đa 100 ký tự
   sau chuẩn hóa và không được rỗng.
-- Bài viết vẫn phải có nội dung hoặc ít nhất một ảnh; chỉ hashtag không đủ để tạo bài.
+- Bài viết vẫn phải có nội dung hoặc ít nhất một media; chỉ hashtag không đủ để tạo bài.
 - Người dùng có thể xem danh sách bài viết theo một hashtag.
 - Hệ thống không quản lý chủ đề nội dung riêng biệt trong phiên bản MVP.
 
@@ -576,7 +576,7 @@ Các chức năng sau không triển khai trong phiên bản MVP:
 3. Hồ sơ riêng tư.
 4. Follow Request.
 5. Block và Restrict nâng cao.
-6. Video và tài liệu trong bài viết.
+6. Tài liệu trong bài viết.
 7. Bài viết nháp.
 8. Mention.
 9. Repost.
@@ -648,7 +648,7 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
 19. Nếu người dùng cung cấp ngày sinh, hệ thống từ chối ngày sinh nằm trong tương lai.
 20. Người dùng Follow và Unfollow thành công.
 21. Không tồn tại hai quan hệ Follow trùng nhau.
-22. Người dùng tạo bài có văn bản hoặc hình ảnh.
+22. Người dùng tạo bài có văn bản, hình ảnh hoặc video hợp lệ.
 23. Chỉ tác giả được sửa hoặc xóa bài của mình.
 24. Bài bị xóa hoặc bị ẩn không xuất hiện trên Feed.
 25. Người dùng Like và Unlike bài viết.
@@ -663,7 +663,7 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
 34. Các API danh sách đều có phân trang.
 35. API từ chối thao tác khi người dùng không có quyền.
 36. Mật khẩu không được lưu dưới dạng văn bản thuần.
-37. Hình ảnh không hợp lệ phải bị Backend từ chối.
+37. Hình ảnh hoặc video không hợp lệ phải bị Backend từ chối.
 
 ================================================================================
 
@@ -678,7 +678,7 @@ MỨC P0 - BẮT BUỘC HOÀN THÀNH
 - Hồ sơ người dùng.
 - Follow và Unfollow.
 - Tạo, xem, chỉnh sửa và xóa bài viết.
-- Upload hình ảnh.
+- Upload hình ảnh hoặc video bài viết.
 - Like và Unlike.
 - Bình luận.
 - Feed Following.

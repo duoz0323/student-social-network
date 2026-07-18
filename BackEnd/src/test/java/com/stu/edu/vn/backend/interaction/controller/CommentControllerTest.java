@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
@@ -54,19 +55,49 @@ class CommentControllerTest {
     }
 
     @Test
+    void createReplyReturnsCreatedApiResponse() throws Exception {
+        when(commentService.createReply(any(), any()))
+                .thenReturn(commentResponse(101L, 1L, 100L, 10L, "Tra loi"));
+
+        mockMvc.perform(post("/api/v1/comments/100/replies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Tra loi\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.commentId").value(101))
+                .andExpect(jsonPath("$.data.parentCommentId").value(100));
+
+        verify(commentService).createReply(any(), any());
+    }
+
+    @Test
     void getCommentsReturnsPublishedComments() throws Exception {
-        when(commentService.getPublishedComments(1L)).thenReturn(List.of(
+        when(commentService.getPublishedComments(1L, 0, 20)).thenReturn(pageResponse(List.of(
                 commentResponse(100L, 1L, 10L, "Binh luan 1"),
                 commentResponse(101L, 1L, 11L, "Binh luan 2")
-        ));
+        )));
 
         mockMvc.perform(get("/api/v1/posts/1/comments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].commentId").value(100))
-                .andExpect(jsonPath("$.data[1].commentId").value(101));
+                .andExpect(jsonPath("$.data.content[0].commentId").value(100))
+                .andExpect(jsonPath("$.data.content[1].commentId").value(101));
 
-        verify(commentService).getPublishedComments(1L);
+        verify(commentService).getPublishedComments(1L, 0, 20);
+    }
+
+    @Test
+    void getRepliesReturnsPublishedReplies() throws Exception {
+        when(commentService.getPublishedReplies(100L, 0, 20)).thenReturn(pageResponse(List.of(
+                commentResponse(101L, 1L, 100L, 11L, "Tra loi")
+        )));
+
+        mockMvc.perform(get("/api/v1/comments/100/replies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].commentId").value(101))
+                .andExpect(jsonPath("$.data.content[0].parentCommentId").value(100));
+
+        verify(commentService).getPublishedReplies(100L, 0, 20);
     }
 
     @Test
@@ -95,14 +126,31 @@ class CommentControllerTest {
     }
 
     private CommentResponse commentResponse(Long commentId, Long postId, Long userId, String content) {
+        return commentResponse(commentId, postId, null, userId, content);
+    }
+
+    private CommentResponse commentResponse(
+            Long commentId,
+            Long postId,
+            Long parentCommentId,
+            Long userId,
+            String content
+    ) {
         return new CommentResponse(
                 commentId,
                 postId,
+                parentCommentId,
                 userId,
                 "Nguyen Van A",
                 "https://cdn.example/avatar.png",
                 content,
-                LocalDateTime.of(2026, 7, 3, 1, 0)
+                LocalDateTime.of(2026, 7, 3, 1, 0),
+                0L,
+                false
         );
+    }
+
+    private PageResponse<CommentResponse> pageResponse(List<CommentResponse> content) {
+        return new PageResponse<>(content, 0, 20, content.size(), 1, true, true);
     }
 }

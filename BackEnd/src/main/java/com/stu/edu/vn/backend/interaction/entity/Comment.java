@@ -48,7 +48,7 @@ public class Comment extends BaseAuditEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
-    // Giai đoạn MVP hiện tại chỉ tạo bình luận cấp 1 nên giá trị này luôn để null khi thêm mới.
+    // Chỉ bình luận trả lời mới có bình luận cha; Service bảo đảm cha luôn là bình luận gốc.
     private Comment parentComment;
 
     @Column(name = "content", nullable = false, length = 1000)
@@ -69,8 +69,13 @@ public class Comment extends BaseAuditEntity {
     }
 
     public Comment(Post post, User author, String content) {
+        this(post, author, null, content);
+    }
+
+    public Comment(Post post, User author, Comment parentComment, String content) {
         this.post = post;
         this.author = author;
+        this.parentComment = parentComment;
         this.content = content;
     }
 

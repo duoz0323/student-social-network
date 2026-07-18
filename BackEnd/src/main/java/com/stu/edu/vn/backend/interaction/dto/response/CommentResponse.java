@@ -8,10 +8,13 @@ import java.time.LocalDateTime;
 public record CommentResponse(
         Long commentId,
         Long postId,
+        Long parentCommentId,
         Long userId,
         String displayName,
         String avatarUrl,
         String content,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        long replyCount,
+        boolean deleted
 ) {
 }

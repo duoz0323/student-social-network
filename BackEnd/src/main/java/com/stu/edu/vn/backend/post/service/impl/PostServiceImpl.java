@@ -12,6 +12,7 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostHashtag;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.mapper.PostMapper;
 import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
@@ -53,6 +54,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class PostServiceImpl implements PostService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostServiceImpl.class);
+    private static final int MAX_VIDEO_DURATION_SECONDS = 180;
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
@@ -110,11 +112,11 @@ public class PostServiceImpl implements PostService {
         AuthorContext authorContext = ensureAuthorCanCreatePost(authorId);
         CreatePostCommand command = validateRequest(request);
 
-        List<UploadedPostImage> uploadedImages = uploadImages(command.images());
+        List<UploadedPostMedia> uploadedMedia = uploadMedia(command.mediaFiles());
         try {
-            return transactionTemplate.execute(status -> createPostInDatabase(authorContext, command, uploadedImages));
+            return transactionTemplate.execute(status -> createPostInDatabase(authorContext, command, uploadedMedia));
         } catch (RuntimeException exception) {
-            cleanupUploadedImages(uploadedImages);
+            cleanupUploadedMedia(uploadedMedia);
             throw exception;
         }
     }
@@ -152,10 +154,10 @@ public class PostServiceImpl implements PostService {
         ensureCanEditPost(post, viewerId);
 
         UpdatePostCommand command = validateUpdateRequest(post, request);
-        List<UploadedPostImage> uploadedImages = uploadImages(command.newImages());
-        registerStorageCleanup(uploadedImages, command.removedMedia());
+        List<UploadedPostMedia> uploadedMedia = uploadMedia(command.newMediaFiles());
+        registerStorageCleanup(uploadedMedia, command.removedMedia());
 
-        UpdatedPostData updatedData = updatePostInDatabase(post, command, uploadedImages);
+        UpdatedPostData updatedData = updatePostInDatabase(post, command, uploadedMedia);
         boolean owner = post.getAuthor().getId().equals(viewerId);
         return postMapper.toDetailResponse(
                 post,
@@ -185,18 +187,18 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException(ErrorCode.POST_NOT_FOUND);
         }
 
-        // API chỉ xác nhận xóa mềm, không xóa media, hashtag, comment, like, save hoặc file ảnh trên storage.
+        // API chỉ xác nhận xóa mềm, không xóa media, hashtag, comment, like, save hoặc file trên storage.
         return new DeletePostResponse(post.getId(), true);
     }
 
     private CreatePostCommand validateRequest(CreatePostRequest request) {
-        List<MultipartFile> images = request == null ? null : request.images();
-        postImageFileValidator.validate(images);
+        List<MultipartFile> mediaFiles = request == null ? null : request.mediaFiles();
+        postImageFileValidator.validate(mediaFiles);
 
-        int imageCount = postImageFileValidator.countValidImageSlots(images);
-        String content = postValidationSupport.validateForCreate(request == null ? null : request.content(), imageCount);
+        int mediaCount = postImageFileValidator.countValidImageSlots(mediaFiles);
+        String content = postValidationSupport.validateForCreate(request == null ? null : request.content(), mediaCount);
         String hashtag = hashtagNormalizer.normalizeOptional(request == null ? null : request.hashtag());
-        return new CreatePostCommand(content, hashtag, images == null ? List.of() : images);
+        return new CreatePostCommand(content, hashtag, mediaFiles == null ? List.of() : mediaFiles);
     }
 
     private AuthorContext ensureAuthorCanCreatePost(Long authorId) {
@@ -256,10 +258,10 @@ public class PostServiceImpl implements PostService {
     }
 
     private UpdatePostCommand validateUpdateRequest(Post post, UpdatePostRequest request) {
-        List<MultipartFile> newImages = request == null || request.newImages() == null
+        List<MultipartFile> newMediaFiles = request == null || request.newMediaFiles() == null
                 ? List.of()
-                : request.newImages();
-        postImageFileValidator.validate(newImages);
+                : request.newMediaFiles();
+        postImageFileValidator.validate(newMediaFiles);
 
         String content = postValidationSupport.normalizeContent(request == null ? null : request.content());
         boolean hashtagProvided = request != null && request.hashtag() != null;
@@ -270,18 +272,25 @@ public class PostServiceImpl implements PostService {
                 .filter(media -> keptMedia.stream().noneMatch(kept -> kept.getId().equals(media.getId())))
                 .toList();
 
-        int finalImageCount = keptMedia.size() + postImageFileValidator.countValidImageSlots(newImages);
-        if (finalImageCount > 4) {
-            throw new BusinessException(ErrorCode.POST_IMAGE_LIMIT_EXCEEDED);
+        int imageCount = (int) keptMedia.stream().filter(this::isImage).count();
+        int videoCount = keptMedia.size() - imageCount;
+        for (MultipartFile file : newMediaFiles) {
+            if (postImageFileValidator.detectMediaType(file) == PostMediaType.VIDEO) {
+                videoCount++;
+            } else {
+                imageCount++;
+            }
         }
-        if ((content == null || content.isBlank()) && finalImageCount == 0) {
+        postImageFileValidator.validateComposition(imageCount, videoCount);
+        int finalMediaCount = imageCount + videoCount;
+        if ((content == null || content.isBlank()) && finalMediaCount == 0) {
             throw new BusinessException(ErrorCode.POST_CONTENT_REQUIRED);
         }
-        return new UpdatePostCommand(content, hashtagProvided, hashtag, keptMedia, removedMedia, newImages);
+        return new UpdatePostCommand(content, hashtagProvided, hashtag, keptMedia, removedMedia, newMediaFiles);
     }
 
     private List<PostMedia> resolveKeptMedia(Long postId, List<PostMedia> currentMedia, List<Long> keepMediaIds) {
-        // Nếu client không gửi keepMediaIds, mặc định giữ toàn bộ ảnh cũ để thao tác sửa nội dung không vô tình xóa ảnh.
+        // Nếu client không gửi keepMediaIds, mặc định giữ toàn bộ media cũ để sửa nội dung không vô tình xóa file.
         if (keepMediaIds == null) {
             return currentMedia;
         }
@@ -303,7 +312,7 @@ public class PostServiceImpl implements PostService {
     private UpdatedPostData updatePostInDatabase(
             Post post,
             UpdatePostCommand command,
-            List<UploadedPostImage> uploadedImages
+            List<UploadedPostMedia> uploadedMedia
     ) {
         post.setContent(command.content());
         post.setEdited(true);
@@ -315,10 +324,10 @@ public class PostServiceImpl implements PostService {
         }
 
         List<PostMedia> keptMedia = reorderKeptMedia(command.keptMedia());
-        savePostMedia(post, uploadedImages, keptMedia.size());
+        savePostMedia(post, uploadedMedia, keptMedia.size());
         String hashtag = updatePostHashtag(post, command.hashtagProvided(), command.hashtag());
 
-        // Bảo đảm updated_at của posts đổi cả khi chỉ sửa hashtag/ảnh, vì hai phần này nằm ở bảng liên quan.
+        // Bảo đảm updated_at của posts đổi cả khi chỉ sửa hashtag/media, vì hai phần này nằm ở bảng liên quan.
         postRepository.markEdited(post.getId());
         entityManager.flush();
         entityManager.refresh(post);
@@ -336,17 +345,17 @@ public class PostServiceImpl implements PostService {
         return postMediaRepository.saveAllAndFlush(keptMedia);
     }
 
-    private List<PostMedia> savePostMedia(Post post, List<UploadedPostImage> uploadedImages, int startDisplayOrder) {
-        if (uploadedImages.isEmpty()) {
+    private List<PostMedia> savePostMedia(Post post, List<UploadedPostMedia> uploadedMedia, int startDisplayOrder) {
+        if (uploadedMedia.isEmpty()) {
             return List.of();
         }
-        List<PostMedia> media = uploadedImages.stream()
-                .map(uploadedImage -> toPostMedia(post, uploadedImage, startDisplayOrder + uploadedImage.displayOrder()))
+        List<PostMedia> media = uploadedMedia.stream()
+                .map(item -> toPostMedia(post, item, startDisplayOrder + item.displayOrder()))
                 .toList();
         return postMediaRepository.saveAllAndFlush(media);
     }
 
-    private void registerStorageCleanup(List<UploadedPostImage> uploadedImages, List<PostMedia> removedMedia) {
+    private void registerStorageCleanup(List<UploadedPostMedia> uploadedMedia, List<PostMedia> removedMedia) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             // Trường hợp unit test gọi service trực tiếp không qua Spring proxy; runtime thật sẽ có transaction do @Transactional.
             return;
@@ -354,30 +363,44 @@ public class PostServiceImpl implements PostService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // Chỉ xóa ảnh cũ trên storage sau khi database commit thành công để tránh mất file khi transaction rollback.
+                // Chỉ xóa media cũ trên storage sau khi database commit thành công để tránh mất file khi transaction rollback.
                 cleanupRemovedMediaFiles(removedMedia);
             }
 
             @Override
             public void afterCompletion(int status) {
                 if (status != STATUS_COMMITTED) {
-                    // Nếu transaction rollback, xóa các ảnh mới đã upload để không để lại file mồ côi.
-                    cleanupUploadedImages(uploadedImages);
+                    // Nếu transaction rollback, xóa media mới đã upload để không để lại file mồ côi.
+                    cleanupUploadedMedia(uploadedMedia);
                 }
             }
         });
     }
 
-    private List<UploadedPostImage> uploadImages(List<MultipartFile> images) {
-        List<UploadedPostImage> uploadedImages = new ArrayList<>();
+    private List<UploadedPostMedia> uploadMedia(List<MultipartFile> mediaFiles) {
+        List<UploadedPostMedia> uploadedMedia = new ArrayList<>();
         try {
-            for (MultipartFile image : images) {
-                CloudinaryUploadResult result = cloudinaryStorageService.uploadPostImage(image);
-                uploadedImages.add(new UploadedPostImage(result, uploadedImages.size()));
+            for (MultipartFile file : mediaFiles) {
+                PostMediaType mediaType = postImageFileValidator.detectMediaType(file);
+                CloudinaryUploadResult result = mediaType == PostMediaType.VIDEO
+                        ? cloudinaryStorageService.uploadPostVideo(file)
+                        : cloudinaryStorageService.uploadPostImage(file);
+                if (mediaType == PostMediaType.VIDEO
+                        && (result.durationSeconds() == null
+                        || result.durationSeconds() <= 0
+                        || result.durationSeconds() > MAX_VIDEO_DURATION_SECONDS)) {
+                    try {
+                        cloudinaryStorageService.deletePostMedia(result.publicId(), mediaType);
+                    } catch (RuntimeException cleanupException) {
+                        LOGGER.warn("Không thể cleanup video không hợp lệ sau khi upload");
+                    }
+                    throw new BusinessException(ErrorCode.POST_VIDEO_DURATION_EXCEEDED);
+                }
+                uploadedMedia.add(new UploadedPostMedia(result, mediaType, uploadedMedia.size()));
             }
-            return uploadedImages;
+            return uploadedMedia;
         } catch (RuntimeException exception) {
-            cleanupUploadedImages(uploadedImages);
+            cleanupUploadedMedia(uploadedMedia);
             throw exception;
         }
     }
@@ -385,10 +408,10 @@ public class PostServiceImpl implements PostService {
     private PostResponse createPostInDatabase(
             AuthorContext authorContext,
             CreatePostCommand command,
-            List<UploadedPostImage> uploadedImages
+            List<UploadedPostMedia> uploadedMedia
     ) {
         Post post = postRepository.saveAndFlush(new Post(authorContext.author(), command.content()));
-        List<PostMedia> media = savePostMedia(post, uploadedImages);
+        List<PostMedia> media = savePostMedia(post, uploadedMedia);
         savePostHashtag(post, command.hashtag());
 
         // Refresh để lấy các giá trị do MySQL tự sinh như created_at, updated_at và published_at.
@@ -396,33 +419,35 @@ public class PostServiceImpl implements PostService {
         return postMapper.toResponse(post, authorContext.profile(), media, command.hashtag());
     }
 
-    private List<PostMedia> savePostMedia(Post post, List<UploadedPostImage> uploadedImages) {
-        if (uploadedImages.isEmpty()) {
+    private List<PostMedia> savePostMedia(Post post, List<UploadedPostMedia> uploadedMedia) {
+        if (uploadedMedia.isEmpty()) {
             return List.of();
         }
-        List<PostMedia> media = uploadedImages.stream()
-                .map(uploadedImage -> toPostMedia(post, uploadedImage))
+        List<PostMedia> media = uploadedMedia.stream()
+                .map(item -> toPostMedia(post, item))
                 .toList();
         return postMediaRepository.saveAllAndFlush(media);
     }
 
-    private PostMedia toPostMedia(Post post, UploadedPostImage uploadedImage) {
-        return toPostMedia(post, uploadedImage, uploadedImage.displayOrder());
+    private PostMedia toPostMedia(Post post, UploadedPostMedia uploadedMedia) {
+        return toPostMedia(post, uploadedMedia, uploadedMedia.displayOrder());
     }
 
-    private PostMedia toPostMedia(Post post, UploadedPostImage uploadedImage, int displayOrder) {
-        CloudinaryUploadResult result = uploadedImage.result();
-        PostMedia media = new PostMedia(
+    private PostMedia toPostMedia(Post post, UploadedPostMedia uploadedMedia, int displayOrder) {
+        CloudinaryUploadResult result = uploadedMedia.result();
+        return new PostMedia(
                 post,
                 result.url(),
                 result.publicId(),
+                uploadedMedia.mediaType(),
                 result.mimeType(),
                 result.fileSize(),
+                result.width(),
+                result.height(),
+                result.durationSeconds(),
+                result.thumbnailUrl(),
                 displayOrder
         );
-        media.setWidthPx(result.width());
-        media.setHeightPx(result.height());
-        return media;
     }
 
     private void savePostHashtag(Post post, String normalizedHashtag) {
@@ -475,13 +500,13 @@ public class PostServiceImpl implements PostService {
         return relations.isEmpty() ? null : relations.get(0);
     }
 
-    private void cleanupUploadedImages(List<UploadedPostImage> uploadedImages) {
-        for (UploadedPostImage uploadedImage : uploadedImages) {
+    private void cleanupUploadedMedia(List<UploadedPostMedia> uploadedMedia) {
+        for (UploadedPostMedia item : uploadedMedia) {
             try {
-                cloudinaryStorageService.deleteImage(uploadedImage.result().publicId());
+                cloudinaryStorageService.deletePostMedia(item.result().publicId(), item.mediaType());
             } catch (RuntimeException cleanupException) {
                 // Cleanup thất bại chỉ ghi warning, không che lỗi gốc của upload hoặc database.
-                LOGGER.warn("Không thể cleanup ảnh bài viết sau khi tạo bài thất bại");
+                LOGGER.warn("Không thể cleanup media bài viết sau khi lưu thất bại");
             }
         }
     }
@@ -489,18 +514,27 @@ public class PostServiceImpl implements PostService {
     private void cleanupRemovedMediaFiles(List<PostMedia> removedMedia) {
         for (PostMedia media : removedMedia) {
             try {
-                cloudinaryStorageService.deleteImage(media.getStoragePublicId());
+                cloudinaryStorageService.deletePostMedia(media.getStoragePublicId(), mediaTypeOf(media));
             } catch (RuntimeException cleanupException) {
                 // Xóa file cũ thất bại không rollback database vì bài viết đã cập nhật thành công; cần theo dõi log để dọn thủ công nếu cần.
-                LOGGER.warn("Không thể xóa ảnh cũ của bài viết sau khi cập nhật bài thành công");
+                LOGGER.warn("Không thể xóa media cũ của bài viết sau khi cập nhật bài thành công");
             }
         }
+    }
+
+    private boolean isImage(PostMedia media) {
+        return mediaTypeOf(media) == PostMediaType.IMAGE;
+    }
+
+    private PostMediaType mediaTypeOf(PostMedia media) {
+        // Dữ liệu cũ trước migration không có media_type đều là ảnh.
+        return media.getMediaType() == null ? PostMediaType.IMAGE : media.getMediaType();
     }
 
     private record CreatePostCommand(
             String content,
             String hashtag,
-            List<MultipartFile> images
+            List<MultipartFile> mediaFiles
     ) {
     }
 
@@ -510,7 +544,7 @@ public class PostServiceImpl implements PostService {
             String hashtag,
             List<PostMedia> keptMedia,
             List<PostMedia> removedMedia,
-            List<MultipartFile> newImages
+            List<MultipartFile> newMediaFiles
     ) {
     }
 
@@ -526,8 +560,9 @@ public class PostServiceImpl implements PostService {
     ) {
     }
 
-    private record UploadedPostImage(
+    private record UploadedPostMedia(
             CloudinaryUploadResult result,
+            PostMediaType mediaType,
             int displayOrder
     ) {
     }

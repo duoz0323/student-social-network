@@ -23,7 +23,7 @@ public class PostMapper {
             List<PostMedia> media,
             String hashtag
     ) {
-        // Response chỉ gồm dữ liệu công khai, không chứa publicId ảnh hoặc dữ liệu xác thực.
+        // Response chỉ gồm dữ liệu công khai, không chứa publicId media hoặc dữ liệu xác thực.
         return new PostResponse(
                 post.getId(),
                 post.getContent(),
@@ -76,10 +76,13 @@ public class PostMapper {
         return new PostMediaResponse(
                 media.getId(),
                 media.getMediaUrl(),
+                media.getMediaType(),
                 media.getMimeType(),
                 media.getFileSizeBytes(),
                 media.getWidthPx(),
                 media.getHeightPx(),
+                media.getDurationSeconds(),
+                media.getThumbnailUrl(),
                 media.getDisplayOrder()
         );
     }

@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
 
     private static final String RESOURCE_TYPE_IMAGE = "image";
+    private static final String RESOURCE_TYPE_VIDEO = "video";
 
     private final Cloudinary cloudinary;
     private final CloudinaryProperties properties;
@@ -37,9 +39,26 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
         return uploadImage(file, properties.getPostFolder(), ErrorCode.POST_IMAGE_UPLOAD_FAILED, true);
     }
 
+    @Override
+    public CloudinaryUploadResult uploadPostVideo(MultipartFile file) {
+        // Video dùng resource_type riêng để Cloudinary xử lý metadata và thao tác xóa đúng loại tài nguyên.
+        return uploadMedia(file, properties.getPostFolder(), RESOURCE_TYPE_VIDEO,
+                ErrorCode.POST_VIDEO_UPLOAD_FAILED, true);
+    }
+
     private CloudinaryUploadResult uploadImage(
             MultipartFile file,
             String folder,
+            ErrorCode uploadErrorCode,
+            boolean includeMetadata
+    ) {
+        return uploadMedia(file, folder, RESOURCE_TYPE_IMAGE, uploadErrorCode, includeMetadata);
+    }
+
+    private CloudinaryUploadResult uploadMedia(
+            MultipartFile file,
+            String folder,
+            String resourceType,
             ErrorCode uploadErrorCode,
             boolean includeMetadata
     ) {
@@ -47,7 +66,7 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
         try {
             Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "folder", folder,
-                    "resource_type", RESOURCE_TYPE_IMAGE
+                    "resource_type", resourceType
             ));
             if (!includeMetadata) {
                 return new CloudinaryUploadResult(
@@ -58,10 +77,14 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
             return new CloudinaryUploadResult(
                     stringValue(uploadResult.get("secure_url")),
                     stringValue(uploadResult.get("public_id")),
-                    toMimeType(uploadResult.get("format")),
+                    toMimeType(resourceType, uploadResult.get("format")),
                     longValue(uploadResult.get("bytes")),
                     integerValue(uploadResult.get("width")),
-                    integerValue(uploadResult.get("height"))
+                    integerValue(uploadResult.get("height")),
+                    durationSeconds(uploadResult.get("duration")),
+                    RESOURCE_TYPE_VIDEO.equals(resourceType)
+                            ? videoThumbnail(stringValue(uploadResult.get("public_id")))
+                            : null
             );
         } catch (IOException exception) {
             throw new BusinessException(uploadErrorCode);
@@ -78,6 +101,20 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", RESOURCE_TYPE_IMAGE));
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.AVATAR_DELETE_FAILED);
+        }
+    }
+
+    @Override
+    public void deletePostMedia(String publicId, PostMediaType mediaType) {
+        if (publicId == null || publicId.trim().isEmpty()) {
+            return;
+        }
+        ensureConfigured();
+        String resourceType = mediaType == PostMediaType.VIDEO ? RESOURCE_TYPE_VIDEO : RESOURCE_TYPE_IMAGE;
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.POST_MEDIA_DELETE_FAILED);
         }
     }
 
@@ -108,13 +145,30 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
         return value == null ? null : Integer.valueOf(String.valueOf(value));
     }
 
-    private String toMimeType(Object formatValue) {
-        // Cloudinary trả format như jpg/png/webp; database cần MIME type image/*.
+    private String toMimeType(String resourceType, Object formatValue) {
+        // Cloudinary trả format như jpg/png/webp/mp4/webm; database cần MIME type đầy đủ.
         String format = stringValue(formatValue);
         if (format == null || format.isBlank()) {
             return null;
         }
         String normalizedFormat = "jpg".equalsIgnoreCase(format) ? "jpeg" : format.toLowerCase(java.util.Locale.ROOT);
-        return RESOURCE_TYPE_IMAGE + "/" + normalizedFormat;
+        return resourceType + "/" + normalizedFormat;
+    }
+
+    private Integer durationSeconds(Object value) {
+        if (value == null) {
+            return null;
+        }
+        double duration = value instanceof Number number
+                ? number.doubleValue()
+                : Double.parseDouble(String.valueOf(value));
+        return (int) Math.ceil(duration);
+    }
+
+    private String videoThumbnail(String publicId) {
+        return publicId == null ? null : cloudinary.url()
+                .resourceType(RESOURCE_TYPE_VIDEO)
+                .format("jpg")
+                .generate(publicId);
     }
 }

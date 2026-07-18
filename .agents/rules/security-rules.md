@@ -37,14 +37,16 @@ Không trả qua API công khai:
 - Thông tin cấu hình nội bộ.
 - Dữ liệu xác thực không cần thiết.
 
-## 4. Upload ảnh
+## 4. Upload ảnh và video
 
 Backend phải kiểm tra:
 
 - Phần mở rộng.
 - MIME type thực tế.
+- Chữ ký byte của file.
 - Kích thước file.
 - Số lượng file.
+- Thời lượng video từ metadata của dịch vụ lưu trữ.
 - Tên file an toàn.
 - URL hoặc metadata sau khi upload.
 

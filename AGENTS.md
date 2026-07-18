@@ -59,7 +59,7 @@ Các chức năng chưa thuộc MVP:
 - Hồ sơ riêng tư.
 - Follow Request.
 - Block và Restrict.
-- Video và tài liệu trong bài viết.
+- Tài liệu trong bài viết.
 - Bài viết nháp.
 - Mention.
 - Repost.

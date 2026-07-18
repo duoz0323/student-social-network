@@ -55,7 +55,7 @@ class PostControllerTest {
                 List.of(),
                 "sinhvien"
         ));
-        MockMultipartFile image = new MockMultipartFile("images", "one.png", "image/png", new byte[]{1});
+        MockMultipartFile image = new MockMultipartFile("mediaFiles", "one.png", "image/png", new byte[]{1});
 
         mockMvc.perform(multipart("/api/v1/posts")
                         .file(image)
@@ -113,7 +113,7 @@ class PostControllerTest {
                 "doan",
                 new PostViewerResponse(true)
         ));
-        MockMultipartFile image = new MockMultipartFile("newImages", "new.png", "image/png", new byte[]{1});
+        MockMultipartFile image = new MockMultipartFile("newMediaFiles", "new.png", "image/png", new byte[]{1});
 
         mockMvc.perform(multipart("/api/v1/posts/1")
                         .file(image)

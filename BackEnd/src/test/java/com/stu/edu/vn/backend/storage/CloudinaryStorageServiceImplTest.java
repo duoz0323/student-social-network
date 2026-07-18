@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.Uploader;
+import com.cloudinary.Url;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.io.IOException;
@@ -19,6 +20,7 @@ class CloudinaryStorageServiceImplTest {
 
     private final Cloudinary cloudinary = org.mockito.Mockito.mock(Cloudinary.class);
     private final Uploader uploader = org.mockito.Mockito.mock(Uploader.class);
+    private final Url cloudinaryUrl = org.mockito.Mockito.mock(Url.class);
     private final CloudinaryProperties properties = new CloudinaryProperties();
 
     private CloudinaryStorageServiceImpl storageService;
@@ -32,6 +34,9 @@ class CloudinaryStorageServiceImplTest {
         properties.setPostFolder("student-social-network/posts");
         storageService = new CloudinaryStorageServiceImpl(cloudinary, properties);
         when(cloudinary.uploader()).thenReturn(uploader);
+        when(cloudinary.url()).thenReturn(cloudinaryUrl);
+        when(cloudinaryUrl.resourceType("video")).thenReturn(cloudinaryUrl);
+        when(cloudinaryUrl.format("jpg")).thenReturn(cloudinaryUrl);
     }
 
     @Test
@@ -67,6 +72,28 @@ class CloudinaryStorageServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.POST_IMAGE_UPLOAD_FAILED);
+    }
+
+    @Test
+    void uploadPostVideoReturnsDurationAndGeneratedThumbnail() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("mediaFiles", "intro.mp4", "video/mp4", new byte[]{1});
+        when(uploader.upload(any(byte[].class), any(Map.class))).thenReturn(Map.of(
+                "secure_url", "https://cdn.example/intro.mp4",
+                "public_id", "student-social-network/posts/intro",
+                "format", "mp4",
+                "bytes", 4096,
+                "width", 1280,
+                "height", 720,
+                "duration", 45.2
+        ));
+        when(cloudinaryUrl.generate("student-social-network/posts/intro"))
+                .thenReturn("https://cdn.example/intro.jpg");
+
+        CloudinaryUploadResult result = storageService.uploadPostVideo(file);
+
+        assertThat(result.mimeType()).isEqualTo("video/mp4");
+        assertThat(result.durationSeconds()).isEqualTo(46);
+        assertThat(result.thumbnailUrl()).isEqualTo("https://cdn.example/intro.jpg");
     }
 
     @Test

@@ -418,7 +418,7 @@ CREATE INDEX idx_posts_status_engagement
 CREATE FULLTEXT INDEX ftx_posts_content
     ON posts (content);
 
--- Bảng post_media lưu metadata ảnh; tệp thật nằm trên Cloud Storage.
+-- Bảng post_media lưu metadata ảnh/video; tệp thật nằm trên Cloud Storage.
 CREATE TABLE post_media (
     -- Khóa chính của ảnh bài viết.
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -428,14 +428,20 @@ CREATE TABLE post_media (
     media_url VARCHAR(1000) NOT NULL,
     -- Public ID hoặc object key để hỗ trợ quản lý/xóa tệp.
     storage_public_id VARCHAR(255) NOT NULL,
+    -- Phân loại media để chọn cách hiển thị và resource_type trên Cloudinary.
+    media_type ENUM('IMAGE', 'VIDEO') NOT NULL,
     -- MIME type thực tế đã được Backend kiểm tra.
-    mime_type ENUM('image/jpeg', 'image/png', 'image/webp') NOT NULL,
+    mime_type ENUM('image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm') NOT NULL,
     -- Kích thước tệp theo byte.
     file_size_bytes BIGINT UNSIGNED NOT NULL,
     -- Chiều rộng ảnh theo pixel.
     width_px INT UNSIGNED NULL,
     -- Chiều cao ảnh theo pixel.
     height_px INT UNSIGNED NULL,
+    -- Thời lượng video theo giây; ảnh để NULL.
+    duration_seconds SMALLINT UNSIGNED NULL,
+    -- URL frame đại diện của video; ảnh để NULL.
+    thumbnail_url VARCHAR(1000) NULL,
     -- Thứ tự hiển thị ảnh trong bài, bắt đầu từ 0.
     display_order TINYINT UNSIGNED NOT NULL,
     -- Thời điểm tạo metadata ảnh.
@@ -451,10 +457,14 @@ CREATE TABLE post_media (
         REFERENCES posts (id)
         ON UPDATE RESTRICT
         ON DELETE CASCADE,
-    -- Thứ tự hiển thị trong MVP chỉ từ 0 đến 3 vì tối đa 4 ảnh.
+    -- Thứ tự hiển thị từ 0 đến 3 vì bài có tối đa 4 ảnh hoặc đúng 1 video.
     CONSTRAINT chk_post_media_display_order CHECK (display_order <= 3),
     -- Kích thước tệp phải lớn hơn 0.
-    CONSTRAINT chk_post_media_file_size CHECK (file_size_bytes > 0)
+    CONSTRAINT chk_post_media_file_size CHECK (file_size_bytes > 0),
+    CONSTRAINT chk_post_media_duration CHECK (
+        (media_type = 'IMAGE' AND duration_seconds IS NULL)
+        OR (media_type = 'VIDEO' AND duration_seconds BETWEEN 1 AND 180)
+    )
 ) ENGINE=InnoDB;
 
 -- UNIQUE INDEX uq_post_media_post_order đã đồng thời hỗ trợ truy vấn

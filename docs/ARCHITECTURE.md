@@ -161,9 +161,9 @@ Quy tắc enum trong Backend:
 
 MySQL là nguồn dữ liệu chuẩn.
 
-Ảnh:
+Media bài viết:
 
-- Lưu trên Cloud Storage.
+- Ảnh và video lưu trên Cloudinary/Cloud Storage.
 - Database lưu URL và metadata.
 - Không lưu BLOB.
 

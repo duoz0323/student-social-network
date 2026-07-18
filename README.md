@@ -191,7 +191,7 @@ Quy tắc nghiệp vụ:
 * Chỉnh sửa bài viết.
 * Xóa mềm bài viết.
 * Đăng nội dung văn bản tối đa 500 ký tự.
-* Tải lên tối đa 4 hình ảnh.
+* Tải lên tối đa 4 media; tối đa 1 video, vì vậy có thể kết hợp 1 video và 3 ảnh.
 * Gắn tối đa một hashtag vào bài viết.
 
 Bài viết phải có ít nhất một trong hai thành phần:
@@ -392,7 +392,7 @@ Có thể sử dụng một trong các dịch vụ:
 * Firebase Storage.
 * Amazon S3.
 
-Database chỉ lưu URL và metadata của hình ảnh, không lưu trực tiếp dữ liệu ảnh dạng BLOB.
+Database chỉ lưu URL và metadata của media, không lưu trực tiếp dữ liệu ảnh hoặc video dạng BLOB.
 
 ### Công cụ phát triển
 

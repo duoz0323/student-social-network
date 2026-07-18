@@ -310,7 +310,7 @@ Route UI tương ứng:
 Request `multipart/form-data`:
 
 - `content`: tùy chọn, tối đa 500 ký tự.
-- `images`: tùy chọn, tối đa 4 file ảnh.
+- `mediaFiles`: tùy chọn; tổng tối đa 4 media và tối đa 1 video, cho phép kết hợp 1 video với tối đa 3 ảnh.
 - `hashtag`: tùy chọn, một chuỗi scalar.
 
 ### GET `/api/v1/posts/{postId}`
@@ -320,8 +320,8 @@ Request `multipart/form-data`:
 Request `multipart/form-data`:
 
 - `content`: nội dung sau cập nhật.
-- `keepMediaIds`: danh sách ID ảnh cũ cần giữ.
-- `newImages`: ảnh mới cần thêm, tổng số ảnh sau cập nhật tối đa 4.
+- `keepMediaIds`: danh sách ID media cũ cần giữ.
+- `newMediaFiles`: media mới cần thêm; media giữ lại cộng media mới có tổng tối đa 4 và tối đa 1 video.
 - `hashtag`: field có ba trạng thái được mô tả bên dưới.
 
 `hashtag` là field multipart tùy chọn, tối đa một giá trị và không cần dấu `#`. Backend loại bỏ mọi
@@ -331,7 +331,12 @@ chữ Unicode, dấu kết hợp, chữ số, `_` và dấu cách giữa các t�
 
 Khi update: không gửi field `hashtag` thì giữ nguyên; gửi raw chỉ gồm Unicode whitespace thì xóa;
 gửi giá trị khác thì chuẩn hóa và thay thế. Raw không blank nhưng thành rỗng sau khi bỏ `#` là không hợp lệ.
-Bài viết ở cả create và update vẫn phải có content hoặc ít nhất một ảnh; riêng hashtag không đủ.
+Bài viết ở cả create và update vẫn phải có content hoặc ít nhất một media; riêng hashtag không đủ.
+
+Media response gồm `id`, `url`, `mediaType`, `mimeType`, `fileSize`, `width`, `height`,
+`durationSeconds`, `thumbnailUrl`, `displayOrder`. `mediaType` là `IMAGE` hoặc `VIDEO`;
+`durationSeconds` và `thumbnailUrl` chỉ có với video. Ảnh hỗ trợ JPEG/PNG/WEBP tối đa 10 MB;
+video hỗ trợ MP4/WebM tối đa 100 MB và 180 giây.
 
 ### DELETE `/api/v1/posts/{postId}`
 
@@ -388,7 +393,51 @@ Request:
 }
 ```
 
+Response 201 trả bình luận gốc với `parentCommentId = null`, `replyCount = 0` và `deleted = false`.
+
+### POST `/api/v1/comments/{parentCommentId}/replies`
+
+Request:
+
+```json
+{
+  "content": "Nội dung trả lời"
+}
+```
+
+Quy tắc:
+
+- Backend lấy `postId` từ bình luận cha, Client không truyền `postId` cho reply.
+- Bình luận cha phải tồn tại, có trạng thái `PUBLISHED` và phải là bình luận gốc.
+- Không hỗ trợ reply cấp hai; vi phạm trả `COMMENT_REPLY_DEPTH_EXCEEDED`.
+- Bài viết chứa bình luận phải còn `PUBLISHED`.
+
 ### GET `/api/v1/posts/{postId}/comments?page=0&size=20`
+
+Chỉ phân trang bình luận gốc. Mỗi phần tử trả thêm `replyCount` để Client quyết định tải reply.
+
+### GET `/api/v1/comments/{commentId}/replies?page=0&size=20`
+
+Chỉ trả reply `PUBLISHED` liên kết trực tiếp với bình luận gốc.
+
+Response phần tử bình luận:
+
+```json
+{
+  "commentId": 101,
+  "postId": 20,
+  "parentCommentId": null,
+  "userId": 5,
+  "displayName": "Nguyễn Văn A",
+  "avatarUrl": "https://example.com/avatar.jpg",
+  "content": "Bình luận mẫu",
+  "createdAt": "2026-07-18T10:00:00",
+  "replyCount": 3,
+  "deleted": false
+}
+```
+
+Nếu bình luận gốc đã xóa nhưng còn reply `PUBLISHED`, API vẫn trả bình luận gốc dưới dạng tombstone với `deleted = true`; `userId`, `displayName`, `avatarUrl` và `content` là `null`.
 
 ### DELETE `/api/v1/comments/{commentId}`
 

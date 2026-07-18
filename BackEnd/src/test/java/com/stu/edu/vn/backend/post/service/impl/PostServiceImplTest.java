@@ -21,6 +21,7 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostHashtag;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.mapper.PostMapper;
 import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
@@ -142,6 +143,78 @@ class PostServiceImplTest {
     }
 
     @Test
+    void createPostWithOneVideoStoresDurationThumbnailAndMediaType() {
+        MockMultipartFile video = mp4("intro.mp4");
+        when(cloudinaryStorageService.uploadPostVideo(video)).thenReturn(new CloudinaryUploadResult(
+                "https://cdn.example/intro.mp4", "post/intro", "video/mp4", 2048L,
+                1280, 720, 90, "https://cdn.example/intro.jpg"));
+
+        PostResponse response = postService.createPost(new CreatePostRequest(null, null, List.of(video)));
+
+        assertThat(response.media()).singleElement().satisfies(item -> {
+            assertThat(item.mediaType()).isEqualTo(PostMediaType.VIDEO);
+            assertThat(item.durationSeconds()).isEqualTo(90);
+            assertThat(item.thumbnailUrl()).isEqualTo("https://cdn.example/intro.jpg");
+        });
+        verify(cloudinaryStorageService).uploadPostVideo(video);
+    }
+
+    @Test
+    void createPostAcceptsOneVideoAndThreeImagesInOriginalOrder() {
+        MockMultipartFile firstImage = png("first.png");
+        MockMultipartFile video = mp4("video.mp4");
+        MockMultipartFile secondImage = jpeg("second.jpg");
+        MockMultipartFile thirdImage = webp("third.webp");
+        when(cloudinaryStorageService.uploadPostImage(firstImage))
+                .thenReturn(upload("https://cdn.example/first.png", "post/first", 640, 480));
+        when(cloudinaryStorageService.uploadPostVideo(video)).thenReturn(new CloudinaryUploadResult(
+                "https://cdn.example/video.mp4", "post/video", "video/mp4", 2048L,
+                1280, 720, 90, "https://cdn.example/video.jpg"));
+        when(cloudinaryStorageService.uploadPostImage(secondImage))
+                .thenReturn(upload("https://cdn.example/second.jpg", "post/second", 640, 480));
+        when(cloudinaryStorageService.uploadPostImage(thirdImage))
+                .thenReturn(upload("https://cdn.example/third.webp", "post/third", 640, 480));
+
+        PostResponse response = postService.createPost(new CreatePostRequest(
+                "Noi dung", null, List.of(firstImage, video, secondImage, thirdImage)));
+
+        assertThat(response.media()).extracting("mediaType")
+                .containsExactly(PostMediaType.IMAGE, PostMediaType.VIDEO,
+                        PostMediaType.IMAGE, PostMediaType.IMAGE);
+        assertThat(response.media()).extracting("displayOrder").containsExactly(0, 1, 2, 3);
+    }
+
+    @Test
+    void createPostRejectsMoreThanFourMixedMediaBeforeUpload() {
+        assertThatThrownBy(() -> postService.createPost(new CreatePostRequest(
+                "Noi dung", null, List.of(
+                        png("1.png"), png("2.png"), png("3.png"), png("4.png"), mp4("video.mp4")
+                ))))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
+
+        verify(cloudinaryStorageService, never()).uploadPostImage(any());
+        verify(cloudinaryStorageService, never()).uploadPostVideo(any());
+    }
+
+    @Test
+    void createPostDeletesUploadedVideoWhenDurationExceedsThreeMinutes() {
+        MockMultipartFile video = mp4("long.mp4");
+        when(cloudinaryStorageService.uploadPostVideo(video)).thenReturn(new CloudinaryUploadResult(
+                "https://cdn.example/long.mp4", "post/long", "video/mp4", 2048L,
+                1280, 720, 181, "https://cdn.example/long.jpg"));
+
+        assertThatThrownBy(() -> postService.createPost(new CreatePostRequest(null, null, List.of(video))))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_VIDEO_DURATION_EXCEEDED);
+
+        verify(cloudinaryStorageService).deletePostMedia("post/long", PostMediaType.VIDEO);
+        verify(transactionTemplate, never()).execute(any());
+    }
+
+    @Test
     void createPostWithContentHashtagAndFourImagesKeepsImageOrderAndNormalizedHashtag() {
         List<MultipartFile> images = List.of(png("1.png"), jpeg("2.jpg"), webp("3.webp"), png("4.png"));
         for (int index = 0; index < images.size(); index++) {
@@ -211,7 +284,7 @@ class PostServiceImplTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.POST_IMAGE_UPLOAD_FAILED);
 
-        verify(cloudinaryStorageService).deleteImage("post/first");
+        verify(cloudinaryStorageService).deletePostMedia("post/first", PostMediaType.IMAGE);
         verify(transactionTemplate, never()).execute(any());
     }
 
@@ -228,8 +301,8 @@ class PostServiceImplTest {
         assertThatThrownBy(() -> postService.createPost(new CreatePostRequest(null, null, List.of(first, second))))
                 .isInstanceOf(IllegalStateException.class);
 
-        verify(cloudinaryStorageService).deleteImage("post/first");
-        verify(cloudinaryStorageService).deleteImage("post/second");
+        verify(cloudinaryStorageService).deletePostMedia("post/first", PostMediaType.IMAGE);
+        verify(cloudinaryStorageService).deletePostMedia("post/second", PostMediaType.IMAGE);
     }
 
     @Test
@@ -348,6 +421,35 @@ class PostServiceImplTest {
     }
 
     @Test
+    void updatePostAcceptsKeptVideoWithThreeNewImages() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        PostMedia keptVideo = postMedia(post, 301L, 0, "https://cdn.example/video.mp4");
+        keptVideo.setMediaType(PostMediaType.VIDEO);
+        keptVideo.setDurationSeconds(60);
+        MockMultipartFile firstImage = png("first.png");
+        MockMultipartFile secondImage = jpeg("second.jpg");
+        MockMultipartFile thirdImage = webp("third.webp");
+        when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
+        when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(keptVideo));
+        when(postMediaRepository.findByPost_IdAndIdIn(eq(1L), any())).thenReturn(List.of(keptVideo));
+        when(postHashtagRepository.findWithHashtagByPostId(1L)).thenReturn(List.of());
+        when(cloudinaryStorageService.uploadPostImage(firstImage))
+                .thenReturn(upload("https://cdn.example/first.png", "post/first", 640, 480));
+        when(cloudinaryStorageService.uploadPostImage(secondImage))
+                .thenReturn(upload("https://cdn.example/second.jpg", "post/second", 640, 480));
+        when(cloudinaryStorageService.uploadPostImage(thirdImage))
+                .thenReturn(upload("https://cdn.example/third.webp", "post/third", 640, 480));
+
+        postService.updatePost(1L, new UpdatePostRequest(
+                "Noi dung moi", null, List.of(301L), List.of(firstImage, secondImage, thirdImage)
+        ));
+
+        verify(cloudinaryStorageService, times(3)).uploadPostImage(any());
+        verify(cloudinaryStorageService, never()).uploadPostVideo(any());
+    }
+
+    @Test
     void updatePostKeepsHashtagWhenFieldIsAbsent() {
         Post post = existingPost(1L, user(10L), completedProfile(10L));
         PostHashtag current = new PostHashtag(post, hashtag("do an", 401L));
@@ -451,7 +553,7 @@ class PostServiceImplTest {
         assertThat(response.deleted()).isTrue();
         verify(postRepository).softDeletePublishedPost(eq(1L), deletedAtCaptor.capture());
         assertThat(deletedAtCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 7, 3, 1, 10));
-        verify(cloudinaryStorageService, never()).deleteImage(any());
+        verify(cloudinaryStorageService, never()).deletePostMedia(any(), any());
         verify(postMediaRepository, never()).deleteAll(any());
     }
 
@@ -516,7 +618,7 @@ class PostServiceImplTest {
         when(cloudinaryStorageService.uploadPostImage(second))
                 .thenThrow(new BusinessException(ErrorCode.POST_IMAGE_UPLOAD_FAILED));
         doThrow(new BusinessException(ErrorCode.AVATAR_DELETE_FAILED))
-                .when(cloudinaryStorageService).deleteImage("post/first");
+                .when(cloudinaryStorageService).deletePostMedia("post/first", PostMediaType.IMAGE);
 
         assertThatThrownBy(() -> postService.createPost(new CreatePostRequest(null, null, List.of(first, second))))
                 .isInstanceOf(BusinessException.class)
@@ -606,6 +708,15 @@ class PostServiceImplTest {
                 filename,
                 "image/webp",
                 new byte[]{0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50}
+        );
+    }
+
+    private MockMultipartFile mp4(String filename) {
+        return new MockMultipartFile(
+                "mediaFiles",
+                filename,
+                "video/mp4",
+                new byte[]{0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D}
         );
     }
 
