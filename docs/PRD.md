@@ -1,5 +1,7 @@
 # PRODUCT REQUIREMENTS DOCUMENT
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. PRD này tóm tắt yêu cầu sản phẩm; nếu có khác biệt, phải áp dụng `README.md` và cập nhật trực tiếp mục tương ứng trong PRD.
+
 ## 1. Thông tin sản phẩm
 
 **Tên dự án:** Mạng xã hội tinh gọn hướng đến sinh viên.
@@ -12,8 +14,10 @@
 
 MVP phải hoàn thiện một luồng xuyên suốt:
 
-Đăng ký
-→ Đăng nhập
+Đăng ký local bằng email/số điện thoại hoặc đăng ký bằng Google/Facebook
+→ Xác minh OTP nếu đăng ký local
+→ Đăng nhập và nhận JWT của hệ thống
+→ Hoàn tất hồ sơ ban đầu
 → Quản lý hồ sơ
 → Theo dõi
 → Đăng bài
@@ -30,6 +34,9 @@ MVP phải hoàn thiện một luồng xuyên suốt:
 Được phép:
 
 - Đăng ký.
+- Xác minh hoặc tiếp tục đăng ký local đang chờ.
+- Gửi lại OTP theo giới hạn tần suất.
+- Đăng ký hoặc đăng nhập bằng Google/Facebook.
 - Đăng nhập.
 - Yêu cầu đặt lại mật khẩu nếu triển khai P2.
 
@@ -74,26 +81,36 @@ Ngoài quyền người dùng, Admin được phép:
 
 ### 4.1 Xác thực
 
-- Đăng ký bằng đúng một phương thức định danh: email hoặc số điện thoại.
-- Form đăng ký chỉ gồm phương thức định danh, mật khẩu và xác nhận mật khẩu.
-- Tại thời điểm đăng ký, nếu dùng email thì `phone_number` lưu `NULL`; nếu dùng số điện thoại thì `email` lưu `NULL`.
-- Database cho phép tài khoản bổ sung phương thức còn thiếu trong tương lai, nhưng mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
-- Email duy nhất nếu có giá trị.
-- Số điện thoại duy nhất nếu có giá trị.
-- Backend chuẩn hóa email và số điện thoại trước khi kiểm tra trùng và lưu.
-- Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
-- Tài khoản mới ở trạng thái ACTIVE.
-- Khi đăng ký hợp lệ, Backend tạo `users` và một `user_profiles` rỗng trong cùng transaction; nếu tạo hồ sơ thất bại thì rollback tài khoản.
-- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu là `NULL`.
-- Sau đăng ký, người dùng được điều hướng đến onboarding hồ sơ.
-- Cơ chế phiên ngay sau đăng ký cần chốt theo API triển khai: có thể cấp Access Token/Refresh Token ngay hoặc duy trì phiên đăng ký hợp lệ, nhưng không được bỏ qua bước onboarding.
-- Đăng nhập bằng email hoặc số điện thoại.
-- Cấp Access Token và Refresh Token.
-- Đăng xuất thu hồi Refresh Token.
-- Tài khoản BLOCKED không đăng nhập được.
-- MVP chưa triển khai xác minh email hoặc SMS OTP; `email_verified_at` và `phone_verified_at` để `NULL` nếu chưa xác minh.
-- Email và số điện thoại không hiển thị trong API hồ sơ công khai.
-- Người chưa hoàn tất hồ sơ chỉ được dùng API xác thực, refresh token, đăng xuất và onboarding; API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED`.
+Hệ thống áp dụng mô hình một tài khoản nội bộ có nhiều phương thức xác thực. Email, số điện thoại, Google và Facebook sau khi được xác minh và liên kết hợp lệ đều ánh xạ về cùng một `users.id`.
+
+Đăng ký local:
+
+- Request chỉ nhận một `identifier` là email hoặc số điện thoại, `password` và `confirmPassword`; không nhận username hoặc tên hiển thị.
+- Backend chuẩn hóa identifier và băm mật khẩu trước khi lưu.
+- Khi nhận form hợp lệ, Backend chỉ tạo `pending_registrations`; chưa tạo `users`, `user_profiles`, Access Token hoặc Refresh Token.
+- OTP email và OTP SMS có hiệu lực 10 phút, resend sau 60 giây và tối đa 5 lần nhập sai cho mỗi OTP.
+- Pending có hiệu lực 24 giờ; OTP mới làm OTP cũ mất hiệu lực; không được có hai pending còn hiệu lực cho cùng identifier.
+- Dữ liệu `CANCELLED` và `EXPIRED` được giữ tối đa 7 ngày trước khi xóa hoặc ẩn danh.
+- Chỉ OTP hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction. Nếu tạo profile thất bại, toàn bộ transaction phải rollback.
+- Sau khi tài khoản thật được tạo, Backend cấp Access Token và Refresh Token rồi điều hướng tới onboarding.
+
+Google/Facebook và liên kết phương thức:
+
+- Backend phải tự xác minh provider token; không tin provider ID, email hoặc trạng thái verified do Frontend khai báo.
+- Provider token chỉ dùng tại endpoint Auth; API nghiệp vụ chỉ chấp nhận JWT của hệ thống.
+- Provider đã liên kết phải đăng nhập về đúng `users.id`.
+- Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
+- Khi liên kết provider, tài khoản đích phải lấy từ JWT hiện tại.
+- Email/phone phải được xác minh OTP trước khi liên kết; không được gỡ phương thức đăng nhập cuối cùng.
+- `users.password_hash` được phép `NULL` với social-only account; tài khoản này không đăng nhập local được cho đến khi thiết lập mật khẩu và xác minh định danh local.
+
+Đăng nhập và phiên:
+
+- Login local dùng email hoặc số điện thoại và mật khẩu; chỉ định danh có trường `*_verified_at` khác `NULL` mới được dùng.
+- Tài khoản `BLOCKED` bị từ chối ở mọi phương thức đăng nhập.
+- Access Token có thời hạn ngắn; Refresh Token chỉ lưu dạng hash, được rotate khi refresh và bị thu hồi khi logout hoặc theo nghiệp vụ khóa tài khoản.
+- Người chưa hoàn tất hồ sơ chỉ được dùng API Auth cần thiết, Refresh Token, logout, onboarding và API quản lý phương thức xác thực theo contract; API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`.
+- Email, số điện thoại và dữ liệu xác thực không được trả trong API hồ sơ công khai.
 
 ### 4.2 Hồ sơ
 
@@ -260,7 +277,9 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 ### P0
 
-- Đăng ký, đăng nhập, đăng xuất.
+- Đăng ký local bằng email/số điện thoại và xác minh OTP.
+- Đăng ký, đăng nhập Google/Facebook.
+- Đăng nhập local và đăng xuất.
 - Hoàn tất hồ sơ ban đầu.
 - JWT/Refresh Token.
 - Hồ sơ.
@@ -275,6 +294,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 ### P1
 
+- Liên kết và quản lý nhiều phương thức đăng nhập.
 - Save/Unsave.
 - Hashtag.
 - Search.
@@ -290,9 +310,6 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Lịch sử thao tác quản trị đơn giản.
 
 ## 6. Ngoài phạm vi
-
-- Xác thực email.
-- OAuth.
 - Hồ sơ riêng tư.
 - Follow Request.
 - Block/Restrict.
@@ -314,13 +331,21 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 ## 7. Tiêu chí nghiệm thu
 
-- Đăng ký và đăng nhập thành công.
-- Sau đăng ký tạo đồng thời `users` và `user_profiles` trong cùng transaction.
-- Hồ sơ ban đầu có `display_name`, `date_of_birth` và `profile_completed_at` là `NULL`.
+- Đăng ký local chỉ tạo `pending_registrations`, chưa tạo `users`.
+- OTP email hoặc OTP SMS hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction.
+- OTP hết hạn, đã dùng, bị hủy hoặc vượt số lần thử không thể sử dụng.
+- Không tồn tại hai pending còn hiệu lực cho cùng identifier.
+- Mất mạng hoặc đóng tab vẫn có thể tiếp tục đăng ký trong thời hạn.
+- Google/Facebook token được Backend xác minh trước khi dùng.
+- Provider đã liên kết luôn đăng nhập về đúng `users.id`.
+- Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
+- Liên kết provider lấy tài khoản đích từ JWT hiện tại.
+- Không cho gỡ phương thức đăng nhập cuối cùng.
+- Social-only account chưa có mật khẩu không đăng nhập local được.
+- Tài khoản `BLOCKED` bị từ chối ở mọi phương thức.
 - Người dùng phải hoàn tất hồ sơ bằng tên hiển thị và ngày sinh hợp lệ, đồng thời đủ 18 tuổi, trước khi dùng Feed và các chức năng mạng xã hội.
 - Backend trả `PROFILE_NOT_COMPLETED` khi tài khoản chưa hoàn tất hồ sơ gọi API mạng xã hội chính.
 - Token hoạt động đúng.
-- Tài khoản BLOCKED không đăng nhập được.
 - Cập nhật hồ sơ.
 - Follow/Unfollow không trùng.
 - CRUD bài đúng quyền.

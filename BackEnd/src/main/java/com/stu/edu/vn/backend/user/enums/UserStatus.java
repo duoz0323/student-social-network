@@ -1,7 +1,7 @@
 package com.stu.edu.vn.backend.user.enums;
 
 /**
- * Trạng thái tài khoản trong MVP, khớp ENUM status của bảng users.
+ * Trạng thái tài khoản trong MVP, ánh xạ VARCHAR + CHECK của bảng users.
  */
 public enum UserStatus {
     ACTIVE,

@@ -1,173 +1,148 @@
 # Luồng dữ liệu
 
-## 1. Đăng ký
+`README.md` là nguồn sự thật cao nhất về nghiệp vụ và trạng thái đích. Contract HTTP chi tiết duy nhất nằm tại `docs/data/API-CONTRACT.md`; tài liệu này chỉ mô tả trình tự trao đổi dữ liệu giữa các thành phần.
+
+## 1. Đăng ký local và xác minh OTP
 
 ```text
 Register Form
-→ Nhập identifier, password, confirmPassword
-→ POST /api/v1/auth/register
-→ AuthController
-→ AuthService
-→ Chuẩn hóa email hoặc số điện thoại
-→ Kiểm tra đúng một phương thức định danh và không trùng
-→ Tạo users và user_profiles rỗng trong cùng transaction
-→ Trả kết quả đăng ký
-→ Frontend điều hướng đến onboarding hồ sơ
+→ Khởi tạo đăng ký qua POST /api/v1/auth/registrations
+→ Backend chuẩn hóa identifier, tạo hoặc phục hồi pending_registrations
+→ Backend gửi OTP ngoài transaction database
+→ Frontend giữ flow token trong memory hoặc sessionStorage
+→ Người dùng nhập OTP
+→ Frontend gửi flow token bằng X-Auth-Flow-Token đến endpoint verify
+→ Backend khóa bi quan bản ghi pending trong transaction ngắn
+→ Kiểm tra trạng thái, thời hạn, OTP và số lần thử
+→ Tạo users và user_profiles trong cùng transaction
+→ Hoàn tất pending, tạo phiên và trả JWT hệ thống
+→ Frontend điều hướng đến onboarding
 ```
 
-## 2. Hoàn tất hồ sơ
+Resend giữ nguyên flow token, tạo OTP mới, vô hiệu OTP cũ và đặt lại số lần thử nhưng không kéo dài thời hạn 24 giờ của pending. Recovery khi mất token là luồng riêng chưa thuộc Giai đoạn 4. Chi tiết request, response, header, status và error code theo `API-CONTRACT.md`.
+
+## 2. Đăng ký hoặc đăng nhập Google/Facebook
+
+```text
+Google/Facebook SDK
+→ Frontend nhận provider credential dùng một lần cho Auth
+→ Gửi credential đến endpoint social Auth tương ứng
+→ Backend xác minh trực tiếp với provider ngoài transaction database
+→ Đối chiếu provider identity và trạng thái tài khoản
+→ Đăng nhập user đã liên kết, tạo provider-only user hợp lệ,
+  hoàn tất pending phù hợp hoặc trả social conflict
+→ Backend phát hành Access Token và Refresh Token của hệ thống
+→ Frontend hủy provider credential và đi đến onboarding/ứng dụng
+```
+
+Provider token không được lưu lâu dài hoặc dùng cho API nghiệp vụ. Facebook không có email vẫn có thể tạo provider-only user; không tạo email giả. Email trùng một user `ACTIVE` nhưng provider chưa liên kết phải đi qua conflict, không tự động link hay tạo user thứ hai. Social conflict dùng flow token opaque một lần, TTL 5 phút, theo contract chi tiết.
+
+## 3. Quản lý phương thức xác thực
+
+```text
+Security Settings
+→ Link email/phone: initiate challenge riêng → verify OTP → gắn local method
+→ Link Google/Facebook: xác minh provider trong phiên JWT hiện tại
+→ Unlink: reauthenticate → kiểm tra không phải phương thức cuối → gỡ liên kết
+```
+
+Challenge liên kết email/phone không dùng `pending_registrations`. User đích luôn lấy từ JWT hiện tại. Nếu sau unlink không còn local identifier hợp lệ nhưng vẫn còn social provider thì `password_hash` được đặt `NULL`. Thu hồi các phiên khác sau thay đổi phương thức xác thực là hạng mục P1, chưa tự động thực hiện ở 0B.
+
+## 4. Hoàn tất hồ sơ
 
 ```text
 Onboarding Page
 → GET /api/v1/users/me/onboarding
 → Nhập tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
 → Backend kiểm tra ngày sinh hợp lệ và người dùng đủ 18 tuổi
-→ PUT /api/v1/users/me/onboarding/profile
-→ POST /api/v1/users/me/onboarding/complete
+→ PUT /api/v1/users/me/onboarding
 → Backend cập nhật user_profiles.profile_completed_at
 → Frontend cho phép vào Feed
 ```
 
-Nếu `profile_completed_at` còn `NULL`, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding.
+Nếu `profile_completed_at` còn `NULL`, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding. Login và refresh vẫn được phép, không trả lỗi này.
 
-## 3. Đăng nhập
+## 5. Đăng nhập local
 
 ```text
 Login Form
 → POST /api/v1/auth/login
-→ AuthController
-→ AuthService
-→ UserRepository
-→ PasswordEncoder
-→ JwtService
-→ RefreshTokenService
-→ Access Token + Refresh Token
+→ Chuẩn hóa identifier và kiểm tra phương thức local đã xác minh
+→ Kiểm tra mật khẩu và từ chối user BLOCKED
+→ Tạo Access Token + Refresh Token
 → Frontend
 ```
 
-## 4. Refresh Token
+## 6. Refresh Token
 
 ```text
-Axios nhận 401
+Axios nhận 401 do Access Token hết hạn
 → POST /api/v1/auth/refresh-token
-→ Kiểm tra Refresh Token
-→ Kiểm tra revoked và expiry
-→ Cấp Access Token mới
+→ Kiểm tra Refresh Token, trạng thái revoked/expiry và user BLOCKED
+→ Khóa và thu hồi Refresh Token cũ
+→ Cấp Access Token và Refresh Token mới
+→ Frontend thay thế token đang lưu
 → Gửi lại request cũ
 ```
 
-## 5. Tạo bài
+## 7. Tạo bài
 
 ```text
 Create Post Form
 → Kiểm tra profile_completed_at khác NULL
 → Kiểm tra nội dung và ảnh
-→ Upload ảnh
-→ Nhận URL
+→ Upload ảnh → nhận URL
 → POST /api/v1/posts
-→ PostService
-→ Lưu posts
-→ Lưu post_media
-→ Lưu hashtag/post_hashtags
+→ PostService lưu posts, post_media và hashtag/post_hashtags
 → Trả PostResponse
 ```
 
-## 6. Follow
+## 8. Follow
 
 ```text
 Profile
 → POST /api/v1/users/{userId}/follow
-→ Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra không Follow chính mình
-→ Kiểm tra không trùng
-→ Lưu follows
-→ Trả trạng thái mới
+→ Kiểm tra profile hoàn tất, không follow chính mình và không trùng
+→ Lưu follows → trả trạng thái mới
 ```
 
-## 7. Like
+## 9. Like và Comment
 
 ```text
-PostCard
-→ POST /api/v1/posts/{postId}/likes
-→ Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra post PUBLISHED
-→ Kiểm tra chưa Like
-→ Lưu post_likes
-→ Trả likeCount mới
+PostCard/Comment Form
+→ Gọi endpoint tương ứng dưới /api/v1/posts
+→ Kiểm tra profile hoàn tất và post PUBLISHED
+→ Kiểm tra uniqueness/validate content
+→ Lưu dữ liệu → trả response
 ```
 
-## 8. Comment
+## 10. Feed
 
 ```text
-Comment Form
-→ POST /api/v1/posts/{postId}/comments
+GET /api/v1/feeds/following hoặc /api/v1/feeds/for-you
 → Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra post hợp lệ
-→ Validate content
-→ Lưu comments
-→ Trả CommentResponse
-```
-
-## 9. Feed Following
-
-```text
-GET /api/v1/feeds/following
-→ Kiểm tra profile_completed_at khác NULL
-→ Lấy following IDs
-→ Lấy post PUBLISHED
-→ created_at DESC
-→ Phân trang
-→ Trả Page<PostResponse>
-```
-
-## 10. Feed For You
-
-```text
-GET /api/v1/feeds/for-you
-→ Kiểm tra profile_completed_at khác NULL
-→ Lấy post PUBLISHED
-→ Tính điểm độ mới + Like + Comment
-→ Hạn chế lặp tác giả
-→ Phân trang
-→ Trả kết quả
+→ Chỉ lấy post PUBLISHED
+→ Sắp xếp/xếp hạng theo nghiệp vụ README
+→ Phân trang → trả kết quả
 ```
 
 ## 11. Search
 
 ```text
-GET /api/v1/search/users?q=
+GET /api/v1/search/users?q= hoặc /api/v1/search/posts?q=
 → Kiểm tra profile_completed_at khác NULL
-→ MySQL LIKE hoặc full-text phù hợp
-→ Loại user BLOCKED
-→ Phân trang
+→ Tìm bằng MySQL, loại dữ liệu không được hiển thị
+→ Phân trang → trả kết quả
 ```
 
-```text
-GET /api/v1/search/posts?q=
-→ Kiểm tra profile_completed_at khác NULL
-→ Tìm content/hashtag
-→ Chỉ PUBLISHED
-→ Phân trang
-```
-
-## 12. Report
+## 12. Report và Admin xử lý Report
 
 ```text
-Report Modal
-→ POST /api/v1/posts/{postId}/reports
-→ Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra report PENDING trùng
+Report Modal → POST /api/v1/posts/{postId}/reports
+→ Kiểm tra profile hoàn tất và report PENDING trùng
 → Tạo report
-→ Trả thành công
-```
 
-## 13. Admin xử lý Report
-
-```text
-Admin Report Detail
-→ PATCH /api/v1/admin/reports/{reportId}
+Admin Report Detail → PATCH /api/v1/admin/reports/{reportId}
 → Kiểm tra ADMIN
-→ Chuyển RESOLVED hoặc REJECTED
-→ Có thể ẩn post
-→ Trả kết quả
+→ Chuyển RESOLVED/REJECTED, có thể ẩn post theo state machine
 ```

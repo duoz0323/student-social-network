@@ -27,7 +27,7 @@ public final class IdentifierNormalizer {
             return new NormalizedIdentifier(IdentifierType.PHONE_NUMBER, phoneNumber);
         }
 
-        throw new BusinessException(ErrorCode.INVALID_IDENTIFIER);
+        throw new BusinessException(ErrorCode.AUTH_IDENTIFIER_INVALID);
     }
 
     public static boolean isSupported(String rawIdentifier) {
@@ -43,13 +43,13 @@ public final class IdentifierNormalizer {
         if (rawIdentifier == null) {
             return "";
         }
-        return rawIdentifier.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+        return rawIdentifier.trim().toLowerCase(Locale.ROOT);
     }
 
     public static String normalizePhoneNumber(String rawIdentifier) {
         if (rawIdentifier == null) {
             return "";
         }
-        return rawIdentifier.replaceAll("[\\s.-]+", "");
+        return rawIdentifier.trim().replaceAll("[\\s.-]+", "");
     }
 }

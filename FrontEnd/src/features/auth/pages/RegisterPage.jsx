@@ -1,60 +1,56 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import logo from '../../../assets/brand/logo.png';
 import Button from '../../../components/common/Button.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import SocialAuthButtons from '../components/SocialAuthButtons.jsx';
-
-function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function isPhoneNumber(value) {
-  return /^\+?\d{9,15}$/.test(value);
-}
-
-function validate(form) {
-  const identifier = form.identifier.trim();
-  if (!identifier) return 'Vui long nhap email hoac so dien thoai.';
-  if (!isEmail(identifier) && !isPhoneNumber(identifier)) return 'Email hoac so dien thoai khong hop le.';
-  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(form.password)) {
-    return 'Mat khau can toi thieu 8 ky tu, co chu hoa, chu thuong, so va ky tu dac biet.';
-  }
-  if (form.password !== form.confirmPassword) return 'Mat khau xac nhan khong khop.';
-  if (!form.acceptTerms) return 'Vui long dong y dieu khoan truoc khi dang ky.';
-  return '';
-}
+import { useRegistration } from '../hooks/useRegistration.js';
+import { getRegistrationErrorMessage } from '../utils/registrationErrorMapper.js';
+import { validateRegistration } from '../validation/registrationValidation.js';
+import { getAuthenticatedHome } from '../utils/authNavigation.js';
 
 export default function RegisterPage() {
-  const { register, handleFutureSocialAuth } = useApp();
+  const { handleFutureSocialAuth } = useApp();
+  const registration = useRegistration();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ identifier: '', password: '', confirmPassword: '', acceptTerms: false });
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState(() => location.state?.reason ? 'Bạn có thể bắt đầu hoặc tiếp tục một đăng ký đang chờ.' : '');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   async function submit(event) {
     event.preventDefault();
-    const validationError = validate(form);
-    if (validationError) {
-      setMessage(validationError);
+    const validationErrors = validateRegistration(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
       return;
     }
 
-    setSubmitting(true);
+    setFieldErrors({});
     setMessage('');
-    const result = await register(form);
-    setSubmitting(false);
-
-    if (!result.ok) {
-      setMessage(result.message);
-      return;
+    try {
+      const flow = await registration.startRegistration({
+        identifier: form.identifier.trim(),
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+      });
+      if (flow) navigate('/register/verify', { replace: true });
+    } catch (error) {
+      setFieldErrors(error.fieldErrors ?? {});
+      setMessage(getRegistrationErrorMessage(error));
+    } finally {
+      // Password và confirmPassword bị loại khỏi React state ngay sau khi request kết thúc.
+      setForm((current) => ({ ...current, password: '', confirmPassword: '' }));
     }
-    navigate('/onboarding/profile');
   }
 
   function showFutureMessage(providerName) {
     const result = handleFutureSocialAuth(providerName);
     setMessage(result.message);
+  }
+
+  function finishGoogleAuthentication(session) {
+    navigate(getAuthenticatedHome(session), { replace: true });
   }
 
   return (
@@ -75,8 +71,9 @@ export default function RegisterPage() {
             onChange={(event) => setForm({ ...form, identifier: event.target.value })}
             placeholder="Nhap email hoac so dien thoai"
             className="mt-2 h-[44px] w-full rounded-[var(--radius-input)] border border-[var(--app-border-strong)] bg-zinc-50 px-4 text-sm outline-none focus:border-[var(--app-text)]"
-            disabled={submitting}
+            disabled={registration.isSubmitting}
           />
+          {fieldErrors.identifier ? <span className="mt-1 block text-xs text-red-700">{fieldErrors.identifier}</span> : null}
         </label>
 
         <label className="mt-4 block text-xs font-semibold text-zinc-700">
@@ -86,8 +83,10 @@ export default function RegisterPage() {
             value={form.password}
             onChange={(event) => setForm({ ...form, password: event.target.value })}
             className="mt-2 h-[44px] w-full rounded-[var(--radius-input)] border border-[var(--app-border-strong)] bg-zinc-50 px-4 text-sm outline-none focus:border-[var(--app-text)]"
-            disabled={submitting}
+            autoComplete="new-password"
+            disabled={registration.isSubmitting}
           />
+          {fieldErrors.password ? <span className="mt-1 block text-xs text-red-700">{fieldErrors.password}</span> : null}
         </label>
 
         <label className="mt-4 block text-xs font-semibold text-zinc-700">
@@ -97,8 +96,10 @@ export default function RegisterPage() {
             value={form.confirmPassword}
             onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
             className="mt-2 h-[44px] w-full rounded-[var(--radius-input)] border border-[var(--app-border-strong)] bg-zinc-50 px-4 text-sm outline-none focus:border-[var(--app-text)]"
-            disabled={submitting}
+            autoComplete="new-password"
+            disabled={registration.isSubmitting}
           />
+          {fieldErrors.confirmPassword ? <span className="mt-1 block text-xs text-red-700">{fieldErrors.confirmPassword}</span> : null}
         </label>
 
         <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
@@ -111,16 +112,23 @@ export default function RegisterPage() {
             checked={form.acceptTerms}
             onChange={(event) => setForm({ ...form, acceptTerms: event.target.checked })}
             className="mt-0.5"
-            disabled={submitting}
+            disabled={registration.isSubmitting}
           />
           <span>Toi dong y voi dieu khoan su dung UniShare.</span>
         </label>
+        {fieldErrors.acceptTerms ? <p className="mt-1 text-xs text-red-700">{fieldErrors.acceptTerms}</p> : null}
 
         {message ? <p className="mt-3 rounded-xl bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700">{message}</p> : null}
 
-        <Button type="submit" disabled={submitting} className="mt-5 min-h-[48px] w-full text-sm font-black" size="lg">
-          {submitting ? 'Dang xu ly...' : 'Dang ky'}
+        <Button type="submit" disabled={registration.isSubmitting} className="mt-5 min-h-[48px] w-full text-sm font-black" size="lg">
+          {registration.isSubmitting ? 'Đang tạo đăng ký...' : 'Đăng ký'}
         </Button>
+
+        {registration.hasFlow ? (
+          <button type="button" onClick={() => navigate('/register/verify')} className="mt-3 w-full text-sm font-black text-zinc-700">
+            Tiếp tục xác minh đăng ký đang chờ
+          </button>
+        ) : null}
 
         <div className="my-5 flex items-center gap-3 text-xs text-[var(--app-muted)]">
           <span className="h-px flex-1 bg-[var(--app-border)]" />
@@ -128,7 +136,13 @@ export default function RegisterPage() {
           <span className="h-px flex-1 bg-[var(--app-border)]" />
         </div>
 
-        <SocialAuthButtons actionLabel="Dang ky voi" onUnavailable={showFutureMessage} />
+        <SocialAuthButtons
+          actionLabel="Đăng ký với"
+          includeRegistrationFlow
+          onUnavailable={showFutureMessage}
+          onGoogleAuthenticated={finishGoogleAuthentication}
+          onGoogleConflict={() => navigate('/auth/social-conflict', { replace: true })}
+        />
 
         <p className="mt-6 text-center text-xs text-[var(--app-text)]">
           Đã có tài khoản? <Link to="/login" className="font-black">Đăng nhập</Link>

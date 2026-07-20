@@ -1,6 +1,6 @@
 # Luồng giao diện
 
-Tài liệu này mô tả các luồng có thể suy ra từ MVP, ảnh trong `docs/ui/screens/` và điều hướng mẫu trong `UI-DEMO.html`. Không mô tả luồng cho nhắn tin, Discovery Map, Feed tùy chỉnh, Follow Request, Repost, video/tài liệu, Elasticsearch hoặc dashboard nâng cao.
+`README.md` là nguồn sự thật cao nhất. Contract HTTP chi tiết duy nhất nằm tại `docs/data/API-CONTRACT.md`; tài liệu này chỉ mô tả chuyển trạng thái và điều hướng UI. Ảnh trong `docs/ui/screens/` và `UI-DEMO.html` là tham chiếu visual, không được dùng để giữ hành vi Auth cũ.
 
 ## 1. Luồng MVP hiện tại
 
@@ -11,10 +11,12 @@ AUTH-02 Đăng ký
 → Nhập email hoặc số điện thoại
 → Nhập mật khẩu và xác nhận mật khẩu
 → Đồng ý điều khoản nếu form yêu cầu
-→ Gửi đăng ký
-→ Tạo mock user
-→ Tạo mock profile rỗng
-→ Tạo session React hợp lệ
+→ Khởi tạo đăng ký
+→ Backend tạo hoặc phục hồi pending registration
+→ Frontend giữ flow token trong memory/sessionStorage
+→ AUTH-OTP-01 nhập OTP email/phone
+→ Có thể resend sau cooldown hoặc recovery pending
+→ OTP hợp lệ mới tạo user, profile và session JWT hệ thống
 → /onboarding/profile
 → AUTH-03 Onboarding bước 1: nhập tên hiển thị bắt buộc
 → AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
@@ -24,21 +26,24 @@ AUTH-02 Đăng ký
 → FEED-01 Feed người dùng
 ```
 
-Ghi chú: Không dùng username hoặc displayName trong form đăng ký MVP. Người dùng chỉ cung cấp đúng một phương thức định danh tại thời điểm đăng ký. Tên hiển thị được lưu trong `user_profiles` ở onboarding và có thể chỉnh sửa sau khi hoàn tất hồ sơ.
+Ghi chú: Không dùng username hoặc displayName trong form đăng ký. Submit đầu tiên không tạo user, profile, Access Token hoặc Refresh Token. Cùng identifier có pending hợp lệ được resume với flow token mới và không tự resend trong cooldown. Flow token không được lưu `localStorage`, đưa vào URL hoặc dùng ngoài Auth flow; header chi tiết theo `API-CONTRACT.md`.
 
 Google/Facebook:
 
 ```text
 Bấm nút Google hoặc Facebook
-→ Hiển thị "Tính năng đang được phát triển."
-→ Không tạo mock user
-→ Không tạo session
-→ Không điều hướng
+→ Provider SDK trả credential cho Frontend
+→ Frontend gửi credential duy nhất đến Auth endpoint tương ứng
+→ Backend xác minh với provider
+→ Nếu provider đã link: đăng nhập đúng users.id
+→ Nếu identity mới hợp lệ: tạo provider-only user khi được phép
+→ Nếu có xung đột: AUTH-SOCIAL-01 hiển thị lựa chọn Backend cho phép
+→ Auth thành công: nhận JWT hệ thống và đến onboarding/Feed
 ```
 
-Google/Facebook chỉ là UI hướng phát triển, không thuộc tiêu chí nghiệm thu MVP.
+Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Email social trùng user `ACTIVE` chưa link provider không được tự link hay tạo user thứ hai. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
 
-Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`.
+Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Login và refresh không trả lỗi này.
 
 ### 1.2 Đăng nhập
 
@@ -52,6 +57,21 @@ AUTH-01 Đăng nhập
 → Nếu hồ sơ đã hoàn tất và role USER thì đến FEED-01 Feed người dùng
 → Nếu hồ sơ đã hoàn tất và role ADMIN thì đến Admin
 ```
+
+Google/Facebook login dùng cùng nguyên tắc provider credential chỉ dành cho Auth endpoint. Sau khi Backend cấp JWT hệ thống, Frontend phải loại bỏ provider credential khỏi state sớm nhất có thể.
+
+### 1.2.1 Quản lý phương thức đăng nhập
+
+```text
+AUTH-METHOD-01
+→ Xem email, phone, Google, Facebook đang liên kết
+→ Link email/phone: AUTH-METHOD-02 initiate challenge riêng → verify OTP → quay lại danh sách
+→ Link Google/Facebook: xác minh provider trong phiên JWT hiện tại
+→ Unlink: AUTH-REAUTH-01 xác thực lại → xác nhận → Backend kiểm tra phương thức cuối
+→ Thành công cập nhật danh sách phương thức
+```
+
+User đích của mọi thao tác link lấy từ JWT hiện tại. UI không tự suy ra account theo social email và không cho phép bỏ qua Backend unlink guard. Unlink method không tồn tại phải hiển thị `AUTH_METHOD_NOT_LINKED`. Thu hồi các session khác là P1 và chưa tự động triển khai.
 
 Trường hợp phiên hết hạn:
 

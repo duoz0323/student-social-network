@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.io.IOException;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,17 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
  * Adapter Cloudinary chịu trách nhiệm gọi SDK và che giấu lỗi kỹ thuật khỏi Client.
  */
 @Service
+@RequiredArgsConstructor
 public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
 
     private static final String RESOURCE_TYPE_IMAGE = "image";
 
     private final Cloudinary cloudinary;
     private final CloudinaryProperties properties;
-
-    public CloudinaryStorageServiceImpl(Cloudinary cloudinary, CloudinaryProperties properties) {
-        this.cloudinary = cloudinary;
-        this.properties = properties;
-    }
 
     @Override
     public CloudinaryUploadResult uploadAvatar(MultipartFile file) {

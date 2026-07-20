@@ -1,5 +1,7 @@
 # Workflow review code
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Review phải đánh giá code, test, SQL và tài liệu theo trạng thái đích trong README.
+
 ## 1. Phạm vi review
 
 Kiểm tra:
@@ -17,14 +19,11 @@ Kiểm tra:
 
 Riêng Auth/Profile MVP cần kiểm tra thêm:
 
-- Register không nhận `username` hoặc `displayName`.
-- Register chỉ nhận đúng một định danh email hoặc số điện thoại.
-- `users` và `user_profiles` được tạo trong cùng transaction.
-- `display_name`, `date_of_birth` và `profile_completed_at` ban đầu là `NULL`.
-- Không hoàn tất hồ sơ nếu thiếu ngày sinh hoặc người dùng chưa đủ 18 tuổi.
-- Người chưa hoàn tất hồ sơ bị chặn khỏi API mạng xã hội chính bằng `PROFILE_NOT_COMPLETED`.
-- Route guard không cho người đã đăng nhập nhưng chưa hoàn tất hồ sơ vào Feed.
-- API hồ sơ công khai không lộ email hoặc số điện thoại.
+- Mỗi hành vi quan trọng phải truy ngược được tới mục tương ứng trong README.
+- API, transaction, provider verification, token handling, linking và onboarding phải bao phủ các nhánh README quy định.
+- SQL/DBML, Entity, Repository, source và test phải được so sánh theo cùng một trạng thái đích.
+- Không chấp nhận hành vi cũ chỉ vì test hiện tại đang kiểm chứng hành vi đó.
+- Dữ liệu nhạy cảm, quyền, concurrency, rollback và state transition phải có test phù hợp.
 
 ## 2. Mức độ vấn đề
 

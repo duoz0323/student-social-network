@@ -20,7 +20,6 @@ spring:
 
 jwt:
   access-token-secret: ${JWT_ACCESS_TOKEN_SECRET:}
-  refresh-token-secret: ${JWT_REFRESH_TOKEN_SECRET:}
   access-token-expiration-millis: ${JWT_ACCESS_TOKEN_EXPIRATION_MILLIS:900000}
   refresh-token-expiration-millis: ${JWT_REFRESH_TOKEN_EXPIRATION_MILLIS:2592000000}
 
@@ -29,3 +28,43 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
   avatar-folder: ${CLOUDINARY_AVATAR_FOLDER:student-social-network/avatars}
+
+security:
+  client-ip:
+    trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}
+
+auth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    issuers: ${GOOGLE_ALLOWED_ISSUERS:accounts.google.com,https://accounts.google.com}
+    clock-skew: ${GOOGLE_CLOCK_SKEW:30s}
+    conflict-expiration: ${AUTH_SOCIAL_CONFLICT_EXPIRATION:5m}
+    conflict-token-random-bytes: ${AUTH_SOCIAL_CONFLICT_TOKEN_RANDOM_BYTES:32}
+    identity-fingerprint-secret: ${AUTH_SOCIAL_IDENTITY_FINGERPRINT_SECRET:}
+  facebook:
+    app-id: ${FACEBOOK_APP_ID:}
+    app-secret: ${FACEBOOK_APP_SECRET:}
+    graph-api-version: ${FACEBOOK_GRAPH_API_VERSION:v24.0}
+    base-url: ${FACEBOOK_GRAPH_API_BASE_URL:https://graph.facebook.com}
+    connect-timeout: ${FACEBOOK_CONNECT_TIMEOUT:3s}
+    read-timeout: ${FACEBOOK_READ_TIMEOUT:5s}
+  registration:
+    otp-length: ${AUTH_OTP_LENGTH:6}
+    otp-expiration: ${AUTH_OTP_EXPIRATION:10m}
+    resend-cooldown: ${AUTH_RESEND_COOLDOWN:60s}
+    max-otp-attempts: ${AUTH_MAX_OTP_ATTEMPTS:5}
+    pending-expiration: ${AUTH_PENDING_EXPIRATION:24h}
+    flow-token-random-bytes: ${AUTH_FLOW_TOKEN_RANDOM_BYTES:32}
+    otp-hmac-secret: ${AUTH_OTP_HMAC_SECRET:}
+    flow-token-hmac-secret: ${AUTH_FLOW_TOKEN_HMAC_SECRET:}
+  reauthentication:
+    expiration: ${AUTH_REAUTHENTICATION_EXPIRATION:5m}
+  cleanup:
+    enabled: ${AUTH_CLEANUP_ENABLED:false}
+    fixed-delay: ${AUTH_CLEANUP_FIXED_DELAY:1h}
+    retention: ${AUTH_CLEANUP_RETENTION:7d}
+    batch-size: ${AUTH_CLEANUP_BATCH_SIZE:100}
+  rate-limit:
+    enabled: ${AUTH_RATE_LIMIT_ENABLED:false}
+    window: ${AUTH_RATE_LIMIT_WINDOW:1m}
+    max-requests: ${AUTH_RATE_LIMIT_MAX_REQUESTS:30}

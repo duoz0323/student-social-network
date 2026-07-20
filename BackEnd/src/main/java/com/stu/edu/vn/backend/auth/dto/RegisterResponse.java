@@ -1,21 +1,19 @@
 package com.stu.edu.vn.backend.auth.dto;
 
-import com.stu.edu.vn.backend.user.enums.UserRole;
-import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
+import com.stu.edu.vn.backend.auth.enums.RegistrationType;
+import java.time.LocalDateTime;
 
 /**
- * Response đăng ký trả phiên đăng nhập nhưng vẫn yêu cầu Frontend đi đến onboarding.
+ * Response chỉ trả raw flow token một lần và không lộ các giá trị hash hoặc OTP.
  */
 public record RegisterResponse(
-        Long userId,
-        UserRole role,
-        UserStatus status,
-        boolean profileCompleted,
-        String nextStep,
-        String accessToken,
-        String refreshToken,
-        long accessTokenExpiresIn
+        String registrationFlowToken,
+        OtpChallengeStatus status,
+        RegistrationType identifierType,
+        String maskedIdentifier,
+        LocalDateTime otpExpiresAt,
+        LocalDateTime resendAvailableAt,
+        LocalDateTime pendingExpiresAt
 ) {
-
-    public static final String ONBOARDING_PROFILE = "ONBOARDING_PROFILE";
 }

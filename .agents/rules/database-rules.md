@@ -1,5 +1,7 @@
 # Quy tắc Database
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. SQL và DBML là baseline kỹ thuật hiện tại để đối chiếu, không có mức ưu tiên cao hơn README.
+
 ## 1. Database chính
 
 - Sử dụng MySQL.
@@ -30,29 +32,12 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 
 ## 4. Ràng buộc nghiệp vụ
 
-- Mỗi tài khoản phải luôn có ít nhất email hoặc số điện thoại.
-- Tại thời điểm đăng ký, người dùng chỉ cung cấp đúng một phương thức định danh: email hoặc số điện thoại.
-- Nếu đăng ký bằng email thì `phone_number` được phép `NULL`; nếu đăng ký bằng số điện thoại thì `email` được phép `NULL`.
-- Database cho phép một tài khoản có cả email và số điện thoại sau khi người dùng bổ sung phương thức còn thiếu trong tương lai.
-- Email lưu ở dạng chữ thường đã chuẩn hóa nếu có giá trị.
-- Số điện thoại lưu ở dạng chuẩn hóa thống nhất nếu có giá trị.
-- `email_verified_at` và `phone_verified_at` chuẩn bị cho hướng phát triển; để `NULL` trong MVP khi chưa xác minh.
-- Không dùng cột `verified` kiểu chuỗi để lưu trạng thái xác minh email hoặc số điện thoại.
-- Không tạo cột `gmail`; dùng cột email chung cho mọi nhà cung cấp email.
-- Không dùng `username` làm định danh công khai trong MVP.
-- `display_name` thuộc `user_profiles`, không thuộc `users`.
-- Sau đăng ký phải có một bản ghi `user_profiles` tương ứng với `users`.
-- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
-- `profile_completed_at` là dữ liệu xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
-- Ngày sinh thuộc hồ sơ người dùng và được phép `NULL` trong hồ sơ rỗng ngay sau đăng ký.
-- Khi `profile_completed_at` khác `NULL`, `display_name` và `date_of_birth` đều phải khác `NULL`.
-- Backend phải bảo đảm ngày sinh không nằm trong tương lai và người dùng đủ 18 tuổi tại ngày xử lý.
-- Người dùng không được Follow chính mình.
-- Bài viết phải có nội dung hoặc hình ảnh.
-- Bài viết tối đa 500 ký tự.
-- Bài có tối đa 4 hình ảnh.
-- Chỉ lưu metadata và URL ảnh.
-- Bài HIDDEN hoặc DELETED không xuất hiện trong truy vấn thông thường.
+- Trích xuất invariant từ README trước khi đánh giá schema.
+- Đối chiếu từng invariant với SQL, DBML, Entity, Repository và test database.
+- Phân biệt constraint có thể cưỡng chế tại database với quy tắc phải bảo đảm bằng transaction/service.
+- Với Auth, phải kiểm tra tính duy nhất, vòng đời pending, dữ liệu hash, nullable, foreign key, concurrency và cleanup theo README.
+- Với onboarding và các module khác, kiểm tra constraint theo đúng trạng thái đích trong README.
+- Không thay đổi SQL/DBML hoặc đề xuất migration chỉ để giữ tương thích với source cũ.
 
 ## 5. Index đề xuất
 

@@ -2,6 +2,7 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { initialData } from '../data/mockData.js';
 import { normalizeText } from '../utils/formatters.js';
+import { useAuth } from '../features/auth/hooks/useAuth.js';
 
 const AppContext = createContext(null);
 const SESSION_KEY = 'unishare.react.session';
@@ -119,6 +120,7 @@ function persistData(data) {
 }
 
 export function AppProvider({ children }) {
+  const auth = useAuth();
   const [data, setDataState] = useState(() => readStoredData());
   const [currentUserId, setCurrentUserId] = useState(() => readStoredSession(readStoredData().users)?.userId ?? null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -131,7 +133,22 @@ export function AppProvider({ children }) {
     });
   }
 
-  const currentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
+  const currentUser = useMemo(() => {
+    const mockCurrentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
+    // Cầu nối tạm giữ UI mock hoạt động trong khi các module hồ sơ/feed chưa tích hợp Backend.
+    if (!auth.isAuthenticated) return mockCurrentUser;
+    return mockCurrentUser ?? {
+      id: auth.user.id,
+      role: auth.role,
+      status: 'ACTIVE',
+      displayName: 'Người dùng UniShare',
+      avatarUrl: '',
+      birthDate: null,
+      bio: '',
+      profileCompletedAt: auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null,
+      profile: { displayName: '', avatarUrl: '', dateOfBirth: null, bio: '', profileCompletedAt: null },
+    };
+  }, [auth.isAuthenticated, auth.profileCompleted, auth.role, auth.user, currentUserId, data.users]);
 
   const value = useMemo(() => {
     const viewUsers = data.users.map(toViewUser);
@@ -236,6 +253,10 @@ export function AppProvider({ children }) {
     }
 
     function logout() {
+      if (auth.isAuthenticated) {
+        auth.logout();
+        return;
+      }
       clearSession();
       setCurrentUserId(null);
     }
@@ -482,7 +503,7 @@ export function AppProvider({ children }) {
       setReportStatus,
       handleFutureSocialAuth,
     };
-  }, [currentUser, currentUserId, data, sessionExpired]);
+  }, [auth, currentUser, currentUserId, data, sessionExpired]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

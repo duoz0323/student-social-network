@@ -1,9 +1,12 @@
 # Workflow triển khai chức năng
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Workflow này mô tả trình tự làm việc, không định nghĩa lại nghiệp vụ.
+
 ## Bước 1: Đọc tài liệu
 
 Đọc:
 
+- `README.md` trước tiên và đầy đủ.
 - `docs/PRD.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PROJECT-RULES.md`
@@ -26,18 +29,11 @@ Trình bày:
 
 Nếu chức năng thuộc Auth hoặc hồ sơ, phải xác định rõ:
 
-- Đăng ký dùng `identifier`, `password`, `confirmPassword`.
-- `identifier` là email hoặc số điện thoại; tại thời điểm đăng ký chỉ nhận đúng một phương thức định danh.
-- Đăng nhập dùng email hoặc số điện thoại.
-- Không dùng `username` trong MVP.
-- Không nhận tên hiển thị trong form/request đăng ký.
-- Tạo `users` và `user_profiles` trong cùng transaction.
-- Tên hiển thị và ngày sinh bắt buộc ở onboarding; avatar và bio tùy chọn.
-- `profile_completed_at` là điều kiện để dùng chức năng mạng xã hội chính.
-- Backend trả `PROFILE_NOT_COMPLETED` khi hồ sơ chưa hoàn tất.
-- Email/số điện thoại không hiển thị công khai.
-- Tài khoản mới được tạo `ACTIVE`; MVP chưa triển khai xác minh email hoặc SMS OTP.
-- Ngày sinh không thuộc đăng ký nhưng bắt buộc ở onboarding/cập nhật hồ sơ; người dùng phải đủ 18 tuổi.
+- Các trạng thái, actor và nhánh nghiệp vụ trong README.
+- Boundary giữa pending, tài khoản thật, phiên đăng nhập và onboarding.
+- Dữ liệu do Backend tự xác minh và dữ liệu không được tin từ Frontend.
+- Transaction, external provider call, concurrency, recovery, linking và revocation.
+- Khoảng chênh lệch giữa README với SQL/DBML, source và test hiện tại.
 
 ## Bước 3: Lập kế hoạch
 
@@ -50,7 +46,7 @@ Liệt kê:
 - API request/response.
 - Test cần viết.
 
-Với Auth/Profile, kế hoạch phải đi theo thứ tự: đối chiếu database, thiết kế DTO, validation, transaction đăng ký, onboarding, security guard, rồi mới đến test và code.
+Với Auth/Profile, kế hoạch phải đi theo thứ tự: chốt trạng thái đích từ README, audit tài liệu và database, chốt API, thiết kế DTO/validation/transaction/security guard, rồi mới đến test và code.
 
 ## Bước 4: Triển khai
 
@@ -72,27 +68,10 @@ Với Auth/Profile, kế hoạch phải đi theo thứ tự: đối chiếu data
 
 Test tối thiểu cho Auth/Profile MVP:
 
-- Đăng ký email hợp lệ.
-- Đăng ký số điện thoại hợp lệ.
-- Thiếu cả email và số điện thoại.
-- Request chứa đồng thời email và số điện thoại nếu DTO tách trường.
-- Email sai định dạng.
-- Số điện thoại sai định dạng.
-- Email đã tồn tại.
-- Số điện thoại đã tồn tại.
-- Mật khẩu không đạt yêu cầu.
-- Confirm password không khớp.
-- Rollback khi tạo `user_profiles` thất bại.
-- `display_name`, `date_of_birth` và `profile_completed_at` ban đầu `NULL`.
-- Không hoàn tất khi thiếu tên hiển thị hoặc ngày sinh.
-- Cho phép bỏ qua avatar và bio.
-- Từ chối ngày sinh trong tương lai hoặc người dùng chưa đủ 18 tuổi.
-- Chặn Feed khi `profile_completed_at` là `NULL`.
-- Trả `PROFILE_NOT_COMPLETED`.
-- Cho phép API onboarding khi chưa hoàn tất hồ sơ.
-- Cho phép đăng nhập bằng email hoặc số điện thoại.
-- Từ chối tài khoản `BLOCKED`.
-- Không lộ email hoặc số điện thoại trong API hồ sơ công khai.
+- Mỗi tiêu chí nghiệm thu Auth/onboarding trong README có ít nhất một test tương ứng.
+- Có test thành công, validation, expiry, conflict, concurrency, rollback, authorization và dữ liệu nhạy cảm.
+- Có test cho các đường local, social, linking, token và onboarding mà README đưa vào phạm vi.
+- Test cũ mâu thuẫn README phải được xác định để thay thế, không được dùng làm bằng chứng thay đổi nghiệp vụ.
 
 ## Bước 6: Báo cáo
 

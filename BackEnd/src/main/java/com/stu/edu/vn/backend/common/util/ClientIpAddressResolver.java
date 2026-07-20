@@ -2,32 +2,37 @@ package com.stu.edu.vn.backend.common.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
  * Utility lấy IP Client theo cách thận trọng, ưu tiên header proxy phổ biến nhưng không ghi log dữ liệu nhạy cảm.
  */
 @Component
+@RequiredArgsConstructor
 public class ClientIpAddressResolver {
 
     private static final int MAX_IP_LENGTH = 45;
     private static final Set<String> UNKNOWN_VALUES = Set.of("", "unknown", "null");
+
+    private final ClientIpAddressProperties properties;
 
     public String resolve(HttpServletRequest request) {
         if (request == null) {
             return null;
         }
 
-        // X-Forwarded-For có thể chứa nhiều IP, IP đầu tiên là Client gần Frontend nhất trong chuỗi proxy.
-        String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
-        if (isUsableIp(forwardedFor)) {
-            return truncateIp(forwardedFor);
-        }
+        if (properties.isTrustProxyHeaders()) {
+            // Chỉ tin các header này khi reverse proxy đã được cấu hình ghi đè header từ Client.
+            String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
+            if (isUsableIp(forwardedFor)) {
+                return truncateIp(forwardedFor);
+            }
 
-        // X-Real-IP thường được reverse proxy gán khi chỉ cần truyền một địa chỉ Client.
-        String realIp = normalizeSingleIp(request.getHeader("X-Real-IP"));
-        if (isUsableIp(realIp)) {
-            return truncateIp(realIp);
+            String realIp = normalizeSingleIp(request.getHeader("X-Real-IP"));
+            if (isUsableIp(realIp)) {
+                return truncateIp(realIp);
+            }
         }
 
         // RemoteAddr là giá trị fallback từ servlet container khi không có proxy header đáng dùng.

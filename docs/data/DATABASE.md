@@ -1,205 +1,143 @@
 # Tài liệu Database MVP
 
-## 1. Danh sách bảng
+`README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả chi tiết tại `database/student_social_network_db.sql`; DBML tương ứng nằm tại `database/student_social_network_db.dbml`. SQL và DBML phải được cập nhật đồng thời.
+
+## 1. Trạng thái thiết kế Auth 0E
+
+Auth dùng bốn bảng challenge riêng:
+
+- `pending_registrations`.
+- `auth_method_link_challenges`.
+- `social_auth_challenges`.
+- `reauthentication_challenges`.
+
+Không tạo bảng `auth_challenges` tổng quát. Các type/status Auth trong database dùng `VARCHAR + CHECK`; source Java dự kiến dùng enum với `EnumType.STRING`.
+
+## 2. Users và phương thức đăng nhập
 
 ### users
 
-Lưu:
+- `email`, `phone_number` và `password_hash` đều có thể `NULL`.
+- Social-only user có thể không có email/phone; không tạo placeholder.
+- Đã bỏ `chk_users_contact_required`.
+- `password_hash` chỉ được phép khác `NULL` khi có email verified hoặc phone verified.
+- `email_verified_at` chỉ có giá trị khi `email` khác `NULL`.
+- `phone_verified_at` chỉ có giá trị khi `phone_number` khác `NULL`.
 
-- Email, có thể `NULL` nếu tài khoản đăng ký bằng số điện thoại.
-- Số điện thoại, có thể `NULL` nếu tài khoản đăng ký bằng email.
-- Password hash.
-- `email_verified_at`.
-- `phone_verified_at`.
-- Role.
-- Status.
-- Thời gian tạo/cập nhật.
+Invariant cuối cùng:
 
-Quy tắc:
+```text
+Local method hợp lệ
+= password_hash tồn tại
+  và có email verified hoặc phone verified
 
-- Mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
-- Tại thời điểm đăng ký, người dùng chỉ cung cấp đúng một phương thức định danh.
-- Database cho phép bổ sung phương thức còn thiếu trong tương lai.
-- Không dùng cột `verified` kiểu chuỗi để lưu trạng thái xác minh.
+HOẶC
 
-### user_profiles
+Social method hợp lệ
+= có user_auth_providers hợp lệ
+```
 
-Lưu:
+Invariant liên bảng được bảo vệ bằng transaction, unique constraint, unlink guard, MySQL integration test và audit query; không thể cưỡng chế hoàn toàn bằng CHECK trên `users`.
 
-- User ID.
-- Display name.
-- Avatar URL.
-- Bio.
-- Ngày sinh; được phép `NULL` trong hồ sơ rỗng ngay sau đăng ký nhưng bắt buộc trước khi hoàn tất onboarding.
-- `profile_completed_at`.
+### user_auth_providers
 
-Quy tắc:
+- Provider dùng `VARCHAR(16)` với CHECK `GOOGLE`/`FACEBOOK`.
+- Unique `(provider, provider_user_id)`.
+- Unique `(user_id, provider)`.
+- `provider_email` và `provider_email_verified` cùng `NULL` khi provider không trả email.
+- Không lưu raw provider token.
 
-- Bản ghi `user_profiles` được tạo rỗng cùng transaction với `users` ngay sau đăng ký.
-- `display_name`, `date_of_birth` và `profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
-- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ.
-- Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
-- Avatar và bio là tùy chọn.
-- Database bảo đảm profile đã hoàn tất phải có `display_name` và `date_of_birth`; điều kiện đủ 18 tuổi do Backend kiểm tra vì phụ thuộc ngày xử lý.
-- `profile_completed_at` xác định hồ sơ đã hoàn tất; không suy luận từ `users.status`.
+## 3. Pending registration
 
-### refresh_tokens
+- Active key có dạng `registration_type + ':' + identifier_normalized`.
+- Unique nullable active key bảo đảm chỉ một pending active cho mỗi type/identifier; MySQL cho phép nhiều `NULL` trong unique index.
+- OTP có hiệu lực 10 phút; pending 24 giờ; resend cooldown 60 giây.
+- Resume rotate flow token, trả `resumed=true`, không thay `password_hash` và không tự resend trong cooldown.
+- Muốn đổi mật khẩu phải cancel pending rồi tạo registration mới.
+- Resend tăng `otp_version`, đặt `delivery_status=PENDING`, xóa failure code, reset attempts, giữ nguyên flow token và không gia hạn pending.
+- Verify dùng pessimistic lock; deadlock retry tối đa một lần và không retry lỗi nghiệp vụ.
 
-Lưu:
+Khi terminal:
 
-- User ID.
-- Token hash hoặc định danh token.
-- Expiry.
-- Revoked.
-- Created at.
+- `COMPLETED`: giữ `registration_type`, `identifier_normalized`, `completed_user_id`, `status`, `terminal_at` và HMAC flow lookup hash tối đa 7 ngày; xóa password/OTP, active key và delivery failure code ngay.
+- `CANCELLED`/`EXPIRED`: xóa identifier, password/OTP và active key ngay; giữ HMAC flow lookup hash tối đa 7 ngày để status và idempotency.
+- Raw flow token không được lưu. Cleanup/anonymization sau retention được phép đặt `flow_token_hash=NULL`.
+- `completed_user_id` dùng `ON DELETE SET NULL`.
+- Quan hệ giữa `completed_user_id` và `status` không nằm trong CHECK constraint để tương thích MySQL; Service và Integration Test phải bảo đảm giá trị này chỉ được gán theo đúng vòng đời hoàn tất đăng ký.
 
-### password_reset_tokens
+## 4. Link challenge
 
-P2.
+- Chỉ dùng cho `LINK_EMAIL` và `LINK_PHONE`; không tái sử dụng pending registration.
+- User đích lấy từ JWT hiện tại.
+- TTL 15 phút; OTP 10 phút; resend cooldown 60 giây.
+- Resend không gia hạn challenge.
+- Unique active key theo `purpose:identifier` và `userId:purpose`.
+- Terminal state xóa identifier, OTP/flow hash, active keys và failure code ngay.
 
-### follows
+## 5. Social challenge
 
-Lưu quan hệ:
+- TTL 5 phút; conflict token opaque chỉ lưu SHA-256 hash.
+- Provider credential được xác minh ngoài transaction và không lưu vào database.
+- Trong lúc PENDING, lưu provider identity đã xác minh để resolve challenge.
+- Lưu `provider_identity_fingerprint` bằng HMAC với secret riêng để audit mà không giữ raw provider user ID sau terminal.
+- Fingerprint secret không dùng chung với OTP HMAC secret hoặc JWT secret.
+- Khi terminal, xóa conflict token hash, raw provider user ID/email và active provider key; giữ fingerprint tối đa 7 ngày.
+- `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER` không tự link. Chỉ hướng dẫn login existing account hoặc account recovery.
 
-- Follower.
-- Following.
-- Created at.
+## 6. Reauthentication challenge
 
-### posts
+- TTL 5 phút.
+- Một user chỉ có một challenge `ACTIVE` cho cùng `scope`.
+- Active key có dạng `userId:scope`; challenge vẫn bind `target_auth_method`.
+- Challenge mới cùng user/scope phải hủy challenge active cũ.
+- Bất kỳ auth method hợp lệ nào của chính user có thể làm proof; `proof_method` không cần trùng target.
+- Token chỉ consume khi thao tác nhạy cảm thành công.
+- Khi terminal, xóa token hash và active key ngay.
 
-Lưu:
+## 7. Hash và secret
 
-- Author.
-- Content.
-- Status.
-- Edited flag.
-- Created at.
-- Updated at.
-- Deleted at nếu cần.
+- Password: BCrypt.
+- OTP: HMAC-SHA-256 với secret riêng lấy từ environment.
+- Registration flow token: HMAC-SHA-256 với secret riêng; các opaque token khác theo contract của challenge tương ứng.
+- Provider identity fingerprint: HMAC với secret riêng.
+- Không dùng chung các secret trên với JWT Access/Refresh secret.
+- Không log password, OTP, flow/conflict/reauth token, recipient đầy đủ hoặc provider payload.
 
-### post_media
+## 8. Delivery OTP trong MVP
 
-Lưu:
+```text
+Commit challenge
+→ gửi email/SMS ngoài transaction
+→ transaction ngắn cập nhật SENT/FAILED/UNKNOWN
+```
 
-- Post.
-- URL.
-- MIME type.
-- Size.
-- Sort order.
+- Kết quả thất bại rõ ràng: `FAILED`, cho phép resend sớm bằng cách đưa `resend_available_at` về thời điểm hiện tại; application cache vẫn áp dụng rate limit.
+- Kết quả không chắc chắn/timeout: `UNKNOWN`, giữ cooldown 60 giây.
+- Update delivery phải kèm `otp_version` để response của OTP cũ không ghi đè trạng thái OTP mới.
+- Không dùng outbox trong MVP; outbox mã hóa là hướng P1.
 
-### hashtags
+## 9. Rate limit
 
-Lưu:
+Challenge lưu attempts, cooldown, resend count, delivery count, OTP version và expiry. Rate limit theo cửa sổ giờ/IP/identifier/user/provider nằm ở application cache với key đã HMAC, không lưu raw PII.
 
-- Name.
-- Normalized name.
+Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
-### post_hashtags
+## 10. Cleanup
 
-Bảng trung gian Post ↔ Hashtag.
+- Mọi terminal transition phải atomic với việc vô hiệu OTP/password secret, giải phóng active key và đặt `terminal_at`; registration flow lookup hash được giữ tối đa 7 ngày.
+- Tất cả terminal rows bị xóa cứng tối đa 7 ngày sau `terminal_at`.
+- Scheduler chạy batch ổn định theo `(status, terminal_at, id)`; có thể dùng `FOR UPDATE SKIP LOCKED`.
+- Scheduler không xóa `users`, `user_profiles` hoặc `user_auth_providers`.
 
-### post_likes
+## 11. Rebuild dev/demo
 
-Lưu User ↔ Post.
+Database hiện tại chỉ được giả định là dev/demo. Trước rebuild bắt buộc chạy `database/audit_auth_before_rebuild.sql`, lưu kết quả, backup và xác nhận không có dữ liệu thật cần bảo tồn.
 
-### comments
+Sau rebuild:
 
-Lưu:
+1. Nạp `database/student_social_network_db.sql`.
+2. Tắt Admin bootstrap và nạp `database/seed_data.sql`.
+3. Chạy `database/audit_auth_after_rebuild.sql`.
+4. Chạy integration/concurrency test bằng MySQL/Testcontainers.
 
-- Post.
-- User.
-- Content.
-- Created at.
-- Deleted state nếu cần.
-
-### post_mentions
-
-FUTURE_DEVELOPMENT.
-
-Lưu:
-
-- Post.
-- Mentioned user.
-- Display name snapshot nếu cần.
-
-### comment_mentions
-
-FUTURE_DEVELOPMENT.
-
-Lưu:
-
-- Comment.
-- Mentioned user.
-- Display name snapshot nếu cần.
-
-### saved_posts
-
-Lưu User ↔ Post.
-
-### reports
-
-Lưu:
-
-- Post.
-- Reporter.
-- Reason.
-- Description.
-- Status.
-- Resolved by.
-- Resolved at.
-
-### account_status_histories
-
-Tùy chọn.
-
-### admin_actions
-
-Tùy chọn.
-
-## 2. Quan hệ
-
-- users 1-1 user_profiles.
-- users 1-N refresh_tokens.
-- users N-N users qua follows.
-- users 1-N posts.
-- posts 1-N post_media.
-- posts N-N hashtags qua post_hashtags.
-- users N-N posts qua post_likes.
-- users 1-N comments.
-- posts 1-N comments.
-- users N-N posts qua saved_posts.
-- users 1-N reports.
-- posts 1-N reports.
-- posts N-N users qua post_mentions.
-- comments N-N users qua comment_mentions.
-
-## 3. Unique Constraint
-
-- users.email nếu có giá trị.
-- users.phone_number nếu có giá trị.
-- follows(follower_id, following_id).
-- post_likes(user_id, post_id).
-- saved_posts(user_id, post_id).
-
-## 4. Index
-
-- users(email).
-- users(phone_number).
-- users(status).
-- posts(author_id).
-- posts(status, created_at).
-- comments(post_id, created_at).
-- follows(follower_id).
-- follows(following_id).
-- post_likes(post_id).
-- saved_posts(user_id, created_at).
-- reports(status, created_at).
-
-## 5. Xóa mềm
-
-Nên áp dụng cho:
-
-- users.
-- posts.
-- comments nếu cần lưu lịch sử.
-- reports không xóa thông thường.
+Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc rebuild database thật.

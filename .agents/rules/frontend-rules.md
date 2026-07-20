@@ -1,5 +1,7 @@
 # Quy tắc Frontend
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. File này chỉ quy định cách tổ chức và kiểm tra Frontend; nghiệp vụ, trạng thái đích và API phải lấy từ README.
+
 ## 1. Công nghệ
 
 - ReactJS.
@@ -141,21 +143,13 @@ Form phải:
 
 ## 6. Quy tắc form xác thực
 
-- Form đăng ký MVP chỉ gồm `identifier`, `password` và `confirmPassword`.
-- `identifier` là email hoặc số điện thoại; UI không yêu cầu nhập đồng thời cả hai.
-- Không hiển thị hoặc gửi trường `username` trong form đăng ký MVP.
-- Form đăng nhập dùng một trường định danh chung cho email hoặc số điện thoại và trường mật khẩu.
-- Label, placeholder và thông báo lỗi dùng thuật ngữ `email`, không dùng `gmail`.
-- Frontend validate định dạng của `identifier` theo email hoặc số điện thoại, độ mạnh mật khẩu và mật khẩu xác nhận trước khi gửi đăng ký.
-- Sau đăng ký thành công, Frontend điều hướng người dùng đến onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị và ngày sinh hợp lệ; avatar và bio là tùy chọn và có thể bỏ qua.
-- Frontend phải chặn hoàn tất khi thiếu ngày sinh hoặc người dùng chưa đủ 18 tuổi tại ngày hiện tại.
-- Route Guard phải tách ba trạng thái: chưa đăng nhập, đã đăng nhập nhưng chưa hoàn tất hồ sơ, đã đăng nhập và đã hoàn tất hồ sơ.
-- Người đã đăng nhập nhưng `profile_completed_at` còn `NULL` phải được chuyển về onboarding.
-- Khi API trả `PROFILE_NOT_COMPLETED`, Frontend điều hướng về onboarding.
-- Ngày sinh không nằm trong form đăng ký; xuất hiện trong onboarding/cập nhật hồ sơ, là bắt buộc và phải thể hiện người dùng đủ 18 tuổi tại ngày hiện tại.
-- Frontend không hiển thị công khai email hoặc số điện thoại trong hồ sơ người khác.
-- Tên hiển thị được nhập trong onboarding hoặc chỉnh sửa hồ sơ, không nhập trong form đăng ký.
+- Đọc luồng Auth, onboarding, API và tiêu chí nghiệm thu trong README trước khi dựng form hoặc route guard.
+- Lập state diagram cho guest, pending registration, authenticated-but-incomplete và authenticated-complete.
+- Không tạo user hoặc session giả trước thời điểm README/API contract cho phép.
+- Provider credential chỉ được chuyển tới Auth service phù hợp; không lưu lâu dài hoặc dùng cho API nghiệp vụ.
+- Validation phía Frontend phục vụ trải nghiệm; Backend vẫn là nơi quyết định cuối cùng.
+- Mọi màn hình phải xử lý loading, resend/cooldown, error, recovery, conflict và navigation theo contract đã đồng bộ.
+- Không sao chép danh sách field hoặc state Auth vào rule này; lấy chúng từ README và tài liệu API/UI tương ứng.
 
 ## 7. Quy tắc API
 

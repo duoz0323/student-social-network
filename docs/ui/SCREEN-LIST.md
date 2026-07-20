@@ -1,6 +1,6 @@
 # Danh sách màn hình
 
-Tài liệu này chỉ liệt kê các màn hình, modal, menu hoặc biến thể thực sự có ảnh trong `docs/ui/screens/`. Các chi tiết xuất hiện trong ảnh nhưng nằm ngoài phạm vi MVP được ghi chú rõ để không triển khai nhầm.
+`README.md` là nguồn sự thật cao nhất. Contract HTTP chi tiết duy nhất nằm tại `docs/data/API-CONTRACT.md`; tài liệu này chỉ mô tả màn hình và trạng thái UI. Ảnh trong `docs/ui/screens/` là tham chiếu visual, còn các màn hình Auth bắt buộc chưa có ảnh được ghi rõ là `DESIGN_REQUIRED`.
 
 ## Quy tắc chung
 
@@ -10,17 +10,18 @@ Tài liệu này chỉ liệt kê các màn hình, modal, menu hoặc biến th�
 - Hồ sơ người dùng khác dùng route `/profile/:userId`.
 - Khi chọn người dùng từ Feed, Search, follower/following hoặc mention, điều hướng bằng userId.
 - Mention nếu xuất hiện trong thiết kế tương lai sẽ hiển thị bằng displayName và liên kết nội bộ bằng userId.
-- Sau đăng ký, người dùng được điều hướng đến onboarding hồ sơ.
+- Sau submit đăng ký local, người dùng phải xác minh OTP; chỉ sau OTP hợp lệ và nhận JWT hệ thống mới được điều hướng đến onboarding.
 - Người đã đăng nhập nhưng chưa hoàn tất hồ sơ phải được route guard chuyển về onboarding.
 - Feed và các chức năng mạng xã hội chính chỉ dành cho tài khoản đã đăng nhập, `ACTIVE` và có `profile_completed_at` khác `NULL`.
 - `MVP_CURRENT`: triển khai trong bản demo HTML và Frontend MVP hiện tại.
+- `DESIGN_REQUIRED`: thuộc trạng thái đích MVP nhưng chưa có ảnh/UI implementation tương ứng; cần thiết kế và triển khai ở giai đoạn sau.
 - `FUTURE_DEVELOPMENT`: giữ làm tài liệu thiết kế sau MVP, không triển khai trong bản demo MVP hiện tại.
 
 ## Phân loại phạm vi màn hình
 
 ### MVP_CURRENT
 
-- AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06.
+- AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06 theo phần UI đã có; hành vi Auth cũ phải được thay bằng contract đích.
 - FEED-01.
 - POST-01, POST-02, POST-03, POST-04, POST-05, POST-06, POST-07, POST-08, POST-09, POST-10.
 - PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04.
@@ -28,10 +29,14 @@ Tài liệu này chỉ liệt kê các màn hình, modal, menu hoặc biến th�
 - ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06.
 - SYS-01, SYS-02, SYS-03, SYS-04.
 
+### DESIGN_REQUIRED
+
+- AUTH-OTP-01, AUTH-SOCIAL-01, AUTH-METHOD-01, AUTH-METHOD-02, AUTH-REAUTH-01.
+
 ### FUTURE_DEVELOPMENT
 
 - AUTH-P2-01, AUTH-P2-02, AUTH-P2-03, AUTH-P2-04.
-- Các chi tiết ngoài MVP đang xuất hiện trong ảnh như OAuth, nhắn tin, hoạt động realtime, repost, trích dẫn bài viết, file phương tiện, bài đăng lại, cài đặt admin, dashboard nâng cao, mention và các menu quản trị/nội dung nâng cao.
+- Các chi tiết ngoài MVP đang xuất hiện trong ảnh như nhắn tin, hoạt động realtime, repost, trích dẫn bài viết, file phương tiện, bài đăng lại, cài đặt admin, dashboard nâng cao, mention và các menu quản trị/nội dung nâng cao. Google/Facebook Auth không còn thuộc nhóm này.
 
 Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được giữ lại làm tài liệu thiết kế cho giai đoạn mở rộng sau MVP. Không triển khai trong bản demo và Frontend MVP hiện tại.
 
@@ -39,8 +44,13 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| AUTH-01 | Đăng nhập | `docs/ui/screens/auth/login.jpg` | Khách | Cho phép người dùng vào hệ thống. | Nhập email hoặc số điện thoại, nhập mật khẩu, chuyển sang đăng ký, hiển thị nút Google/Facebook future UI. | Sau đăng nhập thành công: nếu hồ sơ chưa hoàn tất đến `/onboarding/profile`, nếu đã hoàn tất đến Feed/Admin. | Phạm vi triển khai: MVP_CURRENT. Nút Google/Facebook và quên mật khẩu trong ảnh thuộc FUTURE_DEVELOPMENT, chỉ báo "Tính năng đang được phát triển.". |
-| AUTH-02 | Đăng ký | `docs/ui/screens/auth/register.jpg` | Khách | Tạo tài khoản mới. | Một trường email hoặc số điện thoại, mật khẩu, xác nhận mật khẩu, đồng ý điều khoản nếu form yêu cầu, nút Google/Facebook future UI. | Thành công tạo mock user, mock profile rỗng, session React và đến `/onboarding/profile`. | Phạm vi triển khai: MVP_CURRENT. Không triển khai username, displayName trong form đăng ký, OAuth Google/Facebook. Chỉ nhập đúng một phương thức định danh tại thời điểm đăng ký. |
+| AUTH-01 | Đăng nhập | `docs/ui/screens/auth/login.jpg` | Khách | Cho phép người dùng vào hệ thống. | Đăng nhập local bằng email/phone và mật khẩu; đăng nhập Google/Facebook. | Sau Auth thành công: hồ sơ chưa hoàn tất đến `/onboarding/profile`, đã hoàn tất đến Feed/Admin. | MVP đích. Quên mật khẩu vẫn P2; Google/Facebook là Auth thật, provider token chỉ tồn tại đủ lâu để gọi Auth endpoint. |
+| AUTH-02 | Khởi tạo đăng ký | `docs/ui/screens/auth/register.jpg` | Khách | Tạo hoặc phục hồi đăng ký local đang chờ. | Một identifier email/phone, mật khẩu, xác nhận mật khẩu; nút Google/Facebook. | Local thành công nhận flow token và đến AUTH-OTP-01; chưa tạo user, profile hoặc session. | Không dùng username/displayName. Flow token chỉ giữ memory/sessionStorage, không localStorage. |
+| AUTH-OTP-01 | Xác minh đăng ký OTP | Chưa có ảnh | Khách có pending | Xác minh email hoặc số điện thoại trước khi tạo tài khoản thật. | Nhập OTP, cooldown resend, hiển thị attempt/expiry phù hợp, recovery pending. | OTP hợp lệ mới nhận JWT và đến `/onboarding/profile`; resend/recovery rotate flow token. | DESIGN_REQUIRED. Dùng cùng UI cho OTP email/phone; không đưa flow token vào URL. |
+| AUTH-SOCIAL-01 | Xử lý social conflict | Chưa có ảnh | Khách | Yêu cầu lựa chọn khi social identity không thể tự động hợp nhất an toàn. | Tiếp tục OTP, hủy pending hoặc hành động được Backend cho phép. | Dùng social conflict token một lần; hết hạn quay lại Auth phù hợp. | DESIGN_REQUIRED. Không tự link/tạo user thứ hai khi email social trùng user ACTIVE chưa link provider. |
+| AUTH-METHOD-01 | Quản lý phương thức đăng nhập | Chưa có ảnh | User đã đăng nhập | Xem, link và unlink email, phone, Google, Facebook. | Danh sách method, verified state, link/unlink action và last-method guard. | Social link dùng JWT hiện tại; local link đến AUTH-METHOD-02; unlink đến AUTH-REAUTH-01. | DESIGN_REQUIRED. Thu hồi session khác là P1, chưa tự triển khai. |
+| AUTH-METHOD-02 | Xác minh link email/phone | Chưa có ảnh | User đã đăng nhập | Hoàn tất challenge liên kết local riêng. | Initiate, nhập OTP, resend và trạng thái expiry/cooldown. | Thành công quay lại AUTH-METHOD-01. | DESIGN_REQUIRED. Không tái sử dụng pending registration. |
+| AUTH-REAUTH-01 | Xác thực lại thao tác nhạy cảm | Chưa có ảnh | User đã đăng nhập | Cấp quyền ngắn hạn trước khi unlink. | Chọn proof hợp lệ và xác thực lại. | Thành công quay về xác nhận unlink; thất bại giữ nguyên method. | DESIGN_REQUIRED. Reauthentication chỉ dùng cho thao tác bảo mật nhạy cảm. |
 | AUTH-03 | Onboarding tên hiển thị | `docs/ui/screens/auth/update-profile-1.jpg` | User chưa hoàn tất hồ sơ | Nhập tên hiển thị bắt buộc sau đăng ký. | Trường tên hiển thị, nút tiếp tục. | Route `/onboarding/profile`, bước 1/3. | Phạm vi triển khai: MVP_CURRENT. Không có nút bỏ qua vì tên hiển thị bắt buộc để hoàn tất hồ sơ. |
 | AUTH-04 | Onboarding ảnh đại diện | `docs/ui/screens/auth/update-profile-2.jpg` | User chưa hoàn tất hồ sơ | Thêm ảnh đại diện tùy chọn. | Chọn ảnh preview hoặc bỏ qua. | Route `/onboarding/profile`, bước 2/3. | Phạm vi triển khai: MVP_CURRENT. Không upload API thật trong mock Frontend. |
 | AUTH-05 | Onboarding ngày sinh và bio | `docs/ui/screens/auth/update-profile-3.jpg` | User chưa hoàn tất hồ sơ | Nhập ngày sinh bắt buộc và bio tùy chọn. | Ngày sinh, bio, hoàn tất hồ sơ; không cho bỏ qua ngày sinh. | Route `/onboarding/profile`, bước 3/3; hoàn tất cập nhật `profileCompletedAt`. | Phạm vi triển khai: MVP_CURRENT. Ngày sinh không được lớn hơn ngày hiện tại và người dùng phải đủ 18 tuổi. |

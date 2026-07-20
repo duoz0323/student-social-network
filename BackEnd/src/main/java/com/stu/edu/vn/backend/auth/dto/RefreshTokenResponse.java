@@ -1,12 +1,14 @@
 package com.stu.edu.vn.backend.auth.dto;
 
 /**
- * Response refresh chỉ cấp Access Token mới, không rotate hoặc trả lại Refresh Token trong giai đoạn đầu.
+ * Response refresh trả cặp token mới để Client thay thế Refresh Token cũ ngay sau mỗi lần sử dụng.
  */
 public record RefreshTokenResponse(
         String accessToken,
+        String refreshToken,
         String tokenType,
         long accessTokenExpiresIn,
+        long refreshTokenExpiresIn,
         boolean profileCompleted
 ) {
 

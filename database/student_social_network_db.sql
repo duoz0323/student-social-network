@@ -1,1034 +1,864 @@
--- =============================================================================
--- TÊN CSDL: student_social_network
--- HỆ QUẢN TRỊ: MySQL 8.0+
--- PHẠM VI: MVP mạng xã hội tinh gọn dành cho sinh viên
--- GHI CHÚ:
--- 1. Người dùng đăng ký bằng một trong hai phương thức: email hoặc số điện thoại.
--- 2. Database yêu cầu ít nhất một phương thức định danh và cho phép bổ sung phương thức còn lại sau này.
--- 3. Hệ thống không sử dụng username hoặc tên định danh đăng nhập riêng trong phạm vi MVP.
--- 4. Người dùng đăng nhập bằng email hoặc số điện thoại.
--- 5. Sau đăng ký, hệ thống tạo user_profiles rỗng và bắt buộc người dùng hoàn tất hồ sơ.
--- 6. Tên hiển thị và ngày sinh là bắt buộc để hoàn tất; ảnh đại diện và bio có thể bỏ qua.
--- 7. profile_completed_at phân biệt hồ sơ đã hoàn tất với tài khoản ACTIVE.
--- 8. Ngày sinh được lưu trong bảng user_profiles.
--- 9. Các giới hạn như tối đa 4 ảnh/bài và trả lời bình luận tối đa 1 cấp
---    được kiểm tra tại Service Layer để bảo đảm thông báo lỗi nghiệp vụ rõ ràng.
--- 10. Index được thiết kế theo các truy vấn thực tế: đăng nhập, hồ sơ, Feed,
---    bình luận, bài đã lưu, tìm kiếm và màn hình quản trị.
--- 11. Các danh sách lớn nên dùng cursor pagination theo cặp (thời gian, id).
--- 12. Không dùng SELECT * trong API; chỉ lấy các cột cần thiết.
--- =============================================================================
-
--- Tạo cơ sở dữ liệu với bộ ký tự utf8mb4 để lưu đầy đủ tiếng Việt và emoji.
-CREATE DATABASE IF NOT EXISTS student_social_network
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_0900_ai_ci;
-
--- Chọn cơ sở dữ liệu vừa tạo để thực thi các lệnh tiếp theo.
-USE student_social_network;
-
--- Tắt kiểm tra khóa ngoại tạm thời để có thể chạy lại script nhiều lần.
-SET FOREIGN_KEY_CHECKS = 0;
-
--- Xóa các bảng theo thứ tự phụ thuộc ngược để tránh lỗi khóa ngoại.
-DROP TABLE IF EXISTS admin_actions;
-DROP TABLE IF EXISTS account_status_histories;
-DROP TABLE IF EXISTS reports;
-DROP TABLE IF EXISTS saved_posts;
-DROP TABLE IF EXISTS comments;
-DROP TABLE IF EXISTS post_likes;
-DROP TABLE IF EXISTS post_hashtags;
-DROP TABLE IF EXISTS hashtags;
-DROP TABLE IF EXISTS post_media;
-DROP TABLE IF EXISTS posts;
-DROP TABLE IF EXISTS follows;
-DROP TABLE IF EXISTS password_reset_tokens;
-DROP TABLE IF EXISTS refresh_tokens;
-DROP TABLE IF EXISTS user_profiles;
-DROP TABLE IF EXISTS users;
-
--- Bật lại kiểm tra khóa ngoại sau khi dọn cấu trúc cũ.
-SET FOREIGN_KEY_CHECKS = 1;
-
--- =============================================================================
--- 1. NHÓM TÀI KHOẢN VÀ HỒ SƠ
--- =============================================================================
-
--- Bảng users lưu thông tin xác thực, vai trò và trạng thái tài khoản.
-CREATE TABLE users (
-    -- Khóa chính dạng số lớn, thuận lợi cho index và quan hệ khóa ngoại.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-
-    -- Email có thể để NULL khi người dùng đăng ký bằng số điện thoại.
-    -- Backend phải chuẩn hóa email về chữ thường trước khi lưu.
-    email VARCHAR(255) NULL,
-
-    -- Số điện thoại có thể để NULL khi người dùng đăng ký bằng email.
-    -- Backend phải chuẩn hóa số điện thoại về định dạng thống nhất trước khi lưu.
-    phone_number VARCHAR(20) NULL,
-
-    -- Thời điểm email được xác minh; NULL khi chưa xác minh hoặc chưa có email.
-    -- MVP chưa gửi mã xác minh nhưng giữ cột này để mở rộng mà không phải đổi cấu trúc bảng.
-    email_verified_at DATETIME(6) NULL,
-
-    -- Thời điểm số điện thoại được xác minh; NULL khi chưa xác minh hoặc chưa có số điện thoại.
-    -- MVP chưa tích hợp SMS OTP nhưng giữ cột này cho hướng phát triển.
-    phone_verified_at DATETIME(6) NULL,
-
-    -- Mật khẩu đã băm một chiều bằng BCrypt hoặc Argon2.
-    password_hash VARCHAR(255) NOT NULL,
-
-    -- Vai trò hệ thống trong MVP chỉ gồm USER và ADMIN.
-    role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
-
-    -- Trạng thái tài khoản trong MVP chỉ gồm ACTIVE và BLOCKED.
-    status ENUM('ACTIVE', 'BLOCKED') NOT NULL DEFAULT 'ACTIVE',
-
-    -- Thời điểm tài khoản bị khóa; NULL khi tài khoản đang hoạt động.
-    blocked_at DATETIME(6) NULL,
-
-    -- Lý do khóa tài khoản; chỉ có ý nghĩa khi status = BLOCKED.
-    blocked_reason VARCHAR(500) NULL,
-
-    -- Thời điểm tạo bản ghi.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-
-    -- Thời điểm cập nhật gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-
-    -- Khóa chính của bảng users.
-    CONSTRAINT pk_users PRIMARY KEY (id),
-
-    -- Không cho phép hai tài khoản sử dụng cùng email.
-    CONSTRAINT uq_users_email UNIQUE (email),
-
-    -- Không cho phép hai tài khoản sử dụng cùng số điện thoại.
-    CONSTRAINT uq_users_phone_number UNIQUE (phone_number),
-
-    -- Email được phép NULL, nhưng nếu có dữ liệu thì không được là chuỗi rỗng.
-    CONSTRAINT chk_users_email_not_blank CHECK (
-        email IS NULL OR CHAR_LENGTH(TRIM(email)) > 0
-    ),
-
-    -- Số điện thoại được phép NULL, nhưng nếu có dữ liệu thì không được là chuỗi rỗng.
-    CONSTRAINT chk_users_phone_not_blank CHECK (
-        phone_number IS NULL OR CHAR_LENGTH(TRIM(phone_number)) > 0
-    ),
-
-    -- Mỗi tài khoản phải có ít nhất một phương thức định danh: email hoặc số điện thoại.
-    CONSTRAINT chk_users_contact_required CHECK (
-        email IS NOT NULL OR phone_number IS NOT NULL
-    ),
-
-    -- Không được ghi thời điểm xác minh email khi tài khoản chưa có email.
-    CONSTRAINT chk_users_email_verification_consistency CHECK (
-        email IS NOT NULL OR email_verified_at IS NULL
-    ),
-
-    -- Không được ghi thời điểm xác minh số điện thoại khi tài khoản chưa có số điện thoại.
-    CONSTRAINT chk_users_phone_verification_consistency CHECK (
-        phone_number IS NOT NULL OR phone_verified_at IS NULL
-    ),
-
-    -- Bảo đảm dữ liệu khóa tài khoản nhất quán với trạng thái.
-    CONSTRAINT chk_users_blocked_data CHECK (
-        (status = 'ACTIVE' AND blocked_at IS NULL)
-        OR
-        (status = 'BLOCKED' AND blocked_at IS NOT NULL)
-    )
-) ENGINE=InnoDB;
-
--- Tạo index phục vụ màn hình quản trị lọc tài khoản theo trạng thái.
-CREATE INDEX idx_users_status_created_at
-    ON users (status, created_at DESC, id DESC);
-
--- Các UNIQUE CONSTRAINT trên email và phone_number vẫn ngăn dữ liệu bị trùng.
--- MySQL cho phép nhiều giá trị NULL trong UNIQUE CONSTRAINT, phù hợp với nghiệp vụ
--- đăng ký bằng một trong hai phương thức email hoặc số điện thoại.
-
--- Bảng user_profiles tách dữ liệu hồ sơ công khai khỏi dữ liệu xác thực.
--- Một bản ghi hồ sơ rỗng được tạo cùng transaction với users ngay sau đăng ký.
-CREATE TABLE user_profiles (
-    -- Khóa chính đồng thời là khóa ngoại tới users để tạo quan hệ 1-1.
-    user_id BIGINT UNSIGNED NOT NULL,
-
-    -- Tên hiển thị được phép NULL trong thời gian người dùng chưa hoàn tất onboarding.
-    -- Đây là một trong hai trường bắt buộc để xác nhận hoàn tất hồ sơ trong MVP.
-    display_name VARCHAR(100) NULL,
-
-    -- Đường dẫn ảnh đại diện lưu trên dịch vụ lưu trữ tệp.
-    -- NULL khi người dùng bỏ qua bước ảnh đại diện.
-    avatar_url VARCHAR(1000) NULL,
-
-    -- Mã public_id của ảnh trên Cloudinary/S3 để hỗ trợ xóa tệp.
-    avatar_public_id VARCHAR(255) NULL,
-
-    -- Nội dung giới thiệu cá nhân; người dùng được phép bỏ qua.
-    bio VARCHAR(500) NULL,
-
-    -- Ngày tháng năm sinh; NULL trong hồ sơ rỗng ngay sau đăng ký nhưng bắt buộc trước khi hoàn tất onboarding.
-    -- Backend phải kiểm tra ngày sinh không nằm trong tương lai và người dùng đủ 18 tuổi tại ngày xử lý.
-    date_of_birth DATE NULL,
-
-    -- NULL nghĩa là hồ sơ chưa hoàn tất.
-    -- Có giá trị sau khi tên hiển thị, ngày sinh hợp lệ, điều kiện đủ 18 tuổi và thao tác xác nhận hoàn tất onboarding.
-    profile_completed_at DATETIME(6) NULL,
-
-    -- Thời điểm tạo hồ sơ.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-
-    -- Thời điểm cập nhật hồ sơ gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-
-    -- Khóa chính bảo đảm mỗi user chỉ có đúng một hồ sơ.
-    CONSTRAINT pk_user_profiles PRIMARY KEY (user_id),
-
-    -- Khóa ngoại liên kết hồ sơ với tài khoản.
-    CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-
-    -- Tên hiển thị được phép NULL trong onboarding, nhưng nếu có thì không được rỗng.
-    CONSTRAINT chk_user_profiles_display_name_not_blank CHECK (
-        display_name IS NULL OR CHAR_LENGTH(TRIM(display_name)) > 0
-    ),
-
-    -- Không được đánh dấu hoàn tất nếu chưa có tên hiển thị và ngày sinh hợp lệ.
-    -- Điều kiện đủ 18 tuổi do Backend kiểm tra vì phụ thuộc ngày xử lý hiện tại.
-    CONSTRAINT chk_user_profiles_completion_consistency CHECK (
-        profile_completed_at IS NULL
-        OR (display_name IS NOT NULL AND date_of_birth IS NOT NULL)
-    )
-) ENGINE=InnoDB;
-
--- FULLTEXT INDEX hỗ trợ tìm kiếm người dùng theo tên hiển thị trong phạm vi MVP.
--- Hồ sơ chưa hoàn tất có display_name NULL và phải bị Backend loại khỏi kết quả tìm kiếm.
-CREATE FULLTEXT INDEX ftx_user_profiles_display_name
-    ON user_profiles (display_name);
-
--- Bảng refresh_tokens quản lý phiên đăng nhập và khả năng thu hồi token.
-CREATE TABLE refresh_tokens (
-    -- Khóa chính của phiên refresh token.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Tài khoản sở hữu phiên đăng nhập.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Chỉ lưu giá trị băm SHA-256 của refresh token, không lưu token thô.
-    token_hash CHAR(64) NOT NULL,
-    -- Mã định danh thiết bị hoặc phiên do Backend sinh.
-    device_id VARCHAR(100) NULL,
-    -- Thông tin thiết bị/trình duyệt để người dùng nhận biết phiên.
-    device_info VARCHAR(500) NULL,
-    -- Địa chỉ IP tại thời điểm tạo phiên.
-    ip_address VARCHAR(45) NULL,
-    -- Thời điểm token hết hạn.
-    expires_at DATETIME(6) NOT NULL,
-    -- Thời điểm token bị thu hồi; NULL nghĩa là còn hiệu lực về mặt thu hồi.
-    revoked_at DATETIME(6) NULL,
-    -- Thời điểm tạo token.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng refresh_tokens.
-    CONSTRAINT pk_refresh_tokens PRIMARY KEY (id),
-    -- Mỗi giá trị băm token chỉ được tồn tại một lần.
-    CONSTRAINT uq_refresh_tokens_hash UNIQUE (token_hash),
-    -- Khóa ngoại liên kết token với người dùng.
-    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Thời điểm hết hạn phải lớn hơn thời điểm tạo.
-    CONSTRAINT chk_refresh_tokens_expiry CHECK (expires_at > created_at),
-    -- Thời điểm thu hồi nếu có không được trước thời điểm tạo.
-    CONSTRAINT chk_refresh_tokens_revoked_at CHECK (
-        revoked_at IS NULL OR revoked_at >= created_at
-    )
-) ENGINE=InnoDB;
-
--- Index phục vụ truy vấn danh sách token còn hiệu lực theo người dùng.
-CREATE INDEX idx_refresh_tokens_user_expiry
-    ON refresh_tokens (user_id, revoked_at, expires_at, id);
-
--- Bảng password_reset_tokens hỗ trợ khôi phục mật khẩu qua email hoặc số điện thoại.
-CREATE TABLE password_reset_tokens (
-    -- Khóa chính của yêu cầu đặt lại mật khẩu.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Tài khoản yêu cầu đặt lại mật khẩu.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Kênh nhận mã đặt lại mật khẩu.
-    -- EMAIL áp dụng khi tài khoản có email; SMS áp dụng khi tài khoản có số điện thoại.
-    delivery_channel ENUM('EMAIL', 'SMS') NOT NULL,
-    -- Giá trị băm của mã hoặc token đặt lại mật khẩu.
-    token_hash CHAR(64) NOT NULL,
-    -- Thời điểm token hết hạn.
-    expires_at DATETIME(6) NOT NULL,
-    -- Thời điểm token được sử dụng; NULL nghĩa là chưa sử dụng.
-    used_at DATETIME(6) NULL,
-    -- Thời điểm tạo token.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng password_reset_tokens.
-    CONSTRAINT pk_password_reset_tokens PRIMARY KEY (id),
-    -- Không cho phép trùng giá trị băm token.
-    CONSTRAINT uq_password_reset_tokens_hash UNIQUE (token_hash),
-    -- Khóa ngoại liên kết token đặt lại mật khẩu với người dùng.
-    CONSTRAINT fk_password_reset_tokens_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Thời điểm hết hạn phải lớn hơn thời điểm tạo.
-    CONSTRAINT chk_password_reset_tokens_expiry CHECK (expires_at > created_at),
-    -- Thời điểm sử dụng nếu có không được trước thời điểm tạo.
-    CONSTRAINT chk_password_reset_tokens_used_at CHECK (
-        used_at IS NULL OR used_at >= created_at
-    )
-) ENGINE=InnoDB;
-
--- Index hỗ trợ kiểm tra token chưa dùng và chưa hết hạn của một tài khoản.
-CREATE INDEX idx_password_reset_tokens_user_state
-    ON password_reset_tokens (user_id, used_at, expires_at, id);
-
--- Quy tắc triển khai tại Backend:
--- 1. Form đăng ký nhận đúng một phương thức: email hoặc số điện thoại.
--- 2. Backend chuẩn hóa và kiểm tra trùng phương thức được cung cấp.
--- 3. Khi đăng ký bằng email, phone_number lưu NULL; khi đăng ký bằng số điện thoại, email lưu NULL.
--- 4. Database chỉ bắt buộc ít nhất một phương thức để cho phép người dùng bổ sung phương thức còn lại sau này.
--- 5. Hệ thống không tạo username hoặc tên định danh đăng nhập riêng.
--- 6. Khi đăng nhập, Backend xác định dữ liệu nhập là email hay số điện thoại.
--- 7. MVP chưa xác minh email/SMS OTP; email_verified_at và phone_verified_at để NULL cho đến khi triển khai.
--- 8. Việc tạo users và user_profiles phải nằm trong cùng một transaction.
--- 9. Ngày sinh bắt buộc khi hoàn tất/cập nhật hồ sơ; Backend kiểm tra không nằm trong tương lai và người dùng đủ 18 tuổi.
-
--- =============================================================================
--- 2. NHÓM QUAN HỆ THEO DÕI
--- =============================================================================
-
--- Bảng follows biểu diễn quan hệ N-N tự tham chiếu giữa các người dùng.
-CREATE TABLE follows (
-    -- Người thực hiện hành động theo dõi.
-    follower_id BIGINT UNSIGNED NOT NULL,
-    -- Người được theo dõi.
-    following_id BIGINT UNSIGNED NOT NULL,
-    -- Thời điểm bắt đầu theo dõi.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính kép chống tạo trùng một quan hệ Follow.
-    CONSTRAINT pk_follows PRIMARY KEY (follower_id, following_id),
-    -- Khóa ngoại tới người theo dõi.
-    CONSTRAINT fk_follows_follower FOREIGN KEY (follower_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Khóa ngoại tới người được theo dõi.
-    CONSTRAINT fk_follows_following FOREIGN KEY (following_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Không cho phép người dùng tự theo dõi chính mình.
-    CONSTRAINT chk_follows_not_self CHECK (follower_id <> following_id)
-) ENGINE=InnoDB;
-
--- Index phục vụ truy vấn danh sách follower của một người dùng.
-CREATE INDEX idx_follows_following_created_at
-    ON follows (following_id, created_at DESC, follower_id DESC);
-
--- Index phục vụ truy vấn danh sách following theo thời gian.
-CREATE INDEX idx_follows_follower_created_at
-    ON follows (follower_id, created_at DESC, following_id DESC);
-
--- =============================================================================
--- 3. NHÓM BÀI VIẾT, HÌNH ẢNH VÀ HASHTAG
--- =============================================================================
-
--- Bảng posts lưu bài viết gốc trong phạm vi MVP.
-CREATE TABLE posts (
-    -- Khóa chính của bài viết.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Tác giả sở hữu bài viết.
-    author_id BIGINT UNSIGNED NOT NULL,
-    -- Nội dung văn bản tối đa 500 ký tự.
-    content VARCHAR(500) NULL,
-    -- Trạng thái bài viết: đang hoạt động, bị Admin ẩn hoặc tác giả xóa mềm.
-    status ENUM('PUBLISHED', 'HIDDEN', 'DELETED') NOT NULL DEFAULT 'PUBLISHED',
-    -- Cờ cho biết bài viết đã từng được chỉnh sửa.
-    is_edited BOOLEAN NOT NULL DEFAULT FALSE,
-    -- Bộ đếm Like được lưu dư thừa có kiểm soát để tối ưu Feed For You.
-    like_count INT UNSIGNED NOT NULL DEFAULT 0,
-    -- Bộ đếm bình luận hợp lệ để tối ưu Feed For You.
-    comment_count INT UNSIGNED NOT NULL DEFAULT 0,
-    -- Thời điểm xuất bản bài viết.
-    published_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Admin thực hiện ẩn bài viết; NULL khi chưa bị ẩn.
-    hidden_by BIGINT UNSIGNED NULL,
-    -- Thời điểm bài viết bị ẩn.
-    hidden_at DATETIME(6) NULL,
-    -- Lý do ẩn bài viết.
-    hidden_reason VARCHAR(500) NULL,
-    -- Thời điểm tác giả xóa mềm bài viết.
-    deleted_at DATETIME(6) NULL,
-    -- Thời điểm tạo bản ghi.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Thời điểm cập nhật gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng posts.
-    CONSTRAINT pk_posts PRIMARY KEY (id),
-    -- Khóa ngoại liên kết bài viết với tác giả.
-    CONSTRAINT fk_posts_author FOREIGN KEY (author_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Khóa ngoại liên kết người ẩn bài với tài khoản Admin.
-    -- Dùng RESTRICT để bảo toàn lịch sử kiểm duyệt và không xung đột với CHECK yêu cầu hidden_by khác NULL khi status = 'HIDDEN'.
-    CONSTRAINT fk_posts_hidden_by FOREIGN KEY (hidden_by)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Bảo đảm dữ liệu HIDDEN đi kèm thời điểm và người xử lý.
-    CONSTRAINT chk_posts_hidden_state CHECK (
-        (status = 'HIDDEN' AND hidden_at IS NOT NULL AND hidden_by IS NOT NULL)
-        OR
-        (status <> 'HIDDEN')
-    ),
-    -- Bảo đảm dữ liệu DELETED đi kèm thời điểm xóa mềm.
-    CONSTRAINT chk_posts_deleted_state CHECK (
-        (status = 'DELETED' AND deleted_at IS NOT NULL)
-        OR
-        (status <> 'DELETED')
-    )
-) ENGINE=InnoDB;
-
--- Index quan trọng cho trang hồ sơ và Feed Following.
-CREATE INDEX idx_posts_author_status_published
-    ON posts (author_id, status, published_at DESC, id DESC);
-
--- Index quan trọng cho Feed For You và danh sách bài toàn hệ thống.
-CREATE INDEX idx_posts_status_published
-    ON posts (status, published_at DESC, id DESC);
-
--- Index hỗ trợ xếp hạng Feed cơ bản theo tương tác.
-CREATE INDEX idx_posts_status_engagement
-    ON posts (
-        status,
-        like_count DESC,
-        comment_count DESC,
-        published_at DESC,
-        id DESC
-    );
-
--- FULLTEXT INDEX hỗ trợ tìm kiếm nội dung bài viết trong MySQL MVP.
--- Khi chuyển sang Elasticsearch, MySQL vẫn là nguồn dữ liệu chuẩn.
-CREATE FULLTEXT INDEX ftx_posts_content
-    ON posts (content);
-
--- Bảng post_media lưu metadata ảnh; tệp thật nằm trên Cloud Storage.
-CREATE TABLE post_media (
-    -- Khóa chính của ảnh bài viết.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Bài viết sở hữu ảnh.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- URL truy cập ảnh.
-    media_url VARCHAR(1000) NOT NULL,
-    -- Public ID hoặc object key để hỗ trợ quản lý/xóa tệp.
-    storage_public_id VARCHAR(255) NOT NULL,
-    -- MIME type thực tế đã được Backend kiểm tra.
-    mime_type ENUM('image/jpeg', 'image/png', 'image/webp') NOT NULL,
-    -- Kích thước tệp theo byte.
-    file_size_bytes BIGINT UNSIGNED NOT NULL,
-    -- Chiều rộng ảnh theo pixel.
-    width_px INT UNSIGNED NULL,
-    -- Chiều cao ảnh theo pixel.
-    height_px INT UNSIGNED NULL,
-    -- Thứ tự hiển thị ảnh trong bài, bắt đầu từ 0.
-    display_order TINYINT UNSIGNED NOT NULL,
-    -- Thời điểm tạo metadata ảnh.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng post_media.
-    CONSTRAINT pk_post_media PRIMARY KEY (id),
-    -- Mỗi object trên dịch vụ lưu trữ chỉ được tham chiếu một lần.
-    CONSTRAINT uq_post_media_storage_public_id UNIQUE (storage_public_id),
-    -- Không cho phép trùng vị trí ảnh trong cùng một bài.
-    CONSTRAINT uq_post_media_post_order UNIQUE (post_id, display_order),
-    -- Khóa ngoại liên kết ảnh với bài viết.
-    CONSTRAINT fk_post_media_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Thứ tự hiển thị trong MVP chỉ từ 0 đến 3 vì tối đa 4 ảnh.
-    CONSTRAINT chk_post_media_display_order CHECK (display_order <= 3),
-    -- Kích thước tệp phải lớn hơn 0.
-    CONSTRAINT chk_post_media_file_size CHECK (file_size_bytes > 0)
-) ENGINE=InnoDB;
-
--- UNIQUE INDEX uq_post_media_post_order đã đồng thời hỗ trợ truy vấn
--- danh sách ảnh theo post_id và display_order nên không tạo index trùng lặp.
-
--- Bảng hashtags lưu hashtag chuẩn hóa dùng chung cho nhiều bài viết.
-CREATE TABLE hashtags (
-    -- Khóa chính của hashtag.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Tên chuẩn hóa dạng chữ thường và không chứa ký tự #.
-    normalized_name VARCHAR(100) NOT NULL,
-    -- Tên hiển thị; trong MVP có thể giống normalized_name.
-    display_name VARCHAR(100) NOT NULL,
-    -- Bộ đếm số bài đang gắn hashtag để tối ưu truy vấn.
-    post_count INT UNSIGNED NOT NULL DEFAULT 0,
-    -- Thời điểm tạo hashtag.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Thời điểm cập nhật hashtag gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng hashtags.
-    CONSTRAINT pk_hashtags PRIMARY KEY (id),
-    -- Không cho phép trùng hashtag sau chuẩn hóa.
-    CONSTRAINT uq_hashtags_normalized_name UNIQUE (normalized_name),
-    -- Tên hashtag phải có ít nhất một ký tự.
-    CONSTRAINT chk_hashtags_not_empty CHECK (CHAR_LENGTH(normalized_name) > 0)
-) ENGINE=InnoDB;
-
--- Index hỗ trợ lấy danh sách hashtag phổ biến theo số bài.
-CREATE INDEX idx_hashtags_post_count
-    ON hashtags (post_count DESC, id DESC);
-
--- Bảng post_hashtags là bảng trung gian cho quan hệ N-N giữa posts và hashtags.
-CREATE TABLE post_hashtags (
-    -- Bài viết được gắn hashtag.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- Hashtag được gắn vào bài viết.
-    hashtag_id BIGINT UNSIGNED NOT NULL,
-    -- Thời điểm tạo quan hệ.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính kép chống gắn trùng hashtag trong cùng bài.
-    CONSTRAINT pk_post_hashtags PRIMARY KEY (post_id, hashtag_id),
-    -- Khóa ngoại liên kết tới bài viết.
-    CONSTRAINT fk_post_hashtags_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Khóa ngoại liên kết tới hashtag.
-    CONSTRAINT fk_post_hashtags_hashtag FOREIGN KEY (hashtag_id)
-        REFERENCES hashtags (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
--- Index hỗ trợ truy vấn danh sách bài theo hashtag.
-CREATE INDEX idx_post_hashtags_hashtag_post
-    ON post_hashtags (hashtag_id, post_id DESC);
-
--- =============================================================================
--- 4. NHÓM TƯƠNG TÁC
--- =============================================================================
-
--- Bảng post_likes là bảng trung gian N-N giữa users và posts.
-CREATE TABLE post_likes (
-    -- Người dùng thực hiện Like.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Bài viết được Like.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- Thời điểm Like.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính kép bảo đảm mỗi người chỉ Like một bài tối đa một lần.
-    CONSTRAINT pk_post_likes PRIMARY KEY (user_id, post_id),
-    -- Khóa ngoại liên kết Like với người dùng.
-    CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Khóa ngoại liên kết Like với bài viết.
-    CONSTRAINT fk_post_likes_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- Index hỗ trợ đếm và liệt kê người Like theo bài.
-CREATE INDEX idx_post_likes_post_created
-    ON post_likes (post_id, created_at DESC, user_id DESC);
-
--- Bảng comments lưu bình luận và trả lời bình luận tối đa một cấp.
-CREATE TABLE comments (
-    -- Khóa chính của bình luận.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Bài viết chứa bình luận.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- Người tạo bình luận.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Bình luận cha; NULL nghĩa là bình luận cấp gốc.
-    parent_comment_id BIGINT UNSIGNED NULL,
-    -- Nội dung bình luận.
-    content VARCHAR(1000) NOT NULL,
-    -- Trạng thái phục vụ xóa mềm bình luận.
-    status ENUM('PUBLISHED', 'DELETED') NOT NULL DEFAULT 'PUBLISHED',
-    -- Thời điểm xóa mềm.
-    deleted_at DATETIME(6) NULL,
-    -- Thời điểm tạo bình luận.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Thời điểm cập nhật gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng comments.
-    CONSTRAINT pk_comments PRIMARY KEY (id),
-    -- Khóa ngoại liên kết bình luận với bài viết.
-    CONSTRAINT fk_comments_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Khóa ngoại liên kết bình luận với tác giả.
-    CONSTRAINT fk_comments_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Khóa ngoại tự tham chiếu để hỗ trợ trả lời một cấp.
-    CONSTRAINT fk_comments_parent FOREIGN KEY (parent_comment_id)
-        REFERENCES comments (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Nội dung bình luận không được rỗng.
-    CONSTRAINT chk_comments_content_not_empty CHECK (
-        CHAR_LENGTH(TRIM(content)) > 0
-    ),
-    -- Bình luận DELETED phải có thời điểm xóa mềm.
-    CONSTRAINT chk_comments_deleted_state CHECK (
-        (status = 'DELETED' AND deleted_at IS NOT NULL)
-        OR
-        (status = 'PUBLISHED' AND deleted_at IS NULL)
-    )
-) ENGINE=InnoDB;
-
--- Index hỗ trợ tải bình luận gốc của một bài theo thời gian.
-CREATE INDEX idx_comments_post_parent_created
-    ON comments (
-        post_id,
-        parent_comment_id,
-        status,
-        created_at ASC,
-        id ASC
-    );
-
--- Index hỗ trợ người dùng quản lý các bình luận của mình.
-CREATE INDEX idx_comments_user_created
-    ON comments (user_id, status, created_at DESC, id DESC);
-
--- Bảng saved_posts là bảng trung gian N-N giữa users và posts.
-CREATE TABLE saved_posts (
-    -- Người dùng lưu bài viết.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Bài viết được lưu.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- Thời điểm lưu bài.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính kép bảo đảm mỗi người chỉ lưu một bài tối đa một lần.
-    CONSTRAINT pk_saved_posts PRIMARY KEY (user_id, post_id),
-    -- Khóa ngoại liên kết bản ghi lưu với người dùng.
-    CONSTRAINT fk_saved_posts_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE,
-    -- Khóa ngoại liên kết bản ghi lưu với bài viết.
-    CONSTRAINT fk_saved_posts_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- Index quan trọng cho màn hình danh sách bài viết đã lưu của người dùng.
--- Khóa chính (user_id, post_id) không tối ưu cho ORDER BY created_at.
-CREATE INDEX idx_saved_posts_user_created
-    ON saved_posts (user_id, created_at DESC, post_id DESC);
-
--- Index hỗ trợ truy vấn danh sách người đã lưu một bài nếu Admin cần thống kê.
-CREATE INDEX idx_saved_posts_post_created
-    ON saved_posts (post_id, created_at DESC, user_id DESC);
-
--- =============================================================================
--- 5. NHÓM BÁO CÁO VÀ QUẢN TRỊ
--- =============================================================================
-
--- Bảng reports lưu báo cáo bài viết trong phạm vi MVP.
-CREATE TABLE reports (
-    -- Khóa chính của báo cáo.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Người gửi báo cáo.
-    reporter_id BIGINT UNSIGNED NOT NULL,
-    -- Bài viết bị báo cáo.
-    post_id BIGINT UNSIGNED NOT NULL,
-    -- Lý do báo cáo theo danh sách chuẩn hóa.
-    reason ENUM(
-        'SPAM',
-        'HARASSMENT',
-        'HARMFUL_CONTENT',
-        'VIOLENCE',
-        'MISINFORMATION',
-        'INAPPROPRIATE',
-        'OTHER'
-    ) NOT NULL,
-    -- Mô tả bổ sung do người báo cáo nhập.
-    description VARCHAR(1000) NULL,
-    -- Trạng thái xử lý báo cáo trong MVP.
-    status ENUM('PENDING', 'RESOLVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
-    -- Admin xử lý báo cáo.
-    resolved_by BIGINT UNSIGNED NULL,
-    -- Thời điểm xử lý báo cáo.
-    resolved_at DATETIME(6) NULL,
-    -- Ghi chú nội bộ của Admin.
-    resolution_note VARCHAR(1000) NULL,
-    -- Ảnh chụp nội dung bài tại thời điểm báo cáo để bảo toàn bằng chứng cơ bản.
-    post_content_snapshot VARCHAR(500) NULL,
-    -- Ảnh chụp danh sách URL media dưới dạng JSON.
-    post_media_snapshot JSON NULL,
-    -- Khóa sinh tự động chỉ có giá trị khi báo cáo đang PENDING.
-    pending_report_key VARCHAR(100) GENERATED ALWAYS AS (
-        CASE
-            WHEN status = 'PENDING'
-            THEN CONCAT(reporter_id, ':', post_id)
-            ELSE NULL
-        END
-    ) STORED,
-    -- Thời điểm gửi báo cáo.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Thời điểm cập nhật báo cáo gần nhất.
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-        ON UPDATE CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng reports.
-    CONSTRAINT pk_reports PRIMARY KEY (id),
-    -- Chống một người gửi nhiều báo cáo PENDING cho cùng một bài.
-    CONSTRAINT uq_reports_pending_key UNIQUE (pending_report_key),
-    -- Khóa ngoại liên kết báo cáo với người gửi.
-    CONSTRAINT fk_reports_reporter FOREIGN KEY (reporter_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Khóa ngoại liên kết báo cáo với bài viết.
-    CONSTRAINT fk_reports_post FOREIGN KEY (post_id)
-        REFERENCES posts (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Khóa ngoại liên kết báo cáo với Admin xử lý.
-    -- Dùng RESTRICT để bảo toàn lịch sử xử lý và không xung đột với CHECK yêu cầu resolved_by khác NULL khi báo cáo đã xử lý.
-    CONSTRAINT fk_reports_resolved_by FOREIGN KEY (resolved_by)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Báo cáo đã xử lý phải có Admin và thời điểm xử lý.
-    CONSTRAINT chk_reports_resolution_state CHECK (
-        (status = 'PENDING' AND resolved_by IS NULL AND resolved_at IS NULL)
-        OR
-        (status IN ('RESOLVED', 'REJECTED')
-            AND resolved_by IS NOT NULL
-            AND resolved_at IS NOT NULL)
-    )
-) ENGINE=InnoDB;
-
--- Index phục vụ hàng đợi xử lý báo cáo theo trạng thái và thời gian.
-CREATE INDEX idx_reports_status_created
-    ON reports (status, created_at ASC, id ASC);
-
--- Index phục vụ xem các báo cáo của một bài viết.
-CREATE INDEX idx_reports_post_status
-    ON reports (post_id, status, created_at DESC, id DESC);
-
--- Index hỗ trợ người dùng xem lịch sử báo cáo của chính mình.
-CREATE INDEX idx_reports_reporter_created
-    ON reports (reporter_id, created_at DESC, id DESC);
-
--- Bảng account_status_histories lưu lịch sử khóa/mở khóa tài khoản.
-CREATE TABLE account_status_histories (
-    -- Khóa chính của bản ghi lịch sử.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Tài khoản bị thay đổi trạng thái.
-    user_id BIGINT UNSIGNED NOT NULL,
-    -- Trạng thái trước khi thay đổi.
-    old_status ENUM('ACTIVE', 'BLOCKED') NOT NULL,
-    -- Trạng thái sau khi thay đổi.
-    new_status ENUM('ACTIVE', 'BLOCKED') NOT NULL,
-    -- Admin thực hiện thay đổi.
-    changed_by BIGINT UNSIGNED NOT NULL,
-    -- Lý do thay đổi trạng thái.
-    reason VARCHAR(500) NOT NULL,
-    -- Thời điểm thay đổi trạng thái.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng account_status_histories.
-    CONSTRAINT pk_account_status_histories PRIMARY KEY (id),
-    -- Khóa ngoại tới tài khoản bị thay đổi.
-    CONSTRAINT fk_account_status_histories_user FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Khóa ngoại tới Admin thực hiện.
-    CONSTRAINT fk_account_status_histories_changed_by FOREIGN KEY (changed_by)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT,
-    -- Trạng thái mới phải khác trạng thái cũ.
-    CONSTRAINT chk_account_status_histories_changed CHECK (
-        old_status <> new_status
-    )
-) ENGINE=InnoDB;
-
--- Index phục vụ xem lịch sử trạng thái theo tài khoản.
-CREATE INDEX idx_account_status_histories_user_created
-    ON account_status_histories (user_id, created_at DESC, id DESC);
-
--- Bảng admin_actions lưu vết thao tác quản trị cơ bản trong MVP/P2.
-CREATE TABLE admin_actions (
-    -- Khóa chính của thao tác quản trị.
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    -- Admin thực hiện thao tác.
-    admin_id BIGINT UNSIGNED NOT NULL,
-    -- Loại hành động quản trị.
-    action_type ENUM(
-        'BLOCK_USER',
-        'UNBLOCK_USER',
-        'HIDE_POST',
-        'RESTORE_POST',
-        'RESOLVE_REPORT',
-        'REJECT_REPORT'
-    ) NOT NULL,
-    -- Loại đối tượng bị tác động.
-    target_type ENUM('USER', 'POST', 'REPORT') NOT NULL,
-    -- ID đối tượng bị tác động; kiểm tra tồn tại được thực hiện trong transaction Service.
-    target_id BIGINT UNSIGNED NOT NULL,
-    -- Ghi chú hoặc lý do thao tác.
-    note VARCHAR(1000) NULL,
-    -- Dữ liệu trước thay đổi ở dạng JSON.
-    old_data JSON NULL,
-    -- Dữ liệu sau thay đổi ở dạng JSON.
-    new_data JSON NULL,
-    -- Thời điểm thực hiện thao tác.
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    -- Khóa chính của bảng admin_actions.
-    CONSTRAINT pk_admin_actions PRIMARY KEY (id),
-    -- Khóa ngoại liên kết thao tác với tài khoản Admin.
-    CONSTRAINT fk_admin_actions_admin FOREIGN KEY (admin_id)
-        REFERENCES users (id)
-        ON UPDATE RESTRICT
-        ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
--- Index phục vụ truy vết thao tác theo đối tượng.
-CREATE INDEX idx_admin_actions_target_created
-    ON admin_actions (target_type, target_id, created_at DESC, id DESC);
-
--- Index phục vụ truy vết thao tác của một Admin.
-CREATE INDEX idx_admin_actions_admin_created
-    ON admin_actions (admin_id, created_at DESC, id DESC);
-
--- =============================================================================
--- 6. TRIGGER BẢO ĐẢM DỮ LIỆU VÀ TỐI ƯU BỘ ĐẾM
--- =============================================================================
-
--- Đổi delimiter để khai báo trigger nhiều câu lệnh.
-DELIMITER $$
-
--- Trigger kiểm tra người xử lý khóa/mở khóa phải có vai trò ADMIN.
-CREATE TRIGGER trg_account_status_histories_validate_admin
-BEFORE INSERT ON account_status_histories
-FOR EACH ROW
-BEGIN
-    -- Khai báo biến lưu vai trò của người thực hiện.
-    DECLARE v_role VARCHAR(10);
-
-    -- Lấy vai trò của tài khoản thực hiện thay đổi.
-    SELECT role INTO v_role
-    FROM users
-    WHERE id = NEW.changed_by;
-
-    -- Từ chối nếu người thực hiện không phải ADMIN.
-    IF v_role <> 'ADMIN' THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Người thay đổi trạng thái tài khoản phải là ADMIN';
-    END IF;
-END$$
-
--- Trigger kiểm tra tài khoản hidden_by của bài viết phải có vai trò ADMIN.
-CREATE TRIGGER trg_posts_validate_hidden_admin
-BEFORE UPDATE ON posts
-FOR EACH ROW
-BEGIN
-    -- Khai báo biến lưu vai trò Admin.
-    DECLARE v_role VARCHAR(10);
-
-    -- Chỉ kiểm tra khi bài được chuyển sang trạng thái HIDDEN.
-    IF NEW.status = 'HIDDEN' THEN
-        -- Lấy vai trò của tài khoản thực hiện ẩn bài.
-        SELECT role INTO v_role
-        FROM users
-        WHERE id = NEW.hidden_by;
-
-        -- Từ chối nếu người thực hiện không phải ADMIN.
-        IF v_role <> 'ADMIN' THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Chỉ ADMIN được phép ẩn bài viết';
-        END IF;
-    END IF;
-END$$
-
--- Trigger tăng bộ đếm Like sau khi tạo Like thành công.
-CREATE TRIGGER trg_post_likes_after_insert
-AFTER INSERT ON post_likes
-FOR EACH ROW
-BEGIN
-    -- Tăng like_count bằng một thao tác nguyên tử.
-    UPDATE posts
-    SET like_count = like_count + 1
-    WHERE id = NEW.post_id;
-END$$
-
--- Trigger giảm bộ đếm Like sau khi Unlike.
-CREATE TRIGGER trg_post_likes_after_delete
-AFTER DELETE ON post_likes
-FOR EACH ROW
-BEGIN
-    -- Giảm bộ đếm nhưng không cho xuống dưới 0.
-    UPDATE posts
-    SET like_count = IF(like_count > 0, like_count - 1, 0)
-    WHERE id = OLD.post_id;
-END$$
-
--- Trigger tăng bộ đếm bình luận khi thêm bình luận PUBLISHED.
-CREATE TRIGGER trg_comments_after_insert
-AFTER INSERT ON comments
-FOR EACH ROW
-BEGIN
-    -- Chỉ tăng bộ đếm khi bình luận đang được hiển thị.
-    IF NEW.status = 'PUBLISHED' THEN
-        UPDATE posts
-        SET comment_count = comment_count + 1
-        WHERE id = NEW.post_id;
-    END IF;
-END$$
-
--- Trigger đồng bộ bộ đếm khi bình luận đổi trạng thái.
-CREATE TRIGGER trg_comments_after_update
-AFTER UPDATE ON comments
-FOR EACH ROW
-BEGIN
-    -- Giảm bộ đếm khi bình luận chuyển từ PUBLISHED sang DELETED.
-    IF OLD.status = 'PUBLISHED' AND NEW.status = 'DELETED' THEN
-        UPDATE posts
-        SET comment_count = IF(comment_count > 0, comment_count - 1, 0)
-        WHERE id = NEW.post_id;
-    END IF;
-
-    -- Tăng bộ đếm khi khôi phục từ DELETED sang PUBLISHED.
-    IF OLD.status = 'DELETED' AND NEW.status = 'PUBLISHED' THEN
-        UPDATE posts
-        SET comment_count = comment_count + 1
-        WHERE id = NEW.post_id;
-    END IF;
-END$$
-
--- Trigger tăng số bài của hashtag khi tạo quan hệ post_hashtags.
-CREATE TRIGGER trg_post_hashtags_after_insert
-AFTER INSERT ON post_hashtags
-FOR EACH ROW
-BEGIN
-    -- Tăng bộ đếm số bài của hashtag.
-    UPDATE hashtags
-    SET post_count = post_count + 1
-    WHERE id = NEW.hashtag_id;
-END$$
-
--- Trigger giảm số bài của hashtag khi xóa quan hệ post_hashtags.
-CREATE TRIGGER trg_post_hashtags_after_delete
-AFTER DELETE ON post_hashtags
-FOR EACH ROW
-BEGIN
-    -- Giảm bộ đếm nhưng không cho xuống dưới 0.
-    UPDATE hashtags
-    SET post_count = IF(post_count > 0, post_count - 1, 0)
-    WHERE id = OLD.hashtag_id;
-END$$
-
--- Khôi phục delimiter mặc định.
-DELIMITER ;
-
--- =============================================================================
--- 7. VIEW HỖ TRỢ TRUY VẤN MVP
--- =============================================================================
-
--- View chỉ trả các bài đang hoạt động cùng thông tin tác giả.
-CREATE OR REPLACE VIEW v_active_posts AS
-SELECT
-    -- ID bài viết.
-    p.id AS post_id,
-    -- Nội dung bài viết.
-    p.content,
-    -- Thời điểm xuất bản.
-    p.published_at,
-    -- Bộ đếm Like.
-    p.like_count,
-    -- Bộ đếm bình luận.
-    p.comment_count,
-    -- Cờ đã chỉnh sửa.
-    p.is_edited,
-    -- ID tác giả.
-    u.id AS author_id,
-    -- Tên hiển thị tác giả.
-    up.display_name,
-    -- Ảnh đại diện tác giả.
-    up.avatar_url
-FROM posts p
-INNER JOIN users u
-    ON u.id = p.author_id
-INNER JOIN user_profiles up
-    ON up.user_id = u.id
-WHERE p.status = 'PUBLISHED'
-  AND u.status = 'ACTIVE'
-  AND up.profile_completed_at IS NOT NULL;
-
--- View nhẹ phục vụ các truy vấn Feed chỉ cần dữ liệu bài và tác giả cơ bản.
--- Media, hashtag và trạng thái Like/Save nên được tải bằng truy vấn riêng theo danh sách ID
--- để tránh JOIN nhiều bảng làm nhân bản số dòng và gây chậm.
-CREATE OR REPLACE VIEW v_feed_posts AS
-SELECT
-    p.id AS post_id,
-    p.author_id,
-    p.content,
-    p.is_edited,
-    p.like_count,
-    p.comment_count,
-    p.published_at,
-    up.display_name,
-    up.avatar_url
-FROM posts p
-INNER JOIN users u
-    ON u.id = p.author_id
-INNER JOIN user_profiles up
-    ON up.user_id = p.author_id
-WHERE p.status = 'PUBLISHED'
-  AND u.status = 'ACTIVE'
-  AND up.profile_completed_at IS NOT NULL;
-
--- =============================================================================
--- 8. DỮ LIỆU ADMIN MẪU TÙY CHỌN
--- =============================================================================
-
--- Lưu ý: Không chèn sẵn mật khẩu mẫu để tránh tạo thông tin đăng nhập không an toàn.
--- Admin đầu tiên nên được tạo bằng migration riêng với password_hash hợp lệ.
-
--- =============================================================================
--- 9. KHUYẾN NGHỊ TRUY VẤN VÀ VẬN HÀNH
--- =============================================================================
-
--- 1. Cursor pagination cho Feed:
---    WHERE status = 'PUBLISHED'
---      AND (published_at < :cursorTime
---           OR (published_at = :cursorTime AND id < :cursorId))
---    ORDER BY published_at DESC, id DESC
---    LIMIT :pageSize;
+-- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
--- 2. Không JOIN trực tiếp posts với post_media, post_hashtags, post_likes và comments
---    trong cùng một truy vấn danh sách Feed vì có thể tạo tích Descartes.
---    Nên tải trang bài viết trước, sau đó truy vấn dữ liệu liên quan bằng WHERE post_id IN (...).
+-- Host: 127.0.0.1    Database: student_social_network
+-- ------------------------------------------------------
+-- Server version	8.0.36
+-- Auth extension: OTP registration, Google/Facebook providers, multi-login account linking.
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
 --
--- 3. Khi truy vấn, luôn kiểm tra bằng EXPLAIN ANALYZE trong môi trường thử nghiệm.
+-- Table structure for table `account_status_histories`
 --
--- 4. Chỉ chọn các cột cần dùng; không sử dụng SELECT * trong API.
+
+DROP TABLE IF EXISTS `account_status_histories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `account_status_histories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `old_status` varchar(16) NOT NULL,
+  `new_status` varchar(16) NOT NULL,
+  `changed_by` bigint unsigned NOT NULL,
+  `reason` varchar(500) NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `fk_account_status_histories_changed_by` (`changed_by`),
+  KEY `idx_account_status_histories_user_created` (`user_id`,`created_at` DESC,`id` DESC),
+  CONSTRAINT `fk_account_status_histories_changed_by` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_account_status_histories_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_account_status_histories_old_status` CHECK ((`old_status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))),
+  CONSTRAINT `chk_account_status_histories_new_status` CHECK ((`new_status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))),
+  CONSTRAINT `chk_account_status_histories_changed` CHECK ((`old_status` <> `new_status`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 --
--- 5. Sau khi nhập dữ liệu lớn, có thể chạy ANALYZE TABLE để cập nhật thống kê:
---    ANALYZE TABLE users, user_profiles, follows, posts, comments,
---                  post_likes, saved_posts, reports;
+-- Dumping data for table `account_status_histories`
 --
--- 6. Chỉ tạo thêm index khi có truy vấn thật sự cần đến.
---    Quá nhiều index sẽ làm chậm INSERT, UPDATE và tăng dung lượng lưu trữ.
+
+LOCK TABLES `account_status_histories` WRITE;
+/*!40000 ALTER TABLE `account_status_histories` DISABLE KEYS */;
+/*!40000 ALTER TABLE `account_status_histories` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `admin_actions`
+--
+
+DROP TABLE IF EXISTS `admin_actions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `admin_actions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `admin_id` bigint unsigned NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT') NOT NULL,
+  `target_type` enum('USER','POST','REPORT') NOT NULL,
+  `target_id` bigint unsigned NOT NULL,
+  `note` varchar(1000) DEFAULT NULL,
+  `old_data` json DEFAULT NULL,
+  `new_data` json DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `idx_admin_actions_target_created` (`target_type`,`target_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_admin_actions_admin_created` (`admin_id`,`created_at` DESC,`id` DESC),
+  CONSTRAINT `fk_admin_actions_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `admin_actions`
+--
+
+LOCK TABLES `admin_actions` WRITE;
+/*!40000 ALTER TABLE `admin_actions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `admin_actions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `comments`
+--
+
+DROP TABLE IF EXISTS `comments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `comments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `post_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `parent_comment_id` bigint unsigned DEFAULT NULL,
+  `content` varchar(1000) NOT NULL,
+  `status` enum('PUBLISHED','DELETED') NOT NULL DEFAULT 'PUBLISHED',
+  `deleted_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `fk_comments_parent` (`parent_comment_id`),
+  KEY `idx_comments_post_parent_created` (`post_id`,`parent_comment_id`,`status`,`created_at`,`id`),
+  KEY `idx_comments_user_created` (`user_id`,`status`,`created_at` DESC,`id` DESC),
+  CONSTRAINT `fk_comments_parent` FOREIGN KEY (`parent_comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_comments_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_comments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_comments_content_not_empty` CHECK ((char_length(trim(`content`)) > 0)),
+  CONSTRAINT `chk_comments_deleted_state` CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or ((`status` = _utf8mb4'PUBLISHED') and (`deleted_at` is null))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `comments`
+--
+
+LOCK TABLES `comments` WRITE;
+/*!40000 ALTER TABLE `comments` DISABLE KEYS */;
+/*!40000 ALTER TABLE `comments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `follows`
+--
+
+DROP TABLE IF EXISTS `follows`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `follows` (
+  `follower_id` bigint unsigned NOT NULL,
+  `following_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`follower_id`,`following_id`),
+  KEY `idx_follows_following_created_at` (`following_id`,`created_at` DESC,`follower_id` DESC),
+  KEY `idx_follows_follower_created_at` (`follower_id`,`created_at` DESC,`following_id` DESC),
+  CONSTRAINT `fk_follows_follower` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_follows_following` FOREIGN KEY (`following_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_follows_not_self` CHECK ((`follower_id` <> `following_id`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `follows`
+--
+
+LOCK TABLES `follows` WRITE;
+/*!40000 ALTER TABLE `follows` DISABLE KEYS */;
+/*!40000 ALTER TABLE `follows` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `hashtags`
+--
+
+DROP TABLE IF EXISTS `hashtags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `hashtags` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `normalized_name` varchar(100) NOT NULL,
+  `display_name` varchar(100) NOT NULL,
+  `post_count` int unsigned NOT NULL DEFAULT '0',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hashtags_normalized_name` (`normalized_name`),
+  KEY `idx_hashtags_post_count` (`post_count` DESC,`id` DESC),
+  CONSTRAINT `chk_hashtags_not_empty` CHECK ((char_length(`normalized_name`) > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `hashtags`
+--
+
+LOCK TABLES `hashtags` WRITE;
+/*!40000 ALTER TABLE `hashtags` DISABLE KEYS */;
+/*!40000 ALTER TABLE `hashtags` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `pending_registrations`
+--
+
+DROP TABLE IF EXISTS `pending_registrations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pending_registrations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `registration_type` varchar(16) NOT NULL,
+  `identifier_normalized` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `active_identifier_key` varchar(272) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `flow_token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `otp_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `otp_version` int unsigned NOT NULL DEFAULT '1',
+  `otp_expires_at` datetime(6) NOT NULL,
+  `failed_attempts` tinyint unsigned NOT NULL DEFAULT '0',
+  `resend_available_at` datetime(6) NOT NULL,
+  `resend_count` smallint unsigned NOT NULL DEFAULT '0',
+  `delivery_status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `delivery_attempt_count` smallint unsigned NOT NULL DEFAULT '0',
+  `last_delivery_attempt_at` datetime(6) DEFAULT NULL,
+  `last_delivery_succeeded_at` datetime(6) DEFAULT NULL,
+  `delivery_failure_code` varchar(64) DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `expires_at` datetime(6) NOT NULL,
+  `completed_user_id` bigint unsigned DEFAULT NULL,
+  `terminal_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pending_flow_token_hash` (`flow_token_hash`),
+  UNIQUE KEY `uq_pending_active_identifier` (`active_identifier_key`),
+  UNIQUE KEY `uq_pending_completed_user` (`completed_user_id`),
+  KEY `idx_pending_identifier_state` (`identifier_normalized`,`status`,`expires_at`,`id`),
+  KEY `idx_pending_expiry` (`status`,`expires_at`,`id`),
+  KEY `idx_pending_cleanup` (`status`,`terminal_at`,`id`),
+  CONSTRAINT `fk_pending_completed_user` FOREIGN KEY (`completed_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `chk_pending_registration_type` CHECK ((`registration_type` in (_utf8mb4'EMAIL',_utf8mb4'PHONE'))),
+  CONSTRAINT `chk_pending_status` CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))),
+  CONSTRAINT `chk_pending_delivery_status` CHECK ((`delivery_status` in (_utf8mb4'PENDING',_utf8mb4'SENT',_utf8mb4'FAILED',_utf8mb4'UNKNOWN'))),
+  CONSTRAINT `chk_pending_attempts` CHECK ((`failed_attempts` <= 5)),
+  CONSTRAINT `chk_pending_times` CHECK (((`expires_at` > `created_at`) and (`otp_expires_at` > `created_at`) and (`otp_expires_at` <= `expires_at`) and (`resend_available_at` <= `expires_at`))),
+  CONSTRAINT `chk_pending_delivery_failure` CHECK (((`status` <> _utf8mb4'PENDING') or (`delivery_status` <> _utf8mb4'FAILED') or (`delivery_failure_code` is not null))),
+  CONSTRAINT `chk_pending_lifecycle` CHECK (((`status` = _utf8mb4'PENDING' and `identifier_normalized` is not null and `active_identifier_key` = concat(`registration_type`,_utf8mb4':',`identifier_normalized`) and `password_hash` is not null and `flow_token_hash` is not null and `otp_hash` is not null and `terminal_at` is null) or (`status` = _utf8mb4'COMPLETED' and `identifier_normalized` is not null and `active_identifier_key` is null and `password_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null) or (`status` in (_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `identifier_normalized` is null and `active_identifier_key` is null and `password_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `pending_registrations`
+--
+
+LOCK TABLES `pending_registrations` WRITE;
+/*!40000 ALTER TABLE `pending_registrations` DISABLE KEYS */;
+/*!40000 ALTER TABLE `pending_registrations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `auth_method_link_challenges`
+--
+
+DROP TABLE IF EXISTS `auth_method_link_challenges`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auth_method_link_challenges` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `purpose` varchar(16) NOT NULL,
+  `identifier_normalized` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `active_identifier_key` varchar(272) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `active_user_purpose_key` varchar(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `flow_token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `otp_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `otp_version` int unsigned NOT NULL DEFAULT '1',
+  `otp_expires_at` datetime(6) NOT NULL,
+  `failed_attempts` tinyint unsigned NOT NULL DEFAULT '0',
+  `resend_available_at` datetime(6) NOT NULL,
+  `resend_count` smallint unsigned NOT NULL DEFAULT '0',
+  `delivery_status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `delivery_attempt_count` smallint unsigned NOT NULL DEFAULT '0',
+  `last_delivery_attempt_at` datetime(6) DEFAULT NULL,
+  `last_delivery_succeeded_at` datetime(6) DEFAULT NULL,
+  `delivery_failure_code` varchar(64) DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `expires_at` datetime(6) NOT NULL,
+  `terminal_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_link_flow_token_hash` (`flow_token_hash`),
+  UNIQUE KEY `uq_link_active_identifier` (`active_identifier_key`),
+  UNIQUE KEY `uq_link_active_user_purpose` (`active_user_purpose_key`),
+  KEY `idx_link_user_state` (`user_id`,`status`,`expires_at`,`id`),
+  KEY `idx_link_expiry` (`status`,`expires_at`,`id`),
+  KEY `idx_link_cleanup` (`status`,`terminal_at`,`id`),
+  CONSTRAINT `fk_link_challenge_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_link_purpose` CHECK ((`purpose` in (_utf8mb4'LINK_EMAIL',_utf8mb4'LINK_PHONE'))),
+  CONSTRAINT `chk_link_status` CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))),
+  CONSTRAINT `chk_link_delivery_status` CHECK ((`delivery_status` in (_utf8mb4'PENDING',_utf8mb4'SENT',_utf8mb4'FAILED',_utf8mb4'UNKNOWN'))),
+  CONSTRAINT `chk_link_attempts` CHECK ((`failed_attempts` <= 5)),
+  CONSTRAINT `chk_link_times` CHECK (((`expires_at` > `created_at`) and (`otp_expires_at` > `created_at`) and (`otp_expires_at` <= `expires_at`) and (`resend_available_at` <= `expires_at`))),
+  CONSTRAINT `chk_link_delivery_failure` CHECK (((`status` <> _utf8mb4'PENDING') or (`delivery_status` <> _utf8mb4'FAILED') or (`delivery_failure_code` is not null))),
+  CONSTRAINT `chk_link_lifecycle` CHECK (((`status` = _utf8mb4'PENDING' and `identifier_normalized` is not null and `active_identifier_key` = concat(`purpose`,_utf8mb4':',`identifier_normalized`) and `active_user_purpose_key` = concat(cast(`user_id` as char),_utf8mb4':',`purpose`) and `flow_token_hash` is not null and `otp_hash` is not null and `terminal_at` is null) or (`status` in (_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `identifier_normalized` is null and `active_identifier_key` is null and `active_user_purpose_key` is null and `flow_token_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `auth_method_link_challenges` WRITE;
+/*!40000 ALTER TABLE `auth_method_link_challenges` DISABLE KEYS */;
+/*!40000 ALTER TABLE `auth_method_link_challenges` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `social_auth_challenges`
+--
+
+DROP TABLE IF EXISTS `social_auth_challenges`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `social_auth_challenges` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `conflict_token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `provider` varchar(16) NOT NULL,
+  `provider_user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `provider_identity_fingerprint` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `provider_email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `provider_email_verified` tinyint(1) DEFAULT NULL,
+  `active_provider_key` varchar(96) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `conflict_type` varchar(64) NOT NULL,
+  `pending_registration_id` bigint unsigned DEFAULT NULL,
+  `conflicting_user_id` bigint unsigned DEFAULT NULL,
+  `resolution_action` varchar(64) DEFAULT NULL,
+  `resolved_user_id` bigint unsigned DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `expires_at` datetime(6) NOT NULL,
+  `terminal_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_social_conflict_token_hash` (`conflict_token_hash`),
+  UNIQUE KEY `uq_social_active_provider` (`active_provider_key`),
+  KEY `idx_social_pending_registration` (`pending_registration_id`,`status`,`expires_at`,`id`),
+  KEY `idx_social_conflicting_user` (`conflicting_user_id`,`status`,`id`),
+  KEY `idx_social_expiry` (`status`,`expires_at`,`id`),
+  KEY `idx_social_cleanup` (`status`,`terminal_at`,`id`),
+  CONSTRAINT `fk_social_pending_registration` FOREIGN KEY (`pending_registration_id`) REFERENCES `pending_registrations` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_social_conflicting_user` FOREIGN KEY (`conflicting_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_social_resolved_user` FOREIGN KEY (`resolved_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_social_provider` CHECK ((`provider` in (_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
+  CONSTRAINT `chk_social_conflict_type` CHECK ((`conflict_type` in (_utf8mb4'PENDING_EMAIL_MISMATCH',_utf8mb4'PENDING_PHONE_REQUIRES_CANCEL',_utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER'))),
+  CONSTRAINT `chk_social_resolution_action` CHECK ((`resolution_action` is null or `resolution_action` in (_utf8mb4'CONTINUE_OTP',_utf8mb4'CANCEL_PENDING_AND_CONTINUE_SOCIAL',_utf8mb4'LOGIN_EXISTING_ACCOUNT',_utf8mb4'START_ACCOUNT_RECOVERY'))),
+  CONSTRAINT `chk_social_status` CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'RESOLVED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))),
+  CONSTRAINT `chk_social_times` CHECK ((`expires_at` > `created_at`)),
+  CONSTRAINT `chk_social_context` CHECK (((`conflict_type` in (_utf8mb4'PENDING_EMAIL_MISMATCH',_utf8mb4'PENDING_PHONE_REQUIRES_CANCEL') and `pending_registration_id` is not null) or (`conflict_type` = _utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER' and `conflicting_user_id` is not null))),
+  CONSTRAINT `chk_social_action_by_conflict` CHECK (((`resolution_action` is null and `resolved_user_id` is null) or (`conflict_type` in (_utf8mb4'PENDING_EMAIL_MISMATCH',_utf8mb4'PENDING_PHONE_REQUIRES_CANCEL') and `resolution_action` = _utf8mb4'CONTINUE_OTP' and `resolved_user_id` is null) or (`conflict_type` in (_utf8mb4'PENDING_EMAIL_MISMATCH',_utf8mb4'PENDING_PHONE_REQUIRES_CANCEL') and `resolution_action` = _utf8mb4'CANCEL_PENDING_AND_CONTINUE_SOCIAL' and `resolved_user_id` is not null) or (`conflict_type` = _utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER' and `resolution_action` in (_utf8mb4'LOGIN_EXISTING_ACCOUNT',_utf8mb4'START_ACCOUNT_RECOVERY') and `resolved_user_id` is null))),
+  CONSTRAINT `chk_social_lifecycle` CHECK (((`status` = _utf8mb4'PENDING' and `conflict_token_hash` is not null and `provider_user_id` is not null and `active_provider_key` = concat(`provider`,_utf8mb4':',`provider_identity_fingerprint`) and `terminal_at` is null and `resolution_action` is null and `resolved_user_id` is null and ((`provider_email` is null and `provider_email_verified` is null) or (`provider_email` is not null and `provider_email_verified` is not null))) or (`status` = _utf8mb4'RESOLVED' and `conflict_token_hash` is null and `provider_user_id` is null and `provider_email` is null and `provider_email_verified` is null and `active_provider_key` is null and `resolution_action` is not null and `terminal_at` is not null) or (`status` in (_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `conflict_token_hash` is null and `provider_user_id` is null and `provider_email` is null and `provider_email_verified` is null and `active_provider_key` is null and `resolution_action` is null and `resolved_user_id` is null and `terminal_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `social_auth_challenges` WRITE;
+/*!40000 ALTER TABLE `social_auth_challenges` DISABLE KEYS */;
+/*!40000 ALTER TABLE `social_auth_challenges` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `reauthentication_challenges`
+--
+
+DROP TABLE IF EXISTS `reauthentication_challenges`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `reauthentication_challenges` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `proof_method` varchar(32) NOT NULL,
+  `scope` varchar(32) NOT NULL,
+  `target_auth_method` varchar(16) NOT NULL,
+  `active_user_scope_key` varchar(96) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `expires_at` datetime(6) NOT NULL,
+  `terminal_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_reauth_token_hash` (`token_hash`),
+  UNIQUE KEY `uq_reauth_active_user_scope` (`active_user_scope_key`),
+  KEY `idx_reauth_user_state` (`user_id`,`status`,`expires_at`,`id`),
+  KEY `idx_reauth_expiry` (`status`,`expires_at`,`id`),
+  KEY `idx_reauth_cleanup` (`status`,`terminal_at`,`id`),
+  CONSTRAINT `fk_reauth_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_reauth_proof_method` CHECK ((`proof_method` in (_utf8mb4'LOCAL_PASSWORD',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
+  CONSTRAINT `chk_reauth_scope` CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD'))),
+  CONSTRAINT `chk_reauth_target_method` CHECK ((`target_auth_method` in (_utf8mb4'EMAIL',_utf8mb4'PHONE',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
+  CONSTRAINT `chk_reauth_status` CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))),
+  CONSTRAINT `chk_reauth_times` CHECK ((`expires_at` > `created_at`)),
+  CONSTRAINT `chk_reauth_lifecycle` CHECK (((`status` = _utf8mb4'ACTIVE' and `token_hash` is not null and `active_user_scope_key` = concat(cast(`user_id` as char),_utf8mb4':',`scope`) and `terminal_at` is null) or (`status` in (_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `token_hash` is null and `active_user_scope_key` is null and `terminal_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `reauthentication_challenges` WRITE;
+/*!40000 ALTER TABLE `reauthentication_challenges` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reauthentication_challenges` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
+DROP TABLE IF EXISTS `password_reset_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `password_reset_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `delivery_channel` varchar(16) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `expires_at` datetime(6) NOT NULL,
+  `used_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_password_reset_tokens_hash` (`token_hash`),
+  KEY `idx_password_reset_tokens_user_state` (`user_id`,`used_at`,`expires_at`,`id`),
+  CONSTRAINT `fk_password_reset_tokens_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_password_reset_tokens_delivery_channel` CHECK ((`delivery_channel` in (_utf8mb4'EMAIL',_utf8mb4'SMS'))),
+  CONSTRAINT `chk_password_reset_tokens_expiry` CHECK ((`expires_at` > `created_at`)),
+  CONSTRAINT `chk_password_reset_tokens_used_at` CHECK (((`used_at` is null) or (`used_at` >= `created_at`)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `password_reset_tokens`
+--
+
+LOCK TABLES `password_reset_tokens` WRITE;
+/*!40000 ALTER TABLE `password_reset_tokens` DISABLE KEYS */;
+/*!40000 ALTER TABLE `password_reset_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `post_hashtags`
+--
+
+DROP TABLE IF EXISTS `post_hashtags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `post_hashtags` (
+  `post_id` bigint unsigned NOT NULL,
+  `hashtag_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`post_id`,`hashtag_id`),
+  KEY `idx_post_hashtags_hashtag_post` (`hashtag_id`,`post_id` DESC),
+  CONSTRAINT `fk_post_hashtags_hashtag` FOREIGN KEY (`hashtag_id`) REFERENCES `hashtags` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_hashtags_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `post_hashtags`
+--
+
+LOCK TABLES `post_hashtags` WRITE;
+/*!40000 ALTER TABLE `post_hashtags` DISABLE KEYS */;
+/*!40000 ALTER TABLE `post_hashtags` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `post_likes`
+--
+
+DROP TABLE IF EXISTS `post_likes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `post_likes` (
+  `user_id` bigint unsigned NOT NULL,
+  `post_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`user_id`,`post_id`),
+  KEY `idx_post_likes_post_created` (`post_id`,`created_at` DESC,`user_id` DESC),
+  CONSTRAINT `fk_post_likes_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `post_likes`
+--
+
+LOCK TABLES `post_likes` WRITE;
+/*!40000 ALTER TABLE `post_likes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `post_likes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `post_media`
+--
+
+DROP TABLE IF EXISTS `post_media`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `post_media` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `post_id` bigint unsigned NOT NULL,
+  `media_url` varchar(1000) NOT NULL,
+  `storage_public_id` varchar(255) NOT NULL,
+  `mime_type` enum('image/jpeg','image/png','image/webp') NOT NULL,
+  `file_size_bytes` bigint unsigned NOT NULL,
+  `width_px` int unsigned DEFAULT NULL,
+  `height_px` int unsigned DEFAULT NULL,
+  `display_order` tinyint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_post_media_storage_public_id` (`storage_public_id`),
+  UNIQUE KEY `uq_post_media_post_order` (`post_id`,`display_order`),
+  CONSTRAINT `fk_post_media_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_post_media_display_order` CHECK ((`display_order` <= 3)),
+  CONSTRAINT `chk_post_media_file_size` CHECK ((`file_size_bytes` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `post_media`
+--
+
+LOCK TABLES `post_media` WRITE;
+/*!40000 ALTER TABLE `post_media` DISABLE KEYS */;
+/*!40000 ALTER TABLE `post_media` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `posts`
+--
+
+DROP TABLE IF EXISTS `posts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `posts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `author_id` bigint unsigned NOT NULL,
+  `content` varchar(500) DEFAULT NULL,
+  `status` enum('PUBLISHED','HIDDEN','DELETED') NOT NULL DEFAULT 'PUBLISHED',
+  `is_edited` tinyint(1) NOT NULL DEFAULT '0',
+  `like_count` int unsigned NOT NULL DEFAULT '0',
+  `comment_count` int unsigned NOT NULL DEFAULT '0',
+  `published_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `hidden_by` bigint unsigned DEFAULT NULL,
+  `hidden_at` datetime(6) DEFAULT NULL,
+  `hidden_reason` varchar(500) DEFAULT NULL,
+  `deleted_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `fk_posts_hidden_by` (`hidden_by`),
+  KEY `idx_posts_author_status_published` (`author_id`,`status`,`published_at` DESC,`id` DESC),
+  KEY `idx_posts_status_published` (`status`,`published_at` DESC,`id` DESC),
+  KEY `idx_posts_status_engagement` (`status`,`like_count` DESC,`comment_count` DESC,`published_at` DESC,`id` DESC),
+  FULLTEXT KEY `ftx_posts_content` (`content`),
+  CONSTRAINT `fk_posts_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_posts_hidden_by` FOREIGN KEY (`hidden_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_posts_deleted_state` CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or (`status` <> _utf8mb4'DELETED'))),
+  CONSTRAINT `chk_posts_hidden_state` CHECK ((((`status` = _utf8mb4'HIDDEN') and (`hidden_at` is not null) and (`hidden_by` is not null)) or (`status` <> _utf8mb4'HIDDEN')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `posts`
+--
+
+LOCK TABLES `posts` WRITE;
+/*!40000 ALTER TABLE `posts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `posts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `refresh_tokens`
+--
+
+DROP TABLE IF EXISTS `refresh_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `refresh_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `device_id` varchar(100) DEFAULT NULL,
+  `device_info` varchar(500) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `expires_at` datetime(6) NOT NULL,
+  `revoked_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_refresh_tokens_hash` (`token_hash`),
+  KEY `idx_refresh_tokens_user_expiry` (`user_id`,`revoked_at`,`expires_at`,`id`),
+  CONSTRAINT `fk_refresh_tokens_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_refresh_tokens_expiry` CHECK ((`expires_at` > `created_at`)),
+  CONSTRAINT `chk_refresh_tokens_revoked_at` CHECK (((`revoked_at` is null) or (`revoked_at` >= `created_at`)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `refresh_tokens`
+--
+
+LOCK TABLES `refresh_tokens` WRITE;
+/*!40000 ALTER TABLE `refresh_tokens` DISABLE KEYS */;
+/*!40000 ALTER TABLE `refresh_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `reports`
+--
+
+DROP TABLE IF EXISTS `reports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `reports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `reporter_id` bigint unsigned NOT NULL,
+  `post_id` bigint unsigned NOT NULL,
+  `reason` enum('SPAM','HARASSMENT','HARMFUL_CONTENT','VIOLENCE','MISINFORMATION','INAPPROPRIATE','OTHER') NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `status` enum('PENDING','RESOLVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  `resolved_by` bigint unsigned DEFAULT NULL,
+  `resolved_at` datetime(6) DEFAULT NULL,
+  `resolution_note` varchar(1000) DEFAULT NULL,
+  `post_content_snapshot` varchar(500) DEFAULT NULL,
+  `post_media_snapshot` json DEFAULT NULL,
+  `pending_report_key` varchar(100) GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'PENDING') then concat(`reporter_id`,_utf8mb3':',`post_id`) else NULL end)) STORED,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_reports_pending_key` (`pending_report_key`),
+  KEY `fk_reports_resolved_by` (`resolved_by`),
+  KEY `idx_reports_status_created` (`status`,`created_at`,`id`),
+  KEY `idx_reports_post_status` (`post_id`,`status`,`created_at` DESC,`id` DESC),
+  KEY `idx_reports_reporter_created` (`reporter_id`,`created_at` DESC,`id` DESC),
+  CONSTRAINT `fk_reports_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_reports_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_reports_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_reports_resolution_state` CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `reports`
+--
+
+LOCK TABLES `reports` WRITE;
+/*!40000 ALTER TABLE `reports` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reports` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `saved_posts`
+--
+
+DROP TABLE IF EXISTS `saved_posts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saved_posts` (
+  `user_id` bigint unsigned NOT NULL,
+  `post_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`user_id`,`post_id`),
+  KEY `idx_saved_posts_user_created` (`user_id`,`created_at` DESC,`post_id` DESC),
+  KEY `idx_saved_posts_post_created` (`post_id`,`created_at` DESC,`user_id` DESC),
+  CONSTRAINT `fk_saved_posts_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_saved_posts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `saved_posts`
+--
+
+LOCK TABLES `saved_posts` WRITE;
+/*!40000 ALTER TABLE `saved_posts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `saved_posts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `user_auth_providers`
+--
+
+DROP TABLE IF EXISTS `user_auth_providers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_auth_providers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `provider` varchar(16) NOT NULL,
+  `provider_user_id` varchar(255) NOT NULL,
+  `provider_email` varchar(255) DEFAULT NULL,
+  `provider_email_verified` tinyint(1) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_auth_provider_identity` (`provider`,`provider_user_id`),
+  UNIQUE KEY `uq_user_auth_provider_per_user` (`user_id`,`provider`),
+  KEY `idx_user_auth_providers_user` (`user_id`,`provider`,`id`),
+  CONSTRAINT `fk_user_auth_providers_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_user_auth_providers_provider` CHECK ((`provider` in (_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
+  CONSTRAINT `chk_user_auth_providers_provider_user_id` CHECK ((char_length(trim(`provider_user_id`)) > 0)),
+  CONSTRAINT `chk_user_auth_providers_email` CHECK (((`provider_email` is null and `provider_email_verified` is null) or (`provider_email` is not null and `provider_email_verified` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `user_auth_providers`
+--
+
+LOCK TABLES `user_auth_providers` WRITE;
+/*!40000 ALTER TABLE `user_auth_providers` DISABLE KEYS */;
+/*!40000 ALTER TABLE `user_auth_providers` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `user_profiles`
+--
+
+DROP TABLE IF EXISTS `user_profiles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_profiles` (
+  `user_id` bigint unsigned NOT NULL,
+  `display_name` varchar(100) DEFAULT NULL,
+  `avatar_url` varchar(1000) DEFAULT NULL,
+  `avatar_public_id` varchar(255) DEFAULT NULL,
+  `bio` varchar(500) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `profile_completed_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`user_id`),
+  FULLTEXT KEY `ftx_user_profiles_display_name` (`display_name`),
+  CONSTRAINT `fk_user_profiles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))),
+  CONSTRAINT `chk_user_profiles_completion_requires_birth_date` CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))),
+  CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `user_profiles`
+--
+
+LOCK TABLES `user_profiles` WRITE;
+/*!40000 ALTER TABLE `user_profiles` DISABLE KEYS */;
+/*!40000 ALTER TABLE `user_profiles` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) DEFAULT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `email_verified_at` datetime(6) DEFAULT NULL,
+  `phone_verified_at` datetime(6) DEFAULT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `role` varchar(16) NOT NULL DEFAULT 'USER',
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `blocked_at` datetime(6) DEFAULT NULL,
+  `blocked_reason` varchar(500) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_users_email` (`email`),
+  UNIQUE KEY `uq_users_phone_number` (`phone_number`),
+  KEY `idx_users_status_created_at` (`status`,`created_at` DESC,`id` DESC),
+  CONSTRAINT `chk_users_role` CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))),
+  CONSTRAINT `chk_users_status` CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))),
+  CONSTRAINT `chk_users_blocked_data` CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))),
+  CONSTRAINT `chk_users_email_not_blank` CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))),
+  CONSTRAINT `chk_users_email_verification_consistency` CHECK (((`email` is not null) or (`email_verified_at` is null))),
+  CONSTRAINT `chk_users_phone_not_blank` CHECK (((`phone_number` is null) or (char_length(trim(`phone_number`)) > 0))),
+  CONSTRAINT `chk_users_phone_verification_consistency` CHECK (((`phone_number` is not null) or (`phone_verified_at` is null))),
+  CONSTRAINT `chk_users_password_verified_identifier` CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null) or (`phone_number` is not null and `phone_verified_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `users`
+--
+
+LOCK TABLES `users` WRITE;
+/*!40000 ALTER TABLE `users` DISABLE KEYS */;
+/*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Temporary view structure for view `v_active_posts`
+--
+
+DROP TABLE IF EXISTS `v_active_posts`;
+/*!50001 DROP VIEW IF EXISTS `v_active_posts`*/;
+SET @saved_cs_client     = @@character_set_client;
+/*!50503 SET character_set_client = utf8mb4 */;
+/*!50001 CREATE VIEW `v_active_posts` AS SELECT
+ 1 AS `post_id`,
+ 1 AS `content`,
+ 1 AS `published_at`,
+ 1 AS `like_count`,
+ 1 AS `comment_count`,
+ 1 AS `is_edited`,
+ 1 AS `author_id`,
+ 1 AS `display_name`,
+ 1 AS `avatar_url`*/;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Temporary view structure for view `v_feed_posts`
+--
+
+DROP TABLE IF EXISTS `v_feed_posts`;
+/*!50001 DROP VIEW IF EXISTS `v_feed_posts`*/;
+SET @saved_cs_client     = @@character_set_client;
+/*!50503 SET character_set_client = utf8mb4 */;
+/*!50001 CREATE VIEW `v_feed_posts` AS SELECT
+ 1 AS `post_id`,
+ 1 AS `author_id`,
+ 1 AS `content`,
+ 1 AS `is_edited`,
+ 1 AS `like_count`,
+ 1 AS `comment_count`,
+ 1 AS `published_at`,
+ 1 AS `display_name`,
+ 1 AS `avatar_url`*/;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Final view structure for view `v_active_posts`
+--
+
+/*!50001 DROP VIEW IF EXISTS `v_active_posts`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb3 */;
+/*!50001 SET character_set_results     = utf8mb3 */;
+/*!50001 SET collation_connection      = utf8mb3_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`%` SQL SECURITY DEFINER */
+/*!50001 VIEW `v_active_posts` AS select `p`.`id` AS `post_id`,`p`.`content` AS `content`,`p`.`published_at` AS `published_at`,`p`.`like_count` AS `like_count`,`p`.`comment_count` AS `comment_count`,`p`.`is_edited` AS `is_edited`,`u`.`id` AS `author_id`,`up`.`display_name` AS `display_name`,`up`.`avatar_url` AS `avatar_url` from ((`posts` `p` join `users` `u` on((`u`.`id` = `p`.`author_id`))) join `user_profiles` `up` on((`up`.`user_id` = `u`.`id`))) where ((`p`.`status` = 'PUBLISHED') and (`u`.`status` = 'ACTIVE') and (`up`.`profile_completed_at` is not null)) */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `v_feed_posts`
+--
+
+/*!50001 DROP VIEW IF EXISTS `v_feed_posts`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb3 */;
+/*!50001 SET character_set_results     = utf8mb3 */;
+/*!50001 SET collation_connection      = utf8mb3_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`%` SQL SECURITY DEFINER */
+/*!50001 VIEW `v_feed_posts` AS select `p`.`id` AS `post_id`,`p`.`author_id` AS `author_id`,`p`.`content` AS `content`,`p`.`is_edited` AS `is_edited`,`p`.`like_count` AS `like_count`,`p`.`comment_count` AS `comment_count`,`p`.`published_at` AS `published_at`,`up`.`display_name` AS `display_name`,`up`.`avatar_url` AS `avatar_url` from ((`posts` `p` join `users` `u` on((`u`.`id` = `p`.`author_id`))) join `user_profiles` `up` on((`up`.`user_id` = `p`.`author_id`))) where ((`p`.`status` = 'PUBLISHED') and (`u`.`status` = 'ACTIVE') and (`up`.`profile_completed_at` is not null)) */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-07-19 10:03:55

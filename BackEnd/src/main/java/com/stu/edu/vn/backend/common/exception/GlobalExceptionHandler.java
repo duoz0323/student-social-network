@@ -7,6 +7,8 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Xử lý lỗi tập trung để API không trả stack trace hoặc chi tiết nội bộ cho Client.
@@ -31,9 +34,20 @@ public class GlobalExceptionHandler {
                 errorCode.name(),
                 exception.getMessage(),
                 errorCode.getHttpStatus().value(),
-                request.getRequestURI()
+                request.getRequestURI(),
+                exception.getDetails()
         );
-        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.status(errorCode.getHttpStatus());
+        if (exception.getDetails() != null || isSensitiveAuthPath(request.getRequestURI())) {
+            // Flow token trong chi tiết conflict là dữ liệu ngắn hạn, không cho trình duyệt hoặc proxy lưu cache.
+            responseBuilder.cacheControl(CacheControl.noStore()).header(HttpHeaders.PRAGMA, "no-cache");
+        }
+        return responseBuilder.body(response);
+    }
+
+    private boolean isSensitiveAuthPath(String path) {
+        return path != null && (path.startsWith("/api/v1/auth")
+                || path.startsWith("/api/v1/users/me/auth-providers"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -89,6 +103,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpServletRequest request) {
+        ErrorResponse response = ErrorResponse.of(
+                ErrorCode.VALIDATION_ERROR.name(),
+                ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
+                HttpStatus.BAD_REQUEST.value(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(HttpServletRequest request) {
         ErrorResponse response = ErrorResponse.of(
                 ErrorCode.VALIDATION_ERROR.name(),
                 ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
