@@ -1,5 +1,7 @@
 # Kỹ năng sửa lỗi
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Khi source hoặc test khác README, phải coi đó là implementation cũ cần đối chiếu, không sửa README để hợp thức hóa code.
+
 ## 1. Nguyên tắc bắt buộc
 
 Khi nhận code lỗi hoặc log lỗi, không sửa ngay.

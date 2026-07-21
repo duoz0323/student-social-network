@@ -1,9 +1,11 @@
 # Kỹ năng thiết kế Database
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. SQL/DBML chỉ là baseline kỹ thuật để audit; mọi đề xuất schema phải chứng minh phù hợp README.
+
 ## 1. Quy trình
 
-1. Đọc PRD.
-2. Xác định thực thể.
+1. Đọc README, sau đó đọc PRD và tài liệu database để phát hiện khác biệt.
+2. Đối chiếu SQL/DBML baseline với trạng thái đích trong README.
 3. Xác định thuộc tính.
 4. Xác định khóa chính.
 5. Xác định khóa ngoại.
@@ -28,10 +30,8 @@
 - Không tồn tại Follow trùng.
 - Không tồn tại Like trùng.
 - Không tồn tại Save trùng.
-- Email và số điện thoại duy nhất.
-- Email được chuẩn hóa chữ thường trước khi lưu.
-- Số điện thoại được chuẩn hóa về một định dạng thống nhất trước khi lưu.
-- Không dùng `username` làm định danh công khai trong MVP.
-- Ngày sinh thuộc hồ sơ người dùng, là thông tin tùy chọn và không được lớn hơn ngày hiện tại.
+- Các invariant trong README có constraint hoặc transaction/service bảo đảm tương ứng.
+- SQL, DBML, Entity, Repository và test được kiểm tra đồng bộ theo cùng một trạng thái đích.
+- Nullable, unique, foreign key, index, lifecycle, cleanup và dữ liệu cũ đều được phân tích.
 - Quan hệ xóa phù hợp.
 - Index phục vụ truy vấn chính.

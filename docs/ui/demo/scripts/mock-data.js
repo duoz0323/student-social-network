@@ -4,7 +4,6 @@ export const demoData = {
   demoAccounts: [
     {
       email: "minh.demo@example.com",
-      phoneNumber: "+84901234567",
       passwordDemo: "DemoUser123!",
       role: "USER",
       status: "ACTIVE",
@@ -12,7 +11,7 @@ export const demoData = {
     },
     {
       email: "admin.demo@example.com",
-      phoneNumber: "+84907654321",
+      email: "+84907654321",
       passwordDemo: "DemoAdmin123!",
       role: "ADMIN",
       status: "ACTIVE",
@@ -20,7 +19,7 @@ export const demoData = {
     },
     {
       email: "blocked.demo@example.com",
-      phoneNumber: "+84909998877",
+      email: "+84909998877",
       passwordDemo: "DemoBlocked123!",
       role: "USER",
       status: "BLOCKED",
@@ -103,3 +102,4 @@ export const demoData = {
     forYou: ["post-001", "post-002"],
   },
 };
+

@@ -1,63 +1,79 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import AuthForm from '../components/AuthForm.jsx';
 import AuthLayout from '../components/AuthLayout.jsx';
+import { useRegistration } from '../hooks/useRegistration.js';
+import { getAuthenticatedHome } from '../utils/authNavigation.js';
+import { getRegistrationErrorMessage } from '../utils/registrationErrorMapper.js';
+import { validateRegistration } from '../validation/registrationValidation.js';
 
 export default function RegisterPage() {
-  const { register, handleFutureSocialAuth } = useApp();
+  const { handleFutureSocialAuth } = useApp();
+  const registration = useRegistration();
   const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    identifier: '',
-    password: '',
-    confirmPassword: '',
-    acceptTerms: false
+  const location = useLocation();
+  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', acceptTerms: false });
+  const [message, setMessage] = useState(() => {
+    if (location.state?.reason === 'SOCIAL_CONFLICT_EXPIRED') return 'Phiên xử lý đã hết hạn. Bạn có thể tiếp tục đăng ký đang chờ hoặc bắt đầu lại social.';
+    if (location.state?.reason === 'SOCIAL_CONFLICT_OUTCOME_UNKNOWN') return 'Chưa xác định được kết quả xử lý social. Đăng ký đang chờ vẫn được giữ nguyên.';
+    return location.state?.reason ? 'Bạn có thể bắt đầu hoặc tiếp tục đăng ký đang chờ.' : '';
   });
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   async function submit() {
-    if (!form.identifier.trim() || !form.password) {
-      setMessage('Vui lòng nhập đầy đủ thông tin.');
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setMessage('Mật khẩu xác nhận không khớp.');
-      return;
-    }
-    if (!form.acceptTerms) {
-      setMessage('Vui lòng đồng ý với điều khoản sử dụng.');
+    const errors = validateRegistration(form);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
-    setSubmitting(true);
+    setFieldErrors({});
     setMessage('');
-    const result = await register(form);
-    setSubmitting(false);
-
-    if (!result.ok) {
-      setMessage(result.message);
-      return;
+    try {
+      const flow = await registration.startRegistration({
+        email: form.email.trim(),
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+      });
+      if (flow) navigate('/register/verify', { replace: true });
+    } catch (error) {
+      setFieldErrors(error.fieldErrors ?? {});
+      setMessage(getRegistrationErrorMessage(error));
+    } finally {
+      // Không giữ password và confirmPassword trong state sau request.
+      setForm((current) => ({ ...current, password: '', confirmPassword: '' }));
     }
-    navigate('/onboarding/profile');
+  }
+
+  function updateForm(nextForm) {
+    setForm(nextForm);
+    setFieldErrors({});
+    setMessage('');
   }
 
   function showFutureMessage(providerName) {
-    const result = handleFutureSocialAuth(providerName);
-    setMessage(result.message);
+    setMessage(handleFutureSocialAuth(providerName).message);
   }
 
   return (
     <AuthLayout>
-      <AuthForm 
+      <AuthForm
         type="register"
         form={form}
-        setForm={setForm}
+        setForm={updateForm}
         onSubmit={submit}
-        submitting={submitting}
+        submitting={registration.isSubmitting}
         message={message}
+        fieldErrors={fieldErrors}
         showFutureMessage={showFutureMessage}
+        includeRegistrationFlow
+        hasPendingRegistration={registration.hasFlow}
+        onContinueRegistration={() => navigate('/register/verify')}
+        onGoogleAuthenticated={(session) => navigate(getAuthenticatedHome(session), { replace: true })}
+        onGoogleConflict={() => navigate('/auth/social-conflict', { replace: true })}
+        onFacebookAuthenticated={(session) => navigate(getAuthenticatedHome(session), { replace: true })}
+        onFacebookConflict={() => navigate('/auth/social-conflict', { replace: true })}
       />
     </AuthLayout>
   );

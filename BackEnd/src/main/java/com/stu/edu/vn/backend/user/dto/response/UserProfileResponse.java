@@ -3,7 +3,7 @@ package com.stu.edu.vn.backend.user.dto.response;
 import java.time.LocalDate;
 
 /**
- * Response hồ sơ cá nhân sau onboarding; không chứa email, số điện thoại hoặc token.
+ * Response hồ sơ cá nhân sau onboarding; không chứa email hoặc token xác thực.
  */
 public record UserProfileResponse(
         String displayName,

@@ -1,5 +1,7 @@
 # Kỹ năng phát triển Backend
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Skill này hướng dẫn cách triển khai, không thay thế đặc tả nghiệp vụ trong README.
+
 ## 1. Mục tiêu
 
 Hướng dẫn Agent xây dựng API Spring Boot theo layered architecture và package theo feature.
@@ -22,7 +24,7 @@ Thư mục `enums/` chỉ tạo khi module có enum nghiệp vụ. Các trạng 
 
 ## 3. Quy trình triển khai
 
-1. Đọc PRD và rule nghiệp vụ.
+1. Đọc README, sau đó đọc PRD và rule nghiệp vụ để phát hiện khoảng chênh lệch.
 2. Xác định Entity liên quan.
 3. Xác định enum của entity và đặt trong `enums/` của module.
 4. Xác định request DTO.
@@ -44,18 +46,11 @@ Thư mục `enums/` chỉ tạo khi module có enum nghiệp vụ. Các trạng 
 - Exception phải rõ nghĩa.
 - Response không chứa dữ liệu nhạy cảm.
 - Enum nghiệp vụ thuộc module nào thì đặt trong `enums/` của module đó; không đặt chung ngoài module khi không cần chia sẻ.
-- Luồng đăng ký dùng `identifier`, `password`, `confirmPassword`; không dùng `username` hoặc `displayName`.
-- `identifier` là email hoặc số điện thoại; request đăng ký chỉ nhận đúng một phương thức định danh tại thời điểm tạo tài khoản.
-- Service Auth phải tự xác định `identifier`, chuẩn hóa email hoặc số điện thoại trước khi kiểm tra trùng và lưu.
-- Nếu đăng ký bằng email thì `phone_number` lưu `NULL`; nếu đăng ký bằng số điện thoại thì `email` lưu `NULL`.
-- Đăng ký tạo `users` và `user_profiles` rỗng trong cùng transaction.
-- Nếu tạo `user_profiles` thất bại thì rollback `users`.
-- Tên hiển thị được lưu trong `user_profiles` ở bước onboarding hoặc cập nhật hồ sơ.
-- `profile_completed_at` là điều kiện để sử dụng chức năng mạng xã hội chính.
-- Service phải trả `PROFILE_NOT_COMPLETED` khi người chưa hoàn tất hồ sơ gọi API Feed, đăng bài, Follow, Like, bình luận, lưu bài, tìm kiếm hoặc báo cáo.
-- Đăng nhập dùng một định danh email hoặc số điện thoại kèm mật khẩu.
-- MVP chưa triển khai xác minh email hoặc SMS OTP; tài khoản mới được tạo `ACTIVE`.
-- Ngày sinh chỉ xử lý ở hồ sơ, không bắt buộc khi đăng ký.
+- Với Auth/onboarding, lập state machine, transaction boundary và bảng đối chiếu README với Entity/Repository/source/test trước khi code.
+- Không gọi dịch vụ bên ngoài trong transaction database.
+- Không tin dữ liệu danh tính, trạng thái verified hoặc user đích do Frontend tự khai báo.
+- Mọi validation, quyền, token và state transition phải truy ngược được tới README hoặc API contract đã đồng bộ.
+- Khi source hiện tại khác README, xem source là implementation cũ cần thay thế; không làm ngược lại.
 
 ## 5. Kiểm tra
 

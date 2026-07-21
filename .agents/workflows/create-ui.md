@@ -1,7 +1,10 @@
 # Workflow tạo UI
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Workflow này chỉ mô tả cách tạo UI; hành vi và trạng thái đích phải lấy từ README.
+
 ## Bước 1: Đọc tài liệu
 
+- `README.md` trước tiên và đầy đủ.
 - `docs/ui/UI-FLOW.md`
 - `docs/ui/SCREEN-LIST.md`
 - `docs/ui/COMPONENTS.md`
@@ -25,16 +28,12 @@ Ghi rõ:
 
 Với màn hình Auth MVP:
 
-- Đăng ký hiển thị một trường email hoặc số điện thoại, mật khẩu và xác nhận mật khẩu.
-- Không yêu cầu nhập đồng thời email và số điện thoại.
-- Đăng ký không hiển thị tên người dùng hoặc username.
-- Đăng nhập hiển thị một ô email hoặc số điện thoại và một ô mật khẩu.
-- Không dùng nhãn Gmail, Google/Facebook login hoặc xác thực email trong MVP.
-- Sau đăng ký chuyển sang onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
-- Route Guard tách trạng thái chưa đăng nhập, đã đăng nhập nhưng chưa hoàn tất hồ sơ, và đã đăng nhập hoàn tất hồ sơ.
-- Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
-- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
+- Lập danh sách trạng thái và màn hình từ README trước khi dùng mock hoặc ảnh thiết kế cũ.
+- Đối chiếu tài liệu UI với README và ghi nhận điểm lỗi thời trước khi triển khai.
+- Mô hình hóa pending/recovery/cooldown/conflict, authentication và onboarding theo API contract đã đồng bộ.
+- Không tạo session hoặc user mock trước thời điểm contract cho phép.
+- Không lưu provider credential lâu dài hoặc dùng provider credential gọi API nghiệp vụ.
+- Route guard và xử lý lỗi phải bao phủ các trạng thái README quy định.
 
 ## Bước 3: Dựng bằng mock data
 

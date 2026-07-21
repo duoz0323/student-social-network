@@ -2,6 +2,7 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { initialData } from '../data/mockData.js';
 import { normalizeText } from '../utils/formatters.js';
+import { useAuth } from '../features/auth/hooks/useAuth.js';
 
 const AppContext = createContext(null);
 const SESSION_KEY = 'unishare.react.session';
@@ -16,19 +17,9 @@ function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function isPhoneNumber(value) {
-  return /^\+?\d{9,15}$/.test(value);
-}
-
-function normalizeIdentifier(identifier) {
-  const cleanIdentifier = identifier.trim();
-  if (isEmail(cleanIdentifier)) {
-    return { type: 'email', email: normalizeText(cleanIdentifier), phoneNumber: null };
-  }
-  if (isPhoneNumber(cleanIdentifier)) {
-    return { type: 'phone', email: null, phoneNumber: cleanIdentifier.replace(/\s+/g, '') };
-  }
-  return null;
+function normalizeIdentifier(email) {
+  const value = email.trim();
+  return isEmail(value) ? { type: 'email', email: normalizeText(value) } : null;
 }
 
 function readStoredData() {
@@ -119,6 +110,7 @@ function persistData(data) {
 }
 
 export function AppProvider({ children }) {
+  const auth = useAuth();
   const [data, setDataState] = useState(() => readStoredData());
   const [currentUserId, setCurrentUserId] = useState(() => readStoredSession(readStoredData().users)?.userId ?? null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -131,7 +123,22 @@ export function AppProvider({ children }) {
     });
   }
 
-  const currentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
+  const currentUser = useMemo(() => {
+    const mockCurrentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
+    // Cáº§u ná»‘i táº¡m giá»¯ UI mock hoáº¡t Ä‘á»™ng trong khi cÃ¡c module há»“ sÆ¡/feed chÆ°a tÃ­ch há»£p Backend.
+    if (!auth.isAuthenticated) return mockCurrentUser;
+    return mockCurrentUser ?? {
+      id: auth.user.id,
+      role: auth.role,
+      status: 'ACTIVE',
+      displayName: 'NgÆ°á»i dÃ¹ng UniShare',
+      avatarUrl: '',
+      birthDate: null,
+      bio: '',
+      profileCompletedAt: auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null,
+      profile: { displayName: '', avatarUrl: '', dateOfBirth: null, bio: '', profileCompletedAt: null },
+    };
+  }, [auth.isAuthenticated, auth.profileCompleted, auth.role, auth.user, currentUserId, data.users]);
 
   const value = useMemo(() => {
     const viewUsers = data.users.map(toViewUser);
@@ -153,23 +160,22 @@ export function AppProvider({ children }) {
     async function login(identifier, password) {
       const normalized = normalizeIdentifier(identifier);
       if (!normalized) {
-        return { ok: false, message: 'Email hoặc số điện thoại không hợp lệ.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
       }
 
       const passwordHash = await sha256(password);
       const account = data.demoAccounts.find((item) => {
         const emailMatches = normalized.email && item.email === normalized.email;
-        const phoneMatches = normalized.phoneNumber && item.phoneNumber === normalized.phoneNumber;
-        return (emailMatches || phoneMatches) && (item.passwordHash === passwordHash || item.passwordDemo === password);
+        return emailMatches && (item.passwordHash === passwordHash || item.passwordDemo === password);
       });
 
       if (!account) {
-        return { ok: false, message: 'Email/số điện thoại hoặc mật khẩu không đúng.' };
+        return { ok: false, message: 'Email/sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng.' };
       }
 
       const user = getRawUserById(account.userId);
       if (!user || account.status === 'BLOCKED' || user.status === 'BLOCKED') {
-        return { ok: false, message: 'Tài khoản đã bị khóa, vui lòng liên hệ quản trị viên.' };
+        return { ok: false, message: 'TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a, vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn.' };
       }
 
       saveSession(user);
@@ -179,19 +185,17 @@ export function AppProvider({ children }) {
     }
 
     async function register(payload) {
-      const normalized = normalizeIdentifier(payload.identifier);
+      const normalized = normalizeIdentifier(payload.email);
       if (!normalized) {
-        return { ok: false, message: 'Email hoặc số điện thoại không hợp lệ.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
       }
 
       const duplicated = data.demoAccounts.some(
-        (account) =>
-          (normalized.email && account.email === normalized.email) ||
-          (normalized.phoneNumber && account.phoneNumber === normalized.phoneNumber),
+        (account) => normalized.email && account.email === normalized.email,
       );
 
       if (duplicated) {
-        return { ok: false, message: 'Email hoặc số điện thoại đã tồn tại.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ã£ tá»“n táº¡i.' };
       }
 
       const userId = makeId('user');
@@ -200,7 +204,6 @@ export function AppProvider({ children }) {
       const user = {
         id: userId,
         email: normalized.email,
-        phoneNumber: normalized.phoneNumber,
         role: 'USER',
         status: 'ACTIVE',
         profile: {
@@ -217,7 +220,6 @@ export function AppProvider({ children }) {
       const account = {
         id: accountId,
         email: normalized.email,
-        phoneNumber: normalized.phoneNumber,
         passwordHash,
         role: 'USER',
         status: 'ACTIVE',
@@ -236,6 +238,10 @@ export function AppProvider({ children }) {
     }
 
     function logout() {
+      if (auth.isAuthenticated) {
+        auth.logout();
+        return;
+      }
       clearSession();
       setCurrentUserId(null);
     }
@@ -248,7 +254,7 @@ export function AppProvider({ children }) {
         .filter(Boolean);
 
       if (!cleanContent && (!imageUrls || imageUrls.length === 0)) {
-        return { ok: false, message: 'Bài viết cần có nội dung hoặc hình ảnh.' };
+        return { ok: false, message: 'BÃ i viáº¿t cáº§n cÃ³ ná»™i dung hoáº·c hÃ¬nh áº£nh.' };
       }
 
       const post = {
@@ -386,7 +392,7 @@ export function AppProvider({ children }) {
     function completeOnboarding(payload) {
       const displayName = payload.displayName.trim();
       if (!displayName) {
-        return { ok: false, message: 'Tên hiển thị là bắt buộc để hoàn tất hồ sơ.' };
+        return { ok: false, message: 'TÃªn hiá»ƒn thá»‹ lÃ  báº¯t buá»™c Ä‘á»ƒ hoÃ n táº¥t há»“ sÆ¡.' };
       }
 
       setData((prev) => ({
@@ -414,7 +420,7 @@ export function AppProvider({ children }) {
       const existed = data.reports.some(
         (report) => report.postId === postId && report.reporterId === currentUserId && report.status === 'PENDING',
       );
-      if (existed) return { ok: false, message: 'Bạn đã gửi báo cáo đang chờ xử lý cho bài viết này.' };
+      if (existed) return { ok: false, message: 'Báº¡n Ä‘Ã£ gá»­i bÃ¡o cÃ¡o Ä‘ang chá» xá»­ lÃ½ cho bÃ i viáº¿t nÃ y.' };
 
       setData((prev) => ({
         ...prev,
@@ -451,7 +457,7 @@ export function AppProvider({ children }) {
     }
 
     function handleFutureSocialAuth() {
-      return { ok: false, message: 'Tính năng đang được phát triển.' };
+      return { ok: false, message: 'TÃ­nh nÄƒng Ä‘ang Ä‘Æ°á»£c phÃ¡t triá»ƒn.' };
     }
 
     return {
@@ -482,7 +488,7 @@ export function AppProvider({ children }) {
       setReportStatus,
       handleFutureSocialAuth,
     };
-  }, [currentUser, currentUserId, data, sessionExpired]);
+  }, [auth, currentUser, currentUserId, data, sessionExpired]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -492,3 +498,4 @@ export function useApp() {
   if (!context) throw new Error('useApp must be used inside AppProvider');
   return context;
 }
+

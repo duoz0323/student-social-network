@@ -3,7 +3,7 @@ import { ErrorMsg, PrimaryBtn, SecondaryBtn, SlidePanel } from './OnboardingShar
 
 // Bước 3: Ngày sinh (bắt buộc, ≥18 tuổi) và bio (tùy chọn)
 // Chỉ có 2 nút: Hoàn tất và Quay lại
-export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, onBioChange, onFinish, onBack, error }) {
+export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, onBioChange, onFinish, onBack, error, isSubmitting }) {
   return (
     <SlidePanel stepKey={3}>
       <div className="mb-6">
@@ -61,8 +61,10 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
       <ErrorMsg msg={error} />
 
       {/* Chỉ 2 nút: Hoàn tất và Quay lại */}
-      <PrimaryBtn onClick={onFinish}>Hoàn tất hồ sơ</PrimaryBtn>
-      <SecondaryBtn onClick={onBack}>Quay lại</SecondaryBtn>
+      <PrimaryBtn onClick={onFinish} disabled={isSubmitting}>
+        {isSubmitting ? 'Đang lưu hồ sơ...' : 'Hoàn tất hồ sơ'}
+      </PrimaryBtn>
+      <SecondaryBtn onClick={onBack} disabled={isSubmitting}>Quay lại</SecondaryBtn>
     </SlidePanel>
   );
 }

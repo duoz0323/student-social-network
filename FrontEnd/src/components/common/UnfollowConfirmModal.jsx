@@ -1,12 +1,8 @@
 import Modal from './Modal.jsx';
 import Avatar from './Avatar.jsx';
-import Button from './Button.jsx';
 
 export default function UnfollowConfirmModal({ open, user, onClose, onConfirm }) {
   if (!user) return null;
-
-  // Xử lý handle (username) nếu không có
-  const handle = user.email ? `@${user.email.split('@')[0]}` : `@user${user.id.slice(-4)}`;
 
   return (
     <Modal

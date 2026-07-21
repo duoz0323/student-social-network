@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/brand/logo.png';
 import { useApp } from '../../../contexts/AppContext.jsx';
+import { useAuth } from '../hooks/useAuth.js';
+import { onboardingService } from '../services/onboardingService.js';
 import { todayIsoDate, calcAge } from '../components/onboarding/onboardingUtils.js';
 import { OnboardingBackground, StepIndicator } from '../components/onboarding/OnboardingShared.jsx';
 import OnboardingStep1Name from '../components/onboarding/OnboardingStep1Name.jsx';
@@ -9,7 +11,8 @@ import OnboardingStep2Avatar from '../components/onboarding/OnboardingStep2Avata
 import OnboardingStep3Info from '../components/onboarding/OnboardingStep3Info.jsx';
 
 export default function OnboardingProfilePage() {
-  const { currentUser, completeOnboarding } = useApp();
+  const { currentUser } = useApp();
+  const auth = useAuth();
   const navigate = useNavigate();
 
   // State form chia sẻ giữa cả 3 bước
@@ -21,6 +24,7 @@ export default function OnboardingProfilePage() {
     bio: currentUser?.profile?.bio ?? '',
   });
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper: cập nhật một field, xóa lỗi hiện tại
   function setField(field) {
@@ -51,7 +55,8 @@ export default function OnboardingProfilePage() {
   }
 
   // ── Validate bước 3: ngày sinh bắt buộc + ≥18 tuổi ──
-  function handleFinish() {
+  async function handleFinish() {
+    if (isSubmitting) return;
     if (!form.dateOfBirth) {
       setError('Ngày sinh là bắt buộc để hoàn tất hồ sơ.');
       return;
@@ -65,18 +70,18 @@ export default function OnboardingProfilePage() {
       return;
     }
 
-    navigate('/onboarding/success', { replace: true });
-    
-    // Đợi router chuyển hướng xong mới cập nhật state, 
-    // tránh việc Guard Route phát hiện state mới và redirect về feed ngay lập tức
-    setTimeout(() => {
-      const result = completeOnboarding(form);
-      if (!result.ok) {
-        // Trong trường hợp hy hữu bị lỗi sau khi đã sang trang success, 
-        // ta có thể đẩy về lại kèm error (nếu cần thiết).
-        // Tuy nhiên form đã được validate ở trên nên khả năng lỗi rất thấp.
-      }
-    }, 10);
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const result = await onboardingService.completeProfile(form);
+      // Chỉ mở Feed sau khi Backend đã commit profile và phiên Frontend phản ánh trạng thái mới.
+      auth.updateProfileCompletion(Boolean(result.profileCompleted));
+      navigate('/onboarding/success', { replace: true });
+    } catch (submitError) {
+      setError(submitError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // ── Quay lại bước trước, xóa lỗi ──
@@ -154,6 +159,7 @@ export default function OnboardingProfilePage() {
                   onFinish={handleFinish}
                   onBack={goBack}
                   error={error}
+                  isSubmitting={isSubmitting}
                 />
               )}
             </div>

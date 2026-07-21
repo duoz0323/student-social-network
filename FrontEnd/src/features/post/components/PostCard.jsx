@@ -122,8 +122,6 @@ export default function PostCard({ post, detail = false }) {
   const liked = data.likes.some((like) => like.postId === post.id && like.userId === currentUserId);
   const saved = data.savedPosts.some((item) => item.postId === post.id && item.userId === currentUserId);
 
-  if (!author) return null;
-
   // Đóng menu khi click ra ngoài
   useEffect(() => {
     if (!menuOpen) return;
@@ -135,6 +133,8 @@ export default function PostCard({ post, detail = false }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
+
+  if (!author) return null;
 
   function saveEdit() {
     // Chỉ cập nhật nội dung và hashtag vì MVP không cho sửa ảnh sau khi đăng.

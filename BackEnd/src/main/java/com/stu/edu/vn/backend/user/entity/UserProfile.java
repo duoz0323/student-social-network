@@ -11,16 +11,24 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Entity user_profiles lưu hồ sơ công khai, tách khỏi dữ liệu xác thực của users.
  */
 @Entity
 @Table(name = "user_profiles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserProfile extends BaseAuditEntity {
 
     @Id
     @Column(name = "user_id")
+    @Setter(AccessLevel.NONE)
     private Long userId;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -46,71 +54,8 @@ public class UserProfile extends BaseAuditEntity {
     @Column(name = "profile_completed_at")
     private LocalDateTime profileCompletedAt;
 
-    protected UserProfile() {
-        // Constructor rỗng dành cho JPA.
-    }
-
     public UserProfile(User user) {
         this.user = user;
     }
 
-    public Long getUserId() {
-        return userId;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
-
-    public String getAvatarPublicId() {
-        return avatarPublicId;
-    }
-
-    public void setAvatarPublicId(String avatarPublicId) {
-        this.avatarPublicId = avatarPublicId;
-    }
-
-    public String getBio() {
-        return bio;
-    }
-
-    public void setBio(String bio) {
-        this.bio = bio;
-    }
-
-    public LocalDate getDateOfBirth() {
-        return dateOfBirth;
-    }
-
-    public void setDateOfBirth(LocalDate dateOfBirth) {
-        this.dateOfBirth = dateOfBirth;
-    }
-
-    public LocalDateTime getProfileCompletedAt() {
-        return profileCompletedAt;
-    }
-
-    public void setProfileCompletedAt(LocalDateTime profileCompletedAt) {
-        this.profileCompletedAt = profileCompletedAt;
-    }
 }

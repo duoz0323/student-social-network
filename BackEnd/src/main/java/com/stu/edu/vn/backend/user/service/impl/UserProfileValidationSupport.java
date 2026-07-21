@@ -4,12 +4,14 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
  * Gom validation hồ sơ dùng chung cho onboarding và cập nhật hồ sơ sau onboarding.
  */
 @Component
+@RequiredArgsConstructor
 class UserProfileValidationSupport {
 
     private static final int MIN_DISPLAY_NAME_LENGTH = 2;
@@ -18,10 +20,6 @@ class UserProfileValidationSupport {
     private static final int MINIMUM_AGE = 18;
 
     private final Clock clock;
-
-    UserProfileValidationSupport(Clock clock) {
-        this.clock = clock;
-    }
 
     String normalizeAndValidateDisplayName(String displayName) {
         String normalizedDisplayName = normalizeRequiredText(displayName);

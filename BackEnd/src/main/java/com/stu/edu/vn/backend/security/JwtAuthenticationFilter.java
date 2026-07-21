@@ -11,9 +11,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -23,19 +22,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Filter xác thực Bearer Access Token và đưa người dùng hiện tại vào SecurityContext.
  */
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
-
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final SecurityErrorResponseWriter errorResponseWriter;
 
-    public JwtAuthenticationFilter(
-            JwtService jwtService,
-            UserRepository userRepository
-    ) {
-        this.jwtService = jwtService;
-        this.userRepository = userRepository;
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return SecurityPaths.isPublic(request.getMethod(), request.getRequestURI());
     }
 
     @Override
@@ -68,13 +65,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (ExpiredJwtException exception) {
             SecurityContextHolder.clearContext();
-            writeErrorResponse(response, request, ErrorCode.ACCESS_TOKEN_EXPIRED);
+            errorResponseWriter.write(response, request, ErrorCode.ACCESS_TOKEN_EXPIRED);
         } catch (JwtAuthenticationException exception) {
             SecurityContextHolder.clearContext();
-            writeErrorResponse(response, request, exception.getErrorCode());
+            errorResponseWriter.write(response, request, exception.getErrorCode());
         } catch (JwtException | IllegalArgumentException exception) {
             SecurityContextHolder.clearContext();
-            writeErrorResponse(response, request, ErrorCode.INVALID_ACCESS_TOKEN);
+            errorResponseWriter.write(response, request, ErrorCode.INVALID_ACCESS_TOKEN);
         }
     }
 
@@ -85,39 +82,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         String token = authorizationHeader.substring(BEARER_PREFIX.length()).trim();
         return token.isEmpty() ? null : token;
-    }
-
-    private void writeErrorResponse(
-            HttpServletResponse response,
-            HttpServletRequest request,
-            ErrorCode errorCode
-    ) throws IOException {
-        response.setStatus(errorCode.getHttpStatus().value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write(toErrorJson(errorCode, request.getRequestURI()));
-    }
-
-    private String toErrorJson(ErrorCode errorCode, String path) {
-        return """
-                {"success":false,"code":"%s","message":"%s","status":%d,"path":"%s","fieldErrors":[],"timestamp":"%s"}"""
-                .formatted(
-                        escapeJson(errorCode.name()),
-                        escapeJson(errorCode.getDefaultMessage()),
-                        errorCode.getHttpStatus().value(),
-                        escapeJson(path),
-                        LocalDateTime.now()
-                );
-    }
-
-    private String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r");
     }
 
     /**

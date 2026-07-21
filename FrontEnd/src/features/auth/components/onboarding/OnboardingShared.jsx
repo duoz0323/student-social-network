@@ -263,12 +263,13 @@ export function ErrorMsg({ msg }) {
 }
 
 // ─── Nút tiếp tục chính ────────────────────────────────────────────
-export function PrimaryBtn({ onClick, children }) {
+export function PrimaryBtn({ onClick, children, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="mt-6 w-full h-12 rounded-xl bg-gray-900 hover:bg-black active:scale-[0.98] text-white text-base font-semibold transition-all duration-150"
+      disabled={disabled}
+      className="mt-6 w-full h-12 rounded-xl bg-gray-900 hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 text-white text-base font-semibold transition-all duration-150"
     >
       {children}
     </button>
@@ -276,12 +277,13 @@ export function PrimaryBtn({ onClick, children }) {
 }
 
 // ─ Nút quay lại dạng phụ (secondary) ─────────────────────────
-export function SecondaryBtn({ onClick, children }) {
+export function SecondaryBtn({ onClick, children, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="mt-3 w-full h-12 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 active:scale-[0.98] text-gray-700 text-base font-semibold transition-all duration-150 flex items-center justify-center gap-2"
+      disabled={disabled}
+      className="mt-3 w-full h-12 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 text-gray-700 text-base font-semibold transition-all duration-150 flex items-center justify-center gap-2"
     >
       <ArrowLeftIcon />
       {children}

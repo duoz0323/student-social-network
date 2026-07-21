@@ -124,7 +124,7 @@ export default function UserShell() {
 
         {/* Nút Xem thêm & Menu ở góc dưới trái */}
         <div className="relative mt-auto">
-          <MoreMenu open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} onLogout={logout} />
+          <MoreMenu open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} onLogout={logout} onSettings={() => navigate('/settings/auth-providers')} />
           <button
             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
             className={`flex min-h-[52px] w-full items-center gap-4 rounded-[12px] px-4 font-normal text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-soft)] ${
@@ -145,6 +145,13 @@ export default function UserShell() {
         </Link>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
+            onClick={() => navigate('/settings/auth-providers')}
+            aria-label="Cài đặt phương thức đăng nhập"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.04H5.3v-3h.14A1.7 1.7 0 0 0 7 9.92a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.7 4.7V4.6h3v.1a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          </button>
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-red-500/10 hover:text-red-600"
             onClick={logout}

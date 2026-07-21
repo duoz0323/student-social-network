@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Component vỏ chứa nội dung chuẩn (có nắp bo tròn dính ở trên) giống phong cách Threads.
 // Sử dụng để bọc nội dung của các trang như Feed, Profile, Search.
 export default function ContentShell({ header, children }) {

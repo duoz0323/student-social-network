@@ -1,5 +1,7 @@
 # Workflow tạo API
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Workflow này chỉ mô tả cách thiết kế API; contract nghiệp vụ phải lấy từ README và tài liệu API đã được đồng bộ.
+
 ## Bước 1: Phân tích contract
 
 Xác định:
@@ -16,17 +18,11 @@ Xác định:
 
 Với API Auth MVP:
 
-- Register nhận `identifier`, `password` và `confirmPassword`.
-- `identifier` là email hoặc số điện thoại; request chỉ nhận đúng một phương thức định danh tại thời điểm đăng ký.
-- Login nhận `identifier` là email hoặc số điện thoại và `password`.
-- Không thiết kế request/response phụ thuộc `username`.
-- Không nhận `displayName` trong request đăng ký; tên hiển thị thuộc onboarding hồ sơ.
-- Không tạo trường `gmail`; dùng `email`.
-- Email hoặc số điện thoại phải được chuẩn hóa ở Backend trước khi kiểm tra trùng và lưu.
-- Đăng ký phải tạo `users` và `user_profiles` trong cùng transaction.
-- Onboarding phải có API đọc trạng thái, cập nhật hồ sơ và xác nhận hoàn tất.
-- API mạng xã hội chính phải chặn người chưa hoàn tất hồ sơ bằng `PROFILE_NOT_COMPLETED`.
-- MVP chưa triển khai xác minh email hoặc SMS OTP; tài khoản mới được tạo `ACTIVE`.
+- Đọc toàn bộ contract tham chiếu và tiêu chí nghiệm thu trong README.
+- Đối chiếu tài liệu API hiện tại; đánh dấu endpoint hoặc response cũ, không kế thừa mặc định.
+- Mô hình hóa state transition, actor, authentication, authorization và error code cho từng nhánh.
+- Xác định rõ token nào được nhận, phát hành, lưu hash, thu hồi và được phép dùng ở endpoint nào.
+- Xác định transaction, external call, idempotency, concurrency và recovery trước khi thiết kế DTO.
 
 ## Bước 2: Xác định tầng
 
@@ -38,7 +34,7 @@ Với API Auth MVP:
 - Exception.
 - Entity hoặc migration nếu cần.
 
-Với Auth/Profile, phải đối chiếu database trước khi thiết kế DTO để xác nhận `users.email`, `users.phone_number`, `user_profiles.display_name` và `user_profiles.profile_completed_at`.
+Với Auth/Profile, phải đối chiếu README với SQL, DBML, Entity và Repository trước khi thiết kế DTO; database baseline không được dùng để ghi đè trạng thái đích.
 
 ## Bước 3: Triển khai
 

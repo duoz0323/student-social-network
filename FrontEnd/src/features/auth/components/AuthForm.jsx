@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import logo from '../../../assets/brand/logo.png';
-
+import Button from '../../../components/common/Button.jsx';
 import SocialAuthButtons from './SocialAuthButtons.jsx';
 
 // Icon mắt hiện/ẩn mật khẩu
@@ -24,6 +24,19 @@ function EyeIcon({ open }) {
   );
 }
 
+// Lấy lỗi ưu tiên nhất để hiển thị – chỉ hiện 1 lỗi tại một thời điểm
+function getDisplayError(message, fieldErrors, retrySeconds) {
+  // Ưu tiên: general message > retry > field error đầu tiên
+  if (message) return message;
+  if (retrySeconds > 0) return `Có thể thử lại sau ${retrySeconds} giây.`;
+  // Duyệt theo thứ tự field quan trọng nhất
+  const fieldOrder = ['email', 'password', 'confirmPassword', 'acceptTerms'];
+  for (const field of fieldOrder) {
+    if (fieldErrors[field]) return fieldErrors[field];
+  }
+  return '';
+}
+
 // Form đăng nhập / đăng ký dùng chung, phân biệt qua prop `type`
 export default function AuthForm({
   type = 'login',
@@ -32,18 +45,42 @@ export default function AuthForm({
   message,
   form,
   setForm,
-  showFutureMessage
+  showFutureMessage,
+  fieldErrors = {},
+  retrySeconds = 0,
+  onFieldChange,
+  includeRegistrationFlow = false,
+  hasPendingRegistration = false,
+  onContinueRegistration,
+  onGoogleAuthenticated,
+  onGoogleConflict,
+  onFacebookAuthenticated,
+  onFacebookConflict,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isLogin = type === 'login';
 
-  // Style chung cho input
-  const inputCls =
-    'h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 ' +
-    'placeholder-gray-400 outline-none transition ' +
-    'focus:border-violet-600 focus:ring-2 focus:ring-violet-100';
+  // Lỗi hiển thị duy nhất – gộp tất cả nguồn lỗi, chỉ hiện 1
+  const displayError = getDisplayError(message, fieldErrors, retrySeconds);
+
+  // Style chung cho input – thêm viền đỏ khi field có lỗi (không chiếm thêm chỗ)
+  function inputClass(fieldName) {
+    const hasError = Boolean(fieldErrors[fieldName]);
+    return (
+      'h-[42px] w-full rounded-lg border bg-white px-3 text-sm text-gray-900 ' +
+      'placeholder-gray-400 outline-none transition-all duration-200 ' +
+      (hasError
+        ? 'border-red-400 ring-2 ring-red-100 '
+        : 'border-gray-300 focus:border-violet-600 focus:ring-2 focus:ring-violet-100 ')
+    );
+  }
+
+  function updateField(name, value) {
+    setForm({ ...form, [name]: value });
+    onFieldChange?.(name);
+  }
 
   return (
     <div className="px-7 sm:px-10 py-6">
@@ -66,16 +103,37 @@ export default function AuthForm({
 
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
 
-        {/* Field: Email hoặc số điện thoại */}
+        {/* ═══ Vùng hiển thị lỗi duy nhất – chiều cao cố định, không đẩy layout ═══ */}
+        <div
+          className="overflow-hidden transition-all duration-300 ease-out"
+          style={{
+            maxHeight: displayError ? '80px' : '0px',
+            opacity: displayError ? 1 : 0,
+            marginBottom: displayError ? '12px' : '0px',
+          }}
+        >
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] font-semibold leading-relaxed text-red-700 flex items-start gap-2"
+          >
+            {/* Icon cảnh báo */}
+            <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <span>{displayError}</span>
+          </div>
+        </div>
+
+        {/* Trường email cho xác thực local. */}
         <div className="mb-4">
           <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
-            Email hoặc số điện thoại
+            Email
           </label>
           <input
-            value={form.identifier}
-            onChange={(e) => setForm({ ...form, identifier: e.target.value })}
-            placeholder="Nhập email hoặc số điện thoại"
-            className={inputCls}
+            value={form.email}
+            onChange={(e) => updateField('email', e.target.value)}
+            placeholder="student@example.com"
+            className={inputClass('email')}
             disabled={submitting}
             autoComplete="username"
           />
@@ -91,9 +149,9 @@ export default function AuthForm({
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => updateField('password', e.target.value)}
                 placeholder="Nhập mật khẩu"
-                className={inputCls + ' pr-10'}
+                className={inputClass('password') + ' pr-10'}
                 disabled={submitting}
                 autoComplete="current-password"
               />
@@ -107,11 +165,22 @@ export default function AuthForm({
                 <EyeIcon open={showPassword} />
               </button>
             </div>
+            <div className="mt-2.5 text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-bold transition-all duration-200"
+                style={{ color: '#1e293b', textUnderlineOffset: '3px' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#7c3aed'; e.currentTarget.style.textDecoration = 'underline'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#1e293b'; e.currentTarget.style.textDecoration = 'none'; }}
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
           </div>
         ) : (
           /* Đăng ký: 2 ô mật khẩu nằm ngang */
           <div className="mb-2">
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               {/* Mật khẩu */}
               <div className="flex-1">
                 <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
@@ -121,9 +190,9 @@ export default function AuthForm({
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(e) => updateField('password', e.target.value)}
                     placeholder="Tạo mật khẩu"
-                    className={inputCls + ' pr-10'}
+                    className={inputClass('password') + ' pr-10'}
                     disabled={submitting}
                     autoComplete="new-password"
                   />
@@ -148,9 +217,9 @@ export default function AuthForm({
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
-                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    onChange={(e) => updateField('confirmPassword', e.target.value)}
                     placeholder="Nhập lại mật khẩu"
-                    className={inputCls + ' pr-10'}
+                    className={inputClass('confirmPassword') + ' pr-10'}
                     disabled={submitting}
                     autoComplete="new-password"
                   />
@@ -169,18 +238,8 @@ export default function AuthForm({
           </div>
         )}
 
-        {/* Quên mật khẩu (login) hoặc hint + checkbox điều khoản (register) */}
-        {isLogin ? (
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              className="text-[12px] font-semibold text-violet-700 hover:underline"
-              onClick={() => showFutureMessage('Khôi phục mật khẩu')}
-            >
-              Quên mật khẩu?
-            </button>
-          </div>
-        ) : (
+        {/* Hint mật khẩu + checkbox điều khoản (chỉ ở trang đăng ký) */}
+        {isLogin ? null : (
           <>
             <p className="mt-2 mb-3 text-[12px] text-gray-500 font-medium text-left leading-relaxed">
               Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
@@ -189,8 +248,8 @@ export default function AuthForm({
               <input
                 type="checkbox"
                 checked={form.acceptTerms}
-                onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-violet-700 flex-shrink-0"
+                onChange={(e) => updateField('acceptTerms', e.target.checked)}
+                className={`mt-0.5 h-4 w-4 rounded flex-shrink-0 ${fieldErrors.acceptTerms ? 'border-red-400 accent-red-500' : 'border-gray-300 accent-violet-700'}`}
                 disabled={submitting}
               />
               <span>
@@ -204,21 +263,27 @@ export default function AuthForm({
           </>
         )}
 
-        {/* Thông báo lỗi */}
-        {message && (
-          <div className="mb-4 p-2.5 bg-red-50 text-red-600 text-[12px] font-semibold rounded-lg border border-red-100">
-            {message}
-          </div>
-        )}
-
         {/* Nút submit */}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full h-[44px] rounded-full bg-[#0f172a] hover:bg-black text-white text-sm font-semibold mb-4 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {submitting ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
-        </button>
+        <div className="mb-4">
+          <Button 
+            type="submit" 
+            disabled={submitting}
+            className="w-full"
+          >
+            {submitting ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
+          </Button>
+        </div>
+
+        {!isLogin && hasPendingRegistration ? (
+          <button
+            type="button"
+            onClick={onContinueRegistration}
+            disabled={submitting}
+            className="mb-4 w-full text-[13px] font-bold text-violet-700 hover:underline disabled:opacity-60"
+          >
+            Tiếp tục xác minh đăng ký đang chờ
+          </button>
+        ) : null}
 
         {/* Divider "Hoặc" */}
         <div className="flex items-center gap-3 mb-4">
@@ -228,7 +293,15 @@ export default function AuthForm({
         </div>
 
         {/* Nút mạng xã hội */}
-        <SocialAuthButtons actionLabel="Tiếp tục với" onUnavailable={showFutureMessage} />
+        <SocialAuthButtons
+          actionLabel={isLogin ? 'Tiếp tục với' : 'Đăng ký với'}
+          onUnavailable={showFutureMessage}
+          includeRegistrationFlow={includeRegistrationFlow}
+          onGoogleAuthenticated={onGoogleAuthenticated}
+          onGoogleConflict={onGoogleConflict}
+          onFacebookAuthenticated={onFacebookAuthenticated}
+          onFacebookConflict={onFacebookConflict}
+        />
 
         {/* Link chuyển trang */}
         <p className="mt-5 mb-1 text-center text-[13px] font-medium text-gray-600">

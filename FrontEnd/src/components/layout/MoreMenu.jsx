@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export default function MoreMenu({ open, onClose, onLogout }) {
+export default function MoreMenu({ open, onClose, onLogout, onSettings }) {
   const menuRef = useRef(null);
 
   // Đóng menu khi click ra ngoài
@@ -26,7 +26,7 @@ export default function MoreMenu({ open, onClose, onLogout }) {
         Giao diện
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
       </button>
-      <button className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
+      <button onClick={() => { onClose(); onSettings?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
         Cài đặt
       </button>
       <div className="my-2 h-[1px] w-full bg-[var(--app-border)]"></div>

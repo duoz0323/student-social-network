@@ -18,11 +18,11 @@ export function renderLoginPage(root) {
       <span>UniShare</span>
     </div>
     <h1 id="login-title" class="auth-title">Đăng nhập</h1>
-    <p class="auth-copy">Dùng tài khoản demo bằng email hoặc số điện thoại để vào Feed For You.</p>
+    <p class="auth-copy">Dùng tài khoản demo bằng email để vào Feed For You.</p>
     <form class="form-stack" id="login-form" novalidate>
       <div class="field-group">
-        <label class="field-label" for="identifier">Email hoặc số điện thoại</label>
-        <input class="text-input" id="identifier" name="identifier" autocomplete="username" required />
+        <label class="field-label" for="email">Email</label>
+        <input class="text-input" id="email" name="email" autocomplete="username" required />
       </div>
       <div class="field-group">
         <label class="field-label" for="password">Mật khẩu</label>
@@ -46,16 +46,16 @@ export function renderLoginPage(root) {
     event.preventDefault();
 
     const formData = new FormData(form);
-    const identifier = String(formData.get("identifier") ?? "");
+    const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
 
     // Validation phía UI giúp người dùng biết thiếu dữ liệu trước khi login giả.
-    if (!identifier.trim() || !password) {
-      message.textContent = "Vui lòng nhập email/số điện thoại và mật khẩu.";
+    if (!email.trim() || !password) {
+      message.textContent = "Vui lòng nhập email và mật khẩu.";
       return;
     }
 
-    const result = login(identifier, password);
+    const result = login(email, password);
 
     if (!result.ok) {
       message.textContent = result.message;
@@ -116,7 +116,7 @@ function renderUserSidebar(currentUser) {
   const footer = createElement("div", { className: "sidebar-footer" });
   const userBox = createElement("div", { className: "session-user" });
 
-  // Chỉ hiển thị displayName và role, không hiển thị email/số điện thoại.
+  // Chỉ hiển thị displayName và role, không hiển thị email.
   userBox.innerHTML = `
     <strong>${currentUser.displayName}</strong>
     <span>${currentUser.role}</span>
@@ -265,3 +265,4 @@ function renderAvatar(user) {
 
   return avatar;
 }
+

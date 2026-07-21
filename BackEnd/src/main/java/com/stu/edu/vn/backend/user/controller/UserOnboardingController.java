@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.user.dto.response.CompleteOnboardingResponse;
 import com.stu.edu.vn.backend.user.dto.response.OnboardingStatusResponse;
 import com.stu.edu.vn.backend.user.service.UserOnboardingService;
 import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,13 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/users/me/onboarding")
+@RequiredArgsConstructor
 public class UserOnboardingController {
 
     private final UserOnboardingService userOnboardingService;
-
-    public UserOnboardingController(UserOnboardingService userOnboardingService) {
-        this.userOnboardingService = userOnboardingService;
-    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<OnboardingStatusResponse>> getMyOnboardingStatus() {

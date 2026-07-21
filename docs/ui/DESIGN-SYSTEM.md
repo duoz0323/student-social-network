@@ -37,7 +37,7 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 ## 5. PostCard
 
 - PostCard gồm avatar, tên hiển thị, thời gian, menu ba chấm, nội dung text, hashtag, media và thanh action.
-- PostCard không hiển thị username, handle hoặc định danh công khai tương tự trong MVP.
+- PostCard không hiển thị username, handle hoặc email công khai tương tự trong MVP.
 - Tác giả bài viết được liên kết nội bộ bằng `authorId`/`userId`; khi bấm tên hoặc avatar điều hướng đến `/profile/:userId`.
 - Media ảnh thường bo góc nhẹ, chiếm gần hết chiều rộng card.
 - Action quan sát được: like, comment, repost/share-like icon, chia sẻ/lưu/menu tùy màn hình.
@@ -85,7 +85,7 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 - Mention hiển thị bằng `@displayName` sau khi người dùng chọn một tài khoản từ danh sách gợi ý.
 - Mention phải lưu liên kết bằng `mentionedUserId`, không lưu bằng displayName.
 - Khi render mention, tìm user theo `mentionedUserId`, hiển thị displayName hiện tại và điều hướng đến `/profile/:userId`.
-- Gợi ý mention hiển thị avatar, displayName và thông tin phụ như bio ngắn nếu cần; không hiển thị email, số điện thoại hoặc dữ liệu xác thực.
+- Gợi ý mention hiển thị avatar, displayName và thông tin phụ như bio ngắn nếu cần; không hiển thị email hoặc dữ liệu xác thực.
 
 ## 10. Màu sắc
 
@@ -126,3 +126,4 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
     - Input
     - Bảng Admin
     - Badge trạng thái
+

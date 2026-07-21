@@ -12,10 +12,13 @@ public record LoginResponse(
         long accessTokenExpiresIn,
         long refreshTokenExpiresIn,
         boolean profileCompleted,
+        String nextStep,
         UserSummary user
 ) {
 
     public static final String BEARER_TOKEN_TYPE = "Bearer";
+    public static final String NEXT_STEP_COMPLETE_PROFILE = "COMPLETE_PROFILE";
+    public static final String NEXT_STEP_HOME = "HOME";
 
     /**
      * Thông tin người dùng tối giản để Frontend phân quyền giao diện sau đăng nhập.

@@ -1,5 +1,7 @@
 # Kỹ năng phát triển Frontend
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Skill này hướng dẫn cách triển khai, không thay thế đặc tả nghiệp vụ trong README.
+
 ## 1. Mục tiêu
 
 Xây dựng Frontend ReactJS đúng cấu trúc hiện tại của dự án, không tự ý đổi sang một cấu trúc khác.
@@ -24,7 +26,7 @@ src/
 
 ## 3. Quy trình triển khai feature
 
-1. Đọc tài liệu UI.
+1. Đọc README, sau đó đọc tài liệu UI và ghi nhận mọi điểm chưa đồng bộ.
 2. Xác định route trong `src/router/`.
 3. Xác định feature trong `src/features/`.
 4. Tạo API service trong feature.
@@ -65,16 +67,11 @@ Không bắt buộc tạo đầy đủ các thư mục trên nếu chưa dùng.
 - Không tự ý thêm Zustand hoặc Redux.
 - Không chuyển toàn bộ code sang TypeScript.
 - Không tự ý đổi tên thư mục hiện có.
-- Form đăng ký auth dùng một trường `identifier` cho email hoặc số điện thoại, mật khẩu và xác nhận mật khẩu.
-- Không bắt buộc nhập đồng thời email và số điện thoại trong MVP.
-- Không thêm trường `username` vào UI đăng ký MVP.
-- Form đăng nhập dùng một ô email hoặc số điện thoại.
-- Không dùng nhãn `Gmail`; luôn dùng `email`.
-- Sau đăng ký điều hướng đến onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị; avatar, ngày sinh và bio có thể bỏ qua.
-- Route guard phải chuyển người đã đăng nhập nhưng chưa hoàn tất hồ sơ về onboarding.
-- Khi API trả `PROFILE_NOT_COMPLETED`, điều hướng về onboarding.
-- Ngày sinh chỉ đặt ở onboarding/cập nhật hồ sơ, không đặt ở đăng ký.
+- Với Auth/onboarding, lập UI state machine từ README và API contract đã đồng bộ trước khi sửa component.
+- Không tạo user, JWT hoặc session giả trước thời điểm contract cho phép.
+- Provider credential chỉ được gửi qua Auth service và không được dùng cho API nghiệp vụ.
+- Route guard, recovery, cooldown, conflict, error và onboarding phải bao phủ các trạng thái README yêu cầu.
+- Không lấy hành vi mock hoặc giao diện cũ làm nguồn nghiệp vụ.
 
 ## 6. Kiểm tra
 

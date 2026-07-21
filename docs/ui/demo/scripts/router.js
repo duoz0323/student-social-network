@@ -41,3 +41,4 @@ function renderRoute(root) {
 
   route.render(root);
 }
+

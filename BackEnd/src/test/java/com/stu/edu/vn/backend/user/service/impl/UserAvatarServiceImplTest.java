@@ -7,14 +7,12 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.storage.CloudinaryStorageService;
 import com.stu.edu.vn.backend.storage.CloudinaryUploadResult;
 import com.stu.edu.vn.backend.user.dto.response.AvatarResponse;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
-import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,8 +26,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class UserAvatarServiceImplTest {
 
-    private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
-    private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
+    private final CurrentUserProfileProvider currentUserProfileProvider =
+            org.mockito.Mockito.mock(CurrentUserProfileProvider.class);
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final CloudinaryStorageService cloudinaryStorageService = org.mockito.Mockito.mock(CloudinaryStorageService.class);
     private final UserAvatarFileValidator fileValidator = org.mockito.Mockito.mock(UserAvatarFileValidator.class);
@@ -40,15 +38,13 @@ class UserAvatarServiceImplTest {
     @BeforeEach
     void setUp() {
         userAvatarService = new UserAvatarServiceImpl(
-                currentUserProvider,
-                userRepository,
+                currentUserProfileProvider,
                 userProfileRepository,
                 cloudinaryStorageService,
                 fileValidator,
                 transactionTemplate
         );
-        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
-        when(userRepository.findById(10L)).thenReturn(Optional.of(new User("student@example.com", null, "hash")));
+        when(currentUserProfileProvider.getCurrentActiveUserId()).thenReturn(10L);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(new SimpleTransactionStatus());
@@ -59,7 +55,7 @@ class UserAvatarServiceImplTest {
     void uploadMyAvatarStoresNewAvatarAndDeletesOldAvatarAfterDatabaseSuccess() {
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[]{1});
         UserProfile profile = completedProfileWithOldAvatar();
-        when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(profile));
         when(cloudinaryStorageService.uploadAvatar(file))
                 .thenReturn(new CloudinaryUploadResult("https://cdn.example/new.png", "new-public-id"));
         when(userProfileRepository.saveAndFlush(any(UserProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -78,7 +74,7 @@ class UserAvatarServiceImplTest {
     @Test
     void uploadMyAvatarCleansNewCloudinaryFileWhenDatabaseUpdateFails() {
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[]{1});
-        when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfileWithOldAvatar()));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(completedProfileWithOldAvatar()));
         when(cloudinaryStorageService.uploadAvatar(file))
                 .thenReturn(new CloudinaryUploadResult("https://cdn.example/new.png", "new-public-id"));
         doThrow(new IllegalStateException("database failed"))
@@ -93,7 +89,7 @@ class UserAvatarServiceImplTest {
     @Test
     void deleteMyAvatarClearsDatabaseAndDeletesOldAvatar() {
         UserProfile profile = completedProfileWithOldAvatar();
-        when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(profile));
         when(userProfileRepository.saveAndFlush(any(UserProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AvatarResponse response = userAvatarService.deleteMyAvatar();
@@ -108,7 +104,7 @@ class UserAvatarServiceImplTest {
     }
 
     private UserProfile completedProfileWithOldAvatar() {
-        User user = new User("student@example.com", null, "hash");
+        User user = new User("student@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", 10L);
         UserProfile profile = new UserProfile(user);
         profile.setAvatarUrl("https://cdn.example/old.png");

@@ -11,22 +11,21 @@ export default function AdminReportDetailPage() {
   const navigate = useNavigate();
   const { data, getPostById, getUserById, setReportStatus, setPostStatus } = useApp();
   const report = data.reports.find((item) => item.id === reportId);
-
-  if (!report) return <EmptyState title="Không tìm thấy báo cáo" description="Báo cáo không tồn tại hoặc đã bị xóa." actionLabel="Quay lại danh sách" onAction={() => navigate('/admin/reports')} />;
-
-  const post = getPostById(report.postId, true);
-  const reporter = getUserById(report.reporterId);
+  const post = report ? getPostById(report.postId, true) : null;
+  const reporter = report ? getUserById(report.reporterId) : null;
   const author = post ? getUserById(post.authorId) : null;
 
   // Keyboard shortcuts
   useKeyboardShortcut('Escape', () => navigate('/admin/reports'));
-  useKeyboardShortcut('r', () => setReportStatus(report.id, 'REJECTED'));
-  useKeyboardShortcut('a', () => setReportStatus(report.id, 'RESOLVED'));
+  useKeyboardShortcut('r', () => report && setReportStatus(report.id, 'REJECTED'));
+  useKeyboardShortcut('a', () => report && setReportStatus(report.id, 'RESOLVED'));
   useKeyboardShortcut('h', () => {
     if (post && post.status !== 'HIDDEN') {
       setPostStatus(post.id, 'HIDDEN');
     }
   });
+
+  if (!report) return <EmptyState title="Không tìm thấy báo cáo" description="Báo cáo không tồn tại hoặc đã bị xóa." actionLabel="Quay lại danh sách" onAction={() => navigate('/admin/reports')} />;
 
   return (
     <section className="max-w-4xl mx-auto animate-slide-up">

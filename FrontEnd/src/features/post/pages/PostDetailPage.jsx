@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
-import Button from '../../../components/common/Button.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
-import { formatDateTime, shortTime } from '../../../utils/formatters.js';
+import { shortTime } from '../../../utils/formatters.js';
 import PostCard from '../components/PostCard.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { getPostById, data, getUserById, currentUserId, addComment, deleteComment } = useApp();
+  const { getPostById, data, getUserById, currentUserId, addComment } = useApp();
   const [comment, setComment] = useState('');
   const post = getPostById(postId);
 

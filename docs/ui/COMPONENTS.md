@@ -1,5 +1,7 @@
 # Danh sách component
 
+`README.md` là nguồn sự thật cao nhất. Contract HTTP chi tiết duy nhất nằm tại `docs/data/API-CONTRACT.md`; component chỉ quản lý trình bày và trạng thái UI, không tự quyết định nghiệp vụ Auth.
+
 Tài liệu này phân rã component dựa trên phần lặp lại thực tế trong ảnh Stitch và phạm vi MVP. Không tách component quá nhỏ cho các đoạn HTML chỉ xuất hiện một lần.
 
 ## 1. Layout component
@@ -31,18 +33,23 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `identifier`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
-| `RegisterForm` | Form đăng ký tài khoản MVP bằng một phương thức định danh là email hoặc số điện thoại. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
-| `SocialAuthButtons` | Hiển thị nút Google/Facebook theo ảnh nhưng chỉ báo chức năng đang phát triển. | AUTH-01, AUTH-02. | `actionLabel`, `onUnavailable(providerName)`. Không tạo user, không tạo session, không điều hướng. | Module auth, FUTURE_DEVELOPMENT UI. |
-| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; bước 1 bắt buộc tên hiển thị, bước 2/3 có thể bỏ qua. | Module auth/profile. |
+| `LoginForm` | Form đăng nhập bằng email và mật khẩu. | AUTH-01. | `email`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
+| `RegisterForm` | Khởi tạo hoặc phục hồi pending registration bằng email; không tự tạo user/session. | AUTH-02. | `initialValues` gồm `email`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
+| `OtpVerificationForm` | Nhập OTP đăng ký hoặc link local, hiển thị cooldown, expiry và resend/recovery state. | AUTH-OTP-01, AUTH-METHOD-02. | `maskedIdentifier`, `code`, `resendAvailableAt`, `expiresAt`, `submitting`, `onVerify`, `onResend`, `onRecover`. | Module auth; nghiệp vụ từng purpose do service/contract quyết định. |
+| `SocialAuthButtons` | Khởi động Google/Facebook Auth thật và chỉ chuyển provider credential cho Auth service. | AUTH-01, AUTH-02, AUTH-METHOD-01. | `mode`, `loadingProvider`, `onCredential(provider, credential)`. | Module auth; không lưu provider token hoặc dùng token này cho API nghiệp vụ. |
+| `SocialConflictDialog` | Hiển thị đúng các lựa chọn xử lý conflict do Backend trả về. | AUTH-SOCIAL-01. | `conflictType`, `allowedActions`, `expiresAt`, `onResolve`. | Module auth; không tự suy luận merge theo email. |
+| `AuthMethodList` | Hiển thị các phương thức đăng nhập và điều phối link/unlink. | AUTH-METHOD-01. | `methods`, `loading`, `onLink`, `onUnlink`. | Module security/auth; UI last-method guard chỉ hỗ trợ UX, Backend quyết định cuối. |
+| `LinkLocalMethodForm` | Khởi tạo challenge link email riêng trước khi chuyển sang OTP. | AUTH-METHOD-02. | `methodType`, `email`, `submitting`, `onInitiate`. | Module security/auth; không dùng pending registration. |
+| `ReauthenticationDialog` | Thu thập proof cho thao tác bảo mật nhạy cảm như unlink. | AUTH-REAUTH-01. | `availableMethods`, `selectedMethod`, `submitting`, `onReauthenticate`. | Module security/auth; token ngắn hạn không lưu localStorage. |
+| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; tên hiển thị và ngày sinh bắt buộc, ngày sinh phải cho thấy người dùng đủ 18 tuổi; avatar và bio có thể bỏ qua. | Module auth/profile. |
 | `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
 | `OnboardingSuccessPage` | Màn hình hồ sơ đã sẵn sàng sau khi `profileCompletedAt` được cập nhật. | AUTH-06. | Nút chính điều hướng `/feed/for-you`. | Module auth/profile. |
 | `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, FUTURE_DEVELOPMENT. |
 | `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-P2-03. | `errors`, `submitting`, `onSubmit`. | Module auth, FUTURE_DEVELOPMENT. |
 | `RouteGuard` | Phân loại khách, user chưa hoàn tất hồ sơ và user đã hoàn tất hồ sơ. | Router Auth/Onboarding/User/Admin. | `currentUser.status`, `currentUser.profile.profileCompletedAt`, `role`. | Router. |
-| `Toast` hoặc inline message | Hiển thị lỗi form và thông báo future feature. | AUTH-01, AUTH-02, Onboarding. | `message`, `type`. | Có thể dùng inline trong MVP. |
+| `Toast` hoặc inline message | Hiển thị lỗi form và thông báo nghiệp vụ. | AUTH-01, AUTH-02, OTP, Social conflict, Onboarding. | `message`, `type`. | Có thể dùng inline trong MVP. |
 
-Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Facebook không thuộc tiêu chí nghiệm thu MVP; hiện chỉ có UI và thông báo "Tính năng đang được phát triển.".
+`AuthFlowContext`/`useAuthFlow` có thể giữ flow token trong memory và đồng bộ có kiểm soát với `sessionStorage`; tuyệt đối không dùng `localStorage`, query parameter hoặc props xuyên nhiều tầng. Mọi request flow token dùng header thống nhất `X-Auth-Flow-Token`. Response chứa token phải được xử lý theo `Cache-Control: no-store`. Không đặt gọi API trực tiếp trong component trình bày.
 
 ## 4. Post component
 
@@ -64,7 +71,7 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Faceb
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `ProfileHeader` | Hiển thị thông tin hồ sơ, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `userId` hoặc `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`. | Module profile. |
-| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh nếu UI cần. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username. | Module profile. |
+| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh bắt buộc. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username; không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi. | Module profile. |
 | `ProfileTabs` | Chuyển nhóm nội dung trong hồ sơ. | PROFILE-01, PROFILE-02. | `activeTab`, `tabs`, `onChange`. | Module profile. |
 | `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`, `onOpenProfile(userId)`. | Module follow/profile. |
 | `FollowButton` | Theo dõi hoặc bỏ theo dõi. | PROFILE-02, PROFILE-04, SEARCH-01. | `isFollowing`, `loading`, `onClick`. | Dùng chung profile/search. |
@@ -101,3 +108,4 @@ Ghi chú: OAuth button xuất hiện trong ảnh nhưng ngoài MVP. Google/Faceb
 | `SessionExpiredModal` | Thông báo phiên hết hạn và điều hướng đăng nhập lại. | SYS-04. | `open`, `onLoginAgain`. | Dùng chung auth/system. |
 | `LoadingState` | Trạng thái đang tải dữ liệu. | Feed, search, admin tables, profile. | `variant`, `message`. | Dùng chung. |
 | `EmptyState` | Trạng thái không có dữ liệu. | Feed Following rỗng, search rỗng, saved rỗng, admin table rỗng. | `title`, `description`, `action`. | Dùng chung. |
+

@@ -1,5 +1,7 @@
 # Workflow sửa lỗi
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. Source và test là trạng thái implementation cần đối chiếu; không thay đổi nghiệp vụ README để khớp lỗi hiện tại.
+
 ## Bước 1: Phân tích nguyên nhân cốt lõi
 
 Không đưa code sửa ngay.

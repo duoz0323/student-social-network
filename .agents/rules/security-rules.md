@@ -1,22 +1,15 @@
 # Quy tắc bảo mật
 
+> `README.md` tại thư mục gốc là nguồn sự thật duy nhất và có mức ưu tiên cao nhất. File này mô tả cách kiểm tra bảo mật; contract và nghiệp vụ Auth phải lấy từ README.
+
 ## 1. Xác thực
 
-- Mật khẩu phải được băm một chiều.
-- Không lưu mật khẩu dạng văn bản thuần.
-- Đăng ký phải kiểm tra request chỉ có đúng một phương thức định danh: email hoặc số điện thoại.
-- Email hoặc số điện thoại được cung cấp phải đúng định dạng, được chuẩn hóa và duy nhất.
-- Mỗi tài khoản luôn phải có ít nhất email hoặc số điện thoại.
-- MVP chưa yêu cầu xác minh email hoặc SMS OTP trước khi tạo tài khoản `ACTIVE`.
-- Backend phải chuẩn hóa email về chữ thường trước khi kiểm tra và lưu.
-- Backend phải chuẩn hóa số điện thoại về một định dạng thống nhất trước khi kiểm tra và lưu.
-- Mật khẩu đăng ký tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
-- Access Token có thời hạn ngắn.
-- Refresh Token có thời hạn dài hơn và có thể bị thu hồi.
-- Khi đăng xuất, refresh token của phiên hiện tại phải bị vô hiệu hóa.
-- Tài khoản `BLOCKED` không được đăng nhập hoặc sử dụng hệ thống.
-- Backend phải kiểm tra `user_profiles.profile_completed_at` trước khi cho dùng API mạng xã hội chính.
-- Nếu hồ sơ chưa hoàn tất, Backend trả lỗi nghiệp vụ `PROFILE_NOT_COMPLETED`.
+- Đọc các mục Auth, JWT, Security, onboarding và tiêu chí nghiệm thu trong README trước khi review hoặc triển khai.
+- Lập threat model cho mật khẩu, OTP, flow token, provider token, Access Token và Refresh Token.
+- Kiểm tra hash-at-rest, expiry, revocation, replay, rate limit, concurrency và log redaction theo README.
+- Backend phải tự xác minh dữ liệu danh tính từ provider; không tin dữ liệu do Frontend tự khai báo.
+- Kiểm tra trạng thái tài khoản và trạng thái onboarding tại Backend cho mọi đường xác thực và API liên quan.
+- Không dùng hành vi source cũ để nới lỏng yêu cầu bảo mật đã được README chốt.
 
 ## 2. Phân quyền
 

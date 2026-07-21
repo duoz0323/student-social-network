@@ -1,5 +1,4 @@
-import { Users, FileText, AlertCircle, AlertTriangle, Ban, TrendingUp, Sparkles, Activity } from 'lucide-react';
-import Badge from '../../../components/common/Badge.jsx';
+import { Users, FileText, AlertCircle, AlertTriangle, Ban, TrendingUp, Sparkles } from 'lucide-react';
 import { useApp } from '../../../contexts/AppContext.jsx';
 
 export default function AdminDashboardPage() {

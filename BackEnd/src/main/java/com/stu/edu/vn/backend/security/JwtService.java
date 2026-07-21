@@ -9,24 +9,21 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import javax.crypto.SecretKey;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
  * Service tạo và kiểm tra JWT bằng JJWT; không ghi token hoặc secret ra log.
  */
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     private static final int MIN_HS256_SECRET_BYTES = 32;
     private static final String TOKEN_TYPE_CLAIM = "type";
     private static final String ACCESS_TOKEN_TYPE = "ACCESS";
-    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
 
     private final JwtProperties jwtProperties;
-
-    public JwtService(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
-    }
 
     public String generateAccessToken(Long userId, String role) {
         return generateToken(
@@ -37,48 +34,9 @@ public class JwtService {
         );
     }
 
-    public String generateRefreshToken(Long userId) {
-        return generateToken(
-                String.valueOf(userId),
-                Map.of(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE),
-                jwtProperties.getRefreshTokenExpirationMillis(),
-                jwtProperties.getRefreshTokenSecret()
-        );
-    }
-
-    public boolean isAccessTokenValid(String token) {
-        try {
-            parseAccessTokenClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException exception) {
-            return false;
-        }
-    }
-
-    public boolean isRefreshTokenValid(String token) {
-        try {
-            parseRefreshTokenClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException exception) {
-            return false;
-        }
-    }
-
-    public String extractSubjectFromAccessToken(String token) {
-        return parseAccessTokenClaims(token).getSubject();
-    }
-
-    public String extractSubjectFromRefreshToken(String token) {
-        return parseRefreshTokenClaims(token).getSubject();
-    }
-
     public Long extractUserIdFromAccessToken(String token) {
         String subject = parseAccessTokenClaims(token).getSubject();
         return Long.valueOf(subject);
-    }
-
-    public String extractRoleFromAccessToken(String token) {
-        return parseAccessTokenClaims(token).get("role", String.class);
     }
 
     private String generateToken(
@@ -106,14 +64,8 @@ public class JwtService {
     }
 
     private Claims parseAccessTokenClaims(String token) {
-        Claims claims = parseClaims(token, jwtProperties.getAccessTokenSecret());
+        Claims claims =     parseClaims(token, jwtProperties.getAccessTokenSecret());
         validateTokenType(claims, ACCESS_TOKEN_TYPE);
-        return claims;
-    }
-
-    private Claims parseRefreshTokenClaims(String token) {
-        Claims claims = parseClaims(token, jwtProperties.getRefreshTokenSecret());
-        validateTokenType(claims, REFRESH_TOKEN_TYPE);
         return claims;
     }
 

@@ -7,7 +7,6 @@ export const initialData = {
     {
       id: 'account-001',
       email: 'minh.demo@example.com',
-      phoneNumber: null,
       passwordDemo: 'DemoUser123!',
       passwordHash: 'c88f70e0ff9546971974f1c582b14da9991b34fbb59b0cb27b848eaed3e0210e',
       role: 'USER',
@@ -17,7 +16,6 @@ export const initialData = {
     {
       id: 'account-002',
       email: null,
-      phoneNumber: '+84907654321',
       passwordDemo: 'DemoAdmin123!',
       passwordHash: 'df88c832e9ed606645d98fac326669b3e12856e23719aabdfd7d894212ec1a0b',
       role: 'ADMIN',
@@ -27,7 +25,6 @@ export const initialData = {
     {
       id: 'account-003',
       email: 'blocked.demo@example.com',
-      phoneNumber: '+84909998877',
       passwordDemo: 'DemoBlocked123!',
       passwordHash: '64dc5d2eb37b17c70d158c4aa48f0650dbddf2ae4395389a1d1dfd83146cba1e',
       role: 'USER',
@@ -39,7 +36,6 @@ export const initialData = {
     {
       id: 'user-001',
       email: 'minh.demo@example.com',
-      phoneNumber: null,
       role: 'USER',
       status: 'ACTIVE',
       profile: {
@@ -55,7 +51,6 @@ export const initialData = {
     {
       id: 'user-002',
       email: 'lan.demo@example.com',
-      phoneNumber: null,
       role: 'USER',
       status: 'ACTIVE',
       profile: {
@@ -71,13 +66,12 @@ export const initialData = {
     {
       id: 'user-003',
       email: null,
-      phoneNumber: '+84907654321',
       role: 'ADMIN',
       status: 'ACTIVE',
       profile: {
         displayName: 'Quan tri vien Demo',
         avatarUrl: '/demo/avatars/admin.jpg',
-        dateOfBirth: null,
+        dateOfBirth: '1990-01-01',
         bio: 'Tai khoan quan tri dung trong moi truong demo.',
         profileCompletedAt: completedAt,
       },
@@ -87,13 +81,12 @@ export const initialData = {
     {
       id: 'user-004',
       email: 'blocked.demo@example.com',
-      phoneNumber: '+84909998877',
       role: 'USER',
       status: 'BLOCKED',
       profile: {
         displayName: 'Tai khoan bi khoa',
         avatarUrl: '/demo/avatars/default.jpg',
-        dateOfBirth: null,
+        dateOfBirth: '2001-06-15',
         bio: '',
         profileCompletedAt: completedAt,
       },
@@ -103,7 +96,6 @@ export const initialData = {
     {
       id: 'user-005',
       email: 'mai.anh@example.com',
-      phoneNumber: null,
       role: 'USER',
       status: 'ACTIVE',
       profile: {
@@ -161,7 +153,7 @@ export const initialData = {
     {
       id: 'post-004',
       authorId: 'user-005',
-      content: 'Chuyến đi thực tế tại công ty công nghệ hôm nay thật sự mang lại nhiều kiến thức bổ ích. Mình đã hiểu rõ hơn về quy trình phát triển phần mềm trong thực tế khác với lý thuyết như thế nào. 🚀',
+      content: 'Chuyáº¿n Ä‘i thá»±c táº¿ táº¡i cÃ´ng ty cÃ´ng nghá»‡ hÃ´m nay tháº­t sá»± mang láº¡i nhiá»u kiáº¿n thá»©c bá»• Ã­ch. MÃ¬nh Ä‘Ã£ hiá»ƒu rÃµ hÆ¡n vá» quy trÃ¬nh phÃ¡t triá»ƒn pháº§n má»m trong thá»±c táº¿ khÃ¡c vá»›i lÃ½ thuyáº¿t nhÆ° tháº¿ nÃ o. ðŸš€',
       imageUrls: [],
       hashtags: ['thuctap', 'congnghe', 'trainghiem'],
       status: 'PUBLISHED',
@@ -176,7 +168,7 @@ export const initialData = {
     {
       id: 'post-005',
       authorId: 'user-001',
-      content: 'Một buổi sáng đẹp trời để bắt đầu code thêm vài tính năng mới cho dự án. Mọi người có gợi ý thư viện nào hay để làm animation trong React không? 🤔',
+      content: 'Má»™t buá»•i sÃ¡ng Ä‘áº¹p trá»i Ä‘á»ƒ báº¯t Ä‘áº§u code thÃªm vÃ i tÃ­nh nÄƒng má»›i cho dá»± Ã¡n. Má»i ngÆ°á»i cÃ³ gá»£i Ã½ thÆ° viá»‡n nÃ o hay Ä‘á»ƒ lÃ m animation trong React khÃ´ng? ðŸ¤”',
       imageUrls: [],
       hashtags: ['react', 'frontend', 'animation'],
       status: 'PUBLISHED',
@@ -191,7 +183,7 @@ export const initialData = {
     {
       id: 'post-006',
       authorId: 'user-002',
-      content: 'Đúng 23h tối nay, deadline đồ án mạng máy tính. Vẫn còn đang kẹt ở phần cấu hình router. Ai cứu mình với 😭',
+      content: 'ÄÃºng 23h tá»‘i nay, deadline Ä‘á»“ Ã¡n máº¡ng mÃ¡y tÃ­nh. Váº«n cÃ²n Ä‘ang káº¹t á»Ÿ pháº§n cáº¥u hÃ¬nh router. Ai cá»©u mÃ¬nh vá»›i ðŸ˜­',
       imageUrls: [],
       hashtags: ['doan', 'mangmaytinh', 'deadline'],
       status: 'PUBLISHED',
@@ -206,7 +198,7 @@ export const initialData = {
     {
       id: 'post-007',
       authorId: 'user-005',
-      content: 'Review sách "Clean Code": Cuốn sách gối đầu giường mà mọi lập trình viên đều nên đọc. Mình vừa đọc xong chương 3 về cách đặt tên hàm và cảm thấy được khai sáng rất nhiều.',
+      content: 'Review sÃ¡ch "Clean Code": Cuá»‘n sÃ¡ch gá»‘i Ä‘áº§u giÆ°á»ng mÃ  má»i láº­p trÃ¬nh viÃªn Ä‘á»u nÃªn Ä‘á»c. MÃ¬nh vá»«a Ä‘á»c xong chÆ°Æ¡ng 3 vá» cÃ¡ch Ä‘áº·t tÃªn hÃ m vÃ  cáº£m tháº¥y Ä‘Æ°á»£c khai sÃ¡ng ráº¥t nhiá»u.',
       imageUrls: [],
       hashtags: ['sachhay', 'cleancode', 'laptrinh'],
       status: 'PUBLISHED',
@@ -221,7 +213,7 @@ export const initialData = {
     {
       id: 'post-008',
       authorId: 'user-001',
-      content: 'Chia sẻ một số mẹo sử dụng Tailwind CSS giúp bạn viết code nhanh và gọn hơn. Các bạn có thể xem qua blog cá nhân của mình nhé. Link ở bio! ✌️',
+      content: 'Chia sáº» má»™t sá»‘ máº¹o sá»­ dá»¥ng Tailwind CSS giÃºp báº¡n viáº¿t code nhanh vÃ  gá»n hÆ¡n. CÃ¡c báº¡n cÃ³ thá»ƒ xem qua blog cÃ¡ nhÃ¢n cá»§a mÃ¬nh nhÃ©. Link á»Ÿ bio! âœŒï¸',
       imageUrls: [],
       hashtags: ['tailwindcss', 'css', 'tips'],
       status: 'PUBLISHED',

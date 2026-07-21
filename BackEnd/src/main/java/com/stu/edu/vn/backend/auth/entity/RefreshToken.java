@@ -11,12 +11,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * Entity refresh_tokens chỉ lưu token hash để tránh rò rỉ token thô từ database.
  */
 @Entity
 @Table(name = "refresh_tokens")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RefreshToken {
 
     @Id
@@ -48,10 +53,6 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    protected RefreshToken() {
-        // Constructor rỗng dành cho JPA.
-    }
-
     public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt) {
         this.user = user;
         this.tokenHash = tokenHash;
@@ -75,67 +76,7 @@ public class RefreshToken {
         this.expiresAt = expiresAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public String getTokenHash() {
-        return tokenHash;
-    }
-
-    public void setTokenHash(String tokenHash) {
-        this.tokenHash = tokenHash;
-    }
-
-    public String getDeviceId() {
-        return deviceId;
-    }
-
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
-    }
-
-    public String getDeviceInfo() {
-        return deviceInfo;
-    }
-
-    public void setDeviceInfo(String deviceInfo) {
-        this.deviceInfo = deviceInfo;
-    }
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
-
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
-
-    public LocalDateTime getRevokedAt() {
-        return revokedAt;
-    }
-
-    public void setRevokedAt(LocalDateTime revokedAt) {
+    public void revoke(LocalDateTime revokedAt) {
         this.revokedAt = revokedAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 }
