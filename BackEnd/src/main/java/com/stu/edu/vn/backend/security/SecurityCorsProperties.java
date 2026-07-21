@@ -15,7 +15,8 @@ public class SecurityCorsProperties {
             "http://localhost:5173",
             "http://127.0.0.1:5173",
             "http://localhost:5174",
-            "http://127.0.0.1:5174"
+            "http://127.0.0.1:5174",
+            "https://student-social-network.onrender.com"
     ));
     private List<String> allowedMethods = new ArrayList<>(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "X-Auth-Flow-Token"));
