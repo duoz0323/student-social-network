@@ -51,23 +51,42 @@ Response 201:
 
 ### POST `/api/v1/auth/login`
 
+Actor:
+
+- Khách chưa đăng nhập hoặc người dùng có phiên đã hết hạn Access Token.
+
 Request:
 
 ```json
 {
   "identifier": "minh@example.com",
-  "password": "Password123!"
+  "password": "Password123!",
+  "deviceId": "optional-device-id",
+  "deviceInfo": "optional-browser-information"
 }
 ```
 
-`identifier` là email hoặc số điện thoại. Backend tự xác định loại định danh để truy vấn đúng trường.
+Quy tắc:
+
+- `identifier` là email hoặc số điện thoại. Backend tự xác định loại định danh để truy vấn đúng trường.
+- Email được trim và chuẩn hóa chữ thường trước khi truy vấn.
+- Số điện thoại được chuẩn hóa theo utility hiện có của Backend trước khi truy vấn.
+- `deviceId` và `deviceInfo` là tùy chọn, dùng để ghi nhận thông tin phiên nếu Client cung cấp.
+- Chỉ tài khoản `ACTIVE` được đăng nhập.
+- Tài khoản `BLOCKED` bị từ chối đăng nhập.
+- Mật khẩu được kiểm tra bằng `PasswordEncoder`, không so sánh chuỗi thô.
+- Lỗi sai identifier hoặc sai mật khẩu phải dùng cùng một mã lỗi để không tiết lộ tài khoản có tồn tại hay không.
+- Người dùng chưa hoàn tất hồ sơ vẫn được đăng nhập; response phải trả `profileCompleted` để Frontend điều hướng.
+- Không trả `password_hash`, `token_hash`, email, số điện thoại hoặc dữ liệu nhạy cảm.
 
 Ví dụ đăng nhập bằng số điện thoại:
 
 ```json
 {
   "identifier": "0901234567",
-  "password": "Password123!"
+  "password": "Password123!",
+  "deviceId": "optional-device-id",
+  "deviceInfo": "Chrome on Windows"
 }
 ```
 
@@ -75,20 +94,44 @@ Response 200:
 
 ```json
 {
-  "accessToken": "demo-access-token",
-  "refreshToken": "demo-refresh-token",
-  "tokenType": "Bearer",
-  "expiresIn": 900,
-  "user": {
-    "id": "user-001",
-    "displayName": "Nguyễn Hoàng Minh",
-    "role": "USER"
-  }
+  "success": true,
+  "message": "Đăng nhập thành công",
+  "data": {
+    "accessToken": "demo-access-token",
+    "refreshToken": "demo-refresh-token",
+    "tokenType": "Bearer",
+    "accessTokenExpiresIn": 900,
+    "refreshTokenExpiresIn": 2592000,
+    "profileCompleted": false,
+    "user": {
+      "id": 1,
+      "role": "USER"
+    }
+  },
+  "timestamp": "2026-06-21T10:00:00"
 }
 ```
+
+Điều hướng Frontend:
+
+- `profileCompleted = false`: chuyển đến onboarding hồ sơ.
+- `profileCompleted = true`: chuyển đến Feed.
+
+Error:
+
+| HTTP status | Code | Khi nào |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | Request thiếu `identifier`, thiếu `password` hoặc dữ liệu không hợp lệ. |
+| 401 | `INVALID_CREDENTIALS` | Identifier không tồn tại hoặc mật khẩu không đúng. |
+| 403 | `USER_BLOCKED` | Tài khoản tồn tại, mật khẩu đúng nhưng tài khoản bị khóa. |
+| 500 | `INTERNAL_ERROR` | Lỗi hệ thống ngoài dự kiến. |
 
 ### POST `/api/v1/auth/refresh-token`
 
+Actor:
+
+- Người dùng có Refresh Token còn hiệu lực.
+
 Request:
 
 ```json
@@ -96,9 +139,49 @@ Request:
   "refreshToken": "demo-refresh-token"
 }
 ```
+
+Quy tắc:
+
+- Refresh Token phải là token đúng chữ ký, đúng loại token và chưa hết hạn.
+- Backend chỉ lưu và truy vấn SHA-256 hash của Refresh Token, không lưu token thô.
+- Refresh Token đã bị thu hồi hoặc hết hạn không được cấp Access Token mới.
+- Tài khoản sở hữu token phải còn `ACTIVE`.
+- Người dùng chưa hoàn tất hồ sơ vẫn được refresh token.
+- Response chỉ cấp Access Token mới; không tự rotate Refresh Token trong contract MVP này.
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "message": "Làm mới Access Token thành công",
+  "data": {
+    "accessToken": "new-demo-access-token",
+    "tokenType": "Bearer",
+    "accessTokenExpiresIn": 900,
+    "profileCompleted": false
+  },
+  "timestamp": "2026-06-21T10:00:00"
+}
+```
+
+Error:
+
+| HTTP status | Code | Khi nào |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | Request thiếu `refreshToken`. |
+| 401 | `INVALID_REFRESH_TOKEN` | Refresh Token sai định dạng, sai chữ ký, không tồn tại trong database hoặc không khớp user. |
+| 401 | `REFRESH_TOKEN_EXPIRED` | Refresh Token đã hết hạn. |
+| 401 | `REFRESH_TOKEN_REVOKED` | Refresh Token đã bị thu hồi. |
+| 403 | `USER_BLOCKED` | Tài khoản sở hữu token đã bị khóa. |
+| 500 | `INTERNAL_ERROR` | Lỗi hệ thống ngoài dự kiến. |
 
 ### POST `/api/v1/auth/logout`
 
+Actor:
+
+- Người dùng muốn đăng xuất khỏi phiên hiện tại.
+
 Request:
 
 ```json
@@ -106,6 +189,36 @@ Request:
   "refreshToken": "demo-refresh-token"
 }
 ```
+
+Quy tắc:
+
+- Backend hash Refresh Token thô bằng SHA-256 rồi tìm bản ghi tương ứng.
+- Chỉ Refresh Token của phiên hiện tại bị thu hồi.
+- Không thu hồi toàn bộ phiên khác của cùng người dùng.
+- Không yêu cầu hồ sơ đã hoàn tất.
+- Không trả token hoặc token hash trong response.
+- Có thể trả thành công theo hướng idempotent để không tiết lộ trạng thái tồn tại của token.
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "message": "Đăng xuất thành công",
+  "data": {
+    "loggedOut": true
+  },
+  "timestamp": "2026-06-21T10:00:00"
+}
+```
+
+Error:
+
+| HTTP status | Code | Khi nào |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | Request thiếu `refreshToken`. |
+| 401 | `INVALID_REFRESH_TOKEN` | Refresh Token sai định dạng hoặc sai chữ ký. |
+| 500 | `INTERNAL_ERROR` | Lỗi hệ thống ngoài dự kiến. |
 
 ## 2. User
 
