@@ -74,20 +74,6 @@ class RegistrationVerificationServiceImplTest {
                 .isEqualTo(ErrorCode.AUTH_OTP_INVALID);
     }
 
-    @Test
-    void identifierRaceMapsToSpecificConflictWithoutSqlDetails() {
-        when(transactionService.verify(any(), any()))
-                .thenThrow(new RegistrationIdentifierConflictException(
-                        RegistrationType.PHONE,
-                        new DataIntegrityViolationException("uq_users_phone_number")
-                ));
-
-        assertThatThrownBy(() -> service.verify(validRequest(), null))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage(ErrorCode.AUTH_PHONE_ALREADY_EXISTS.getDefaultMessage())
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.AUTH_PHONE_ALREADY_EXISTS);
-    }
 
     @Test
     void persistenceFailureMapsToAccountCreationFailed() {
@@ -118,3 +104,4 @@ class RegistrationVerificationServiceImplTest {
         );
     }
 }
+

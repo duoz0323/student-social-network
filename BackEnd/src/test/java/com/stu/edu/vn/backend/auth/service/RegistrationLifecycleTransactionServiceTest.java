@@ -15,7 +15,7 @@ import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
 import com.stu.edu.vn.backend.auth.enums.RegistrationType;
 import com.stu.edu.vn.backend.auth.generator.OtpGenerator;
 import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -53,7 +53,7 @@ class RegistrationLifecycleTransactionServiceTest {
                 hmacService,
                 otpGenerator,
                 properties,
-                new IdentifierMasker(),
+                new EmailMasker(),
                 clock
         );
     }
@@ -75,7 +75,7 @@ class RegistrationLifecycleTransactionServiceTest {
     @Test
     void statusReturnsEveryTerminalStateWithoutIssuingOtpOrJwt() {
         PendingRegistration completed = pending(NOW.minusMinutes(1), NOW.plusHours(24));
-        completed.complete(new User("student@example.com", null, "hash"), NOW.minusSeconds(1));
+        completed.complete(new User("student@example.com", "hash"), NOW.minusSeconds(1));
         arrange(completed);
         RegistrationStatusResponse completedResponse = service.status(RAW_FLOW_TOKEN);
         assertThat(completedResponse.status()).isEqualTo(OtpChallengeStatus.COMPLETED);
@@ -141,7 +141,7 @@ class RegistrationLifecycleTransactionServiceTest {
     @Test
     void completedRegistrationCannotBeCancelled() {
         PendingRegistration completed = pending(NOW.minusMinutes(1), NOW.plusHours(24));
-        completed.complete(new User("student@example.com", null, "hash"), NOW.minusSeconds(1));
+        completed.complete(new User("student@example.com", "hash"), NOW.minusSeconds(1));
         arrange(completed);
 
         assertThatThrownBy(() -> service.cancel(RAW_FLOW_TOKEN))
@@ -190,7 +190,7 @@ class RegistrationLifecycleTransactionServiceTest {
     @Test
     void resendTerminalReturnsStateSpecificErrorInsteadOfFlowInvalid() {
         PendingRegistration completed = pending(NOW, NOW.plusHours(24));
-        completed.complete(new User("student@example.com", null, "hash"), NOW.minusSeconds(1));
+        completed.complete(new User("student@example.com", "hash"), NOW.minusSeconds(1));
         arrange(completed);
         assertThat(service.issueNewOtp(RAW_FLOW_TOKEN).errorCode())
                 .isEqualTo(ErrorCode.AUTH_REGISTRATION_ALREADY_COMPLETED);

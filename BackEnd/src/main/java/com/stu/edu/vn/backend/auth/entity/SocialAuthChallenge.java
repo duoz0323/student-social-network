@@ -175,7 +175,7 @@ public class SocialAuthChallenge extends BaseAuditEntity {
     private void validateResolution(SocialResolutionAction action, User targetUser) {
         Objects.requireNonNull(action, "resolutionAction không được null");
         boolean pendingConflict = conflictType == SocialConflictType.PENDING_EMAIL_MISMATCH
-                || conflictType == SocialConflictType.PENDING_PHONE_REQUIRES_CANCEL;
+                || conflictType == SocialConflictType.PENDING_EMAIL_MISMATCH;
         if (pendingConflict && action == SocialResolutionAction.CONTINUE_OTP && targetUser == null) {
             return;
         }
@@ -200,7 +200,7 @@ public class SocialAuthChallenge extends BaseAuditEntity {
     ) {
         Objects.requireNonNull(conflictType, "conflictType không được null");
         boolean pendingConflict = conflictType == SocialConflictType.PENDING_EMAIL_MISMATCH
-                || conflictType == SocialConflictType.PENDING_PHONE_REQUIRES_CANCEL;
+                || conflictType == SocialConflictType.PENDING_EMAIL_MISMATCH;
         if (pendingConflict && pendingRegistration == null) {
             throw new IllegalArgumentException("Pending conflict phải tham chiếu pending registration");
         }

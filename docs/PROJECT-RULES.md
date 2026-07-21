@@ -5,30 +5,29 @@
 ## 1. Tài khoản
 
 - Email duy nhất nếu có giá trị.
-- Số điện thoại duy nhất nếu có giá trị.
-- Không dùng username hoặc định danh công khai tương tự trong MVP.
-- Đăng ký bằng đúng một phương thức định danh: email hoặc số điện thoại.
-- Form đăng ký chỉ gồm phương thức định danh, mật khẩu và xác nhận mật khẩu.
-- Request đăng ký chỉ nhận một giá trị định danh tại một thời điểm.
-- Nếu đăng ký bằng email thì `phone_number` lưu `NULL`; nếu đăng ký bằng số điện thoại thì `email` lưu `NULL`.
+- Không dùng username hoặc email công khai tương tự trong MVP.
+- Đăng ký bằng đúng một phương thức email: email.
+- Form đăng ký chỉ gồm phương thức email, mật khẩu và xác nhận mật khẩu.
+- Request đăng ký chỉ nhận một giá trị email tại một thời điểm.
+- Nếu đăng ký bằng email thì `email` lưu `NULL`; nếu đăng ký bằng email thì `email` lưu `NULL`.
 - Form đăng ký local chỉ tạo `pending_registrations`; chưa tạo `users`, `user_profiles` hoặc JWT.
-- OTP email hoặc OTP SMS hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction.
+- OTP email hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction.
 - Hệ thống hỗ trợ Google/Facebook và nhiều phương thức xác thực cùng ánh xạ về một `users.id`.
 - Provider token chỉ dùng tại Auth endpoint và phải được Backend xác minh.
 - Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
 - Liên kết provider lấy user đích từ JWT hiện tại; không được gỡ phương thức đăng nhập cuối cùng.
 - `users.password_hash` được phép `NULL` với social-only account.
-- Đăng nhập bằng email hoặc số điện thoại.
+- Đăng nhập bằng email.
 - Mật khẩu tối thiểu 8 ký tự, gồm chữ, số và ký tự đặc biệt.
 - Trạng thái MVP: ACTIVE, BLOCKED.
 - User `BLOCKED` bị từ chối ở mọi phương thức đăng nhập.
 - Role: USER, ADMIN.
-- Email và phone chỉ đăng nhập local được sau khi trường verified timestamp tương ứng có giá trị.
+- Email chỉ đăng nhập local được sau khi trường verified timestamp tương ứng có giá trị.
 
 ## 2. Hồ sơ
 
 - Hồ sơ công khai.
-- Email và số điện thoại không hiển thị công khai.
+- Email không hiển thị công khai.
 - Chỉ chủ tài khoản cập nhật hồ sơ.
 - Backend chỉ tạo `user_profiles` cùng `users` sau khi OTP hoặc social identity hợp lệ theo README.
 - `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
@@ -121,3 +120,4 @@
 - `CommentStatus` thuộc `interaction/enums`.
 - `ReportStatus` và `ReportReason` thuộc `report/enums`.
 - Enum dùng chung thật sự cho nhiều module chỉ được đặt trong `common/enums` khi có lý do rõ ràng.
+

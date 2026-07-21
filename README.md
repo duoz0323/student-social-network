@@ -10,8 +10,8 @@
 
 Hệ thống cung cấp các nhóm chức năng chính:
 
-- Đăng ký và đăng nhập bằng email, số điện thoại, Google hoặc Facebook.
-- Xác minh email và số điện thoại bằng mã OTP.
+- Đăng ký và đăng nhập bằng email, Google hoặc Facebook.
+- Xác minh email bằng mã OTP.
 - Quản lý và liên kết nhiều phương thức đăng nhập trên cùng một tài khoản.
 - Quản lý hồ sơ cá nhân.
 - Theo dõi người dùng khác.
@@ -32,7 +32,7 @@ Phiên bản hiện tại tập trung hoàn thiện phạm vi **Minimum Viable P
 
 - Xây dựng một website mạng xã hội tinh gọn dành cho sinh viên.
 - Tạo môi trường để sinh viên chia sẻ nội dung và kết nối với nhau.
-- Hỗ trợ xác thực đa phương thức bằng email, số điện thoại, Google và Facebook.
+- Hỗ trợ xác thực đa phương thức bằng email, Google và Facebook.
 - Xây dựng đầy đủ luồng JWT Access Token và Refresh Token.
 - Triển khai các chức năng cốt lõi của mạng xã hội.
 - Áp dụng kiến trúc Frontend và Backend tách biệt.
@@ -78,12 +78,12 @@ Phiên bản hiện tại tập trung hoàn thiện phạm vi **Minimum Viable P
 
 Khách chưa đăng nhập có thể:
 
-- Bắt đầu đăng ký bằng email hoặc số điện thoại.
+- Bắt đầu đăng ký bằng email.
 - Xác minh đăng ký bằng OTP.
 - Đăng ký hoặc đăng nhập bằng Google/Facebook.
-- Đăng nhập bằng email hoặc số điện thoại đã xác minh.
+- Đăng nhập bằng email đã xác minh.
 - Gửi lại mã xác minh hoặc tiếp tục đăng ký đang chờ.
-- Yêu cầu đặt lại mật khẩu nếu chức năng được triển khai.
+- Khôi phục mật khẩu bằng OTP đối với tài khoản local đủ điều kiện; tài khoản social-only không dùng luồng này để tạo mật khẩu lần đầu.
 
 Khách chưa đăng nhập không được truy cập các chức năng mạng xã hội.
 
@@ -119,10 +119,9 @@ Quản trị viên có thể:
 
 #### Phương thức xác thực
 
-Hệ thống hỗ trợ bốn phương thức:
+Hệ thống hỗ trợ ba phương thức:
 
 - Email và mật khẩu, xác minh bằng OTP email.
-- Số điện thoại và mật khẩu, xác minh bằng OTP SMS.
 - Google.
 - Facebook.
 
@@ -136,11 +135,11 @@ Nhiều phương thức xác thực
 
 Mọi phương thức đã được xác minh và liên kết hợp lệ đều ánh xạ về cùng một `users.id`. Sau khi xác thực thành công, Backend cấp JWT Access Token và Refresh Token của hệ thống.
 
-#### Đăng ký local bằng email hoặc số điện thoại
+#### Đăng ký local bằng email
 
-- Người dùng chỉ cung cấp một định danh tại một thời điểm: email hoặc số điện thoại.
-- Form đăng ký gồm định danh, mật khẩu và xác nhận mật khẩu.
-- Backend chuẩn hóa email về chữ thường và chuẩn hóa số điện thoại trước khi kiểm tra.
+- Người dùng cung cấp một địa chỉ email tại mỗi yêu cầu đăng ký.
+- Form đăng ký gồm email, mật khẩu và xác nhận mật khẩu.
+- Backend loại bỏ khoảng trắng thừa và chuẩn hóa email về chữ thường trước khi kiểm tra.
 - Hệ thống chưa tạo `users` và `user_profiles` ngay khi người dùng gửi form đăng ký.
 - Backend tạo bản ghi `pending_registrations`, sinh OTP, lưu OTP và flow token dưới dạng hash rồi gửi mã xác minh.
 - Chỉ sau khi OTP hợp lệ, hệ thống mới tạo đồng thời `users` và `user_profiles` trong cùng transaction.
@@ -168,7 +167,7 @@ Chính sách mặc định:
 
 - Khi mất mạng, đóng tab hoặc rời màn hình xác minh, đăng ký tạm vẫn được giữ trong thời hạn.
 - Người dùng có thể tiếp tục xác minh hoặc gửi lại mã.
-- Nếu Frontend mất flow token, người dùng nhập lại email hoặc số điện thoại; Backend phát hiện đăng ký đang chờ và không tạo bản ghi trùng.
+- Nếu Frontend mất flow token, người dùng nhập lại email; Backend phát hiện đăng ký đang chờ và không tạo bản ghi trùng.
 - OTP cũ phải mất hiệu lực khi mã mới được phát hành.
 
 #### Đăng ký và đăng nhập bằng Google/Facebook
@@ -185,14 +184,13 @@ Chính sách mặc định:
 
 - Email đang chờ xác minh và social trả cùng email đã xác minh: được phép hoàn tất đăng ký tạm, giữ phương thức local và liên kết social vào cùng tài khoản.
 - Email đang chờ nhưng social trả email khác: người dùng phải chọn tiếp tục OTP hoặc hủy đăng ký tạm để dùng social.
-- Số điện thoại đang chờ chuyển sang social: social không được xem là bằng chứng xác minh số điện thoại; người dùng phải xác nhận hủy đăng ký phone trước khi tiếp tục.
+- Khi email social khác email đang chờ, social không được xem là bằng chứng xác minh email đang chờ; người dùng phải xác nhận hủy đăng ký email trước khi tiếp tục.
 - Chỉ hủy hoặc hoàn tất đăng ký tạm sau khi Backend xác minh social token thành công.
 
 #### Đăng nhập local
 
-- Người dùng đăng nhập bằng email hoặc số điện thoại và mật khẩu.
+- Người dùng đăng nhập bằng email và mật khẩu.
 - Email chỉ được dùng đăng nhập khi `email_verified_at` khác `NULL`.
-- Số điện thoại chỉ được dùng đăng nhập khi `phone_verified_at` khác `NULL`.
 - Tài khoản chỉ dùng social có thể có `password_hash = NULL` và chưa thể đăng nhập local.
 - Tài khoản `BLOCKED` bị từ chối ở mọi phương thức đăng nhập.
 
@@ -201,19 +199,30 @@ Chính sách mặc định:
 Người dùng đã đăng nhập có thể liên kết thêm:
 
 - Email.
-- Số điện thoại.
 - Google.
 - Facebook.
 
 Quy tắc:
 
-- Email và số điện thoại phải được xác minh OTP trước khi liên kết.
+- Email phải được xác minh OTP trước khi liên kết.
 - Google/Facebook phải được xác minh trong phiên đang đăng nhập.
 - `user_id` đích được lấy từ JWT hiện tại, không suy ra chỉ bằng email social.
-- Định danh hoặc provider đã thuộc tài khoản khác phải bị từ chối.
+- Email hoặc provider đã thuộc tài khoản khác phải bị từ chối.
 - Không tự động gộp hai tài khoản đang hoạt động.
 - Không được gỡ phương thức đăng nhập cuối cùng.
-- Tài khoản social muốn dùng đăng nhập local phải thiết lập mật khẩu và xác minh định danh tương ứng.
+- Tài khoản social muốn dùng đăng nhập local phải thiết lập mật khẩu và xác minh email tương ứng.
+
+#### Khôi phục mật khẩu
+
+- Chỉ tài khoản `ACTIVE` đã có `password_hash` và EMAIL tương ứng đã verified mới đủ điều kiện.
+- Tài khoản social-only không dùng Forgot Password để tạo mật khẩu lần đầu.
+- Identifier không tồn tại, chưa verified, social-only hoặc `BLOCKED` đều nhận response start trung tính và một decoy challenge có lifecycle thật.
+- Challenge có TTL 15 phút; OTP 10 phút và không vượt challenge expiry; cooldown 60 giây; tối đa 5 lần sai; reset-authorized token 5 phút.
+- OTP và token chỉ lưu dạng HMAC hash. Recovery flow token và reset-authorized token chỉ truyền qua `X-Auth-Flow-Token`.
+- OTP delivery chạy bất đồng bộ sau commit, không enqueue cho decoy và không giữ transaction khi gọi Brevo.
+- Complete đổi mật khẩu, đánh dấu token single-use và thu hồi toàn bộ Refresh Token trong cùng transaction; không tự đăng nhập hoặc cấp JWT mới.
+- Access Token stateless đã phát hành còn hiệu lực tới expiry vì hệ thống hiện chưa dùng `tokenVersion`.
+- `password_reset_tokens` là bảng legacy được giữ nguyên để audit; implementation mới không đọc hoặc ghi bảng này.
 
 #### JWT và quản lý phiên
 
@@ -248,7 +257,7 @@ Quy tắc:
 - Xem số lượng người đang theo dõi.
 - Xem danh sách bài viết đã đăng.
 
-Tất cả hồ sơ trong MVP đều công khai. Email, số điện thoại và dữ liệu xác thực không được trả trong API hồ sơ công khai.
+Tất cả hồ sơ trong MVP đều công khai. Email và dữ liệu xác thực không được trả trong API hồ sơ công khai.
 
 ### 👥 3. Theo dõi người dùng
 
@@ -398,7 +407,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 ### P0 – Bắt buộc hoàn thành
 
-- Đăng ký email/số điện thoại có OTP.
+- Đăng ký email có OTP.
 - Đăng ký và đăng nhập Google/Facebook.
 - Đăng nhập local.
 - Hoàn tất hồ sơ ban đầu.
@@ -463,7 +472,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Google token verification.
 - Facebook access-token verification.
 - Java Mail hoặc dịch vụ email tương đương.
-- Nhà cung cấp SMS OTP.
+- Brevo Transactional Email API.
 - Maven.
 - Lombok.
 - MapStruct hoặc mapper thủ công.
@@ -520,7 +529,7 @@ Database chỉ lưu URL và metadata của media, không lưu dữ liệu BLOB.
         ▼          ▼
 ┌──────────────┐  ┌──────────────────┐
 │   MySQL 8    │  │ External Services│
-│ Main Data    │  │ Email/SMS/OAuth  │
+│ Main Data    │  │ Email/OAuth  │
 └───────┬──────┘  └──────────────────┘
         │
         ▼
@@ -588,6 +597,7 @@ student-social-network/
 │   └── pom.xml
 │
 ├── database/
+│   ├── student_social_network_full.sql
 │   ├── student_social_network_db.sql
 │   ├── student_social_network_db.dbml
 │   └── seed_data.sql
@@ -635,7 +645,7 @@ Backend được tổ chức theo module nghiệp vụ kết hợp kiến trúc 
 - `repository`: truy cập dữ liệu.
 - `service`: khai báo nghiệp vụ.
 - `service/impl`: triển khai nghiệp vụ và quản lý transaction.
-- `provider`: tích hợp email, SMS, Google và Facebook.
+- `provider`: tích hợp email, Google và Facebook.
 - `mapper`: chuyển đổi Entity và DTO.
 - `common/security`: JWT và Spring Security.
 - `common/exception`: xử lý lỗi tập trung.
@@ -647,7 +657,7 @@ Nguyên tắc:
 - Entity không được trả trực tiếp ra API.
 - Mọi kiểm tra quyền phải thực hiện tại Backend.
 - Các thao tác nhiều bước phải dùng transaction khi cần.
-- Không giữ transaction database trong lúc chờ SMTP, SMS hoặc provider bên ngoài.
+- Không giữ transaction database trong lúc chờ SMTP, email hoặc provider bên ngoài.
 - Không lưu mật khẩu, OTP, flow token hoặc Refresh Token dưới dạng văn bản thuần.
 
 ---
@@ -656,12 +666,13 @@ Nguyên tắc:
 
 ### Tài khoản và xác thực
 
-- `users`: tài khoản nội bộ, email/số điện thoại, mật khẩu băm, trạng thái xác minh, vai trò và trạng thái tài khoản.
+- `users`: tài khoản nội bộ, email, mật khẩu băm, trạng thái xác minh, vai trò và trạng thái tài khoản.
 - `user_profiles`: hồ sơ người dùng và trạng thái onboarding.
 - `pending_registrations`: đăng ký local đang chờ OTP.
 - `user_auth_providers`: liên kết Google/Facebook với cùng một `users.id`.
 - `refresh_tokens`: phiên làm mới JWT.
-- `password_reset_tokens`: token đặt lại mật khẩu.
+- `password_recovery_challenges`: challenge thật/decoy cho Password Recovery, chỉ lưu OTP và token dạng hash.
+- `password_reset_tokens`: bảng đặt lại mật khẩu legacy, được giữ nguyên để audit và không được service mới ghi dữ liệu.
 
 ### Quan hệ theo dõi
 
@@ -689,7 +700,6 @@ Nguyên tắc:
 Ràng buộc Auth quan trọng:
 
 - `users.email` là duy nhất khi có giá trị.
-- `users.phone_number` là duy nhất khi có giá trị.
 - `users.password_hash` được phép `NULL` với tài khoản chỉ dùng social.
 - `user_auth_providers(provider, provider_user_id)` là duy nhất.
 - OTP, flow token và Refresh Token chỉ lưu dưới dạng hash.
@@ -776,7 +786,6 @@ POST /api/v1/auth/registrations/resolve-social-conflict
 ```http
 GET    /api/v1/users/me/auth-providers
 POST   /api/v1/users/me/auth-providers/email
-POST   /api/v1/users/me/auth-providers/phone
 POST   /api/v1/users/me/auth-providers/google
 POST   /api/v1/users/me/auth-providers/facebook
 DELETE /api/v1/users/me/auth-providers/{provider}
@@ -798,7 +807,7 @@ Ví dụ bắt đầu đăng ký:
 
 ```json
 {
-  "identifier": "student@example.com",
+  "email": "student@example.com",
   "password": "Password@123",
   "confirmPassword": "Password@123"
 }
@@ -813,12 +822,16 @@ Ví dụ xác minh OTP:
 }
 ```
 
-Ví dụ Google authentication:
+Ví dụ Google authentication khi tham gia luồng registration đang chờ:
+
+```http
+X-Auth-Flow-Token: <optional-registration-flow-token>
+Content-Type: application/json
+```
 
 ```json
 {
-  "idToken": "<google-id-token>",
-  "registrationFlowToken": "<optional>"
+  "idToken": "<google-id-token>"
 }
 ```
 
@@ -857,18 +870,16 @@ cd student-social-network
 
 ### 3. Khởi tạo cơ sở dữ liệu
 
-```bash
-mysql -u root -p
-```
-
-```sql
-CREATE DATABASE student_social_network
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
-```
+File `student_social_network_full.sql` tự động drop database test hiện tại, tạo lại schema và nạp dữ liệu demo. Từ Command Prompt hoặc Git Bash:
 
 ```bash
-mysql -u root -p student_social_network < database/student_social_network_db.sql
+mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network_full.sql
+```
+
+Từ PowerShell:
+
+```powershell
+cmd /c "mysql --default-character-set=utf8mb4 -u root -p < database\student_social_network_full.sql"
 ```
 
 ### 4. Cấu hình Backend
@@ -880,19 +891,22 @@ DB_URL=jdbc:mysql://localhost:3306/student_social_network?useSSL=false&serverTim
 DB_USERNAME=root
 DB_PASSWORD=your_mysql_password
 
-JWT_ACCESS_SECRET=your_access_token_secret
-JWT_REFRESH_SECRET=your_refresh_token_secret
-JWT_ACCESS_EXPIRATION=900000
-JWT_REFRESH_EXPIRATION=2592000000
+JWT_ACCESS_TOKEN_SECRET=your_access_token_secret
+JWT_ACCESS_TOKEN_EXPIRATION_MILLIS=900000
+JWT_REFRESH_TOKEN_EXPIRATION_MILLIS=2592000000
 
-MAIL_USERNAME=your_mail_username
-MAIL_PASSWORD=your_mail_app_password
+AUTH_OTP_HMAC_SECRET=your_independent_otp_hmac_secret
+AUTH_FLOW_TOKEN_HMAC_SECRET=your_independent_flow_token_hmac_secret
+AUTH_SOCIAL_IDENTITY_FINGERPRINT_SECRET=your_independent_social_fingerprint_secret
 
 GOOGLE_CLIENT_ID=your_google_client_id
 FACEBOOK_APP_ID=your_facebook_app_id
 FACEBOOK_APP_SECRET=your_facebook_app_secret
 
-SMS_PROVIDER_API_KEY=your_sms_provider_api_key
+BREVO_API_KEY=your_brevo_api_key
+BREVO_SENDER_EMAIL=verified_sender@example.com
+BREVO_SENDER_NAME=UniShare
+# 4 = Brandname mặc định Verify/Notify; dùng 3 khi đã có Brandname riêng
 ```
 
 Không đưa thông tin bí mật lên GitHub.
@@ -946,14 +960,12 @@ npm run preview
 ### Luồng Auth cần kiểm thử
 
 - Đăng ký email và xác minh OTP.
-- Đăng ký số điện thoại và xác minh OTP.
 - Gửi lại OTP và giới hạn tần suất.
 - OTP sai, hết hạn, đã dùng hoặc vượt số lần thử.
 - Tiếp tục đăng ký sau khi đóng tab hoặc mất mạng.
 - Đăng ký/đăng nhập Google.
 - Đăng ký/đăng nhập Facebook.
 - Email pending chuyển sang social cùng email.
-- Phone pending chuyển sang social.
 - Provider đã liên kết đăng nhập đúng `users.id`.
 - Liên kết và gỡ phương thức đăng nhập.
 - Từ chối gỡ phương thức cuối cùng.
@@ -969,10 +981,9 @@ npm run preview
 2. OTP hợp lệ mới tạo `users` và `user_profiles`.
 3. `users` và `user_profiles` được tạo trong cùng transaction.
 4. OTP hết hạn, đã dùng, bị hủy hoặc vượt số lần thử không thể sử dụng.
-5. Không tồn tại hai đăng ký tạm còn hiệu lực cho cùng một định danh.
+5. Không tồn tại hai đăng ký tạm còn hiệu lực cho cùng một email.
 6. Mất mạng hoặc đóng tab vẫn có thể tiếp tục trong thời hạn.
 7. Email pending cùng social email đã xác minh hoàn tất đúng một tài khoản.
-8. Phone pending chuyển social không mang theo số điện thoại chưa xác minh.
 9. Provider đã liên kết luôn đăng nhập đúng `users.id`.
 10. Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
 11. Không cho gỡ phương thức đăng nhập cuối cùng.
@@ -1029,7 +1040,7 @@ npm run preview
 - Hệ thống hướng đến 30–50 người dùng đồng thời trong môi trường kiểm thử.
 - Tránh truy vấn N+1.
 - Không tải toàn bộ Entity Relationship không cần thiết.
-- Việc gửi email/SMS không giữ transaction database mở quá lâu.
+- Việc gửi email không giữ transaction database mở quá lâu.
 - Các tác vụ dọn đăng ký hết hạn có thể chạy theo lịch.
 
 ---
@@ -1181,3 +1192,4 @@ Không sử dụng dự án cho mục đích thương mại khi chưa có sự �
 **Khoa Công nghệ Thông tin**
 
 **Đề tài: Xây dựng hệ thống mạng xã hội tinh gọn hướng đến sinh viên**
+

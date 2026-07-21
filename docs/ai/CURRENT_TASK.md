@@ -6,7 +6,7 @@ Hoan thanh cap nhat Frontend React, mock data va tai lieu UI/Data cho luong dang
 
 ## Pham vi da thuc hien
 
-- Dang ky MVP dung mot truong `identifier`, `password`, `confirmPassword`.
+- Dang ky MVP dung mot truong `email`, `password`, `confirmPassword`.
 - Sau dang ky tao mock user, mock profile rong va session React hop le.
 - Session React dung localStorage key rieng `unishare.react.session`.
 - Session chi luu `userId`, `role`, `expiresAt`.
@@ -58,3 +58,4 @@ Repo FrontEnd khong co test script rieng trong `package.json`, nen chua co lenh 
 - Chua trien khai luong quen/doi mat khau P2.
 - Chua sua Backend, SQL, DBML.
 - Chua commit hoac push.
+

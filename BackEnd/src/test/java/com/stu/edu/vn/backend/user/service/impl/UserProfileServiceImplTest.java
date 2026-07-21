@@ -40,7 +40,7 @@ class UserProfileServiceImplTest {
 
     @Test
     void updateProfileRejectsIncompleteProfile() {
-        UserProfile profile = new UserProfile(new User("student@example.com", null, "hash"));
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 
         assertThatThrownBy(() -> service.updateMyProfile(
@@ -53,7 +53,7 @@ class UserProfileServiceImplTest {
 
     @Test
     void updateProfileUsesMapperAndKeepsCompletionState() {
-        UserProfile profile = new UserProfile(new User("student@example.com", null, "hash"));
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
         profile.setProfileCompletedAt(LocalDateTime.now(clock).minusDays(1));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 

@@ -114,7 +114,7 @@ class JwtAuthenticationFilterTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = org.mockito.Mockito.mock(FilterChain.class);
-        User user = new User("student@example.com", null, "hash");
+        User user = new User("student@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", 10L);
         when(jwtService.extractUserIdFromAccessToken("valid-token")).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user));

@@ -61,6 +61,7 @@ class RegistrationVerificationRollbackMySqlIntegrationTest {
         String identifier = "phase3-rollback@example.com";
         String rawFlowToken = "phase3-rollback-flow-token";
         LocalDateTime now = LocalDateTime.now();
+        long profileCountBefore = profileRepository.count();
         pendingRepository.saveAndFlush(PendingRegistration.start(
                 RegistrationType.EMAIL,
                 identifier,
@@ -80,8 +81,8 @@ class RegistrationVerificationRollbackMySqlIntegrationTest {
                 .isEqualTo(ErrorCode.AUTH_ACCOUNT_CREATION_FAILED);
 
         assertThat(userRepository.findByEmail(identifier)).isEmpty();
-        assertThat(profileRepository.findAll()).noneMatch(profile ->
-                profile.getUser().getEmail() != null && profile.getUser().getEmail().equals(identifier));
+        // So sánh số lượng tránh truy cập quan hệ LAZY ngoài persistence context.
+        assertThat(profileRepository.count()).isEqualTo(profileCountBefore);
         PendingRegistration pending = pendingRepository
                 .findByActiveIdentifierKey("EMAIL:" + identifier)
                 .orElseThrow();
@@ -98,3 +99,4 @@ class RegistrationVerificationRollbackMySqlIntegrationTest {
         return value;
     }
 }
+

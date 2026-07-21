@@ -28,7 +28,7 @@ class RefreshTokenIssuerTest {
         Clock clock = Clock.fixed(Instant.parse("2026-07-19T03:00:00Z"), ZoneOffset.UTC);
         TokenHashService hashService = new TokenHashService();
         RefreshTokenIssuer issuer = new RefreshTokenIssuer(repository, hashService, properties, clock);
-        User user = new User("student@example.com", null, "hash");
+        User user = new User("student@example.com", "hash");
 
         IssuedRefreshToken result = issuer.issue(user, " device-1 ", " Chrome ", " 203.0.113.10 ");
 

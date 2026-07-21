@@ -16,9 +16,8 @@ import com.stu.edu.vn.backend.auth.enums.RegistrationType;
 import com.stu.edu.vn.backend.auth.facebook.FacebookAccessTokenVerifier;
 import com.stu.edu.vn.backend.auth.google.GoogleIdentityVerifier;
 import com.stu.edu.vn.backend.auth.repository.UserAuthProviderRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -40,7 +39,7 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
     private final SocialProviderLinkTransactionService providerLinkTransactionService;
     private final AuthMethodUnlinkTransactionService unlinkTransactionService;
     private final RegistrationOtpSender otpSender;
-    private final IdentifierMasker masker;
+    private final EmailMasker masker;
     private final GoogleIdentityVerifier googleVerifier;
     private final FacebookAccessTokenVerifier facebookVerifier;
 
@@ -48,7 +47,7 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
             UserAuthProviderRepository providerRepository, AuthMethodLinkTransactionService linkTransactionService,
             SocialProviderLinkTransactionService providerLinkTransactionService,
             AuthMethodUnlinkTransactionService unlinkTransactionService, RegistrationOtpSender otpSender,
-            IdentifierMasker masker, GoogleIdentityVerifier googleVerifier,
+            EmailMasker masker, GoogleIdentityVerifier googleVerifier,
             FacebookAccessTokenVerifier facebookVerifier) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -74,9 +73,6 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
         if (user.getEmail() != null && user.getEmailVerifiedAt() != null) {
             methods.add(local(user, AuthMethod.EMAIL, user.getEmail(), loginMethodCount));
         }
-        if (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null) {
-            methods.add(local(user, AuthMethod.PHONE, user.getPhoneNumber(), loginMethodCount));
-        }
         providers.forEach(link -> methods.add(new AuthMethodResponse(
                 link.getProvider() == AuthProvider.GOOGLE ? AuthMethod.GOOGLE : AuthMethod.FACEBOOK,
                 null, true, link.getCreatedAt(), loginMethodCount > 1, false)));
@@ -84,12 +80,11 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
     }
 
     @Override
-    public LinkChallengeResponse start(NormalizedIdentifier identifier, AuthMethodLinkPurpose purpose) {
+    public LinkChallengeResponse start(NormalizedEmail identifier, AuthMethodLinkPurpose purpose) {
         try {
             return deliver(linkTransactionService.start(currentUserProvider.getCurrentUserId(), identifier, purpose));
         } catch (DataIntegrityViolationException race) {
-            throw new BusinessException(identifier.type() == IdentifierType.EMAIL
-                    ? ErrorCode.AUTH_EMAIL_ALREADY_IN_USE : ErrorCode.AUTH_PHONE_ALREADY_IN_USE);
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_IN_USE);
         }
     }
 
@@ -141,25 +136,20 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
         if (result.outcome() != OtpDeliveryOutcome.SENT)
             throw new BusinessException(ErrorCode.AUTH_OTP_DELIVERY_FAILED);
         return new LinkChallengeResponse(creation.rawFlowToken(), creation.purpose(),
-                masker.mask(new NormalizedIdentifier(
-                        creation.deliveryType() == RegistrationType.EMAIL
-                                ? IdentifierType.EMAIL
-                                : IdentifierType.PHONE_NUMBER,
-                        creation.identifier())), creation.otpExpiresAt(), creation.resendAvailableAt(), creation.expiresAt());
+                masker.mask(new NormalizedEmail(creation.identifier())),
+                creation.otpExpiresAt(), creation.resendAvailableAt(), creation.expiresAt());
     }
 
     private int completeLocalCount(User user) {
         if (user.getPasswordHash() == null) return 0;
         int count = 0;
         if (user.getEmail() != null && user.getEmailVerifiedAt() != null) count++;
-        if (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null) count++;
         return count;
     }
 
     private AuthMethodResponse local(User user, AuthMethod method, String value, int count) {
         boolean available = user.getPasswordHash() != null;
-        return new AuthMethodResponse(method, masker.mask(new NormalizedIdentifier(
-                method == AuthMethod.EMAIL ? IdentifierType.EMAIL : IdentifierType.PHONE_NUMBER, value)), true,
+        return new AuthMethodResponse(method, masker.mask(new NormalizedEmail(value)), true,
                 user.getCreatedAt(), available && count > 1, available);
     }
 }

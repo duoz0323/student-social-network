@@ -153,6 +153,12 @@ public class PendingRegistration extends BaseAuditEntity {
         this.deliveryFailureCode = null;
     }
 
+    /** Khôi phục phiên đăng ký trên thiết bị hiện tại bằng flow token mới, không đổi mật khẩu hoặc OTP. */
+    public void resumeWithFlowToken(String newFlowTokenHash) {
+        requirePending();
+        this.flowTokenHash = requireText(newFlowTokenHash, "newFlowTokenHash");
+    }
+
     /** Hoàn tất pending, xóa verification secret nhưng giữ HMAC lookup hash trong thời hạn retention. */
     public void complete(User user, LocalDateTime completedAt) {
         requirePending();

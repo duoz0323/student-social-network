@@ -24,6 +24,8 @@ public class AuthCleanupScheduler {
         drain(cleanup::cleanupLinkChallenges);
         drain(cleanup::expireReauthentication);
         drain(cleanup::cleanupReauthentication);
+        drain(cleanup::expirePasswordRecovery);
+        drain(cleanup::cleanupPasswordRecovery);
         drain(cleanup::cleanupExpiredRefreshTokens);
     }
 

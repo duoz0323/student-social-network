@@ -121,7 +121,7 @@ class ReauthenticationTransactionServiceTest {
         when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(user));
 
         assertError(() -> service.authenticatePassword(10L, "Password@1",
-                ReauthenticationScope.UNLINK_AUTH_METHOD, AuthMethod.PHONE), ErrorCode.USER_BLOCKED);
+                ReauthenticationScope.UNLINK_AUTH_METHOD, AuthMethod.EMAIL), ErrorCode.USER_BLOCKED);
 
         verify(passwordEncoder, never()).matches(any(), any());
         verify(challengeRepository, never()).saveAndFlush(any(ReauthenticationChallenge.class));
@@ -201,7 +201,7 @@ class ReauthenticationTransactionServiceTest {
     }
 
     private User user(Long id, String passwordHash) {
-        User user = new User("student" + id + "@example.com", null, passwordHash);
+        User user = new User("student" + id + "@example.com", passwordHash);
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }
@@ -213,3 +213,4 @@ class ReauthenticationTransactionServiceTest {
                 .isEqualTo(errorCode);
     }
 }
+

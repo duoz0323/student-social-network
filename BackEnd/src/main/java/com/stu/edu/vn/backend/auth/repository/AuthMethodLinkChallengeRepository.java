@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** Repository cho challenge liên kết email/phone. */
+/** Repository cho challenge liên kết email. */
 public interface AuthMethodLinkChallengeRepository extends JpaRepository<AuthMethodLinkChallenge, Long> {
 
     Optional<AuthMethodLinkChallenge> findByFlowTokenHash(String flowTokenHash);

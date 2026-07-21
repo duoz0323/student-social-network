@@ -94,8 +94,6 @@ class RegistrationVerificationTransactionServiceTest {
         User user = userCaptor.getValue();
         assertThat(user.getEmail()).isEqualTo("student@example.com");
         assertThat(user.getEmailVerifiedAt()).isEqualTo(NOW);
-        assertThat(user.getPhoneNumber()).isNull();
-        assertThat(user.getPhoneVerifiedAt()).isNull();
         assertThat(user.getPasswordHash()).isEqualTo("bcrypt-password-hash");
         assertThat(user.getRole()).isEqualTo(UserRole.USER);
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
@@ -114,29 +112,6 @@ class RegistrationVerificationTransactionServiceTest {
         assertThat(result.response().nextStep()).isEqualTo("ONBOARDING");
     }
 
-    @Test
-    void validPhoneOtpMarksOnlyPhoneVerified() {
-        PendingRegistration pending = pending(RegistrationType.PHONE, "0912345678");
-        arrangePending(pending);
-        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            ReflectionTestUtils.setField(user, "id", 11L);
-            return user;
-        });
-        when(refreshTokenIssuer.issue(any(), any(), any(), any()))
-                .thenReturn(new IssuedRefreshToken("refresh", 2_592_000));
-        when(jwtService.generateAccessToken(11L, UserRole.USER.name())).thenReturn("access");
-
-        RegistrationVerificationResult result = service.verify(request("123456"), null);
-
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).saveAndFlush(captor.capture());
-        assertThat(captor.getValue().getPhoneNumber()).isEqualTo("0912345678");
-        assertThat(captor.getValue().getPhoneVerifiedAt()).isEqualTo(NOW);
-        assertThat(captor.getValue().getEmail()).isNull();
-        assertThat(captor.getValue().getEmailVerifiedAt()).isNull();
-        assertThat(result.successful()).isTrue();
-    }
 
     @Test
     void wrongOtpIncrementsAttemptsAndReturnsInvalidBeforeLimit() {
@@ -221,7 +196,7 @@ class RegistrationVerificationTransactionServiceTest {
                 .isEqualTo(ErrorCode.AUTH_REGISTRATION_EXPIRED);
 
         PendingRegistration completed = pending(RegistrationType.EMAIL, "completed@example.com");
-        completed.complete(new User("completed@example.com", null, "hash"), NOW.minusMinutes(1));
+        completed.complete(new User("completed@example.com", "hash"), NOW.minusMinutes(1));
         when(pendingRepository.findByFlowTokenHashForUpdate(any())).thenReturn(Optional.of(completed));
         assertThat(service.verify(request("123456"), null).errorCode())
                 .isEqualTo(ErrorCode.AUTH_REGISTRATION_ALREADY_COMPLETED);
@@ -293,3 +268,4 @@ class RegistrationVerificationTransactionServiceTest {
         );
     }
 }
+

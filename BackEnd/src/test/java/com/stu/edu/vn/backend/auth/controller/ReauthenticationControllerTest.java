@@ -81,7 +81,7 @@ class ReauthenticationControllerTest {
                 AuthMethod.EMAIL, "Password@1", "provider-token");
         ReauthenticationRequest providerWithPassword = new ReauthenticationRequest(
                 ReauthenticationMethod.GOOGLE, ReauthenticationScope.UNLINK_AUTH_METHOD,
-                AuthMethod.PHONE, "Password@1", null);
+                AuthMethod.EMAIL, "Password@1", null);
 
         mockMvc.perform(post("/api/v1/auth/reauthenticate")
                         .contentType("application/json")
@@ -112,3 +112,4 @@ class ReauthenticationControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 }
+

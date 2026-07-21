@@ -12,6 +12,7 @@ record RegistrationCreation(
         String flowTokenHash,
         LocalDateTime otpExpiresAt,
         LocalDateTime resendAvailableAt,
-        LocalDateTime pendingExpiresAt
+        LocalDateTime pendingExpiresAt,
+        boolean resumed
 ) {
 }

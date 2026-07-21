@@ -11,10 +11,15 @@ const GOOGLE_MESSAGES = Object.freeze({
   AUTH_SOCIAL_PENDING_CONFLICT: 'Đăng ký đang chờ cần được xử lý trước khi tiếp tục với Google.',
   USER_BLOCKED: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.',
   AUTH_RATE_LIMITED: 'Có quá nhiều yêu cầu xác thực. Vui lòng thử lại sau.',
+  AUTH_GOOGLE_AUTHENTICATION_FAILED: 'Backend chưa được cấu hình đúng cho Google. Vui lòng kiểm tra Google Client ID và cấu hình Auth.',
   NETWORK_ERROR: 'Không thể kết nối Backend để xác minh Google.',
   REQUEST_TIMEOUT: 'Xác minh Google quá thời gian. Vui lòng thử lại.',
+  GOOGLE_POPUP_CLOSED: '',
+  GOOGLE_PROMPT_UNAVAILABLE: 'Không thể mở đăng nhập Google. Vui lòng thử lại.',
+  GOOGLE_LOGIN_TIMEOUT: 'Đăng nhập Google quá thời gian. Vui lòng thử lại.',
+  GOOGLE_CREDENTIAL_MISSING: 'Google không trả thông tin xác thực. Vui lòng thử lại.',
 });
 
 export function getGoogleErrorMessage(error) {
-  return GOOGLE_MESSAGES[error?.code] ?? 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.';
+  return GOOGLE_MESSAGES[error?.code ?? error?.message] ?? 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.';
 }

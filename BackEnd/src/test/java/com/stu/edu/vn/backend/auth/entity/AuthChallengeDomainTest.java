@@ -167,7 +167,7 @@ class AuthChallengeDomainTest {
     }
 
     private User persistedUser(Long id) {
-        User user = new User("student" + id + "@example.com", null, "bcrypt-hash");
+        User user = new User("student" + id + "@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

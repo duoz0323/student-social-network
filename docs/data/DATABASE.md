@@ -17,19 +17,18 @@ Không tạo bảng `auth_challenges` tổng quát. Các type/status Auth trong 
 
 ### users
 
-- `email`, `phone_number` và `password_hash` đều có thể `NULL`.
-- Social-only user có thể không có email/phone; không tạo placeholder.
+- `email`, `email` và `password_hash` đều có thể `NULL`.
+- Social-only user có thể không có email; không tạo placeholder.
 - Đã bỏ `chk_users_contact_required`.
-- `password_hash` chỉ được phép khác `NULL` khi có email verified hoặc phone verified.
+- `password_hash` chỉ được phép khác `NULL` khi có email verified hoặc email verified.
 - `email_verified_at` chỉ có giá trị khi `email` khác `NULL`.
-- `phone_verified_at` chỉ có giá trị khi `phone_number` khác `NULL`.
 
 Invariant cuối cùng:
 
 ```text
 Local method hợp lệ
 = password_hash tồn tại
-  và có email verified hoặc phone verified
+  và có email verified hoặc email verified
 
 HOẶC
 
@@ -50,7 +49,7 @@ Invariant liên bảng được bảo vệ bằng transaction, unique constraint
 ## 3. Pending registration
 
 - Active key có dạng `registration_type + ':' + identifier_normalized`.
-- Unique nullable active key bảo đảm chỉ một pending active cho mỗi type/identifier; MySQL cho phép nhiều `NULL` trong unique index.
+- Unique nullable active key bảo đảm chỉ một pending active cho mỗi type/email; MySQL cho phép nhiều `NULL` trong unique index.
 - OTP có hiệu lực 10 phút; pending 24 giờ; resend cooldown 60 giây.
 - Resume rotate flow token, trả `resumed=true`, không thay `password_hash` và không tự resend trong cooldown.
 - Muốn đổi mật khẩu phải cancel pending rồi tạo registration mới.
@@ -60,19 +59,19 @@ Invariant liên bảng được bảo vệ bằng transaction, unique constraint
 Khi terminal:
 
 - `COMPLETED`: giữ `registration_type`, `identifier_normalized`, `completed_user_id`, `status`, `terminal_at` và HMAC flow lookup hash tối đa 7 ngày; xóa password/OTP, active key và delivery failure code ngay.
-- `CANCELLED`/`EXPIRED`: xóa identifier, password/OTP và active key ngay; giữ HMAC flow lookup hash tối đa 7 ngày để status và idempotency.
+- `CANCELLED`/`EXPIRED`: xóa email, password/OTP và active key ngay; giữ HMAC flow lookup hash tối đa 7 ngày để status và idempotency.
 - Raw flow token không được lưu. Cleanup/anonymization sau retention được phép đặt `flow_token_hash=NULL`.
 - `completed_user_id` dùng `ON DELETE SET NULL`.
 - Quan hệ giữa `completed_user_id` và `status` không nằm trong CHECK constraint để tương thích MySQL; Service và Integration Test phải bảo đảm giá trị này chỉ được gán theo đúng vòng đời hoàn tất đăng ký.
 
 ## 4. Link challenge
 
-- Chỉ dùng cho `LINK_EMAIL` và `LINK_PHONE`; không tái sử dụng pending registration.
+- Chỉ dùng cho `LINK_EMAIL` và `LINK_EMAIL`; không tái sử dụng pending registration.
 - User đích lấy từ JWT hiện tại.
 - TTL 15 phút; OTP 10 phút; resend cooldown 60 giây.
 - Resend không gia hạn challenge.
-- Unique active key theo `purpose:identifier` và `userId:purpose`.
-- Terminal state xóa identifier, OTP/flow hash, active keys và failure code ngay.
+- Unique active key theo `purpose:email` và `userId:purpose`.
+- Terminal state xóa email, OTP/flow hash, active keys và failure code ngay.
 
 ## 5. Social challenge
 
@@ -107,7 +106,7 @@ Khi terminal:
 
 ```text
 Commit challenge
-→ gửi email/SMS ngoài transaction
+→ gửi email ngoài transaction
 → transaction ngắn cập nhật SENT/FAILED/UNKNOWN
 ```
 
@@ -118,7 +117,7 @@ Commit challenge
 
 ## 9. Rate limit
 
-Challenge lưu attempts, cooldown, resend count, delivery count, OTP version và expiry. Rate limit theo cửa sổ giờ/IP/identifier/user/provider nằm ở application cache với key đã HMAC, không lưu raw PII.
+Challenge lưu attempts, cooldown, resend count, delivery count, OTP version và expiry. Rate limit theo cửa sổ giờ/IP/email/user/provider nằm ở application cache với key đã HMAC, không lưu raw PII.
 
 Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
@@ -133,11 +132,13 @@ Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
 Database hiện tại chỉ được giả định là dev/demo. Trước rebuild bắt buộc chạy `database/audit_auth_before_rebuild.sql`, lưu kết quả, backup và xác nhận không có dữ liệu thật cần bảo tồn.
 
-Sau rebuild:
+File import được khuyến nghị là `database/student_social_network_full.sql`. File này tự drop và tạo lại database `student_social_network`, nạp toàn bộ schema hiện tại rồi nạp dữ liệu DEV/DEMO trong một lần import. Khi sử dụng phải đặt `APP_BOOTSTRAP_ADMIN_ENABLED=false`.
 
-1. Nạp `database/student_social_network_db.sql`.
-2. Tắt Admin bootstrap và nạp `database/seed_data.sql`.
-3. Chạy `database/audit_auth_after_rebuild.sql`.
-4. Chạy integration/concurrency test bằng MySQL/Testcontainers.
+```bash
+mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network_full.sql
+```
+
+Sau rebuild, chạy `database/audit_auth_after_rebuild.sql` và integration/concurrency test bằng MySQL/Testcontainers. Hai file `student_social_network_db.sql` và `seed_data.sql` vẫn là nguồn thành phần để bảo trì schema và seed; người dùng thông thường không cần import riêng từng file.
 
 Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc rebuild database thật.
+

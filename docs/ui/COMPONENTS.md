@@ -33,13 +33,13 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `LoginForm` | Form đăng nhập bằng email hoặc số điện thoại và mật khẩu. | AUTH-01. | `identifier`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
-| `RegisterForm` | Khởi tạo hoặc phục hồi pending registration bằng email/phone; không tự tạo user/session. | AUTH-02. | `initialValues` gồm `identifier`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
+| `LoginForm` | Form đăng nhập bằng email và mật khẩu. | AUTH-01. | `email`, `password`, `errors`, `submitting`, `onSubmit`, `onForgotPassword` cho FUTURE_DEVELOPMENT. Không nhận username hoặc displayName. | Module auth. |
+| `RegisterForm` | Khởi tạo hoặc phục hồi pending registration bằng email; không tự tạo user/session. | AUTH-02. | `initialValues` gồm `email`, `password`, `confirmPassword`, `acceptTerms`; `errors`, `submitting`, `onSubmit`. Không nhận username hoặc displayName. | Module auth. |
 | `OtpVerificationForm` | Nhập OTP đăng ký hoặc link local, hiển thị cooldown, expiry và resend/recovery state. | AUTH-OTP-01, AUTH-METHOD-02. | `maskedIdentifier`, `code`, `resendAvailableAt`, `expiresAt`, `submitting`, `onVerify`, `onResend`, `onRecover`. | Module auth; nghiệp vụ từng purpose do service/contract quyết định. |
 | `SocialAuthButtons` | Khởi động Google/Facebook Auth thật và chỉ chuyển provider credential cho Auth service. | AUTH-01, AUTH-02, AUTH-METHOD-01. | `mode`, `loadingProvider`, `onCredential(provider, credential)`. | Module auth; không lưu provider token hoặc dùng token này cho API nghiệp vụ. |
 | `SocialConflictDialog` | Hiển thị đúng các lựa chọn xử lý conflict do Backend trả về. | AUTH-SOCIAL-01. | `conflictType`, `allowedActions`, `expiresAt`, `onResolve`. | Module auth; không tự suy luận merge theo email. |
 | `AuthMethodList` | Hiển thị các phương thức đăng nhập và điều phối link/unlink. | AUTH-METHOD-01. | `methods`, `loading`, `onLink`, `onUnlink`. | Module security/auth; UI last-method guard chỉ hỗ trợ UX, Backend quyết định cuối. |
-| `LinkLocalMethodForm` | Khởi tạo challenge link email/phone riêng trước khi chuyển sang OTP. | AUTH-METHOD-02. | `methodType`, `identifier`, `submitting`, `onInitiate`. | Module security/auth; không dùng pending registration. |
+| `LinkLocalMethodForm` | Khởi tạo challenge link email riêng trước khi chuyển sang OTP. | AUTH-METHOD-02. | `methodType`, `email`, `submitting`, `onInitiate`. | Module security/auth; không dùng pending registration. |
 | `ReauthenticationDialog` | Thu thập proof cho thao tác bảo mật nhạy cảm như unlink. | AUTH-REAUTH-01. | `availableMethods`, `selectedMethod`, `submitting`, `onReauthenticate`. | Module security/auth; token ngắn hạn không lưu localStorage. |
 | `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; tên hiển thị và ngày sinh bắt buộc, ngày sinh phải cho thấy người dùng đủ 18 tuổi; avatar và bio có thể bỏ qua. | Module auth/profile. |
 | `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
@@ -108,3 +108,4 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `SessionExpiredModal` | Thông báo phiên hết hạn và điều hướng đăng nhập lại. | SYS-04. | `open`, `onLoginAgain`. | Dùng chung auth/system. |
 | `LoadingState` | Trạng thái đang tải dữ liệu. | Feed, search, admin tables, profile. | `variant`, `message`. | Dùng chung. |
 | `EmptyState` | Trạng thái không có dữ liệu. | Feed Following rỗng, search rỗng, saved rỗng, admin table rỗng. | `title`, `description`, `action`. | Dùng chung. |
+

@@ -9,9 +9,8 @@ import com.stu.edu.vn.backend.auth.dto.RefreshTokenResponse;
 import com.stu.edu.vn.backend.auth.entity.RefreshToken;
 import com.stu.edu.vn.backend.auth.mapper.AuthMapper;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.IdentifierNormalizer;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.JwtProperties;
@@ -25,7 +24,6 @@ import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,8 +51,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, String ipAddress) {
-        NormalizedIdentifier identifier = IdentifierNormalizer.normalize(request.identifier());
-        User user = findUserForLogin(identifier)
+        NormalizedEmail email = EmailNormalizer.normalize(request.email());
+        User user = userRepository.findByEmail(email.value())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
         // Trạng thái tài khoản phải được kiểm tra trước khi phát hành bất kỳ phiên đăng nhập nào.
@@ -62,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_BLOCKED);
         }
 
-        ensureIdentifierVerified(identifier, user);
+        ensureEmailVerified(user);
 
         // Social-only account không có password hash nên không được đi vào PasswordEncoder.matches.
         if (user.getPasswordHash() == null) {
@@ -176,17 +174,8 @@ public class AuthServiceImpl implements AuthService {
         return Duration.ofMillis(jwtProperties.getAccessTokenExpirationMillis()).toSeconds();
     }
 
-    private Optional<User> findUserForLogin(NormalizedIdentifier identifier) {
-        if (identifier.type() == IdentifierType.EMAIL) {
-            return userRepository.findByEmail(identifier.value());
-        }
-        return userRepository.findByPhoneNumber(identifier.value());
-    }
-
-    private void ensureIdentifierVerified(NormalizedIdentifier identifier, User user) {
-        boolean verified = identifier.type() == IdentifierType.EMAIL
-                ? user.getEmail() != null && user.getEmailVerifiedAt() != null
-                : user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null;
+    private void ensureEmailVerified(User user) {
+        boolean verified = user.getEmail() != null && user.getEmailVerifiedAt() != null;
         if (!verified) {
             throw new BusinessException(ErrorCode.AUTH_IDENTIFIER_NOT_VERIFIED);
         }

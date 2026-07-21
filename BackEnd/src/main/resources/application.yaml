@@ -32,8 +32,28 @@ cloudinary:
 security:
   client-ip:
     trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}
+  cors:
+    allowed-origins: ${FRONTEND_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    allowed-methods: ${FRONTEND_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${FRONTEND_ALLOWED_HEADERS:Authorization,Content-Type,X-Auth-Flow-Token}
+    exposed-headers: ${FRONTEND_EXPOSED_HEADERS:Authorization}
+    allow-credentials: ${FRONTEND_ALLOW_CREDENTIALS:false}
 
 auth:
+  otp-delivery:
+    connect-timeout: ${OTP_PROVIDER_CONNECT_TIMEOUT:3s}
+    read-timeout: ${OTP_PROVIDER_READ_TIMEOUT:8s}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      sender-email: ${BREVO_SENDER_EMAIL:}
+      sender-name: ${BREVO_SENDER_NAME:UniShare}
+      base-url: ${BREVO_BASE_URL:https://api.brevo.com}
+  password-recovery:
+    challenge-expiration: PT15M
+    otp-expiration: PT10M
+    resend-cooldown: PT60S
+    reset-token-expiration: PT5M
+    max-otp-attempts: 5
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
     issuers: ${GOOGLE_ALLOWED_ISSUERS:accounts.google.com,https://accounts.google.com}

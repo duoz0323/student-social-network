@@ -6,7 +6,7 @@ import { useAuth } from '../features/auth/hooks/useAuth.js';
 
 const AppContext = createContext(null);
 const SESSION_KEY = 'unishare.react.session';
-const DATA_KEY = 'unishare.react.mock-data';
+const DATA_KEY = 'unishare.react.mock-data-v2';
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 8;
 
 function makeId(prefix) {
@@ -17,19 +17,9 @@ function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function isPhoneNumber(value) {
-  return /^\+?\d{9,15}$/.test(value);
-}
-
-function normalizeIdentifier(identifier) {
-  const cleanIdentifier = identifier.trim();
-  if (isEmail(cleanIdentifier)) {
-    return { type: 'email', email: normalizeText(cleanIdentifier), phoneNumber: null };
-  }
-  if (isPhoneNumber(cleanIdentifier)) {
-    return { type: 'phone', email: null, phoneNumber: cleanIdentifier.replace(/\s+/g, '') };
-  }
-  return null;
+function normalizeIdentifier(email) {
+  const value = email.trim();
+  return isEmail(value) ? { type: 'email', email: normalizeText(value) } : null;
 }
 
 function readStoredData() {
@@ -135,13 +125,13 @@ export function AppProvider({ children }) {
 
   const currentUser = useMemo(() => {
     const mockCurrentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
-    // Cầu nối tạm giữ UI mock hoạt động trong khi các module hồ sơ/feed chưa tích hợp Backend.
+    // Cáº§u ná»‘i táº¡m giá»¯ UI mock hoáº¡t Ä‘á»™ng trong khi cÃ¡c module há»“ sÆ¡/feed chÆ°a tÃ­ch há»£p Backend.
     if (!auth.isAuthenticated) return mockCurrentUser;
     return mockCurrentUser ?? {
       id: auth.user.id,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: 'Người dùng UniShare',
+      displayName: 'NgÆ°á»i dÃ¹ng UniShare',
       avatarUrl: '',
       birthDate: null,
       bio: '',
@@ -170,23 +160,22 @@ export function AppProvider({ children }) {
     async function login(identifier, password) {
       const normalized = normalizeIdentifier(identifier);
       if (!normalized) {
-        return { ok: false, message: 'Email hoac so dien thoai khong hop le.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
       }
 
       const passwordHash = await sha256(password);
       const account = data.demoAccounts.find((item) => {
         const emailMatches = normalized.email && item.email === normalized.email;
-        const phoneMatches = normalized.phoneNumber && item.phoneNumber === normalized.phoneNumber;
-        return (emailMatches || phoneMatches) && (item.passwordHash === passwordHash || item.passwordDemo === password);
+        return emailMatches && (item.passwordHash === passwordHash || item.passwordDemo === password);
       });
 
       if (!account) {
-        return { ok: false, message: 'Email/so dien thoai hoac mat khau khong dung.' };
+        return { ok: false, message: 'Email/sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng.' };
       }
 
       const user = getRawUserById(account.userId);
       if (!user || account.status === 'BLOCKED' || user.status === 'BLOCKED') {
-        return { ok: false, message: 'Tai khoan da bi khoa, vui long lien he quan tri vien.' };
+        return { ok: false, message: 'TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a, vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn.' };
       }
 
       saveSession(user);
@@ -196,19 +185,17 @@ export function AppProvider({ children }) {
     }
 
     async function register(payload) {
-      const normalized = normalizeIdentifier(payload.identifier);
+      const normalized = normalizeIdentifier(payload.email);
       if (!normalized) {
-        return { ok: false, message: 'Email hoac so dien thoai khong hop le.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
       }
 
       const duplicated = data.demoAccounts.some(
-        (account) =>
-          (normalized.email && account.email === normalized.email) ||
-          (normalized.phoneNumber && account.phoneNumber === normalized.phoneNumber),
+        (account) => normalized.email && account.email === normalized.email,
       );
 
       if (duplicated) {
-        return { ok: false, message: 'Email hoac so dien thoai da ton tai.' };
+        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ã£ tá»“n táº¡i.' };
       }
 
       const userId = makeId('user');
@@ -217,7 +204,6 @@ export function AppProvider({ children }) {
       const user = {
         id: userId,
         email: normalized.email,
-        phoneNumber: normalized.phoneNumber,
         role: 'USER',
         status: 'ACTIVE',
         profile: {
@@ -234,7 +220,6 @@ export function AppProvider({ children }) {
       const account = {
         id: accountId,
         email: normalized.email,
-        phoneNumber: normalized.phoneNumber,
         passwordHash,
         role: 'USER',
         status: 'ACTIVE',
@@ -261,22 +246,22 @@ export function AppProvider({ children }) {
       setCurrentUserId(null);
     }
 
-    function createPost({ content, hashtags }) {
+    function createPost({ content, hashtags, imageUrls = [] }) {
       const cleanContent = content.trim();
       const normalizedHashtags = hashtags
         .split(/[,\s]+/)
         .map((tag) => tag.replace('#', '').trim().toLowerCase())
         .filter(Boolean);
 
-      if (!cleanContent) {
-        return { ok: false, message: 'Bai viet can co noi dung trong MVP mock.' };
+      if (!cleanContent && (!imageUrls || imageUrls.length === 0)) {
+        return { ok: false, message: 'BÃ i viáº¿t cáº§n cÃ³ ná»™i dung hoáº·c hÃ¬nh áº£nh.' };
       }
 
       const post = {
         id: makeId('post'),
         authorId: currentUserId,
         content: cleanContent,
-        imageUrls: [],
+        imageUrls: imageUrls,
         hashtags: [...new Set(normalizedHashtags)].slice(0, 8),
         status: 'PUBLISHED',
         likeCount: 0,
@@ -407,7 +392,7 @@ export function AppProvider({ children }) {
     function completeOnboarding(payload) {
       const displayName = payload.displayName.trim();
       if (!displayName) {
-        return { ok: false, message: 'Ten hien thi la bat buoc de hoan tat ho so.' };
+        return { ok: false, message: 'TÃªn hiá»ƒn thá»‹ lÃ  báº¯t buá»™c Ä‘á»ƒ hoÃ n táº¥t há»“ sÆ¡.' };
       }
 
       setData((prev) => ({
@@ -421,7 +406,7 @@ export function AppProvider({ children }) {
                   displayName,
                   avatarUrl: payload.avatarUrl || null,
                   dateOfBirth: payload.dateOfBirth || null,
-                  bio: payload.bio.trim() || null,
+                  bio: (payload.bio || '').trim() || null,
                   profileCompletedAt: new Date().toISOString(),
                 },
               }
@@ -435,7 +420,7 @@ export function AppProvider({ children }) {
       const existed = data.reports.some(
         (report) => report.postId === postId && report.reporterId === currentUserId && report.status === 'PENDING',
       );
-      if (existed) return { ok: false, message: 'Ban da gui bao cao dang cho xu ly cho bai viet nay.' };
+      if (existed) return { ok: false, message: 'Báº¡n Ä‘Ã£ gá»­i bÃ¡o cÃ¡o Ä‘ang chá» xá»­ lÃ½ cho bÃ i viáº¿t nÃ y.' };
 
       setData((prev) => ({
         ...prev,
@@ -472,7 +457,7 @@ export function AppProvider({ children }) {
     }
 
     function handleFutureSocialAuth() {
-      return { ok: false, message: 'Tinh nang dang duoc phat trien.' };
+      return { ok: false, message: 'TÃ­nh nÄƒng Ä‘ang Ä‘Æ°á»£c phÃ¡t triá»ƒn.' };
     }
 
     return {
@@ -513,3 +498,4 @@ export function useApp() {
   if (!context) throw new Error('useApp must be used inside AppProvider');
   return context;
 }
+

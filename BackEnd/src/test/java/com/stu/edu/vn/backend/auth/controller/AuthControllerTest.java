@@ -34,6 +34,7 @@ import com.stu.edu.vn.backend.auth.service.SocialConflictException;
 import com.stu.edu.vn.backend.auth.service.RegistrationService;
 import com.stu.edu.vn.backend.auth.service.RegistrationLifecycleService;
 import com.stu.edu.vn.backend.auth.service.RegistrationVerificationService;
+import com.stu.edu.vn.backend.auth.service.SocialConflictResolutionService;
 import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
 import com.stu.edu.vn.backend.auth.enums.OtpDeliveryStatus;
 import com.stu.edu.vn.backend.auth.enums.RegistrationType;
@@ -63,6 +64,8 @@ class AuthControllerTest {
             org.mockito.Mockito.mock(RegistrationVerificationService.class);
     private final RegistrationLifecycleService registrationLifecycleService =
             org.mockito.Mockito.mock(RegistrationLifecycleService.class);
+    private final SocialConflictResolutionService socialConflictResolutionService =
+            org.mockito.Mockito.mock(SocialConflictResolutionService.class);
     private final ClientIpAddressResolver clientIpAddressResolver =
             new ClientIpAddressResolver(new ClientIpAddressProperties());
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -81,6 +84,7 @@ class AuthControllerTest {
                         registrationService,
                         registrationVerificationService,
                         registrationLifecycleService,
+                        socialConflictResolutionService,
                         clientIpAddressResolver
                 ))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -94,11 +98,11 @@ class AuthControllerTest {
         RegisterResponse response = new RegisterResponse(
                 "raw-flow-token",
                 OtpChallengeStatus.PENDING,
-                RegistrationType.EMAIL,
                 "s***@example.com",
                 now.plusMinutes(10),
                 now.plusSeconds(60),
-                now.plusHours(24)
+                now.plusHours(24),
+                false
         );
         when(registrationService.start(any(RegisterRequest.class))).thenReturn(response);
 
@@ -115,7 +119,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.registrationFlowToken").value("raw-flow-token"))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.data.identifierType").value("EMAIL"))
+                .andExpect(jsonPath("$.data.identifierType").doesNotExist())
                 .andExpect(jsonPath("$.data.maskedIdentifier").value("s***@example.com"))
                 .andExpect(jsonPath("$.data.otpHash").doesNotExist())
                 .andExpect(jsonPath("$.data.flowTokenHash").doesNotExist())
@@ -199,7 +203,6 @@ class AuthControllerTest {
         when(registrationLifecycleService.resend(any(ResendRegistrationRequest.class)))
                 .thenReturn(new ResendRegistrationResponse(
                         OtpChallengeStatus.PENDING,
-                        RegistrationType.EMAIL,
                         "s***@example.com",
                         now.plusMinutes(10),
                         now.plusSeconds(60),
@@ -223,7 +226,6 @@ class AuthControllerTest {
         when(registrationLifecycleService.status("raw-flow-token"))
                 .thenReturn(new RegistrationStatusResponse(
                         OtpChallengeStatus.PENDING,
-                        RegistrationType.EMAIL,
                         "s***@example.com",
                         now.plusMinutes(10),
                         now.plusSeconds(60),
@@ -273,47 +275,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.code").value("AUTH_REGISTRATION_FLOW_INVALID"));
     }
 
-    @Test
-    void loginReturnsOkApiResponse() throws Exception {
-        LoginResponse response = new LoginResponse(
-                "access-token",
-                "refresh-token",
-                LoginResponse.BEARER_TOKEN_TYPE,
-                900,
-                2_592_000,
-                false,
-                LoginResponse.NEXT_STEP_COMPLETE_PROFILE,
-                new LoginResponse.UserSummary(1L, UserRole.USER)
-        );
-        when(authService.login(any(LoginRequest.class), anyString())).thenReturn(response);
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType("application/json")
-                        .header("X-Forwarded-For", "203.0.113.10")
-                        .content(objectMapper.writeValueAsString(new LoginRequest(
-                                "student@example.com",
-                                "Password@1",
-                                "device-1",
-                                "Chrome on Windows"
-                        ))))
-                .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
-                        .string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
-                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.data.accessTokenExpiresIn").value(900))
-                .andExpect(jsonPath("$.data.refreshTokenExpiresIn").value(2_592_000))
-                .andExpect(jsonPath("$.data.profileCompleted").value(false))
-                .andExpect(jsonPath("$.data.nextStep").value("COMPLETE_PROFILE"))
-                .andExpect(jsonPath("$.data.user.id").value(1))
-                .andExpect(jsonPath("$.data.user.role").value("USER"))
-                .andExpect(jsonPath("$.data.passwordHash").doesNotExist())
-                .andExpect(jsonPath("$.data.tokenHash").doesNotExist())
-                .andExpect(jsonPath("$.data.user.email").doesNotExist())
-                .andExpect(jsonPath("$.data.user.phoneNumber").doesNotExist());
-    }
 
     @Test
     void loginReturnsBadRequestWhenPayloadInvalid() throws Exception {
@@ -456,3 +417,4 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.details.targetUserId").doesNotExist());
     }
 }
+

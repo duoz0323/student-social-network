@@ -25,7 +25,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * Challenge OTP riêng để liên kết email hoặc phone vào user đang đăng nhập.
+ * Challenge OTP riêng để liên kết email vào user đang đăng nhập.
  */
 @Entity
 @Table(

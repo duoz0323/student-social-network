@@ -1,94 +1,206 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/brand/logo.png';
 import Button from '../common/Button.jsx';
-import Avatar from '../common/Avatar.jsx';
 import Modal from '../common/Modal.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
+import MoreMenu from './MoreMenu.jsx';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext.jsx';
 
+// SVG Icons cho Sidebar
+function HomeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3l9 7v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10l9-7z" />
+    </svg>
+  );
+}
+
+function CreateIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="12" x2="12" y1="8" y2="16" />
+      <line x1="8" x2="16" y1="12" y2="12" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" x2="16.65" y1="21" y2="16.65" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function BookmarkIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" x2="20" y1="9" y2="9" />
+      <line x1="4" x2="20" y1="15" y2="15" />
+    </svg>
+  );
+}
+
 export default function UserShell() {
-  const { currentUser, logout, sessionExpired, setSessionExpired } = useApp();
-  const [composerOpen, setComposerOpen] = useState(false);
+  const { logout, sessionExpired, setSessionExpired } = useApp();
+  const [composerMode, setComposerMode] = useState(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const navItems = [
-    { to: '/feed/for-you', label: 'Danh cho ban', icon: '■', active: location.pathname.startsWith('/feed') },
-    { to: '/search', label: 'Tim kiem', icon: '○', active: location.pathname === '/search' },
-    { to: '/profile/me', label: 'Trang ca nhan', icon: '♙', active: location.pathname === '/profile/me' },
-    { to: '/saved', label: 'Bai viet da luu', icon: '□', active: location.pathname === '/saved' },
+    { to: '/feed/for-you', label: 'Dành cho bạn', icon: <HomeIcon />, active: location.pathname.startsWith('/feed') },
+    { to: '#create', label: 'Tạo bài viết', icon: <CreateIcon />, active: false, action: () => setComposerMode('modal') },
+    { to: '/search', label: 'Tìm kiếm', icon: <SearchIcon />, active: location.pathname === '/search' },
+    { to: '#activity', label: 'Hoạt động', icon: <ActivityIcon />, active: false }, // MVP không có trang hoạt động riêng
+    { to: '/profile/me', label: 'Trang cá nhân', icon: <ProfileIcon />, active: location.pathname === '/profile/me' },
+    { to: '/saved', label: 'Bài viết đã lưu', icon: <BookmarkIcon />, active: location.pathname === '/saved' },
   ];
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]">
-      <aside className="fixed left-0 top-0 hidden h-screen w-[var(--sidebar-width)] border-r border-[var(--app-border)] bg-white px-4 py-5 lg:flex lg:flex-col">
-        <Link to="/feed/for-you" className="flex items-center gap-2 px-2 text-[var(--app-brand)]">
-          <img src={logo} alt="UniShare" className="h-7 w-7 object-contain" />
-          <span className="text-[17px] font-black leading-none">UniShare</span>
+      {/* 
+        Sửa màu nền sidebar trùng với nền web (xóa bg-white và border), 
+        thay đổi cách hiển thị chữ in đậm cho tab đang active.
+      */}
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[var(--sidebar-width)] bg-[var(--app-bg)] px-4 py-5 lg:flex lg:flex-col">
+        {/* Logo */}
+        <Link to="/feed/for-you" className="flex items-center gap-3 px-4 mb-8">
+          <img src={logo} alt="UniShare" className="h-9 w-9 object-contain" />
+          <span className="text-[22px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
         </Link>
-        <nav className="mt-9 grid gap-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={`flex min-h-[46px] items-center gap-3 rounded-[10px] px-4 text-[15px] font-semibold transition ${
-                item.active ? 'bg-[var(--app-surface-soft)] text-[var(--app-text)]' : 'text-zinc-700 hover:bg-zinc-50'
-              }`}
-            >
-              <span className="icon-mark" aria-hidden="true">{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+        
+        {/* Navigation Items */}
+        <nav className="grid gap-1 mt-2">
+          {navItems.map((item) => {
+            const buttonClass = `flex min-h-[52px] items-center gap-4 rounded-[12px] px-4 transition-colors hover:bg-[var(--app-surface-soft)] ${
+              item.active ? 'bg-[var(--app-surface-soft)] font-bold text-[var(--app-text)]' : 'font-normal text-[var(--app-text)]'
+            }`;
+
+            if (item.action) {
+              return (
+                <button key={item.label} onClick={item.action} className={buttonClass}>
+                  <span className="flex w-6 justify-center text-[var(--app-text)]">{item.icon}</span>
+                  <span className="text-[15px]">{item.label}</span>
+                </button>
+              );
+            }
+            return (
+              <NavLink key={item.to} to={item.to} className={buttonClass}>
+                <span className="flex w-6 justify-center text-[var(--app-text)]">{item.icon}</span>
+                <span className="text-[15px]">{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
-        <Button className="mt-6 min-h-[46px] w-full font-black" onClick={() => setComposerOpen(true)}>
-          Tao bai viet
-        </Button>
-        {currentUser?.role === 'ADMIN' ? (
-          <Button className="mt-3 w-full" variant="secondary" onClick={() => navigate('/admin')}>
-            Trang quan tri
-          </Button>
-        ) : null}
-        <div className="mt-auto grid gap-3 rounded-[10px] bg-[var(--app-surface-soft)] p-3">
-          <div className="flex items-center gap-3">
-          <Avatar src={currentUser.avatarUrl} name={currentUser.displayName} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">{currentUser.displayName}</p>
-            <p className="truncate text-xs text-[var(--app-muted)]">Dang su dung UniShare</p>
-          </div>
-          </div>
-          <button className="text-left text-xs font-bold text-[var(--app-muted)] hover:text-[var(--app-text)]" onClick={logout}>
-            Dang xuat
+
+        {/* Nút Xem thêm & Menu ở góc dưới trái */}
+        <div className="relative mt-auto">
+          <MoreMenu open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} onLogout={logout} onSettings={() => navigate('/settings/auth-providers')} />
+          <button
+            onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+            className={`flex min-h-[52px] w-full items-center gap-4 rounded-[12px] px-4 font-normal text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-soft)] ${
+              moreMenuOpen ? 'bg-[var(--app-surface-soft)]' : ''
+            }`}
+          >
+            <span className="flex w-6 justify-center"><MoreIcon /></span>
+            <span className="text-[15px]">Xem thêm</span>
           </button>
         </div>
       </aside>
 
-      <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-white px-4 lg:hidden">
-        <Link to="/feed/for-you" className="font-black text-[var(--app-brand)]">UniShare</Link>
-        <Button size="sm" onClick={() => setComposerOpen(true)}>Tao bai</Button>
+      {/* Mobile header */}
+      <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-4 lg:hidden">
+        <Link to="/feed/for-you" className="flex items-center gap-2">
+          <img src={logo} alt="UniShare" className="h-7 w-7 object-contain" />
+          <span className="text-[20px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
+            onClick={() => navigate('/settings/auth-providers')}
+            aria-label="Cài đặt phương thức đăng nhập"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.04H5.3v-3h.14A1.7 1.7 0 0 0 7 9.92a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.7 4.7V4.6h3v.1a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          </button>
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-red-500/10 hover:text-red-600"
+            onClick={logout}
+            aria-label="Đăng xuất"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" x2="9" y1="12" y2="12" />
+            </svg>
+          </button>
+        </div>
       </header>
 
-      <main className="flex min-h-screen justify-center px-0 lg:col-start-2">
+      <main className="flex flex-col min-h-screen items-center lg:items-start lg:pl-[12%] xl:pl-[18%] px-0 lg:col-start-2">
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-white text-center text-xs font-semibold lg:hidden">
-        {navItems.map((item) => (
-          <NavLink key={item.to} to={item.to} className={`grid gap-1 py-2 ${item.active ? 'text-zinc-950' : 'text-zinc-500'}`}>
-            <span aria-hidden="true">{item.icon}</span>
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
+        {navItems.filter(item => item.to.startsWith('/') && item.to !== '#activity').map((item) => (
+          <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
+            <span aria-hidden="true" className="h-5 w-5">{item.icon}</span>
             <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
-      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
+      <PostComposer mode={composerMode} onClose={() => setComposerMode(null)} />
+      
+      {/* Nút + nổi ở góc dưới phải */}
+      <button 
+        className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-[var(--app-surface)] text-[var(--app-text)] border border-[var(--app-border)] shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-105 hover:bg-[var(--app-surface-soft)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.2)] active:scale-95"
+        onClick={() => setComposerMode('floating')}
+        aria-label="Tạo bài viết mới"
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      </button>
+      
       <Modal
         open={sessionExpired}
-        title="Phien dang nhap het han"
+        title="Phiên đăng nhập hết hạn"
         onClose={() => setSessionExpired(false)}
-        footer={<Button onClick={() => navigate('/login')}>Dang nhap lai</Button>}
+        footer={<Button onClick={() => navigate('/login')}>Đăng nhập lại</Button>}
       >
-        <p className="text-sm text-zinc-600">Vui long dang nhap lai de tiep tuc su dung UniShare.</p>
+        <p className="text-sm text-[var(--app-muted)]">Vui lòng đăng nhập lại để tiếp tục sử dụng UniShare.</p>
       </Modal>
     </div>
   );

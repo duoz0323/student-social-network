@@ -115,27 +115,6 @@ class RegistrationVerificationMySqlIntegrationTest {
                 .andExpect(jsonPath("$.data.profileCompleted").value(false));
     }
 
-    @Test
-    void verifyPhoneEndpointCreatesVerifiedPhoneAccount() throws Exception {
-        String rawFlowToken = "phase3-phone-flow-token";
-        pendingRepository.saveAndFlush(pending(RegistrationType.PHONE, "0987654321", rawFlowToken));
-
-        mockMvc.perform(post("/api/v1/auth/registrations/verify")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new VerifyRegistrationRequest(
-                                rawFlowToken,
-                                "123456",
-                                null,
-                                null
-                        ))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.user.role").value("USER"));
-
-        User user = userRepository.findByPhoneNumber("0987654321").orElseThrow();
-        assertThat(user.getPhoneVerifiedAt()).isNotNull();
-        assertThat(user.getEmail()).isNull();
-        assertThat(profileRepository.findById(user.getId())).isPresent();
-    }
 
     @Test
     void twoConcurrentVerificationsCreateOnlyOneUserProfileAndRefreshToken() throws Exception {
@@ -217,3 +196,4 @@ class RegistrationVerificationMySqlIntegrationTest {
         return value;
     }
 }
+

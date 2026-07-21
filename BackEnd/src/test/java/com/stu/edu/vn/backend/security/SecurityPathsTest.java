@@ -20,7 +20,11 @@ class SecurityPathsTest {
                         "/api/v1/auth/logout",
                         "/api/v1/auth/oauth/google",
                         "/api/v1/auth/oauth/facebook",
-                        "/api/v1/auth/registrations/resolve-social-conflict"
+                        "/api/v1/auth/registrations/resolve-social-conflict",
+                        "/api/v1/auth/password-recovery",
+                        "/api/v1/auth/password-recovery/verify",
+                        "/api/v1/auth/password-recovery/resend",
+                        "/api/v1/auth/password-recovery/complete"
                 ))
                 .doesNotContain(
                         "/api/v1/auth/register"
@@ -34,6 +38,8 @@ class SecurityPathsTest {
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/oauth/google")).isTrue();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/oauth/facebook")).isTrue();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/registrations/resolve-social-conflict")).isTrue();
+        assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/password-recovery")).isTrue();
+        assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/password-recovery/complete")).isTrue();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/registrations/status")).isFalse();
         assertThat(SecurityPaths.isPublic("GET", "/api/v1/users/me/auth-providers")).isFalse();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/users/me/auth-providers/email")).isFalse();
@@ -41,3 +47,4 @@ class SecurityPathsTest {
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/reauthenticate")).isFalse();
     }
 }
+

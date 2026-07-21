@@ -42,7 +42,7 @@ export function useLogin() {
     setIsSubmitting(true);
     clearError();
     try {
-      return await auth.login({ identifier: form.identifier.trim(), password: form.password }, signal);
+      return await auth.login({ email: form.email.trim(), password: form.password }, signal);
     } catch (error) {
       setFieldErrors(error.fieldErrors ?? {});
       setGeneralError(getLoginErrorMessage(error));

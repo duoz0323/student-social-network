@@ -7,7 +7,7 @@
 ```text
 Register Form
 → Khởi tạo đăng ký qua POST /api/v1/auth/registrations
-→ Backend chuẩn hóa identifier, tạo hoặc phục hồi pending_registrations
+→ Backend chuẩn hóa email, tạo hoặc phục hồi pending_registrations
 → Backend gửi OTP ngoài transaction database
 → Frontend giữ flow token trong memory hoặc sessionStorage
 → Người dùng nhập OTP
@@ -41,12 +41,12 @@ Provider token không được lưu lâu dài hoặc dùng cho API nghiệp vụ
 
 ```text
 Security Settings
-→ Link email/phone: initiate challenge riêng → verify OTP → gắn local method
+→ Link email: initiate challenge riêng → verify OTP → gắn local method
 → Link Google/Facebook: xác minh provider trong phiên JWT hiện tại
 → Unlink: reauthenticate → kiểm tra không phải phương thức cuối → gỡ liên kết
 ```
 
-Challenge liên kết email/phone không dùng `pending_registrations`. User đích luôn lấy từ JWT hiện tại. Nếu sau unlink không còn local identifier hợp lệ nhưng vẫn còn social provider thì `password_hash` được đặt `NULL`. Thu hồi các phiên khác sau thay đổi phương thức xác thực là hạng mục P1, chưa tự động thực hiện ở 0B.
+Challenge liên kết email không dùng `pending_registrations`. User đích luôn lấy từ JWT hiện tại. Nếu sau unlink không còn local email hợp lệ nhưng vẫn còn social provider thì `password_hash` được đặt `NULL`. Thu hồi các phiên khác sau thay đổi phương thức xác thực là hạng mục P1, chưa tự động thực hiện ở 0B.
 
 ## 4. Hoàn tất hồ sơ
 
@@ -67,7 +67,7 @@ Nếu `profile_completed_at` còn `NULL`, các API mạng xã hội chính trả
 ```text
 Login Form
 → POST /api/v1/auth/login
-→ Chuẩn hóa identifier và kiểm tra phương thức local đã xác minh
+→ Chuẩn hóa email và kiểm tra phương thức local đã xác minh
 → Kiểm tra mật khẩu và từ chối user BLOCKED
 → Tạo Access Token + Refresh Token
 → Frontend
@@ -146,3 +146,4 @@ Admin Report Detail → PATCH /api/v1/admin/reports/{reportId}
 → Kiểm tra ADMIN
 → Chuyển RESOLVED/REJECTED, có thể ẩn post theo state machine
 ```
+

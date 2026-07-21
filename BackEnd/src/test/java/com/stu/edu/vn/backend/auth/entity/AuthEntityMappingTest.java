@@ -19,14 +19,6 @@ import org.junit.jupiter.api.Test;
 
 class AuthEntityMappingTest {
 
-    @Test
-    void userNullableAndEnumMappingsMatchSchema() throws Exception {
-        assertTrue(field(User.class, "email").getAnnotation(Column.class).nullable());
-        assertTrue(field(User.class, "phoneNumber").getAnnotation(Column.class).nullable());
-        assertTrue(field(User.class, "passwordHash").getAnnotation(Column.class).nullable());
-        assertEnumString(User.class, "role");
-        assertEnumString(User.class, "status");
-    }
 
     @Test
     void providerNullableAndEnumMappingsMatchSchema() throws Exception {

@@ -2,16 +2,16 @@ import { authApi } from '../../../api/index.js';
 
 const FLOW_STORAGE_KEY = 'unishare.auth.registration-flow';
 
-function normalizeFlow(response, registrationFlowToken) {
+function normalizeFlow(response, registrationFlowToken, previousFlow = null) {
   return {
     registrationFlowToken,
     maskedIdentifier: response.maskedIdentifier ?? '',
-    identifierType: response.identifierType ?? null,
     expiresAt: response.pendingExpiresAt ?? null,
     otpExpiresAt: response.otpExpiresAt ?? null,
     resendAvailableAt: response.resendAvailableAt ?? null,
     remainingAttempts: response.remainingOtpAttempts ?? null,
     canResend: response.canResend ?? false,
+    resumed: response.resumed === true || (response.resumed === undefined && previousFlow?.resumed === true),
     status: response.status ?? 'OTP_REQUIRED',
     nextStep: response.nextStep ?? 'VERIFY_OTP',
   };
@@ -33,14 +33,14 @@ export const registrationService = Object.freeze({
     const stored = this.getStoredFlow();
     if (!stored?.registrationFlowToken) return null;
     const response = await authApi.getRegistrationStatus(stored.registrationFlowToken, signal);
-    return storeFlow(normalizeFlow(response, stored.registrationFlowToken));
+    return storeFlow(normalizeFlow(response, stored.registrationFlowToken, stored));
   },
 
   async resendOtp(signal) {
     const stored = this.getStoredFlow();
     if (!stored?.registrationFlowToken) return null;
     const response = await authApi.resendRegistrationOtp(stored.registrationFlowToken, signal);
-    return storeFlow(normalizeFlow(response, stored.registrationFlowToken));
+    return storeFlow(normalizeFlow({ ...response, resumed: false }, stored.registrationFlowToken));
   },
 
   async verifyOtp(code, device = {}, signal) {

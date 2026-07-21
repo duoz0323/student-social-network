@@ -78,40 +78,10 @@ class SocialConflictResolutionServiceImplTest {
         assertThat(challenge.getStatus()).isEqualTo(SocialAuthChallengeStatus.RESOLVED);
     }
 
-    @Test
-    void pendingPhoneContinueSocialDoesNotCopyPhoneOrPassword() {
-        PendingRegistration pending = pending(RegistrationType.PHONE, "+84901234567");
-        SocialAuthChallenge challenge = challenge(pending, "social@example.com");
-        when(tokenHashService.sha256Hex("raw-token")).thenReturn("token-hash");
-        when(challengeRepository.findByConflictTokenHashForUpdate("token-hash")).thenReturn(Optional.of(challenge));
-        when(pendingRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(pending));
-        when(providerRepository.findByProviderAndProviderUserIdForUpdate(AuthProvider.GOOGLE, "subject"))
-                .thenReturn(Optional.empty());
-        when(userRepository.findByEmail("social@example.com")).thenReturn(Optional.empty());
-        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            ReflectionTestUtils.setField(user, "id", 20L);
-            return user;
-        });
-        when(refreshTokenIssuer.issue(any(), any(), any(), any()))
-                .thenReturn(new IssuedRefreshToken("refresh", 3600));
-        when(jwtService.generateAccessToken(20L, "USER")).thenReturn("access");
-        when(jwtProperties.getAccessTokenExpirationMillis()).thenReturn(900_000L);
-
-        var response = service.resolve("raw-token", new ResolveSocialConflictRequest(
-                SocialResolutionAction.CANCEL_PENDING_AND_CONTINUE_SOCIAL, null, null), "127.0.0.1");
-
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).saveAndFlush(userCaptor.capture());
-        assertThat(userCaptor.getValue().getPhoneNumber()).isNull();
-        assertThat(userCaptor.getValue().getPasswordHash()).isNull();
-        assertThat(pending.getStatus()).isEqualTo(OtpChallengeStatus.CANCELLED);
-        assertThat(response.accessToken()).isEqualTo("access");
-    }
 
     @Test
     void activeEmailConflictCannotLinkThroughResolveEndpoint() {
-        User existing = new User("existing@example.com", null, "hash");
+        User existing = new User("existing@example.com", "hash");
         SocialAuthChallenge challenge = SocialAuthChallenge.start("token-hash", AuthProvider.GOOGLE,
                 "subject", "fingerprint", "existing@example.com", true,
                 SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER, null, existing,
@@ -135,9 +105,10 @@ class SocialConflictResolutionServiceImplTest {
 
     private SocialAuthChallenge challenge(PendingRegistration pending, String socialEmail) {
         return SocialAuthChallenge.start("token-hash", AuthProvider.GOOGLE, "subject", "fingerprint",
-                socialEmail, true, pending.getRegistrationType() == RegistrationType.PHONE
-                        ? SocialConflictType.PENDING_PHONE_REQUIRES_CANCEL
+                socialEmail, true, pending.getRegistrationType() == RegistrationType.EMAIL
+                        ? SocialConflictType.PENDING_EMAIL_MISMATCH
                         : SocialConflictType.PENDING_EMAIL_MISMATCH,
                 pending, null, LocalDateTime.now(clock).plusMinutes(5));
     }
 }
+

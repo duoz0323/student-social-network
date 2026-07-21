@@ -52,7 +52,7 @@ class ReauthenticationConcurrencyMySqlIntegrationTest {
     void concurrentConsumeAllowsOnlyOneTransactionToSucceed() throws Exception {
         String tokenHash = "c".repeat(64);
         Long[] ids = inNewTransaction(() -> {
-            User user = new User("reauth-concurrency@example.com", null, "bcrypt-hash");
+            User user = new User("reauth-concurrency@example.com", "bcrypt-hash");
             user.setEmailVerifiedAt(LocalDateTime.now());
             User savedUser = userRepository.saveAndFlush(user);
             ReauthenticationChallenge challenge = challengeRepository.saveAndFlush(

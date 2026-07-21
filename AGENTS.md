@@ -180,7 +180,7 @@ Nếu tài liệu khác mâu thuẫn với `README.md`, Agent được phép đ�
 
 Luồng chính của hệ thống:
 
-Đăng ký local bằng email hoặc số điện thoại  
+Đăng ký local bằng email  
 → Xác minh OTP  
 → Tạo tài khoản nội bộ  
 → Đăng ký/đăng nhập Google hoặc Facebook  
@@ -217,22 +217,22 @@ Một tài khoản nội bộ
 Nhiều phương thức xác thực
 ```
 
-Email, số điện thoại, Google và Facebook là các phương thức chứng minh danh tính. Tất cả phương thức đã được xác minh và liên kết hợp lệ phải ánh xạ về cùng một `users.id`.
+Email, Google và Facebook là các phương thức chứng minh danh tính. Tất cả phương thức đã được xác minh và liên kết hợp lệ phải ánh xạ về cùng một `users.id`.
 
-### 6.2. Đăng ký local bằng email hoặc số điện thoại
+### 6.2. Đăng ký local bằng email
 
-- Request đăng ký dùng một trường `identifier`.
-- Người dùng chỉ cung cấp đúng một định danh tại một thời điểm:
+- Request đăng ký dùng một trường `email`.
+- Người dùng chỉ cung cấp đúng một email tại một thời điểm:
   - Email; hoặc
-  - Số điện thoại.
+  - Email.
 - Request gồm:
-  - `identifier`.
+  - `email`.
   - `password`.
   - `confirmPassword`.
 - Không dùng username hoặc display name trong form đăng ký.
 - Không gọi email là Gmail trong API, database hoặc tài liệu nghiệp vụ.
 - Email phải được chuẩn hóa về chữ thường và loại bỏ khoảng trắng.
-- Số điện thoại phải được chuẩn hóa về định dạng thống nhất.
+- Email phải được chuẩn hóa về định dạng thống nhất.
 - Form đăng ký local chỉ tạo `pending_registrations`.
 - Không tạo `users`, `user_profiles`, Access Token hoặc Refresh Token trước khi OTP hợp lệ.
 - Mật khẩu phải được băm trước khi lưu trong pending.
@@ -242,7 +242,7 @@ Email, số điện thoại, Google và Facebook là các phương thức chứn
 - Tối đa 5 lần nhập sai cho mỗi OTP.
 - Pending registration có hiệu lực 24 giờ.
 - OTP mới phải làm OTP cũ mất hiệu lực.
-- Không được tồn tại hai pending còn hiệu lực cho cùng một identifier.
+- Không được tồn tại hai pending còn hiệu lực cho cùng một email.
 - Dữ liệu `CANCELLED` và `EXPIRED` được lưu tối đa 7 ngày trước khi xóa hoặc ẩn danh.
 
 ### 6.3. Xác minh OTP
@@ -260,13 +260,13 @@ Sau khi OTP hợp lệ, Backend phải:
 
 `users` và `user_profiles` phải được tạo trong cùng transaction. Nếu tạo profile thất bại, toàn bộ transaction phải rollback.
 
-Không giữ transaction database trong lúc chờ SMTP, SMS, Google hoặc Facebook.
+Không giữ transaction database trong lúc chờ SMTP, email, Google hoặc Facebook.
 
 ### 6.4. Khôi phục đăng ký đang chờ
 
 - Pending được giữ trong 24 giờ khi mất mạng, đóng tab hoặc rời quy trình.
 - Người dùng có thể tiếp tục xác minh hoặc gửi lại OTP.
-- Nếu Frontend mất flow token, người dùng có thể nhập lại identifier.
+- Nếu Frontend mất flow token, người dùng có thể nhập lại email.
 - Backend phải phát hiện pending còn hiệu lực và không tạo bản ghi trùng.
 
 ### 6.5. Google và Facebook
@@ -280,7 +280,7 @@ Không giữ transaction database trong lúc chờ SMTP, SMS, Google hoặc Face
 - Provider chưa liên kết và chưa thuộc tài khoản nào có thể tạo tài khoản nội bộ mới theo nghiệp vụ.
 - Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
 - Tài khoản `BLOCKED` bị từ chối ở mọi phương thức đăng nhập.
-- Dùng định danh bất biến của provider:
+- Dùng email bất biến của provider:
   - Google: `sub`.
   - Facebook: provider user ID.
 - `user_auth_providers(provider, provider_user_id)` phải duy nhất.
@@ -294,17 +294,16 @@ Không giữ transaction database trong lúc chờ SMTP, SMS, Google hoặc Face
 - Pending email khác social email:
   - Không tự động gộp.
   - Yêu cầu người dùng lựa chọn tiếp tục OTP hoặc hủy pending.
-- Pending phone chuyển sang social:
-  - Social không phải bằng chứng xác minh số điện thoại.
-  - Không sao chép phone chưa xác minh sang tài khoản social.
-  - Phải xác nhận hủy pending phone trước khi tiếp tục.
+- Pending email chuyển sang social:
+  - Social không phải bằng chứng xác minh email.
+  - Không sao chép email chưa xác minh sang tài khoản social.
+  - Phải xác nhận hủy pending email trước khi tiếp tục.
 - Chỉ hủy hoặc hoàn tất pending sau khi Backend đã xác minh social token thành công.
 
 ### 6.7. Đăng nhập local
 
-- Người dùng đăng nhập bằng email hoặc số điện thoại và mật khẩu.
+- Người dùng đăng nhập bằng email và mật khẩu.
 - Email chỉ được dùng đăng nhập khi `email_verified_at` khác `NULL`.
-- Phone chỉ được dùng đăng nhập khi `phone_verified_at` khác `NULL`.
 - `users.password_hash` được phép `NULL` với tài khoản chỉ dùng social.
 - Tài khoản social-only chưa có mật khẩu không được đăng nhập local.
 - Tài khoản `BLOCKED` bị từ chối.
@@ -314,17 +313,16 @@ Không giữ transaction database trong lúc chờ SMTP, SMS, Google hoặc Face
 Người dùng đã đăng nhập có thể liên kết:
 
 - Email.
-- Số điện thoại.
 - Google.
 - Facebook.
 
 Quy tắc:
 
-- Email và phone phải xác minh OTP trước khi liên kết.
+- Email phải xác minh OTP trước khi liên kết.
 - Google/Facebook phải được xác minh trong phiên đang đăng nhập.
 - `user_id` đích phải lấy từ JWT hiện tại.
 - Không suy ra tài khoản đích chỉ bằng email social.
-- Định danh hoặc provider đã thuộc tài khoản khác phải bị từ chối.
+- Email hoặc provider đã thuộc tài khoản khác phải bị từ chối.
 - Không tự động gộp hai tài khoản đang hoạt động.
 - Không được gỡ phương thức đăng nhập cuối cùng.
 
@@ -361,7 +359,7 @@ Quy tắc:
 ### 7.1. Hồ sơ người dùng
 
 - Hồ sơ công khai trong MVP.
-- Không trả email, số điện thoại hoặc dữ liệu xác thực trong API hồ sơ công khai.
+- Không trả email hoặc dữ liệu xác thực trong API hồ sơ công khai.
 - Chỉ chủ tài khoản được cập nhật hồ sơ.
 - Ngày sinh không được ở tương lai.
 - Quy tắc bắt buộc/tùy chọn phải theo `README.md`.
@@ -568,7 +566,7 @@ Không tự ý:
 - Không lưu password, OTP, flow token hoặc Refresh Token dạng thô.
 - `users.password_hash` được phép `NULL` với tài khoản social-only.
 - `user_auth_providers(provider, provider_user_id)` phải duy nhất.
-- Pending còn hiệu lực không được trùng identifier.
+- Pending còn hiệu lực không được trùng email.
 - Mọi thay đổi schema phải cập nhật cả SQL, DBML, entity và test liên quan.
 
 ---
@@ -641,3 +639,4 @@ Sau khi hoàn thành, Agent phải báo cáo:
 16. Tài liệu đã cập nhật.
 
 Nếu không thể chạy test hoặc build, Agent phải nói rõ lý do và không được tuyên bố chức năng đã hoạt động hoàn chỉnh.
+

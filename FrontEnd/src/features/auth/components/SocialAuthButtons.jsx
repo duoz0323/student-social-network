@@ -1,19 +1,28 @@
-import Button from '../../../components/common/Button.jsx';
 import GoogleAuthButton from './GoogleAuthButton.jsx';
+import FacebookAuthButton from './FacebookAuthButton.jsx';
 
-export default function SocialAuthButtons({ onUnavailable, onGoogleAuthenticated, onGoogleConflict, includeRegistrationFlow = false, actionLabel = 'Tiếp tục với' }) {
-  function clickSocial(providerName) {
-    // Facebook được giữ nguyên trạng thái chờ cho tới giai đoạn tích hợp riêng.
-    onUnavailable(providerName);
-  }
-
+export default function SocialAuthButtons({
+  onGoogleAuthenticated,
+  onGoogleConflict,
+  onFacebookAuthenticated,
+  onFacebookConflict,
+  includeRegistrationFlow = false,
+  actionLabel = 'Tiếp tục với',
+}) {
   return (
     <div className="space-y-3">
-      <GoogleAuthButton includeRegistrationFlow={includeRegistrationFlow} onAuthenticated={onGoogleAuthenticated} onConflict={onGoogleConflict} />
-      <Button type="button" variant="secondary" className="min-h-[44px] w-full gap-3" onClick={() => clickSocial('Facebook')}>
-        <span className="font-black text-blue-700">f</span>
-        {actionLabel} Facebook
-      </Button>
+      <GoogleAuthButton
+        includeRegistrationFlow={includeRegistrationFlow}
+        onAuthenticated={onGoogleAuthenticated}
+        onConflict={onGoogleConflict}
+        actionLabel={actionLabel}
+      />
+      <FacebookAuthButton
+        includeRegistrationFlow={includeRegistrationFlow}
+        onAuthenticated={onFacebookAuthenticated}
+        onConflict={onFacebookConflict}
+        actionLabel={actionLabel}
+      />
     </div>
   );
 }

@@ -14,6 +14,8 @@ import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
 import com.stu.edu.vn.backend.auth.repository.ReauthenticationChallengeRepository;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
 import com.stu.edu.vn.backend.auth.repository.SocialAuthChallengeRepository;
+import com.stu.edu.vn.backend.auth.repository.PasswordRecoveryChallengeRepository;
+import com.stu.edu.vn.backend.auth.enums.PasswordRecoveryStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,18 +31,21 @@ public class AuthCleanupTransactionService {
     private final AuthMethodLinkChallengeRepository link;
     private final ReauthenticationChallengeRepository reauthentication;
     private final RefreshTokenRepository refreshTokens;
+    private final PasswordRecoveryChallengeRepository passwordRecovery;
     private final AuthCleanupProperties properties;
     private final Clock clock;
 
     public AuthCleanupTransactionService(PendingRegistrationRepository pending,
             SocialAuthChallengeRepository social, AuthMethodLinkChallengeRepository link,
             ReauthenticationChallengeRepository reauthentication, RefreshTokenRepository refreshTokens,
+            PasswordRecoveryChallengeRepository passwordRecovery,
             AuthCleanupProperties properties, Clock clock) {
         this.pending = pending;
         this.social = social;
         this.link = link;
         this.reauthentication = reauthentication;
         this.refreshTokens = refreshTokens;
+        this.passwordRecovery = passwordRecovery;
         this.properties = properties;
         this.clock = clock;
     }
@@ -119,6 +124,24 @@ public class AuthCleanupTransactionService {
     public int cleanupExpiredRefreshTokens() {
         List<RefreshToken> rows = refreshTokens.findExpiredBatchForUpdate(now(), page());
         refreshTokens.deleteAllInBatch(rows);
+        return rows.size();
+    }
+
+    @Transactional
+    public int expirePasswordRecovery() {
+        LocalDateTime now = now();
+        var rows = passwordRecovery.findExpiryBatchForUpdate(
+                List.of(PasswordRecoveryStatus.PENDING, PasswordRecoveryStatus.VERIFIED), now, page());
+        rows.forEach(row -> row.expire(now));
+        passwordRecovery.saveAll(rows);
+        return rows.size();
+    }
+
+    @Transactional
+    public int cleanupPasswordRecovery() {
+        var rows = passwordRecovery.findCleanupBatchForUpdate(List.of(PasswordRecoveryStatus.COMPLETED,
+                PasswordRecoveryStatus.EXPIRED, PasswordRecoveryStatus.LOCKED), cutoff(), page());
+        passwordRecovery.deleteAllInBatch(rows);
         return rows.size();
     }
 

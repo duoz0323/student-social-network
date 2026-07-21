@@ -68,10 +68,6 @@ public class AuthMethodUnlinkTransactionService {
                 user.setEmail(null);
                 user.setEmailVerifiedAt(null);
             }
-            case PHONE -> {
-                user.setPhoneNumber(null);
-                user.setPhoneVerifiedAt(null);
-            }
             case GOOGLE, FACEBOOK -> deleteSocial(userId, method);
         }
         // Không giữ password hash không còn gắn với local identifier đăng nhập hợp lệ.
@@ -101,7 +97,6 @@ public class AuthMethodUnlinkTransactionService {
     private void ensureLinked(User user, List<UserAuthProvider> providers, AuthMethod method) {
         boolean linked = switch (method) {
             case EMAIL -> user.getEmail() != null && user.getEmailVerifiedAt() != null;
-            case PHONE -> user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null;
             case GOOGLE -> hasProvider(providers, AuthProvider.GOOGLE);
             case FACEBOOK -> hasProvider(providers, AuthProvider.FACEBOOK);
         };
@@ -120,13 +115,11 @@ public class AuthMethodUnlinkTransactionService {
         if (user.getPasswordHash() == null) return 0;
         int count = 0;
         if (user.getEmail() != null && user.getEmailVerifiedAt() != null) count++;
-        if (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null) count++;
         return count;
     }
 
     private boolean hasCompleteLocalMethod(User user) {
-        return user.getPasswordHash() != null && ((user.getEmail() != null && user.getEmailVerifiedAt() != null)
-                || (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null));
+        return user.getPasswordHash() != null && user.getEmail() != null && user.getEmailVerifiedAt() != null;
     }
 
     private boolean hasProvider(List<UserAuthProvider> providers, AuthProvider provider) {

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Kiểm tra source schema vì Giai đoạn 4 không được import hoặc migrate database thật. */
@@ -12,7 +11,7 @@ class PendingRegistrationSchemaContractTest {
 
     @Test
     void terminalLifecycleAllowsRetainedOrCleanedFlowLookupHash() throws IOException {
-        String sql = Files.readString(Path.of("..", "database", "student_social_network_db.sql"));
+        String sql = Files.readString(DatabaseSourcePaths.resolve("student_social_network.sql"));
         String lifecycleConstraint = sql.lines()
                 .filter(line -> line.contains("CONSTRAINT `chk_pending_lifecycle`"))
                 .findFirst()
@@ -28,12 +27,13 @@ class PendingRegistrationSchemaContractTest {
     }
 
     @Test
-    void dbmlDocumentsHmacRetentionWithoutRawToken() throws IOException {
-        String dbml = Files.readString(Path.of("..", "database", "student_social_network_db.dbml"));
+    void bootstrapSchemaStoresOnlyRegistrationHashes() throws IOException {
+        String sql = Files.readString(DatabaseSourcePaths.resolve("student_social_network.sql"));
 
-        assertThat(dbml)
-                .contains("HMAC-SHA-256 lookup hash")
-                .contains("raw token không được lưu")
-                .contains("cleanup được phép đặt NULL");
+        assertThat(sql)
+                .contains("`flow_token_hash` char(64)")
+                .contains("`otp_hash` char(64)")
+                .doesNotContain("`raw_flow_token`")
+                .doesNotContain("`raw_otp`");
     }
 }

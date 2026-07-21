@@ -11,9 +11,8 @@ import com.stu.edu.vn.backend.auth.enums.RegistrationType;
 import com.stu.edu.vn.backend.auth.generator.FlowTokenGenerator;
 import com.stu.edu.vn.backend.auth.generator.OtpGenerator;
 import com.stu.edu.vn.backend.auth.repository.AuthMethodLinkChallengeRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -25,7 +24,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Transaction ngắn cho lifecycle OTP liên kết email/phone. */
+/** Transaction ngắn cho lifecycle OTP liên kết email. */
 @Service
 public class AuthMethodLinkTransactionService {
     private static final Duration LINK_EXPIRATION = Duration.ofMinutes(15);
@@ -36,12 +35,12 @@ public class AuthMethodLinkTransactionService {
     private final FlowTokenGenerator flowTokenGenerator;
     private final AuthHmacService hmacService;
     private final AuthRegistrationProperties properties;
-    private final IdentifierMasker masker;
+    private final EmailMasker masker;
     private final Clock clock;
 
     public AuthMethodLinkTransactionService(AuthMethodLinkChallengeRepository challengeRepository,
             UserRepository userRepository, OtpGenerator otpGenerator, FlowTokenGenerator flowTokenGenerator,
-            AuthHmacService hmacService, AuthRegistrationProperties properties, IdentifierMasker masker, Clock clock) {
+            AuthHmacService hmacService, AuthRegistrationProperties properties, EmailMasker masker, Clock clock) {
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
         this.otpGenerator = otpGenerator;
@@ -53,7 +52,7 @@ public class AuthMethodLinkTransactionService {
     }
 
     @Transactional
-    public LinkChallengeCreation start(Long userId, NormalizedIdentifier identifier, AuthMethodLinkPurpose purpose) {
+    public LinkChallengeCreation start(Long userId, NormalizedEmail identifier, AuthMethodLinkPurpose purpose) {
         User user = activeUser(userId);
         validateType(identifier, purpose);
         ensureAvailable(user, identifier);
@@ -77,7 +76,7 @@ public class AuthMethodLinkTransactionService {
         challengeRepository.saveAndFlush(challenge);
         return new LinkChallengeCreation(challenge.getId(), challenge.getOtpVersion(), rawFlow,
                 challenge.getFlowTokenHash(), rawOtp,
-                identifier.type() == IdentifierType.EMAIL ? RegistrationType.EMAIL : RegistrationType.PHONE,
+                RegistrationType.EMAIL,
                 purpose, identifier.value(), otpExpires, challenge.getResendAvailableAt(), expiresAt);
     }
 
@@ -108,27 +107,16 @@ public class AuthMethodLinkTransactionService {
 
         User user = activeUser(userId);
         String identifier = challenge.getIdentifierNormalized();
-        if (expectedPurpose == AuthMethodLinkPurpose.LINK_EMAIL) {
-            if (user.getEmail() != null && user.getEmailVerifiedAt() != null)
-                throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
-            if (userRepository.findByEmail(identifier).filter(owner -> !owner.getId().equals(userId)).isPresent()) {
-                throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_IN_USE);
-            }
-            user.setEmail(identifier);
-            user.setEmailVerifiedAt(now);
-        } else {
-            if (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null)
-                throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
-            if (userRepository.findByPhoneNumber(identifier).filter(owner -> !owner.getId().equals(userId)).isPresent()) {
-                throw new BusinessException(ErrorCode.AUTH_PHONE_ALREADY_IN_USE);
-            }
-            user.setPhoneNumber(identifier);
-            user.setPhoneVerifiedAt(now);
+        if (user.getEmail() != null && user.getEmailVerifiedAt() != null)
+            throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
+        if (userRepository.findByEmail(identifier).filter(owner -> !owner.getId().equals(userId)).isPresent()) {
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_IN_USE);
         }
+        user.setEmail(identifier);
+        user.setEmailVerifiedAt(now);
         userRepository.saveAndFlush(user);
-        AuthMethod method = expectedPurpose == AuthMethodLinkPurpose.LINK_EMAIL ? AuthMethod.EMAIL : AuthMethod.PHONE;
-        String masked = masker.mask(new NormalizedIdentifier(
-                method == AuthMethod.EMAIL ? IdentifierType.EMAIL : IdentifierType.PHONE_NUMBER, identifier));
+        AuthMethod method = AuthMethod.EMAIL;
+        String masked = masker.mask(new NormalizedEmail(identifier));
         challenge.complete(now);
         challengeRepository.saveAndFlush(challenge);
         return new AuthMethodResponse(method, masked, true, now, false, user.getPasswordHash() != null);
@@ -153,8 +141,7 @@ public class AuthMethodLinkTransactionService {
         challenge.resend(hmacService.hashFlowToken(rawFlow), hmacService.hashOtp(rawOtp), otpExpires,
                 now.plus(properties.getResendCooldown()));
         challengeRepository.saveAndFlush(challenge);
-        RegistrationType type = purpose == AuthMethodLinkPurpose.LINK_EMAIL
-                ? RegistrationType.EMAIL : RegistrationType.PHONE;
+        RegistrationType type = RegistrationType.EMAIL;
         return new LinkChallengeCreation(challenge.getId(), challenge.getOtpVersion(), rawFlow,
                 challenge.getFlowTokenHash(), rawOtp, type, purpose, identifier,
                 otpExpires, challenge.getResendAvailableAt(), challenge.getExpiresAt());
@@ -181,18 +168,11 @@ public class AuthMethodLinkTransactionService {
         return user;
     }
 
-    private void ensureAvailable(User user, NormalizedIdentifier identifier) {
-        if (identifier.type() == IdentifierType.EMAIL) {
-            if (user.getEmail() != null && user.getEmailVerifiedAt() != null)
-                throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
-            if (userRepository.existsByEmail(identifier.value()))
-                throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_IN_USE);
-        } else {
-            if (user.getPhoneNumber() != null && user.getPhoneVerifiedAt() != null)
-                throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
-            if (userRepository.existsByPhoneNumber(identifier.value()))
-                throw new BusinessException(ErrorCode.AUTH_PHONE_ALREADY_IN_USE);
-        }
+    private void ensureAvailable(User user, NormalizedEmail identifier) {
+        if (user.getEmail() != null && user.getEmailVerifiedAt() != null)
+            throw new BusinessException(ErrorCode.AUTH_METHOD_ALREADY_LINKED);
+        if (userRepository.existsByEmail(identifier.value()))
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_IN_USE);
     }
 
     private void validateChallenge(AuthMethodLinkChallenge challenge, Long userId,
@@ -208,10 +188,10 @@ public class AuthMethodLinkTransactionService {
         }
     }
 
-    private void validateType(NormalizedIdentifier identifier, AuthMethodLinkPurpose purpose) {
-        boolean valid = (purpose == AuthMethodLinkPurpose.LINK_EMAIL && identifier.type() == IdentifierType.EMAIL)
-                || (purpose == AuthMethodLinkPurpose.LINK_PHONE && identifier.type() == IdentifierType.PHONE_NUMBER);
-        if (!valid) throw new BusinessException(ErrorCode.AUTH_IDENTIFIER_INVALID);
+    private void validateType(NormalizedEmail identifier, AuthMethodLinkPurpose purpose) {
+        if (purpose != AuthMethodLinkPurpose.LINK_EMAIL) {
+            throw new BusinessException(ErrorCode.AUTH_IDENTIFIER_INVALID);
+        }
     }
 
     private LocalDateTime min(LocalDateTime first, LocalDateTime second) {

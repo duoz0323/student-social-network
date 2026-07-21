@@ -1,18 +1,48 @@
-import { Link } from 'react-router-dom';
-import { socialConflictService } from '../services/socialConflictService.js';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AuthLayout from '../components/AuthLayout.jsx';
+import SocialConflictCard from '../components/SocialConflictCard.jsx';
+import { useRegistration } from '../hooks/useRegistration.js';
+import { useSocialConflict } from '../hooks/useSocialConflict.js';
+import { getAuthenticatedHome } from '../utils/authNavigation.js';
 
 export default function SocialConflictPendingPage() {
-  const conflict = socialConflictService.get();
+  const navigate = useNavigate();
+  const registration = useRegistration();
+  const socialConflict = useSocialConflict();
+
+  useEffect(() => {
+    if (socialConflict.conflict) return;
+    const target = registration.hasFlow ? '/register' : '/login';
+    navigate(target, {
+      replace: true,
+      state: { reason: socialConflict.restoreReason === 'EXPIRED' ? 'SOCIAL_CONFLICT_EXPIRED' : 'SOCIAL_CONFLICT_UNAVAILABLE' },
+    });
+  }, [navigate, registration.hasFlow, socialConflict.conflict, socialConflict.restoreReason]);
+
+  async function chooseAction(action) {
+    const result = await socialConflict.resolveAction(action);
+    if (result?.type === 'CONTINUE_OTP') navigate('/register/verify', { replace: true });
+    if (result?.type === 'AUTH_SUCCESS') navigate(getAuthenticatedHome(result.session), { replace: true });
+    if (result?.type === 'LOGIN_EXISTING_ACCOUNT') navigate('/login', { replace: true, state: { reason: 'USE_EXISTING_AUTH_METHOD' } });
+  }
+
+  function beginAgain() {
+    const target = socialConflict.beginAgain() === 'REGISTER' || registration.hasFlow ? '/register' : '/login';
+    navigate(target, { replace: true, state: { reason: 'SOCIAL_CONFLICT_OUTCOME_UNKNOWN' } });
+  }
+
+  if (!socialConflict.conflict) return null;
   return (
-    <main className="auth-pattern flex min-h-screen items-center justify-center px-4 py-8">
-      <section className="stitch-card-shadow w-full max-w-[430px] rounded-[10px] border border-[var(--app-border)] bg-white p-8 text-center">
-        <h1 className="text-xl font-black">Cần xác nhận lựa chọn tài khoản</h1>
-        <p className="mt-3 text-sm leading-6 text-zinc-600">
-          {conflict ? 'Backend yêu cầu bạn lựa chọn cách tiếp tục trước khi hoàn tất đăng nhập Google.' : 'Phiên xử lý xung đột không còn khả dụng.'}
-        </p>
-        <p className="mt-3 text-xs text-zinc-500">Giao diện lựa chọn sẽ được hoàn thiện ở Giai đoạn 13G; hệ thống chưa tự gộp hoặc hủy đăng ký của bạn.</p>
-        <Link to="/register" className="mt-6 inline-block font-black text-zinc-900">Quay lại đăng ký</Link>
-      </section>
-    </main>
+    <AuthLayout>
+      <SocialConflictCard
+        conflict={socialConflict.conflict}
+        isResolving={socialConflict.isResolving}
+        isOutcomeUnknown={socialConflict.isOutcomeUnknown}
+        error={socialConflict.error}
+        onAction={chooseAction}
+        onBeginAgain={beginAgain}
+      />
+    </AuthLayout>
   );
 }

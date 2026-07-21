@@ -6,9 +6,9 @@ import com.stu.edu.vn.backend.auth.delivery.RegistrationOtpSender;
 import com.stu.edu.vn.backend.auth.dto.RegisterRequest;
 import com.stu.edu.vn.backend.auth.dto.RegisterResponse;
 import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
-import com.stu.edu.vn.backend.auth.support.IdentifierNormalizer;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
+import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.auth.support.PasswordPolicyValidator;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -25,12 +25,12 @@ public class RegistrationServiceImpl implements RegistrationService {
     private final RegistrationDeliveryStatusService deliveryStatusService;
     private final RegistrationOtpSender otpSender;
     private final PasswordPolicyValidator passwordPolicyValidator;
-    private final IdentifierMasker identifierMasker;
+    private final EmailMasker identifierMasker;
 
     @Override
     public RegisterResponse start(RegisterRequest request) {
         validateRequest(request);
-        NormalizedIdentifier identifier = IdentifierNormalizer.normalize(request.identifier());
+        NormalizedEmail identifier = EmailNormalizer.normalize(request.email());
 
         RegistrationCreation creation;
         try {
@@ -40,20 +40,22 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new BusinessException(ErrorCode.AUTH_REGISTRATION_ALREADY_PENDING);
         }
 
-        OtpDeliveryResult deliveryResult = deliver(creation);
-        deliveryStatusService.record(creation.flowTokenHash(), deliveryResult);
-        if (deliveryResult.outcome() != OtpDeliveryOutcome.SENT) {
-            throw new BusinessException(ErrorCode.AUTH_OTP_DELIVERY_FAILED);
+        if (!creation.resumed()) {
+            OtpDeliveryResult deliveryResult = deliver(creation);
+            recordDeliveryBestEffort(creation.flowTokenHash(), deliveryResult);
+            if (deliveryResult.outcome() != OtpDeliveryOutcome.SENT) {
+                throw new BusinessException(ErrorCode.AUTH_OTP_DELIVERY_FAILED);
+            }
         }
 
         return new RegisterResponse(
                 creation.rawFlowToken(),
                 OtpChallengeStatus.PENDING,
-                creation.type(),
                 identifierMasker.mask(identifier),
                 creation.otpExpiresAt(),
                 creation.resendAvailableAt(),
-                creation.pendingExpiresAt()
+                creation.pendingExpiresAt(),
+                creation.resumed()
         );
     }
 
@@ -66,8 +68,17 @@ public class RegistrationServiceImpl implements RegistrationService {
         }
     }
 
+    /** Không báo gửi thất bại nếu provider đã nhận OTP nhưng bước ghi trạng thái audit gặp lỗi riêng. */
+    private void recordDeliveryBestEffort(String flowTokenHash, OtpDeliveryResult result) {
+        try {
+            deliveryStatusService.record(flowTokenHash, result);
+        } catch (RuntimeException exception) {
+            if (result.outcome() != OtpDeliveryOutcome.SENT) throw exception;
+        }
+    }
+
     private void validateRequest(RegisterRequest request) {
-        if (request == null || request.identifier() == null || request.identifier().isBlank()) {
+        if (request == null || request.email() == null || request.email().isBlank()) {
             throw new BusinessException(ErrorCode.AUTH_IDENTIFIER_INVALID);
         }
         if (!passwordPolicyValidator.isValid(request.password())) {

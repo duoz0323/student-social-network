@@ -317,7 +317,7 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 
 ### Kết quả mong muốn
 
-- Đăng ký chỉ dùng một trường `identifier`, `password` và `confirmPassword`.
+- Đăng ký chỉ dùng một trường `email`, `password` và `confirmPassword`.
 - Sau đăng ký tạo mock user, mock profile rỗng và session React hợp lệ.
 - User chưa có `profileCompletedAt` phải vào `/onboarding/profile`.
 - Onboarding dùng ba bước nội bộ: tên hiển thị bắt buộc, avatar tùy chọn, ngày sinh bắt buộc/bio tùy chọn.
@@ -350,3 +350,4 @@ Khi phát hiện thêm sai lệch giao diện:
 4. Ghi phạm vi ảnh hưởng.
 5. Theo dõi riêng trạng thái xử lý ở demo và Frontend.
 6. Không sửa trực tiếp ảnh Stitch chỉ vì sai lệch nhỏ.
+

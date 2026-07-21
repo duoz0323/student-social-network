@@ -7,6 +7,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 import com.stu.edu.vn.backend.auth.delivery.OtpDeliveryResult;
 import com.stu.edu.vn.backend.auth.delivery.RegistrationOtpSender;
@@ -64,6 +65,20 @@ class RegistrationLifecycleServiceImplTest {
 
         verify(otpSender, never()).send(any(), any(), any());
         verify(deliveryStatusService, never()).record(any(), any(Integer.class), any());
+    }
+
+    @Test
+    void providerAcceptedOtpStillReturnsSuccessWhenDeliveryAuditFails() {
+        RegistrationOtpIssuance issuance = issuance();
+        when(transactionService.issueNewOtp("raw-flow-token"))
+                .thenReturn(RegistrationResendResult.success(issuance));
+        when(otpSender.send(any(), any(), any())).thenReturn(OtpDeliveryResult.sent());
+        doThrow(new RuntimeException("database unavailable"))
+                .when(deliveryStatusService).record(10L, 2, OtpDeliveryResult.sent());
+
+        ResendRegistrationResponse response = service.resend(new ResendRegistrationRequest("raw-flow-token"));
+
+        assertThat(response.status().name()).isEqualTo("PENDING");
     }
 
     @Test
@@ -127,3 +142,4 @@ class RegistrationLifecycleServiceImplTest {
         );
     }
 }
+

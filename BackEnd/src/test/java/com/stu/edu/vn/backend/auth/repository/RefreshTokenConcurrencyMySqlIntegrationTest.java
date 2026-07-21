@@ -54,7 +54,10 @@ class RefreshTokenConcurrencyMySqlIntegrationTest {
     void concurrentRefreshRequestsSerializeAndSecondRequestSeesRevokedToken() throws Exception {
         String tokenHash = "c".repeat(64);
         Long userId = inNewTransaction(() -> {
-            User user = userRepository.saveAndFlush(new User("refresh-race@example.com", null, "bcrypt-hash"));
+            User user = new User("refresh-race@example.com", "bcrypt-hash");
+            // Fixture local-login phải có định danh đã xác minh để tuân thủ CHECK constraint production.
+            user.setEmailVerifiedAt(LocalDateTime.now());
+            user = userRepository.saveAndFlush(user);
             refreshTokenRepository.saveAndFlush(new RefreshToken(
                     user,
                     tokenHash,
@@ -69,7 +72,8 @@ class RefreshTokenConcurrencyMySqlIntegrationTest {
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<?> first = executor.submit(() -> inNewTransaction(() -> {
                 RefreshToken token = refreshTokenRepository.findByTokenHashForUpdate(tokenHash).orElseThrow();
-                token.revoke(LocalDateTime.now());
+                // Dùng timestamp đã lưu bởi MySQL để không tạo revoked_at sớm hơn created_at do lệch clock JVM/DB.
+                token.revoke(token.getCreatedAt());
                 firstLockAcquired.countDown();
                 await(releaseFirst);
                 return null;
@@ -139,3 +143,4 @@ class RefreshTokenConcurrencyMySqlIntegrationTest {
         return value;
     }
 }
+

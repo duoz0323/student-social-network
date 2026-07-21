@@ -1,26 +1,77 @@
+import { useRef } from 'react';
+
 export default function OtpInput({ value, onChange, disabled, error }) {
-  function updateValue(event) {
-    // OTP chỉ gồm sáu chữ số; ký tự khác bị loại ngay tại input và không được lưu ở browser storage.
-    onChange(event.target.value.replace(/\D/g, '').slice(0, 6));
-  }
+  const inputRefs = useRef([]);
+
+  const handleChange = (e, index) => {
+    const val = e.target.value;
+    const digit = val.replace(/\D/g, '').slice(-1);
+    
+    const chars = value.split('');
+    if (digit) {
+      chars[index] = digit;
+      onChange(chars.join('').slice(0, 6));
+      if (index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
+    } else {
+      chars[index] = '';
+      onChange(chars.join('').slice(0, 6));
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    if (e.key === 'Backspace') {
+      if (!value[index] && index > 0) {
+        const chars = value.split('');
+        chars[index - 1] = '';
+        onChange(chars.join(''));
+        inputRefs.current[index - 1]?.focus();
+      } else {
+        const chars = value.split('');
+        chars[index] = '';
+        onChange(chars.join(''));
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text/plain').replace(/\D/g, '').slice(0, 6);
+    if (pastedData) {
+      onChange(pastedData);
+      const focusIndex = Math.min(pastedData.length, 5);
+      inputRefs.current[focusIndex]?.focus();
+    }
+  };
 
   return (
-    <label className="block text-sm font-black text-zinc-800">
-      Mã xác minh
-      <input
-        autoFocus
-        autoComplete="one-time-code"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        value={value}
-        onChange={updateValue}
-        disabled={disabled}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? 'otp-error' : undefined}
-        placeholder="Nhập mã gồm 6 chữ số"
-        className="mt-2 h-14 w-full rounded-[var(--radius-input)] border border-[var(--app-border-strong)] bg-zinc-50 px-4 text-center text-2xl font-black tracking-[0.45em] outline-none focus:border-[var(--app-text)]"
-      />
-      {error ? <span id="otp-error" className="mt-2 block text-xs font-semibold text-red-700">{error}</span> : null}
-    </label>
+    <div className="flex flex-col items-center">
+      <div className="flex justify-center gap-3 sm:gap-4" onPaste={handlePaste}>
+        {[0, 1, 2, 3, 4, 5].map((index) => (
+          <input
+            key={index}
+            ref={(el) => (inputRefs.current[index] = el)}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={2}
+            value={value[index] || ''}
+            onChange={(e) => handleChange(e, index)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            disabled={disabled}
+            className={`w-[45px] h-[55px] sm:w-[54px] sm:h-[64px] text-center text-2xl font-semibold rounded-xl outline-none transition-all duration-200 
+              ${error 
+                ? 'bg-red-50 text-red-600 border-2 border-red-400 focus:ring-2 focus:ring-red-200' 
+                : 'bg-gray-100 text-gray-900 border-2 border-transparent focus:bg-white focus:border-gray-900 focus:ring-2 focus:ring-gray-200'
+              }`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

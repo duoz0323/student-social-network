@@ -30,24 +30,24 @@ export function getCurrentUser() {
     return null;
   }
 
-  // UI chỉ lấy hồ sơ công khai từ users, không lấy email hoặc số điện thoại account.
+  // UI chỉ lấy hồ sơ công khai từ users, không lấy email account.
   return demoData.users.find((user) => user.id === session.userId) ?? null;
 }
 
-export function login(identifier, password) {
-  const normalizedIdentifier = identifier.trim().toLowerCase();
+export function login(email, password) {
+  const normalizedIdentifier = email.trim().toLowerCase();
 
-  // Đăng nhập giả cho phép email hoặc số điện thoại, đúng phạm vi Giai đoạn 1.
+  // Đăng nhập giả cho phép email, đúng phạm vi Giai đoạn 1.
   const account = demoData.demoAccounts.find((item) => {
     const emailMatches = item.email.toLowerCase() === normalizedIdentifier;
-    const phoneMatches = item.phoneNumber === identifier.trim();
-    return (emailMatches || phoneMatches) && item.passwordDemo === password;
+    const emailMatches = item.email === email.trim();
+    return (emailMatches || emailMatches) && item.passwordDemo === password;
   });
 
   if (!account) {
     return {
       ok: false,
-      message: "Email, số điện thoại hoặc mật khẩu không đúng.",
+      message: "Email hoặc mật khẩu không đúng.",
     };
   }
 
@@ -71,3 +71,4 @@ export function login(identifier, password) {
 export function logout() {
   clearSession();
 }
+

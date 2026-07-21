@@ -80,7 +80,7 @@ class AuthServiceImplTest {
 
     @Test
     void loginWithEmailCreatesSessionAndReturnsProfileState() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 20L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         UserProfile profile = new UserProfile(user);
@@ -115,28 +115,6 @@ class AuthServiceImplTest {
         assertThat(refreshTokenCaptor.getValue().getIpAddress()).isEqualTo("203.0.113.10");
     }
 
-    @Test
-    void loginWithPhoneUsesNormalizedPhoneNumber() {
-        User user = new User(null, "0912345678", "bcrypt-hash");
-        ReflectionTestUtils.setField(user, "id", 21L);
-        user.setPhoneVerifiedAt(LocalDateTime.now(clock));
-        UserProfile profile = new UserProfile(user);
-        profile.setProfileCompletedAt(java.time.LocalDateTime.now(clock));
-        when(userRepository.findByPhoneNumber("0912345678")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("Password@1", "bcrypt-hash")).thenReturn(true);
-        when(userProfileRepository.findById(21L)).thenReturn(Optional.of(profile));
-        when(jwtService.generateAccessToken(21L, UserRole.USER.name())).thenReturn("access-token");
-        when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        LoginResponse response = authService.login(
-                new LoginRequest("091 234-5678", "Password@1", null, null),
-                null
-        );
-
-        verify(userRepository).findByPhoneNumber("0912345678");
-        assertThat(response.profileCompleted()).isTrue();
-        assertThat(response.nextStep()).isEqualTo(LoginResponse.NEXT_STEP_HOME);
-    }
 
     @Test
     void loginRejectsMissingUserAndWrongPasswordWithSameErrorCode() {
@@ -150,7 +128,7 @@ class AuthServiceImplTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 22L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user));
@@ -169,7 +147,7 @@ class AuthServiceImplTest {
 
     @Test
     void loginRejectsBlockedUserBeforePasswordAndTokenCreation() {
-        User user = new User("blocked@example.com", null, "bcrypt-hash");
+        User user = new User("blocked@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 23L);
         user.setStatus(UserStatus.BLOCKED);
         when(userRepository.findByEmail("blocked@example.com")).thenReturn(Optional.of(user));
@@ -189,7 +167,7 @@ class AuthServiceImplTest {
 
     @Test
     void loginRejectsUnverifiedEmailBeforePasswordAndTokenCreation() {
-        User user = new User("unverified@example.com", null, "bcrypt-hash");
+        User user = new User("unverified@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 24L);
         when(userRepository.findByEmail("unverified@example.com")).thenReturn(Optional.of(user));
 
@@ -205,27 +183,10 @@ class AuthServiceImplTest {
         verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
     }
 
-    @Test
-    void loginRejectsUnverifiedPhoneBeforePasswordAndTokenCreation() {
-        User user = new User(null, "0912345678", "bcrypt-hash");
-        ReflectionTestUtils.setField(user, "id", 25L);
-        when(userRepository.findByPhoneNumber("0912345678")).thenReturn(Optional.of(user));
-
-        assertThatThrownBy(() -> authService.login(
-                new LoginRequest("091 234-5678", "Password@1", null, null),
-                null
-        ))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.AUTH_IDENTIFIER_NOT_VERIFIED);
-
-        verify(passwordEncoder, never()).matches(anyString(), anyString());
-        verify(refreshTokenRepository, never()).saveAndFlush(any(RefreshToken.class));
-    }
 
     @Test
     void loginRejectsSocialOnlyUserWithoutCallingPasswordEncoder() {
-        User user = new User("social@example.com", null, null);
+        User user = new User("social@example.com", null);
         ReflectionTestUtils.setField(user, "id", 26L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         when(userRepository.findByEmail("social@example.com")).thenReturn(Optional.of(user));
@@ -244,7 +205,7 @@ class AuthServiceImplTest {
 
     @Test
     void loginDoesNotGenerateAccessTokenWhenRefreshTokenCreationFails() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 27L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         UserProfile profile = new UserProfile(user);
@@ -267,7 +228,7 @@ class AuthServiceImplTest {
 
     @Test
     void loginFailsAsOneTransactionWhenAccessTokenCreationFails() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 28L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         UserProfile profile = new UserProfile(user);
@@ -292,7 +253,7 @@ class AuthServiceImplTest {
 
     @Test
     void concurrentLoginsCreateIndependentRefreshTokenSessions() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 29L);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         UserProfile profile = new UserProfile(user);
@@ -317,7 +278,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAccessTokenRotatesRefreshTokenAndRevokesOldSession() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 30L);
         UserProfile profile = new UserProfile(user);
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
@@ -360,7 +321,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAccessTokenRejectsRevokedToken() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 31L);
         RefreshToken refreshToken = new RefreshToken(
                 user,
@@ -378,7 +339,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAccessTokenRejectsExpiredToken() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 32L);
         RefreshToken refreshToken = new RefreshToken(
                 user,
@@ -395,7 +356,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAccessTokenRejectsDeletedUser() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 33L);
         RefreshToken refreshToken = new RefreshToken(
                 user,
@@ -413,7 +374,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAccessTokenRejectsBlockedUser() {
-        User user = new User("blocked@example.com", null, "bcrypt-hash");
+        User user = new User("blocked@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 34L);
         user.setStatus(UserStatus.BLOCKED);
         RefreshToken refreshToken = new RefreshToken(
@@ -432,7 +393,7 @@ class AuthServiceImplTest {
 
     @Test
     void logoutRevokesCurrentUsersRefreshToken() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 40L);
         String rawRefreshToken = "logout-refresh-token";
         RefreshToken refreshToken = new RefreshToken(
@@ -453,7 +414,7 @@ class AuthServiceImplTest {
 
     @Test
     void logoutIsIdempotentWhenTokenAlreadyRevoked() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 41L);
         String rawRefreshToken = "already-revoked-refresh-token";
         RefreshToken refreshToken = new RefreshToken(
@@ -472,7 +433,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshAfterLogoutRejectsRevokedRefreshToken() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 42L);
         String rawRefreshToken = "refresh-after-logout-token";
         RefreshToken refreshToken = new RefreshToken(
@@ -493,7 +454,7 @@ class AuthServiceImplTest {
 
     @Test
     void logoutUsesTokenOwnershipWithoutDependingOnAccessToken() {
-        User owner = new User("owner@example.com", null, "bcrypt-hash");
+        User owner = new User("owner@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(owner, "id", 43L);
         String rawRefreshToken = "another-user-refresh-token";
         RefreshToken refreshToken = new RefreshToken(
@@ -512,7 +473,7 @@ class AuthServiceImplTest {
 
     @Test
     void refreshMapsJwtFailureToRotationError() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 45L);
         UserProfile profile = new UserProfile(user);
         String rawRefreshToken = "jwt-failure-refresh-token";
@@ -538,7 +499,7 @@ class AuthServiceImplTest {
 
     @Test
     void logoutExpiredTokenIsIdempotentlyRevoked() {
-        User user = new User("student@example.com", null, "bcrypt-hash");
+        User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 46L);
         String rawRefreshToken = "expired-logout-refresh-token";
         RefreshToken refreshToken = new RefreshToken(
@@ -567,3 +528,4 @@ class AuthServiceImplTest {
                 .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
     }
 }
+

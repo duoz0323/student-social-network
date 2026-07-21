@@ -96,7 +96,7 @@ public class SocialConflictResolutionServiceImpl implements SocialConflictResolu
             throw new BusinessException(ErrorCode.AUTH_SOCIAL_ACCOUNT_CONFLICT);
         }
 
-        User user = new User(challenge.getProviderEmail(), null, null);
+        User user = new User(challenge.getProviderEmail(), null);
         if (challenge.getProviderEmail() != null && Boolean.TRUE.equals(challenge.getProviderEmailVerified())) {
             user.setEmailVerifiedAt(now);
         }

@@ -5,7 +5,7 @@ function secondsUntil(timestamp) {
   return Math.max(0, Math.ceil((new Date(timestamp).getTime() - Date.now()) / 1000));
 }
 
-export default function OtpCountdown({ resendAvailableAt, onChange }) {
+export default function OtpCountdown({ resendAvailableAt, onChange, render, readyText = 'Có thể gửi lại mã ngay.', waitingText = 'Có thể gửi lại sau' }) {
   const [seconds, setSeconds] = useState(() => secondsUntil(resendAvailableAt));
 
   useEffect(() => {
@@ -19,6 +19,8 @@ export default function OtpCountdown({ resendAvailableAt, onChange }) {
     return () => window.clearInterval(intervalId);
   }, [resendAvailableAt, onChange]);
 
-  if (seconds === 0) return <span>Có thể gửi lại mã ngay.</span>;
-  return <span>Có thể gửi lại sau {seconds} giây.</span>;
+  if (render) return render(seconds);
+
+  if (seconds === 0) return <span>{readyText}</span>;
+  return <span>{waitingText} {seconds} giây.</span>;
 }

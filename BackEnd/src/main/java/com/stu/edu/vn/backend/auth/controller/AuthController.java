@@ -59,16 +59,6 @@ public class AuthController {
     private final SocialConflictResolutionService socialConflictResolutionService;
     private final ClientIpAddressResolver clientIpAddressResolver;
 
-    /** Constructor tương thích cho các test/controller cũ chưa dùng endpoint resolve. */
-    AuthController(AuthService authService, GoogleAuthService googleAuthService,
-            FacebookAuthService facebookAuthService, RegistrationService registrationService,
-            RegistrationVerificationService registrationVerificationService,
-            RegistrationLifecycleService registrationLifecycleService,
-            ClientIpAddressResolver clientIpAddressResolver) {
-        this(authService, googleAuthService, facebookAuthService, registrationService,
-                registrationVerificationService, registrationLifecycleService, null, clientIpAddressResolver);
-    }
-
     @PostMapping("/registrations")
     public ResponseEntity<ApiResponse<RegisterResponse>> startRegistration(
             @Valid @RequestBody RegisterRequest request

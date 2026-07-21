@@ -15,8 +15,7 @@ import com.stu.edu.vn.backend.auth.enums.OtpDeliveryStatus;
 import com.stu.edu.vn.backend.auth.generator.FlowTokenGenerator;
 import com.stu.edu.vn.backend.auth.generator.OtpGenerator;
 import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
@@ -64,7 +63,7 @@ class RegistrationTransactionServiceTest {
 
     @Test
     void createsEmailPendingWithHashesAndConfiguredTimes() {
-        service.create(new NormalizedIdentifier(IdentifierType.EMAIL, "student@example.com"), "Password@123");
+        service.create(new NormalizedEmail("student@example.com"), "Password@123");
 
         ArgumentCaptor<PendingRegistration> captor = ArgumentCaptor.forClass(PendingRegistration.class);
         verify(pendingRepository).saveAndFlush(captor.capture());
@@ -90,23 +89,13 @@ class RegistrationTransactionServiceTest {
         assertThat(pending.getTerminalAt()).isNull();
     }
 
-    @Test
-    void createsPhonePending() {
-        RegistrationCreation creation = service.create(
-                new NormalizedIdentifier(IdentifierType.PHONE_NUMBER, "0912345678"),
-                "Password@123"
-        );
-
-        assertThat(creation.type().name()).isEqualTo("PHONE");
-        verify(pendingRepository).findByActiveIdentifierKeyForUpdate("PHONE:0912345678");
-    }
 
     @Test
     void rejectsIdentifierAlreadyOwnedByUser() {
         when(userRepository.existsByEmail("student@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(
-                new NormalizedIdentifier(IdentifierType.EMAIL, "student@example.com"),
+                new NormalizedEmail("student@example.com"),
                 "Password@123"
         )).isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
@@ -115,35 +104,29 @@ class RegistrationTransactionServiceTest {
         verify(pendingRepository, never()).saveAndFlush(any());
     }
 
-    @Test
-    void rejectsPhoneAlreadyOwnedByUser() {
-        when(userRepository.existsByPhoneNumber("0912345678")).thenReturn(true);
-
-        assertThatThrownBy(() -> service.create(
-                new NormalizedIdentifier(IdentifierType.PHONE_NUMBER, "0912345678"),
-                "Password@123"
-        )).isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.AUTH_PHONE_ALREADY_EXISTS);
-
-        verify(pendingRepository, never()).saveAndFlush(any());
-    }
 
     @Test
-    void rejectsActivePendingWithoutGeneratingOrSendingNewOtp() {
+    void resumesActivePendingWithRotatedFlowTokenWithoutChangingPasswordOrOtp() {
         PendingRegistration existing = pendingExpiringAt(LocalDateTime.of(2026, 7, 20, 3, 0));
+        String originalPasswordHash = existing.getPasswordHash();
+        String originalOtpHash = existing.getOtpHash();
         when(pendingRepository.findByActiveIdentifierKeyForUpdate("EMAIL:student@example.com"))
                 .thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> service.create(
-                new NormalizedIdentifier(IdentifierType.EMAIL, "student@example.com"),
+        RegistrationCreation creation = service.create(
+                new NormalizedEmail("student@example.com"),
                 "Password@123"
-        )).isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.AUTH_REGISTRATION_ALREADY_PENDING);
+        );
 
+        assertThat(creation.resumed()).isTrue();
+        assertThat(creation.rawFlowToken()).isEqualTo("raw-flow-token");
+        assertThat(creation.rawOtp()).isNull();
+        assertThat(existing.getFlowTokenHash()).isEqualTo(hmacService.hashFlowToken("raw-flow-token"));
+        assertThat(existing.getPasswordHash()).isEqualTo(originalPasswordHash);
+        assertThat(existing.getOtpHash()).isEqualTo(originalOtpHash);
         verify(otpGenerator, never()).generate();
-        verify(flowTokenGenerator, never()).generate();
+        verify(passwordEncoder, never()).encode(any());
+        verify(pendingRepository).saveAndFlush(existing);
     }
 
     @Test
@@ -152,7 +135,7 @@ class RegistrationTransactionServiceTest {
         when(pendingRepository.findByActiveIdentifierKeyForUpdate("EMAIL:student@example.com"))
                 .thenReturn(Optional.of(existing));
 
-        service.create(new NormalizedIdentifier(IdentifierType.EMAIL, "student@example.com"), "Password@123");
+        service.create(new NormalizedEmail("student@example.com"), "Password@123");
 
         assertThat(existing.getStatus()).isEqualTo(OtpChallengeStatus.EXPIRED);
         assertThat(existing.getActiveIdentifierKey()).isNull();
@@ -184,3 +167,4 @@ class RegistrationTransactionServiceTest {
         return properties;
     }
 }
+

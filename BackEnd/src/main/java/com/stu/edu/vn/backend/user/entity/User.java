@@ -33,14 +33,8 @@ public class User extends BaseAuditEntity {
     @Column(name = "email", nullable = true, unique = true)
     private String email;
 
-    @Column(name = "phone_number", nullable = true, length = 20, unique = true)
-    private String phoneNumber;
-
     @Column(name = "email_verified_at")
     private LocalDateTime emailVerifiedAt;
-
-    @Column(name = "phone_verified_at")
-    private LocalDateTime phoneVerifiedAt;
 
     @Column(name = "password_hash", nullable = true)
     private String passwordHash;
@@ -59,9 +53,8 @@ public class User extends BaseAuditEntity {
     @Column(name = "blocked_reason", length = 500)
     private String blockedReason;
 
-    public User(String email, String phoneNumber, String passwordHash) {
+    public User(String email, String passwordHash) {
         this.email = email;
-        this.phoneNumber = phoneNumber;
         this.passwordHash = passwordHash;
     }
 

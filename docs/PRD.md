@@ -14,7 +14,7 @@
 
 MVP phải hoàn thiện một luồng xuyên suốt:
 
-Đăng ký local bằng email/số điện thoại hoặc đăng ký bằng Google/Facebook
+Đăng ký local bằng email hoặc đăng ký bằng Google/Facebook
 → Xác minh OTP nếu đăng ký local
 → Đăng nhập và nhận JWT của hệ thống
 → Hoàn tất hồ sơ ban đầu
@@ -81,15 +81,15 @@ Ngoài quyền người dùng, Admin được phép:
 
 ### 4.1 Xác thực
 
-Hệ thống áp dụng mô hình một tài khoản nội bộ có nhiều phương thức xác thực. Email, số điện thoại, Google và Facebook sau khi được xác minh và liên kết hợp lệ đều ánh xạ về cùng một `users.id`.
+Hệ thống áp dụng mô hình một tài khoản nội bộ có nhiều phương thức xác thực. Email, Google và Facebook sau khi được xác minh và liên kết hợp lệ đều ánh xạ về cùng một `users.id`.
 
 Đăng ký local:
 
-- Request chỉ nhận một `identifier` là email hoặc số điện thoại, `password` và `confirmPassword`; không nhận username hoặc tên hiển thị.
-- Backend chuẩn hóa identifier và băm mật khẩu trước khi lưu.
+- Request chỉ nhận `email`, `password` và `confirmPassword`; không nhận username hoặc tên hiển thị.
+- Backend chuẩn hóa email và băm mật khẩu trước khi lưu.
 - Khi nhận form hợp lệ, Backend chỉ tạo `pending_registrations`; chưa tạo `users`, `user_profiles`, Access Token hoặc Refresh Token.
-- OTP email và OTP SMS có hiệu lực 10 phút, resend sau 60 giây và tối đa 5 lần nhập sai cho mỗi OTP.
-- Pending có hiệu lực 24 giờ; OTP mới làm OTP cũ mất hiệu lực; không được có hai pending còn hiệu lực cho cùng identifier.
+- OTP email có hiệu lực 10 phút, chỉ được gửi lại sau 60 giây và cho phép tối đa 5 lần nhập sai.
+- Pending có hiệu lực 24 giờ; OTP mới làm OTP cũ mất hiệu lực; không được có hai pending còn hiệu lực cho cùng email.
 - Dữ liệu `CANCELLED` và `EXPIRED` được giữ tối đa 7 ngày trước khi xóa hoặc ẩn danh.
 - Chỉ OTP hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction. Nếu tạo profile thất bại, toàn bộ transaction phải rollback.
 - Sau khi tài khoản thật được tạo, Backend cấp Access Token và Refresh Token rồi điều hướng tới onboarding.
@@ -101,16 +101,16 @@ Google/Facebook và liên kết phương thức:
 - Provider đã liên kết phải đăng nhập về đúng `users.id`.
 - Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
 - Khi liên kết provider, tài khoản đích phải lấy từ JWT hiện tại.
-- Email/phone phải được xác minh OTP trước khi liên kết; không được gỡ phương thức đăng nhập cuối cùng.
-- `users.password_hash` được phép `NULL` với social-only account; tài khoản này không đăng nhập local được cho đến khi thiết lập mật khẩu và xác minh định danh local.
+- Email phải được xác minh bằng OTP trước khi liên kết; không được gỡ phương thức đăng nhập cuối cùng.
+- `users.password_hash` được phép `NULL` với social-only account; tài khoản này không đăng nhập local được cho đến khi thiết lập mật khẩu và xác minh email local.
 
 Đăng nhập và phiên:
 
-- Login local dùng email hoặc số điện thoại và mật khẩu; chỉ định danh có trường `*_verified_at` khác `NULL` mới được dùng.
+- Login local dùng email và mật khẩu; chỉ email có `email_verified_at` khác `NULL` mới được dùng.
 - Tài khoản `BLOCKED` bị từ chối ở mọi phương thức đăng nhập.
 - Access Token có thời hạn ngắn; Refresh Token chỉ lưu dạng hash, được rotate khi refresh và bị thu hồi khi logout hoặc theo nghiệp vụ khóa tài khoản.
 - Người chưa hoàn tất hồ sơ chỉ được dùng API Auth cần thiết, Refresh Token, logout, onboarding và API quản lý phương thức xác thực theo contract; API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`.
-- Email, số điện thoại và dữ liệu xác thực không được trả trong API hồ sơ công khai.
+- Email và dữ liệu xác thực không được trả trong API hồ sơ công khai.
 
 ### 4.2 Hồ sơ
 
@@ -277,9 +277,10 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 ### P0
 
-- Đăng ký local bằng email/số điện thoại và xác minh OTP.
+- Đăng ký local bằng email và xác minh OTP.
 - Đăng ký, đăng nhập Google/Facebook.
 - Đăng nhập local và đăng xuất.
+- Khôi phục mật khẩu bằng OTP cho tài khoản local đủ điều kiện; dùng decoy challenge để chống account enumeration và không hỗ trợ social-only tạo mật khẩu lần đầu.
 - Hoàn tất hồ sơ ban đầu.
 - JWT/Refresh Token.
 - Hồ sơ.
@@ -332,9 +333,9 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 ## 7. Tiêu chí nghiệm thu
 
 - Đăng ký local chỉ tạo `pending_registrations`, chưa tạo `users`.
-- OTP email hoặc OTP SMS hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction.
+- OTP email hợp lệ mới tạo `users` và `user_profiles` trong cùng transaction.
 - OTP hết hạn, đã dùng, bị hủy hoặc vượt số lần thử không thể sử dụng.
-- Không tồn tại hai pending còn hiệu lực cho cùng identifier.
+- Không tồn tại hai pending còn hiệu lực cho cùng email.
 - Mất mạng hoặc đóng tab vẫn có thể tiếp tục đăng ký trong thời hạn.
 - Google/Facebook token được Backend xác minh trước khi dùng.
 - Provider đã liên kết luôn đăng nhập về đúng `users.id`.
@@ -359,3 +360,4 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Admin quản lý được user, post, report.
 - API từ chối khi không có quyền.
 - Password không lưu plain text.
+

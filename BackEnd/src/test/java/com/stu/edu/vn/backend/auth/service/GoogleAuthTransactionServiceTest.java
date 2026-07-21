@@ -169,7 +169,7 @@ class GoogleAuthTransactionServiceTest {
     }
 
     private User user(Long id, String email) {
-        User user = new User(email, null, null);
+        User user = new User(email, null);
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

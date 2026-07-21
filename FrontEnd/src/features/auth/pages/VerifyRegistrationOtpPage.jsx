@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import logo from '../../../assets/brand/logo.png';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/common/Button.jsx';
+import AuthLayout from '../components/AuthLayout.jsx';
+import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import OtpCountdown from '../components/OtpCountdown.jsx';
 import OtpInput from '../components/OtpInput.jsx';
 import { useRegistration } from '../hooks/useRegistration.js';
+import { getAuthenticatedHome } from '../utils/authNavigation.js';
 import { getRegistrationErrorMessage, isTerminalRegistrationError } from '../utils/registrationErrorMapper.js';
 import { validateOtp } from '../validation/registrationValidation.js';
-import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
-import { getAuthenticatedHome } from '../utils/authNavigation.js';
 
 export default function VerifyRegistrationOtpPage() {
   const registration = useRegistration();
@@ -29,6 +29,9 @@ export default function VerifyRegistrationOtpPage() {
     registration.restoreFlow()
       .then((flow) => {
         if (!flow || flow.terminal) navigate('/register', { replace: true, state: { reason: 'REGISTRATION_TERMINAL' } });
+        else if (flow.resumed) {
+          setMessage('Đang tiếp tục phiên đăng ký cũ. Hệ thống không tự gửi lại OTP; nếu chưa nhận được mã, hãy bấm “Gửi lại mã” khi thời gian chờ kết thúc.');
+        }
       })
       .catch((error) => {
         setMessage(getRegistrationErrorMessage(error));
@@ -49,7 +52,7 @@ export default function VerifyRegistrationOtpPage() {
       const session = await registration.verifyOtp(otp);
       if (!session) return;
       setOtp('');
-      navigate('/onboarding/profile', { replace: true });
+      navigate(getAuthenticatedHome(session), { replace: true });
     } catch (error) {
       setOtp('');
       setOtpError(getRegistrationErrorMessage(error));
@@ -65,7 +68,7 @@ export default function VerifyRegistrationOtpPage() {
       if (!flow) return;
       setOtp('');
       setOtpError('');
-      setMessage('Mã OTP mới đã được gửi. Mã cũ không còn hiệu lực.');
+      setMessage('Mã OTP mới đã được gửi.');
     } catch (error) {
       setMessage(getRegistrationErrorMessage(error));
     }
@@ -74,9 +77,9 @@ export default function VerifyRegistrationOtpPage() {
   async function cancel() {
     setMessage('');
     try {
-      const cancelled = await registration.cancelRegistration();
-      if (!cancelled) return;
-      navigate('/register', { replace: true, state: { reason: 'REGISTRATION_CANCELLED' } });
+      if (await registration.cancelRegistration()) {
+        navigate('/register', { replace: true, state: { reason: 'REGISTRATION_CANCELLED' } });
+      }
     } catch (error) {
       setMessage(getRegistrationErrorMessage(error));
     }
@@ -85,45 +88,92 @@ export default function VerifyRegistrationOtpPage() {
   const updateCountdown = useCallback((value) => setCountdown(value), []);
   const busy = registration.isVerifying || registration.isResending || registration.isCancelling || registration.isRestoring;
 
+  const displayMessage = message || otpError;
+  const isSuccessMessage = message && message.includes('đã được gửi');
+  const isInformationMessage = message && message.includes('phiên đăng ký cũ');
+
   return (
-    <main className="auth-pattern flex min-h-screen items-center justify-center px-4 py-8">
-      <form onSubmit={verify} className="stitch-card-shadow w-full max-w-[420px] rounded-[10px] border border-[var(--app-border)] bg-white px-9 py-8">
-        <img src={logo} alt="UniShare" className="mx-auto h-14 w-14 object-contain" />
-        <h1 className="mt-4 text-center text-2xl font-black">Xác minh đăng ký</h1>
-        <p className="mt-2 text-center text-sm leading-6 text-[var(--app-muted)]">
-          Nhập mã OTP đã gửi đến <strong className="text-zinc-800">{registration.maskedIdentifier || 'định danh của bạn'}</strong>.
-        </p>
-        {registration.otpExpiresAt ? <p className="mt-1 text-center text-xs text-zinc-500">Mã hiện tại hết hạn lúc {new Date(registration.otpExpiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.</p> : null}
-
-        <div className="mt-7">
-          <OtpInput value={otp} onChange={setOtp} disabled={busy} error={otpError} />
+    <AuthLayout>
+      <form onSubmit={verify} className="px-7 sm:px-10 py-8">
+        <div className="mb-6 text-center">
+          <h1 className="text-[1.35rem] font-bold text-gray-900 mb-2">
+            Nhập mã xác minh
+          </h1>
+          <p className="text-[13px] text-gray-500 font-medium">
+            Vui lòng nhập mã gồm 6 chữ số từ email xác minh.
+          </p>
+          {registration.otpExpiresAt ? (
+            <p className="mt-1 text-[12px] text-gray-400 font-medium">
+              Mã hết hạn lúc {new Date(registration.otpExpiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.
+            </p>
+          ) : null}
         </div>
-        {registration.remainingAttempts !== null ? <p className="mt-2 text-xs text-zinc-500">Còn {registration.remainingAttempts} lần nhập.</p> : null}
-        {message ? <p className="mt-4 rounded-xl bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700">{message}</p> : null}
 
-        <Button type="submit" disabled={busy || otp.length !== 6} className="mt-5 min-h-[48px] w-full font-black">
-          {registration.isVerifying ? 'Đang xác minh...' : 'Xác minh OTP'}
-        </Button>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${displayMessage ? 'max-h-24 opacity-100 mb-5' : 'max-h-0 opacity-0 mb-0'}`}>
+          <p className={`rounded-lg p-3 text-[13px] font-medium text-center border ${isSuccessMessage ? 'bg-green-50 text-green-700 border-green-100' : isInformationMessage ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+            {displayMessage}
+          </p>
+        </div>
 
-        <div className="mt-5 text-center text-sm text-zinc-600">
-          <OtpCountdown resendAvailableAt={registration.resendAvailableAt} onChange={updateCountdown} />
-          <button type="button" disabled={busy || countdown > 0} onClick={resend} className="mt-2 block w-full font-black text-zinc-900 disabled:text-zinc-400">
-            {registration.isResending ? 'Đang gửi lại...' : 'Gửi lại OTP'}
+        <div className="mb-6">
+          <OtpInput value={otp} onChange={(value) => { setOtp(value); setOtpError(''); setMessage(''); }} disabled={busy} error={otpError} />
+        </div>
+        
+        <div className="mb-2">
+          <Button 
+            type="submit" 
+            disabled={busy || otp.length !== 6}
+            className="w-full"
+          >
+            {registration.isVerifying ? 'Đang xác minh...' : 'Xác minh'}
+          </Button>
+        </div>
+
+        <div className="mt-5 mb-6 text-center text-[13px] font-medium text-gray-600">
+          Chưa nhận được mã?{' '}
+          <button 
+            type="button" 
+            disabled={busy || countdown > 0} 
+            onClick={resend} 
+            className="font-bold text-gray-900 hover:underline disabled:text-gray-400 disabled:no-underline transition-colors"
+          >
+            {registration.isResending ? 'Đang gửi lại...' : 'Gửi lại mã'}
           </button>
+          {' '}
+          <OtpCountdown resendAvailableAt={registration.resendAvailableAt} onChange={updateCountdown} render={(sec) => sec > 0 ? <span className="font-bold text-gray-900">(sau {sec}s)</span> : null} />
         </div>
 
-        <div className="mt-6 flex justify-between text-sm font-bold">
-          <Link to="/register" className="text-zinc-600">Quay lại đăng ký</Link>
-          <button type="button" onClick={cancel} disabled={busy} className="text-red-700 disabled:text-zinc-400">Hủy đăng ký</button>
+        {/* Nút Quay lại */}
+        <div className="mb-4">
+          <Button type="button" onClick={() => navigate('/register')} variant="secondary" className="w-full">
+            Quay lại
+          </Button>
         </div>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-zinc-500"><span className="h-px flex-1 bg-zinc-200" />Hoặc<span className="h-px flex-1 bg-zinc-200" /></div>
+        <div className="my-5 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          <span className="h-px flex-1 bg-gray-200" />
+          Hoặc
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+        
         <GoogleAuthButton
           includeRegistrationFlow
           onAuthenticated={(session) => navigate(getAuthenticatedHome(session), { replace: true })}
           onConflict={() => navigate('/auth/social-conflict', { replace: true })}
         />
+
+        {/* Nút Hủy đăng ký */}
+        <div className="mt-6 text-center">
+          <button 
+            type="button" 
+            onClick={cancel} 
+            disabled={busy} 
+            className="text-[13px] font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+          >
+            Hủy quá trình đăng ký
+          </button>
+        </div>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

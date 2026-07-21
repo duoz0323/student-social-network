@@ -24,7 +24,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             "/api/v1/auth/registrations", "/api/v1/auth/registrations/verify",
             "/api/v1/auth/registrations/resend", "/api/v1/auth/login",
             "/api/v1/auth/oauth/google", "/api/v1/auth/oauth/facebook",
-            "/api/v1/auth/refresh-token");
+            "/api/v1/auth/refresh-token", "/api/v1/auth/password-recovery",
+            "/api/v1/auth/password-recovery/verify", "/api/v1/auth/password-recovery/resend",
+            "/api/v1/auth/password-recovery/complete");
     private final AuthRateLimiter limiter;
     private final ClientIpAddressResolver ipResolver;
     private final SecurityErrorResponseWriter errorWriter;
@@ -62,7 +64,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String subject = authentication != null && authentication.getPrincipal() instanceof CustomUserPrincipal user
                 ? "user:" + user.getUserId() : "ip:" + String.valueOf(ipResolver.resolve(request));
-        // Chỉ giữ digest của subject và endpoint; không đưa email, phone hoặc token vào key/bộ nhớ.
+        // Chỉ giữ digest của subject và endpoint; không đưa email hoặc token vào key/bộ nhớ.
         return sha256(subject + "|" + request.getRequestURI());
     }
 

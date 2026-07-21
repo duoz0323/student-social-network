@@ -14,9 +14,8 @@ import com.stu.edu.vn.backend.auth.google.VerifiedGoogleIdentity;
 import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
 import com.stu.edu.vn.backend.auth.repository.SocialAuthChallengeRepository;
 import com.stu.edu.vn.backend.auth.repository.UserAuthProviderRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierNormalizer;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.JwtProperties;
@@ -73,7 +72,7 @@ public class GoogleAuthTransactionService {
 
     @Transactional(noRollbackFor = SocialConflictException.class)
     public GoogleAuthResponse authenticate(VerifiedGoogleIdentity identity, String deviceId, String deviceInfo, String ipAddress) {
-        NormalizedIdentifier normalized = normalizedEmail(identity.email());
+        NormalizedEmail normalized = normalizedEmail(identity.email());
         Optional<UserAuthProvider> existing = providerRepository.findByProviderAndProviderUserIdForUpdate(
                 AuthProvider.GOOGLE, identity.subject());
         if (existing.isPresent()) {
@@ -92,7 +91,7 @@ public class GoogleAuthTransactionService {
             throwActiveEmailConflict(identity, normalized.value(), emailOwner.get());
         }
 
-        User user = new User(normalized.value(), null, null);
+        User user = new User(normalized.value(), null);
         user.setEmailVerifiedAt(LocalDateTime.now(clock));
         User savedUser = userRepository.saveAndFlush(user);
         profileRepository.saveAndFlush(new UserProfile(savedUser));
@@ -141,11 +140,8 @@ public class GoogleAuthTransactionService {
                 AuthProvider.GOOGLE, new GoogleAuthResponse.UserSummary(user.getId(), user.getRole()));
     }
 
-    private NormalizedIdentifier normalizedEmail(String email) {
-        NormalizedIdentifier normalized = IdentifierNormalizer.normalize(email);
-        if (normalized.type() != IdentifierType.EMAIL) {
-            throw new BusinessException(ErrorCode.AUTH_GOOGLE_EMAIL_MISSING);
-        }
+    private NormalizedEmail normalizedEmail(String email) {
+        NormalizedEmail normalized = EmailNormalizer.normalize(email);
         return normalized;
     }
 }

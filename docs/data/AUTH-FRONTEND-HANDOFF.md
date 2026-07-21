@@ -6,7 +6,7 @@
 - Refresh Token chỉ gửi vào refresh/logout theo contract; không dùng gọi Feed/Post.
 - Registration flow token chỉ dùng trong registration status/resend/cancel/verify theo DTO/header hiện hành.
 - Social challenge token chỉ dùng tại resolve social conflict.
-- Link challenge token gửi bằng `X-Auth-Flow-Token` cho verify/resend email/phone.
+- Link challenge token gửi bằng `X-Auth-Flow-Token` cho verify/resend email.
 - Reauthentication token gửi bằng `X-Auth-Flow-Token` khi unlink.
 - Google/Facebook credential chỉ gửi tới endpoint provider hoặc reauthentication tương ứng.
 - Xóa token tạm khi flow hoàn tất hoặc bị terminal. Không log token và không đưa token vào URL.
@@ -16,7 +16,7 @@
 
 | Method | URL | Header chính | Body/tác dụng | Success | Error chính |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/auth/registrations` | Không | `identifier`, password/confirmation | `202`, pending + flow data | validation, already pending/existing |
+| POST | `/api/v1/auth/registrations` | Không | `email`, password/confirmation | `202`, pending + flow data | validation, already pending/existing |
 | POST | `/api/v1/auth/registrations/verify` | Theo DTO hiện hành | Flow token + OTP + device | `200`, Access/Refresh Token, `nextStep` | OTP/flow expired/invalid |
 | POST | `/api/v1/auth/registrations/resend` | Không | Registration flow token | `200`, OTP lifecycle | cooldown/expired |
 | GET | `/api/v1/auth/registrations/status` | `X-Auth-Flow-Token` | Không | `200`, pending status | invalid flow |
@@ -35,11 +35,8 @@
 | POST | `/api/v1/auth/reauthenticate` | Authorization | Phát hành reauthentication token ngắn hạn |
 | GET | `/api/v1/users/me/auth-providers` | Authorization | Danh sách method đã mask |
 | POST | `/api/v1/users/me/auth-providers/email` | Authorization | Bắt đầu link email |
-| POST | `/api/v1/users/me/auth-providers/phone` | Authorization | Bắt đầu link phone |
 | POST | `/api/v1/users/me/auth-providers/email/verify` | Authorization + `X-Auth-Flow-Token` | Verify link email |
-| POST | `/api/v1/users/me/auth-providers/phone/verify` | Authorization + `X-Auth-Flow-Token` | Verify link phone |
 | POST | `/api/v1/users/me/auth-providers/email/resend` | Authorization + `X-Auth-Flow-Token` | Resend link email OTP |
-| POST | `/api/v1/users/me/auth-providers/phone/resend` | Authorization + `X-Auth-Flow-Token` | Resend link phone OTP |
 | POST | `/api/v1/users/me/auth-providers/google` | Authorization | Link Google sau Backend verify |
 | POST | `/api/v1/users/me/auth-providers/facebook` | Authorization | Link Facebook sau Backend verify |
 | DELETE | `/api/v1/users/me/auth-providers/{provider}` | Authorization + `X-Auth-Flow-Token` | Unlink sau reauthentication; trả `204` |
@@ -56,3 +53,4 @@ User chưa hoàn tất hồ sơ vẫn được dùng Auth/onboarding theo contra
 6. Không lưu provider token lâu hơn request Auth cần thiết.
 7. Khi refresh thất bại, xóa phiên local và điều hướng về login.
 8. Logout không vô hiệu Access Token đã phát hành; Frontend phải xóa token local ngay.
+

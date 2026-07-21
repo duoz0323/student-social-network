@@ -1,9 +1,9 @@
 export default function Badge({ children, tone = 'neutral' }) {
   const tones = {
-    neutral: 'bg-zinc-100 text-zinc-700',
-    success: 'bg-emerald-100 text-emerald-700',
-    warning: 'bg-amber-100 text-amber-700',
-    danger: 'bg-red-100 text-red-700',
+    neutral: 'bg-[var(--app-surface-soft)] text-[var(--app-muted)]',
+    success: 'bg-[var(--status-active-bg)] text-[var(--status-active)]',
+    warning: 'bg-[var(--status-pending-bg)] text-[var(--status-pending)]',
+    danger: 'bg-[var(--status-blocked-bg)] text-[var(--status-blocked)]',
   };
 
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>{children}</span>;

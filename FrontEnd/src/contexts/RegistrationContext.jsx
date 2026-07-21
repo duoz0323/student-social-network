@@ -10,12 +10,12 @@ function createState(flow = null) {
   return {
     registrationFlowToken: flow?.registrationFlowToken ?? null,
     maskedIdentifier: flow?.maskedIdentifier ?? '',
-    identifierType: flow?.identifierType ?? null,
     expiresAt: flow?.expiresAt ?? null,
     otpExpiresAt: flow?.otpExpiresAt ?? null,
     resendAvailableAt: flow?.resendAvailableAt ?? null,
     remainingAttempts: flow?.remainingAttempts ?? null,
     canResend: flow?.canResend ?? false,
+    resumed: flow?.resumed === true,
     status: flow ? flow.status : 'IDLE',
     nextStep: flow?.nextStep ?? null,
     isSubmitting: false,

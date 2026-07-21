@@ -5,7 +5,6 @@ package com.stu.edu.vn.backend.auth.enums;
  */
 public enum AuthMethod {
     EMAIL,
-    PHONE,
     GOOGLE,
     FACEBOOK
 }

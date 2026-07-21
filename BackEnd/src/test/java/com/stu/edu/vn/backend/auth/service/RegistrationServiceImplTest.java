@@ -13,8 +13,8 @@ import com.stu.edu.vn.backend.auth.delivery.RegistrationOtpSender;
 import com.stu.edu.vn.backend.auth.dto.RegisterRequest;
 import com.stu.edu.vn.backend.auth.dto.RegisterResponse;
 import com.stu.edu.vn.backend.auth.enums.RegistrationType;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.auth.support.PasswordPolicyValidator;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -40,50 +40,27 @@ class RegistrationServiceImplTest {
                 deliveryStatusService,
                 otpSender,
                 new PasswordPolicyValidator(),
-                new IdentifierMasker()
+                new EmailMasker()
         );
     }
 
     @Test
     void returnsRawFlowTokenOnlyAfterPendingCommitAndSuccessfulDelivery() {
         RegistrationCreation creation = emailCreation();
-        when(transactionService.create(any(NormalizedIdentifier.class), any())).thenReturn(creation);
+        when(transactionService.create(any(NormalizedEmail.class), any())).thenReturn(creation);
         when(otpSender.send(RegistrationType.EMAIL, "student@example.com", "123456"))
                 .thenReturn(OtpDeliveryResult.sent());
 
         RegisterResponse response = service.start(validEmailRequest());
 
         InOrder order = inOrder(transactionService, otpSender, deliveryStatusService);
-        order.verify(transactionService).create(any(NormalizedIdentifier.class), any());
+        order.verify(transactionService).create(any(NormalizedEmail.class), any());
         order.verify(otpSender).send(RegistrationType.EMAIL, "student@example.com", "123456");
         order.verify(deliveryStatusService).record("flow-hash", OtpDeliveryResult.sent());
         assertThat(response.registrationFlowToken()).isEqualTo("raw-flow-token");
         assertThat(response.maskedIdentifier()).isEqualTo("s***@example.com");
-        assertThat(response.identifierType()).isEqualTo(RegistrationType.EMAIL);
     }
 
-    @Test
-    void normalizesPhoneBeforeCreatingPending() {
-        RegistrationCreation creation = new RegistrationCreation(
-                RegistrationType.PHONE,
-                "0912345678",
-                "123456",
-                "raw-flow-token",
-                "flow-hash",
-                LocalDateTime.now().plusMinutes(10),
-                LocalDateTime.now().plusSeconds(60),
-                LocalDateTime.now().plusHours(24)
-        );
-        when(transactionService.create(any(NormalizedIdentifier.class), any())).thenReturn(creation);
-        when(otpSender.send(any(), any(), any())).thenReturn(OtpDeliveryResult.sent());
-
-        RegisterResponse response = service.start(
-                new RegisterRequest("091 234-5678", "Password@123", "Password@123")
-        );
-
-        assertThat(response.identifierType()).isEqualTo(RegistrationType.PHONE);
-        assertThat(response.maskedIdentifier()).isEqualTo("******5678");
-    }
 
     @Test
     void rejectsWeakPasswordBeforeDatabaseWork() {
@@ -131,6 +108,25 @@ class RegistrationServiceImplTest {
     }
 
     @Test
+    void resumedRegistrationReturnsFlowWithoutSendingOtpAgain() {
+        RegistrationCreation resumed = new RegistrationCreation(
+                RegistrationType.EMAIL, "student@example.com", null, "rotated-flow-token", "rotated-flow-hash",
+                LocalDateTime.now().plusMinutes(5), LocalDateTime.now().plusSeconds(30),
+                LocalDateTime.now().plusHours(20), true
+        );
+        when(transactionService.create(any(), any())).thenReturn(resumed);
+
+        RegisterResponse response = service.start(
+                new RegisterRequest("student@example.com", "Password@123", "Password@123")
+        );
+
+        assertThat(response.resumed()).isTrue();
+        assertThat(response.registrationFlowToken()).isEqualTo("rotated-flow-token");
+        verify(otpSender, never()).send(any(), any(), any());
+        verify(deliveryStatusService, never()).record(any(), any());
+    }
+
+    @Test
     void confirmedDeliveryFailureIsRecordedAndPendingIsKeptForLaterRecovery() {
         RegistrationCreation creation = emailCreation();
         OtpDeliveryResult failed = OtpDeliveryResult.failed("SMTP_REJECTED");
@@ -172,7 +168,9 @@ class RegistrationServiceImplTest {
                 "flow-hash",
                 now.plusMinutes(10),
                 now.plusSeconds(60),
-                now.plusHours(24)
+                now.plusHours(24),
+                false
         );
     }
 }
+

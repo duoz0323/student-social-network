@@ -116,21 +116,11 @@ public class RegistrationVerificationTransactionService {
                 && userRepository.existsByEmail(pending.getIdentifierNormalized())) {
             throw new RegistrationIdentifierConflictException(RegistrationType.EMAIL, null);
         }
-        if (pending.getRegistrationType() == RegistrationType.PHONE
-                && userRepository.existsByPhoneNumber(pending.getIdentifierNormalized())) {
-            throw new RegistrationIdentifierConflictException(RegistrationType.PHONE, null);
-        }
     }
 
     private User createVerifiedUser(PendingRegistration pending, LocalDateTime verifiedAt) {
-        User user;
-        if (pending.getRegistrationType() == RegistrationType.EMAIL) {
-            user = new User(pending.getIdentifierNormalized(), null, pending.getPasswordHash());
-            user.setEmailVerifiedAt(verifiedAt);
-        } else {
-            user = new User(null, pending.getIdentifierNormalized(), pending.getPasswordHash());
-            user.setPhoneVerifiedAt(verifiedAt);
-        }
+        User user = new User(pending.getIdentifierNormalized(), pending.getPasswordHash());
+        user.setEmailVerifiedAt(verifiedAt);
         return user;
     }
 

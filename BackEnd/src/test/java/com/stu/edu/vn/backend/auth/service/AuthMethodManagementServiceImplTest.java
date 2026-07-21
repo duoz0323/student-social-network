@@ -13,7 +13,7 @@ import com.stu.edu.vn.backend.auth.facebook.FacebookAccessTokenVerifier;
 import com.stu.edu.vn.backend.auth.google.GoogleIdentityVerifier;
 import com.stu.edu.vn.backend.auth.google.VerifiedGoogleIdentity;
 import com.stu.edu.vn.backend.auth.repository.UserAuthProviderRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
@@ -45,14 +45,14 @@ class AuthMethodManagementServiceImplTest {
     void setUp() {
         service = new AuthMethodManagementServiceImpl(currentUserProvider, userRepository, providerRepository,
                 linkTransactionService, providerLinkTransactionService, unlinkTransactionService,
-                otpSender, new IdentifierMasker(),
+                otpSender, new EmailMasker(),
                 googleVerifier, facebookVerifier);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7L);
     }
 
     @Test
     void socialOnlyVerifiedEmailIsVisibleButLocalLoginIsUnavailable() {
-        User user = new User("student@example.com", null, null);
+        User user = new User("student@example.com", null);
         ReflectionTestUtils.setField(user, "id", 7L);
         user.setEmailVerifiedAt(LocalDateTime.now());
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));

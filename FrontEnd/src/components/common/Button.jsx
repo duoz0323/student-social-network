@@ -1,14 +1,16 @@
 export default function Button({ children, type = 'button', variant = 'primary', size = 'md', disabled = false, onClick, className = '' }) {
   const variants = {
-    primary: 'bg-[var(--app-active)] text-white hover:bg-zinc-800',
-    secondary: 'border border-[var(--app-border)] bg-white text-[var(--app-text)] hover:bg-[var(--app-surface-soft)]',
-    ghost: 'text-zinc-700 hover:bg-[var(--app-surface-soft)]',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
+    primary: 'bg-[#0f172a] text-white shadow-sm hover:bg-black hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border border-transparent',
+    secondary: 'bg-white border border-gray-300 text-[#1e293b] shadow-sm hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
+    ghost: 'text-[var(--app-muted)] hover:text-[var(--app-text)] hover:bg-[var(--app-surface-soft)] border border-transparent',
+    danger: 'bg-red-600 text-white shadow-sm hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] border border-transparent',
+    dangerSoft: 'bg-red-50 text-red-600 border border-red-200 shadow-sm hover:bg-red-100 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
   };
+  
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-5 py-3 text-base',
+    sm: 'h-8 px-3 text-xs',
+    md: 'h-[44px] px-4 text-sm',
+    lg: 'h-12 px-5 text-base',
   };
 
   return (
@@ -16,7 +18,7 @@ export default function Button({ children, type = 'button', variant = 'primary',
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center font-semibold rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--app-brand)] transition-all duration-200 ${variants[variant]} ${sizes[size]} ${className} ${disabled ? '!opacity-60 !cursor-not-allowed !scale-100 !shadow-none' : ''}`}
     >
       {children}
     </button>

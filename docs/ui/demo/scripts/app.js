@@ -6,3 +6,4 @@ const root = document.querySelector("#app");
 if (root) {
   startRouter(root);
 }
+

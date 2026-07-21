@@ -4,7 +4,7 @@
     {
       "id": "account-001",
       "email": "minh.demo@example.com",
-      "phoneNumber": null,
+      "email": null,
       "passwordDemo": "DemoUser123!",
       "passwordHash": "c88f70e0ff9546971974f1c582b14da9991b34fbb59b0cb27b848eaed3e0210e",
       "role": "USER",
@@ -14,7 +14,7 @@
     {
       "id": "account-002",
       "email": null,
-      "phoneNumber": "+84907654321",
+      "email": "+84907654321",
       "passwordDemo": "DemoAdmin123!",
       "passwordHash": "df88c832e9ed606645d98fac326669b3e12856e23719aabdfd7d894212ec1a0b",
       "role": "ADMIN",
@@ -24,7 +24,7 @@
     {
       "id": "account-003",
       "email": "blocked.demo@example.com",
-      "phoneNumber": "+84909998877",
+      "email": "+84909998877",
       "passwordDemo": "DemoBlocked123!",
       "passwordHash": "64dc5d2eb37b17c70d158c4aa48f0650dbddf2ae4395389a1d1dfd83146cba1e",
       "role": "USER",
@@ -36,7 +36,7 @@
     {
       "id": "user-001",
       "email": "minh.demo@example.com",
-      "phoneNumber": null,
+      "email": null,
       "role": "USER",
       "status": "ACTIVE",
       "profile": {
@@ -52,7 +52,7 @@
     {
       "id": "user-002",
       "email": "lan.demo@example.com",
-      "phoneNumber": null,
+      "email": null,
       "role": "USER",
       "status": "ACTIVE",
       "profile": {
@@ -68,7 +68,7 @@
     {
       "id": "user-003",
       "email": null,
-      "phoneNumber": "+84907654321",
+      "email": "+84907654321",
       "role": "ADMIN",
       "status": "ACTIVE",
       "profile": {
@@ -84,7 +84,7 @@
     {
       "id": "user-004",
       "email": "blocked.demo@example.com",
-      "phoneNumber": "+84909998877",
+      "email": "+84909998877",
       "role": "USER",
       "status": "BLOCKED",
       "profile": {
@@ -100,7 +100,7 @@
     {
       "id": "user-005",
       "email": "mai.anh@example.com",
-      "phoneNumber": null,
+      "email": null,
       "role": "USER",
       "status": "ACTIVE",
       "profile": {
@@ -244,3 +244,4 @@
     "notifications": []
   }
 }
+

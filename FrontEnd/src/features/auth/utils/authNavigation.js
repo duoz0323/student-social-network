@@ -1,6 +1,6 @@
-export function getAuthenticatedHome({ role, profileCompleted }) {
+export function getAuthenticatedHome({ role, user, profileCompleted }) {
   if (!profileCompleted) return '/onboarding/profile';
-  return role === 'ADMIN' ? '/admin' : '/feed/for-you';
+  return (role ?? user?.role) === 'ADMIN' ? '/admin' : '/feed/for-you';
 }
 
 const RETURN_ROUTE_PREFIXES = ['/feed/', '/posts/', '/profile/', '/admin/'];

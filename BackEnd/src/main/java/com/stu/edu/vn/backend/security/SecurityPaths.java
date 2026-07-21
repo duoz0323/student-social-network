@@ -19,6 +19,10 @@ final class SecurityPaths {
     static final String GOOGLE_AUTH = "/api/v1/auth/oauth/google";
     static final String FACEBOOK_AUTH = "/api/v1/auth/oauth/facebook";
     static final String RESOLVE_SOCIAL_CONFLICT = "/api/v1/auth/registrations/resolve-social-conflict";
+    static final String PASSWORD_RECOVERY = "/api/v1/auth/password-recovery";
+    static final String PASSWORD_RECOVERY_VERIFY = PASSWORD_RECOVERY + "/verify";
+    static final String PASSWORD_RECOVERY_RESEND = PASSWORD_RECOVERY + "/resend";
+    static final String PASSWORD_RECOVERY_COMPLETE = PASSWORD_RECOVERY + "/complete";
     static final Set<String> PUBLIC_POST_AUTH_ENDPOINTS = Set.of(
             REGISTRATIONS,
             VERIFY_REGISTRATION,
@@ -29,7 +33,8 @@ final class SecurityPaths {
             LOGOUT,
             GOOGLE_AUTH,
             FACEBOOK_AUTH,
-            RESOLVE_SOCIAL_CONFLICT
+            RESOLVE_SOCIAL_CONFLICT,
+            PASSWORD_RECOVERY, PASSWORD_RECOVERY_VERIFY, PASSWORD_RECOVERY_RESEND, PASSWORD_RECOVERY_COMPLETE
     );
     static final Set<String> PUBLIC_GET_AUTH_ENDPOINTS = Set.of(REGISTRATION_STATUS);
 

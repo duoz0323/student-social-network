@@ -33,7 +33,7 @@ public class RegistrationLifecycleServiceImpl implements RegistrationLifecycleSe
 
         RegistrationOtpIssuance issuance = result.issuance();
         OtpDeliveryResult deliveryResult = deliver(issuance);
-        deliveryStatusService.record(issuance.pendingId(), issuance.otpVersion(), deliveryResult);
+        recordDeliveryBestEffort(issuance, deliveryResult);
         if (deliveryResult.outcome() != OtpDeliveryOutcome.SENT) {
             // OTP version mới vẫn là version hiện hành; tuyệt đối không rollback về OTP cũ.
             throw new BusinessException(ErrorCode.AUTH_OTP_DELIVERY_FAILED);
@@ -41,7 +41,6 @@ public class RegistrationLifecycleServiceImpl implements RegistrationLifecycleSe
 
         return new ResendRegistrationResponse(
                 OtpChallengeStatus.PENDING,
-                issuance.type(),
                 issuance.maskedIdentifier(),
                 issuance.otpExpiresAt(),
                 issuance.resendAvailableAt(),
@@ -68,6 +67,15 @@ public class RegistrationLifecycleServiceImpl implements RegistrationLifecycleSe
         } catch (RuntimeException exception) {
             // Không lưu hoặc trả message kỹ thuật của provider; timeout được xem là UNKNOWN.
             return OtpDeliveryResult.unknown();
+        }
+    }
+
+    /** Provider đã nhận OTP thì lỗi ghi audit sau đó không được đổi response thành gửi thất bại. */
+    private void recordDeliveryBestEffort(RegistrationOtpIssuance issuance, OtpDeliveryResult result) {
+        try {
+            deliveryStatusService.record(issuance.pendingId(), issuance.otpVersion(), result);
+        } catch (RuntimeException exception) {
+            if (result.outcome() != OtpDeliveryOutcome.SENT) throw exception;
         }
     }
 

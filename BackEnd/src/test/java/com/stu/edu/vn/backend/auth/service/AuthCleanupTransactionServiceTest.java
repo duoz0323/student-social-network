@@ -27,6 +27,7 @@ import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
 import com.stu.edu.vn.backend.auth.repository.ReauthenticationChallengeRepository;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
 import com.stu.edu.vn.backend.auth.repository.SocialAuthChallengeRepository;
+import com.stu.edu.vn.backend.auth.repository.PasswordRecoveryChallengeRepository;
 import com.stu.edu.vn.backend.user.entity.User;
 import java.time.Clock;
 import java.time.Duration;
@@ -45,6 +46,7 @@ class AuthCleanupTransactionServiceTest {
     private final AuthMethodLinkChallengeRepository links = org.mockito.Mockito.mock(AuthMethodLinkChallengeRepository.class);
     private final ReauthenticationChallengeRepository reauth = org.mockito.Mockito.mock(ReauthenticationChallengeRepository.class);
     private final RefreshTokenRepository refresh = org.mockito.Mockito.mock(RefreshTokenRepository.class);
+    private final PasswordRecoveryChallengeRepository recovery = org.mockito.Mockito.mock(PasswordRecoveryChallengeRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-20T03:00:00Z"), ZoneOffset.UTC);
     private AuthCleanupTransactionService service;
 
@@ -53,7 +55,7 @@ class AuthCleanupTransactionServiceTest {
         AuthCleanupProperties properties = new AuthCleanupProperties();
         properties.setBatchSize(2);
         properties.setRetention(Duration.ofDays(7));
-        service = new AuthCleanupTransactionService(pending, social, links, reauth, refresh, properties, clock);
+        service = new AuthCleanupTransactionService(pending, social, links, reauth, refresh, recovery, properties, clock);
     }
 
     @Test
@@ -116,8 +118,9 @@ class AuthCleanupTransactionServiceTest {
     }
 
     private User user(long id) {
-        User user = new User("student" + id + "@example.com", null, "hash");
+        User user = new User("student" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }
 }
+

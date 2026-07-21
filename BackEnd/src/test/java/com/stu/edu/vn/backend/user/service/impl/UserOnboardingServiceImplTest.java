@@ -43,7 +43,7 @@ class UserOnboardingServiceImplTest {
 
     @Test
     void completeOnboardingStoresRequiredFieldsAndCompletionTime() {
-        UserProfile profile = new UserProfile(new User("student@example.com", null, "hash"));
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 
         CompleteOnboardingResponse response = service.completeOnboarding(
@@ -61,7 +61,7 @@ class UserOnboardingServiceImplTest {
 
     @Test
     void completeOnboardingRejectsAlreadyCompletedProfile() {
-        UserProfile profile = new UserProfile(new User("student@example.com", null, "hash"));
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 
@@ -75,7 +75,7 @@ class UserOnboardingServiceImplTest {
 
     @Test
     void getStatusReturnsOnboardingStepForIncompleteProfile() {
-        UserProfile profile = new UserProfile(new User("student@example.com", null, "hash"));
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
         when(currentUserProfileProvider.getCurrentProfile()).thenReturn(profile);
 
         OnboardingStatusResponse response = service.getMyOnboardingStatus();

@@ -18,7 +18,7 @@ Body mẫu:
 
 ```json
 {
-  "identifier": "student@example.com",
+  "email": "student@example.com",
   "password": "Password@1",
   "confirmPassword": "Password@1"
 }
@@ -30,7 +30,7 @@ Kỳ vọng:
 - Chỉ tạo hoặc phục hồi `pending_registrations`; chưa tạo user/profile/session.
 - Response có `resumed` và raw flow token; lưu tạm token vào `authFlowToken`.
 - Response có `Cache-Control: no-store`.
-- Gọi lại cùng identifier đang có pending hợp lệ phải trả `resumed=true`, flow token mới và không tự resend trong cooldown.
+- Gọi lại cùng email đang có pending hợp lệ phải trả `resumed=true`, flow token mới và không tự resend trong cooldown.
 - Không gọi endpoint cũ `/api/v1/auth/register`.
 
 Post-response script tối thiểu:
@@ -149,3 +149,4 @@ Xóa: `DELETE {{baseUrl}}/api/v1/users/me/avatar`
 - Upload loại file không hỗ trợ → `AVATAR_FILE_TYPE_NOT_ALLOWED`.
 - Upload file giả ảnh → `AVATAR_MIME_TYPE_INVALID`.
 - Gọi API mạng xã hội chính trước onboarding → `PROFILE_NOT_COMPLETED`.
+

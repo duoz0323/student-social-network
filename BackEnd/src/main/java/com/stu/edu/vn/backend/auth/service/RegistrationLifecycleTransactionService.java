@@ -9,9 +9,8 @@ import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
 import com.stu.edu.vn.backend.auth.enums.RegistrationType;
 import com.stu.edu.vn.backend.auth.generator.OtpGenerator;
 import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierMasker;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailMasker;
+import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.time.Clock;
@@ -31,7 +30,7 @@ public class RegistrationLifecycleTransactionService {
     private final AuthHmacService authHmacService;
     private final OtpGenerator otpGenerator;
     private final AuthRegistrationProperties properties;
-    private final IdentifierMasker identifierMasker;
+    private final EmailMasker identifierMasker;
     private final Clock clock;
 
     @Transactional
@@ -126,7 +125,6 @@ public class RegistrationLifecycleTransactionService {
 
         return new RegistrationStatusResponse(
                 pending.getStatus(),
-                pending.getRegistrationType(),
                 mask(pending),
                 active ? pending.getOtpExpiresAt() : null,
                 active ? pending.getResendAvailableAt() : null,
@@ -143,10 +141,7 @@ public class RegistrationLifecycleTransactionService {
         if (pending.getIdentifierNormalized() == null) {
             return null;
         }
-        IdentifierType identifierType = pending.getRegistrationType() == RegistrationType.EMAIL
-                ? IdentifierType.EMAIL
-                : IdentifierType.PHONE_NUMBER;
-        return identifierMasker.mask(new NormalizedIdentifier(identifierType, pending.getIdentifierNormalized()));
+        return identifierMasker.mask(new NormalizedEmail(pending.getIdentifierNormalized()));
     }
 
     private String nextStep(OtpChallengeStatus status) {

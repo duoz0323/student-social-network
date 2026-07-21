@@ -104,7 +104,7 @@ class UserAvatarServiceImplTest {
     }
 
     private UserProfile completedProfileWithOldAvatar() {
-        User user = new User("student@example.com", null, "hash");
+        User user = new User("student@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", 10L);
         UserProfile profile = new UserProfile(user);
         profile.setAvatarUrl("https://cdn.example/old.png");

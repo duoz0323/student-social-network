@@ -8,13 +8,13 @@
 
 ```text
 AUTH-02 Đăng ký
-→ Nhập email hoặc số điện thoại
+→ Nhập email
 → Nhập mật khẩu và xác nhận mật khẩu
 → Đồng ý điều khoản nếu form yêu cầu
 → Khởi tạo đăng ký
 → Backend tạo hoặc phục hồi pending registration
 → Frontend giữ flow token trong memory/sessionStorage
-→ AUTH-OTP-01 nhập OTP email/phone
+→ AUTH-OTP-01 nhập OTP email
 → Có thể resend sau cooldown hoặc recovery pending
 → OTP hợp lệ mới tạo user, profile và session JWT hệ thống
 → /onboarding/profile
@@ -26,7 +26,7 @@ AUTH-02 Đăng ký
 → FEED-01 Feed người dùng
 ```
 
-Ghi chú: Không dùng username hoặc displayName trong form đăng ký. Submit đầu tiên không tạo user, profile, Access Token hoặc Refresh Token. Cùng identifier có pending hợp lệ được resume với flow token mới và không tự resend trong cooldown. Flow token không được lưu `localStorage`, đưa vào URL hoặc dùng ngoài Auth flow; header chi tiết theo `API-CONTRACT.md`.
+Ghi chú: Không dùng username hoặc displayName trong form đăng ký. Submit đầu tiên không tạo user, profile, Access Token hoặc Refresh Token. Cùng email có pending hợp lệ được resume với flow token mới và không tự resend trong cooldown. Flow token không được lưu `localStorage`, đưa vào URL hoặc dùng ngoài Auth flow; header chi tiết theo `API-CONTRACT.md`.
 
 Google/Facebook:
 
@@ -49,7 +49,7 @@ Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng v�
 
 ```text
 AUTH-01 Đăng nhập
-→ Nhập email hoặc số điện thoại
+→ Nhập email
 → Nhập mật khẩu
 → Gửi đăng nhập
 → Nhận Access Token và Refresh Token
@@ -64,8 +64,8 @@ Google/Facebook login dùng cùng nguyên tắc provider credential chỉ dành 
 
 ```text
 AUTH-METHOD-01
-→ Xem email, phone, Google, Facebook đang liên kết
-→ Link email/phone: AUTH-METHOD-02 initiate challenge riêng → verify OTP → quay lại danh sách
+→ Xem email, Google, Facebook đang liên kết
+→ Link email: AUTH-METHOD-02 initiate challenge riêng → verify OTP → quay lại danh sách
 → Link Google/Facebook: xác minh provider trong phiên JWT hiện tại
 → Unlink: AUTH-REAUTH-01 xác thực lại → xác nhận → Backend kiểm tra phương thức cuối
 → Thành công cập nhật danh sách phương thức
@@ -332,3 +332,4 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 - Elasticsearch.
 - Dashboard nâng cao.
 - Thông báo thời gian thực.
+

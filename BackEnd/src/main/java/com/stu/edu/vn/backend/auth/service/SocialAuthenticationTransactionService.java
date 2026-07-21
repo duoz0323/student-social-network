@@ -14,8 +14,7 @@ import com.stu.edu.vn.backend.auth.google.SocialChallengeSecurity;
 import com.stu.edu.vn.backend.auth.repository.PendingRegistrationRepository;
 import com.stu.edu.vn.backend.auth.repository.SocialAuthChallengeRepository;
 import com.stu.edu.vn.backend.auth.repository.UserAuthProviderRepository;
-import com.stu.edu.vn.backend.auth.support.IdentifierNormalizer;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
+import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.JwtProperties;
@@ -98,7 +97,7 @@ public class SocialAuthenticationTransactionService {
                     ? ErrorCode.AUTH_FACEBOOK_EMAIL_MISSING : ErrorCode.AUTH_GOOGLE_EMAIL_MISSING);
         }
 
-        User savedUser = userRepository.saveAndFlush(new User(email, null, null));
+        User savedUser = userRepository.saveAndFlush(new User(email, null));
         if (email != null && Boolean.TRUE.equals(providerEmailVerified)) savedUser.setEmailVerifiedAt(LocalDateTime.now(clock));
         profileRepository.saveAndFlush(new UserProfile(savedUser));
         providerRepository.saveAndFlush(new UserAuthProvider(savedUser, provider, providerUserId, email,
@@ -130,7 +129,7 @@ public class SocialAuthenticationTransactionService {
             if (emailOwner.isPresent()) {
                 throwActiveEmailConflict(provider, providerUserId, email, providerEmailVerified, emailOwner.get());
             }
-            User user = new User(email, null, pending.getPasswordHash());
+            User user = new User(email, pending.getPasswordHash());
             user.setEmailVerifiedAt(now);
             User savedUser = userRepository.saveAndFlush(user);
             profileRepository.saveAndFlush(new UserProfile(savedUser));
@@ -142,8 +141,8 @@ public class SocialAuthenticationTransactionService {
             return sessionResult(savedUser, provider, refresh, false);
         }
 
-        SocialConflictType conflictType = pending.getRegistrationType() == RegistrationType.PHONE
-                ? SocialConflictType.PENDING_PHONE_REQUIRES_CANCEL
+        SocialConflictType conflictType = pending.getRegistrationType() == RegistrationType.EMAIL
+                ? SocialConflictType.PENDING_EMAIL_MISMATCH
                 : SocialConflictType.PENDING_EMAIL_MISMATCH;
         throwPendingConflict(provider, providerUserId, email, providerEmailVerified, pending, conflictType);
         throw new IllegalStateException("Unreachable");
@@ -202,8 +201,7 @@ public class SocialAuthenticationTransactionService {
 
     private String normalizeOptionalEmail(String email) {
         if (email == null || email.isBlank()) return null;
-        var normalized = IdentifierNormalizer.normalize(email);
-        if (normalized.type() != IdentifierType.EMAIL) throw new BusinessException(ErrorCode.AUTH_FACEBOOK_AUTHENTICATION_FAILED);
+        var normalized = EmailNormalizer.normalize(email);
         return normalized.value();
     }
 }

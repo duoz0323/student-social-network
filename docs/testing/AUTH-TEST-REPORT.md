@@ -31,17 +31,17 @@ Không sử dụng database development/production và không gọi Google/Faceb
 
 | Mã | Chức năng | Tiền điều kiện / đầu vào đại diện | Kết quả mong đợi | Kết quả thực tế | Trạng thái |
 | --- | --- | --- | --- | --- | --- |
-| AUTH-REG-01 | Start email/phone registration | Identifier và password hợp lệ | Chỉ tạo pending, lưu hash | Service/entity test pass | PASS |
+| AUTH-REG-01 | Start email registration | Identifier và password hợp lệ | Chỉ tạo pending, lưu hash | Service/entity test pass | PASS |
 | AUTH-OTP-01 | Verify OTP | Flow token và OTP hợp lệ | Tạo user/profile/token trong transaction | Unit và transaction test pass | PASS |
 | AUTH-OTP-02 | OTP sai/hết hạn/quá số lần | Challenge tương ứng | Không tạo user/token | Lifecycle/verification test pass | PASS |
 | AUTH-OTP-03 | Resend/cancel/status | Pending ở các trạng thái | Cooldown và lifecycle đúng | Lifecycle test pass | PASS |
-| AUTH-LOGIN-01 | Login email/phone | User ACTIVE, verified, đúng password | Cấp JWT và refresh token | `AuthServiceImplTest` pass | PASS |
+| AUTH-LOGIN-01 | Login email | User ACTIVE, verified, đúng password | Cấp JWT và refresh token | `AuthServiceImplTest` pass | PASS |
 | AUTH-LOGIN-02 | Login thất bại/BLOCKED/social-only | Credential hoặc trạng thái không hợp lệ | Error chuẩn hóa, không tạo token | Service test pass | PASS |
 | AUTH-SESSION-01 | Refresh rotation/logout | Refresh token hợp lệ/cũ/revoked | Rotate hoặc revoke nguyên tử | Unit test pass | PASS |
 | AUTH-GOOGLE-01 | Google verification/provisioning | Mocked Google credential | Verify claim, không lưu raw token | Verifier/transaction test pass | PASS |
 | AUTH-FACEBOOK-01 | Facebook verification/provisioning | Mocked Facebook credential | Verify app/user, không tạo email giả | Verifier/service test pass | PASS |
 | AUTH-SOCIAL-01 | Social conflict | Challenge và action hợp lệ/không hợp lệ | Không tự merge ACTIVE user | Resolution test pass | PASS |
-| AUTH-METHOD-01 | List/link auth methods | JWT user hiện tại | Mask identifier, không lộ provider ID | Management/link test pass | PASS |
+| AUTH-METHOD-01 | List/link auth methods | JWT user hiện tại | Mask email, không lộ provider ID | Management/link test pass | PASS |
 | AUTH-REAUTH-01 | Reauthentication | Password/provider proof | Token opaque, hash-at-rest, TTL/binding đúng | Controller/service/domain test pass | PASS |
 | AUTH-UNLINK-01 | Unlink | Challenge đúng, còn phương thức khác | Gỡ đúng method, consume challenge | Service/controller test pass | PASS |
 | AUTH-CLEAN-01 | Cleanup | Challenge/token hết hạn | Expire/delete theo batch | Cleanup test pass | PASS |
@@ -95,19 +95,29 @@ Facebook: token hợp lệ, sai App ID, hết hạn, không có email, provider 
 
 Không commit token hoặc App Secret thật. Manual provider test không phải điều kiện để Maven pass.
 
-## 10. Kết luận readiness
+## 10. Password Recovery – Giai đoạn 13J-BE
 
-Module Auth **sẵn sàng có điều kiện cho Frontend phát triển và tích hợp contract trong môi trường development**: toàn bộ test tự động khả dụng pass, không phát hiện production regression mới, và package thành công sau khi quality gate kết thúc.
+- Contract test xác nhận bốn endpoint public, token chỉ đi qua `X-Auth-Flow-Token` và response dùng `recoveryFlowToken`/`resetAuthorizedToken`.
+- Unit test bao phủ real challenge, decoy, email không tồn tại, chưa verified, social-only, `BLOCKED`, OTP hợp lệ/sai/hết hạn/quá số lần, cooldown, rotation, reset token hết hạn/đã dùng, password yếu, confirmation mismatch và revoke Refresh Token.
+- Delivery test xác nhận chỉ retry một lần với `FAILED`, không retry `UNKNOWN`, callback trùng/cũ bị bỏ qua và external provider call không nằm trong transaction database.
+- Schema contract test đối chiếu migration, schema khởi tạo, DBML và xác nhận `password_reset_tokens` legacy còn nguyên.
+- `PasswordRecoveryConcurrencyMySqlIntegrationTest` đã chạy trên MySQL 8.4 thật và xác nhận hai verify đồng thời chỉ phát hành một reset token, hai complete đồng thời chỉ đổi mật khẩu một lần.
+- `mvn clean verify`: **229 test, 0 failure, 0 error, 0 skipped**.
+- `mvn clean test`: **229 test, 0 failure, 0 error, 0 skipped**.
+- `mvn clean package`: **229 test, 0 failure, 0 error, 0 skipped**, **BUILD SUCCESS**, tạo `BackEnd-0.0.1-SNAPSHOT.jar`.
 
-Module Auth **chưa đủ bằng chứng để chốt production/concurrency readiness** vì database test chưa được cấu hình và bộ 15 kịch bản MySQL concurrency chưa đầy đủ. Trước khi xác nhận hoàn tất tuyệt đối cần:
+Migration `V20260720__create_password_recovery_challenges.sql` đã được áp dụng thành công trên schema MySQL test cô lập và sạch. Bảng `password_recovery_challenges` được tạo với đầy đủ khóa, chỉ mục và constraint; bảng legacy `password_reset_tokens` vẫn tồn tại nguyên vẹn. Không sử dụng hoặc thay đổi database development/production.
 
-1. Cấp database test riêng qua `AUTH_TEST_DB_*`.
-2. Bổ sung các kịch bản concurrency MySQL còn thiếu.
-3. Chạy lại `mvn test` và `mvn clean package` với 0 skip liên quan MySQL bắt buộc.
+## 11. Kết luận readiness
 
-## 11. Giới hạn kiến trúc đã chốt
+Module Auth **READY đối với quality gate tự động, migration và concurrency MySQL của Giai đoạn 13K**: toàn bộ 229 test pass, không còn test bị skip, migration chạy thành công trên schema test sạch, và cả `verify`, `test`, `package` đều thành công.
+
+Các kiểm thử thủ công với Google/Facebook credential thật vẫn phụ thuộc cấu hình provider của môi trường triển khai và không làm thay đổi kết luận của quality gate tự động này.
+
+## 12. Giới hạn kiến trúc đã chốt
 
 - Access Token vẫn hiệu lực đến expiration sau logout.
 - Chưa có token family/Access Token blacklist.
 - Rate limit và cleanup coordination là single-instance.
 - Provider thật cần manual test trong development.
+

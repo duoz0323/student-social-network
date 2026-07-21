@@ -28,7 +28,7 @@ public class RegistrationVerificationServiceImpl implements RegistrationVerifica
         } catch (RegistrationIdentifierConflictException exception) {
             ErrorCode code = exception.getRegistrationType() == RegistrationType.EMAIL
                     ? ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
-                    : ErrorCode.AUTH_PHONE_ALREADY_EXISTS;
+                    : ErrorCode.AUTH_EMAIL_ALREADY_EXISTS;
             throw new BusinessException(code);
         } catch (DataIntegrityViolationException exception) {
             // Lỗi profile, Refresh Token hoặc completion rollback toàn transaction và không lộ constraint.

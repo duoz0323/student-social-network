@@ -53,7 +53,7 @@ class AuthMethodUnlinkTransactionServiceTest {
 
     @Test
     void removesGoogleWhenCompleteEmailRemainsAndConsumesChallenge() {
-        User user = localUser(7L, true, false);
+        User user = localUser(7L, true);
         UserAuthProvider google = provider(user, AuthProvider.GOOGLE);
         stub(user, AuthMethod.GOOGLE, List.of(google));
         when(providers.findByUserIdAndProviderForUpdate(7L, AuthProvider.GOOGLE))
@@ -69,22 +69,10 @@ class AuthMethodUnlinkTransactionServiceTest {
         assertThat(user.getPasswordHash()).isEqualTo("hash");
     }
 
-    @Test
-    void removesEmailWithoutChangingPhoneAndKeepsSharedPassword() {
-        User user = localUser(8L, true, true);
-        stub(user, AuthMethod.EMAIL, List.of());
-
-        service.unlink(8L, AuthMethod.EMAIL, "token");
-
-        assertThat(user.getEmail()).isNull();
-        assertThat(user.getEmailVerifiedAt()).isNull();
-        assertThat(user.getPhoneNumber()).isEqualTo("+84900000008");
-        assertThat(user.getPasswordHash()).isEqualTo("hash");
-    }
 
     @Test
     void removesLastLocalIdentifierWhenSocialRemainsAndClearsUnusedPassword() {
-        User user = localUser(9L, true, false);
+        User user = localUser(9L, true);
         UserAuthProvider facebook = provider(user, AuthProvider.FACEBOOK);
         stub(user, AuthMethod.EMAIL, List.of(facebook));
 
@@ -97,7 +85,7 @@ class AuthMethodUnlinkTransactionServiceTest {
 
     @Test
     void verifiedIdentifierWithoutPasswordDoesNotCountAsLoginMethod() {
-        User user = localUser(10L, true, false);
+        User user = localUser(10L, true);
         user.setPasswordHash(null);
         UserAuthProvider google = provider(user, AuthProvider.GOOGLE);
         stub(user, AuthMethod.GOOGLE, List.of(google));
@@ -110,7 +98,7 @@ class AuthMethodUnlinkTransactionServiceTest {
 
     @Test
     void rejectsMissingChallengeWrongTargetBlockedUserAndUnlinkedMethod() {
-        User user = localUser(11L, true, false);
+        User user = localUser(11L, true);
         when(users.findByIdForUpdate(11L)).thenReturn(Optional.of(user));
         assertError(() -> service.unlink(11L, AuthMethod.EMAIL, null),
                 ErrorCode.AUTH_REAUTHENTICATION_REQUIRED);
@@ -124,8 +112,8 @@ class AuthMethodUnlinkTransactionServiceTest {
         assertError(() -> service.unlink(11L, AuthMethod.EMAIL, "token"),
                 ErrorCode.AUTH_REAUTHENTICATION_PURPOSE_INVALID);
 
-        stub(user, AuthMethod.PHONE, List.of(provider(user, AuthProvider.GOOGLE)));
-        assertError(() -> service.unlink(11L, AuthMethod.PHONE, "token"), ErrorCode.AUTH_METHOD_NOT_LINKED);
+        stub(user, AuthMethod.FACEBOOK, List.of(provider(user, AuthProvider.GOOGLE)));
+        assertError(() -> service.unlink(11L, AuthMethod.FACEBOOK, "token"), ErrorCode.AUTH_METHOD_NOT_LINKED);
     }
 
     private void stub(User user, AuthMethod target, List<UserAuthProvider> social) {
@@ -142,12 +130,10 @@ class AuthMethodUnlinkTransactionServiceTest {
                 target, LocalDateTime.now(clock).plusMinutes(5));
     }
 
-    private User localUser(Long id, boolean email, boolean phone) {
-        User user = new User(email ? "student" + id + "@example.com" : null,
-                phone ? "+8490000000" + id : null, "hash");
+    private User localUser(Long id, boolean email) {
+        User user = new User(email ? "student" + id + "@example.com" : null, "hash");
         ReflectionTestUtils.setField(user, "id", id);
         if (email) user.setEmailVerifiedAt(LocalDateTime.now(clock));
-        if (phone) user.setPhoneVerifiedAt(LocalDateTime.now(clock));
         return user;
     }
 
@@ -160,3 +146,4 @@ class AuthMethodUnlinkTransactionServiceTest {
                 .extracting("errorCode").isEqualTo(code);
     }
 }
+
