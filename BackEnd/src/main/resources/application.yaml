@@ -88,3 +88,6 @@ auth:
     enabled: ${AUTH_RATE_LIMIT_ENABLED:false}
     window: ${AUTH_RATE_LIMIT_WINDOW:1m}
     max-requests: ${AUTH_RATE_LIMIT_MAX_REQUESTS:30}
+
+server:
+  port: ${PORT:8080}
