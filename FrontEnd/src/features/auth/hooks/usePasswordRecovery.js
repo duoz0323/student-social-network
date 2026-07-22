@@ -72,7 +72,8 @@ export function PasswordRecoveryProvider({ children }) {
   const complete = useCallback((payload) => run(async () => {
     const response = await passwordRecoveryService.complete(payload, flow.resetAuthorization?.resetAuthorizedToken);
     if (response?.completed !== true) throw new Error('INVALID_PASSWORD_RESET_RESPONSE');
-    setFlow(INITIAL_STATE);
+    // Giữ flow ổn định cho tới khi ResetPasswordPage điều hướng sang đăng nhập.
+    // Provider sẽ unmount ngay sau navigation và token chỉ tồn tại trong memory của route recovery.
     return response;
   }, { terminalCodes: TERMINAL_RESET_CODES, abortable: false }).catch((requestError) => {
     if (requestError?.code === 'REQUEST_TIMEOUT' || requestError?.code === 'NETWORK_ERROR') {

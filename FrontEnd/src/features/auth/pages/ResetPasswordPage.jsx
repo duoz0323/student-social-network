@@ -27,5 +27,15 @@ export default function ResetPasswordPage() {
     }
   }
 
-  return <AuthLayout><NewPasswordForm onSubmit={complete} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthLayout>;
+  function clearFieldError(fieldName) {
+    setLocalErrors((current) => {
+      if (!current[fieldName]) return current;
+      const next = { ...current };
+      delete next[fieldName];
+      return next;
+    });
+    recovery.clearError();
+  }
+
+  return <AuthLayout><NewPasswordForm onSubmit={complete} onFieldChange={clearFieldError} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthLayout>;
 }

@@ -3,35 +3,6 @@ const completedAt = '2026-06-20T08:00:00+07:00';
 
 export const initialData = {
   currentUserId: null,
-  demoAccounts: [
-    {
-      id: 'account-001',
-      email: 'minh.demo@example.com',
-      passwordDemo: 'DemoUser123!',
-      passwordHash: 'c88f70e0ff9546971974f1c582b14da9991b34fbb59b0cb27b848eaed3e0210e',
-      role: 'USER',
-      status: 'ACTIVE',
-      userId: 'user-001',
-    },
-    {
-      id: 'account-002',
-      email: null,
-      passwordDemo: 'DemoAdmin123!',
-      passwordHash: 'df88c832e9ed606645d98fac326669b3e12856e23719aabdfd7d894212ec1a0b',
-      role: 'ADMIN',
-      status: 'ACTIVE',
-      userId: 'user-003',
-    },
-    {
-      id: 'account-003',
-      email: 'blocked.demo@example.com',
-      passwordDemo: 'DemoBlocked123!',
-      passwordHash: '64dc5d2eb37b17c70d158c4aa48f0650dbddf2ae4395389a1d1dfd83146cba1e',
-      role: 'USER',
-      status: 'BLOCKED',
-      userId: 'user-004',
-    },
-  ],
   users: [
     {
       id: 'user-001',

@@ -1,7 +1,6 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/brand/logo.png';
 import Button from '../common/Button.jsx';
-import Modal from '../common/Modal.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
 import MoreMenu from './MoreMenu.jsx';
 import { useState } from 'react';
@@ -70,7 +69,7 @@ function MoreIcon() {
 }
 
 export default function UserShell() {
-  const { logout, sessionExpired, setSessionExpired } = useApp();
+  const { logout } = useApp();
   const [composerMode, setComposerMode] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
@@ -194,14 +193,6 @@ export default function UserShell() {
         </svg>
       </button>
       
-      <Modal
-        open={sessionExpired}
-        title="Phiên đăng nhập hết hạn"
-        onClose={() => setSessionExpired(false)}
-        footer={<Button onClick={() => navigate('/login')}>Đăng nhập lại</Button>}
-      >
-        <p className="text-sm text-[var(--app-muted)]">Vui lòng đăng nhập lại để tiếp tục sử dụng UniShare.</p>
-      </Modal>
     </div>
   );
 }

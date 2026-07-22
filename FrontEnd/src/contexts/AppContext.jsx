@@ -1,31 +1,22 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, useState } from 'react';
 import { initialData } from '../data/mockData.js';
-import { normalizeText } from '../utils/formatters.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
 
 const AppContext = createContext(null);
-const SESSION_KEY = 'unishare.react.session';
 const DATA_KEY = 'unishare.react.mock-data-v2';
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 8;
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}`;
 }
 
-function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function normalizeIdentifier(email) {
-  const value = email.trim();
-  return isEmail(value) ? { type: 'email', email: normalizeText(value) } : null;
-}
-
 function readStoredData() {
   try {
     const raw = localStorage.getItem(DATA_KEY);
-    return raw ? JSON.parse(raw) : initialData;
+    const data = raw ? JSON.parse(raw) : initialData;
+    const safeData = { ...data };
+    delete safeData.demoAccounts;
+    return safeData;
   } catch {
     localStorage.removeItem(DATA_KEY);
     return initialData;
@@ -33,54 +24,12 @@ function readStoredData() {
 }
 
 function sanitizeDataForStorage(data) {
+  const safeData = { ...data };
+  delete safeData.demoAccounts;
   return {
-    ...data,
+    ...safeData,
     currentUserId: null,
-    demoAccounts: data.demoAccounts.map((account) => {
-      const safeAccount = { ...account };
-      delete safeAccount.passwordDemo;
-      return safeAccount;
-    }),
   };
-}
-
-function readStoredSession(users) {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-
-    const session = JSON.parse(raw);
-    const user = users.find((item) => item.id === session.userId);
-    const validSession =
-      typeof session.userId === 'string' &&
-      typeof session.role === 'string' &&
-      Number(session.expiresAt) > Date.now() &&
-      user &&
-      user.status === 'ACTIVE';
-
-    if (!validSession) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-
-    return session;
-  } catch {
-    localStorage.removeItem(SESSION_KEY);
-    return null;
-  }
-}
-
-function saveSession(user) {
-  const session = {
-    userId: user.id,
-    role: user.role,
-    expiresAt: Date.now() + SESSION_DURATION_MS,
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
 }
 
 function toViewUser(user) {
@@ -96,15 +45,6 @@ function toViewUser(user) {
   };
 }
 
-async function sha256(value) {
-  // SHA-256 chi phuc vu mock Frontend de khong luu mat khau ro trong localStorage; Backend that phai dung BCrypt.
-  const bytes = new TextEncoder().encode(value);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((item) => item.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 function persistData(data) {
   localStorage.setItem(DATA_KEY, JSON.stringify(sanitizeDataForStorage(data)));
 }
@@ -112,8 +52,7 @@ function persistData(data) {
 export function AppProvider({ children }) {
   const auth = useAuth();
   const [data, setDataState] = useState(() => readStoredData());
-  const [currentUserId, setCurrentUserId] = useState(() => readStoredSession(readStoredData().users)?.userId ?? null);
-  const [sessionExpired, setSessionExpired] = useState(false);
+  const currentUserId = auth.user?.id ?? null;
 
   function setData(updater) {
     setDataState((prev) => {
@@ -157,94 +96,7 @@ export function AppProvider({ children }) {
       return data.posts.find((post) => post.id === postId && (includeHidden || post.status === 'PUBLISHED')) ?? null;
     }
 
-    async function login(identifier, password) {
-      const normalized = normalizeIdentifier(identifier);
-      if (!normalized) {
-        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
-      }
-
-      const passwordHash = await sha256(password);
-      const account = data.demoAccounts.find((item) => {
-        const emailMatches = normalized.email && item.email === normalized.email;
-        return emailMatches && (item.passwordHash === passwordHash || item.passwordDemo === password);
-      });
-
-      if (!account) {
-        return { ok: false, message: 'Email/sá»‘ Ä‘iá»‡n thoáº¡i hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng.' };
-      }
-
-      const user = getRawUserById(account.userId);
-      if (!user || account.status === 'BLOCKED' || user.status === 'BLOCKED') {
-        return { ok: false, message: 'TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a, vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn.' };
-      }
-
-      saveSession(user);
-      setCurrentUserId(user.id);
-      setSessionExpired(false);
-      return { ok: true, role: user.role, profileCompleted: Boolean(user.profile?.profileCompletedAt) };
-    }
-
-    async function register(payload) {
-      const normalized = normalizeIdentifier(payload.email);
-      if (!normalized) {
-        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡.' };
-      }
-
-      const duplicated = data.demoAccounts.some(
-        (account) => normalized.email && account.email === normalized.email,
-      );
-
-      if (duplicated) {
-        return { ok: false, message: 'Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ã£ tá»“n táº¡i.' };
-      }
-
-      const userId = makeId('user');
-      const accountId = makeId('account');
-      const passwordHash = await sha256(payload.password);
-      const user = {
-        id: userId,
-        email: normalized.email,
-        role: 'USER',
-        status: 'ACTIVE',
-        profile: {
-          displayName: null,
-          avatarUrl: null,
-          dateOfBirth: null,
-          bio: null,
-          profileCompletedAt: null,
-        },
-        followerCount: 0,
-        followingCount: 0,
-      };
-
-      const account = {
-        id: accountId,
-        email: normalized.email,
-        passwordHash,
-        role: 'USER',
-        status: 'ACTIVE',
-        userId,
-      };
-
-      setData((prev) => ({
-        ...prev,
-        users: [...prev.users, user],
-        demoAccounts: [...prev.demoAccounts, account],
-      }));
-      saveSession(user);
-      setCurrentUserId(userId);
-      setSessionExpired(false);
-      return { ok: true };
-    }
-
-    function logout() {
-      if (auth.isAuthenticated) {
-        auth.logout();
-        return;
-      }
-      clearSession();
-      setCurrentUserId(null);
-    }
+    function logout() { return auth.logout(); }
 
     function createPost({ content, hashtags, imageUrls = [] }) {
       const cleanContent = content.trim();
@@ -444,7 +296,6 @@ export function AppProvider({ children }) {
       setData((prev) => ({
         ...prev,
         users: prev.users.map((user) => (user.id === userId ? { ...user, status } : user)),
-        demoAccounts: prev.demoAccounts.map((account) => (account.userId === userId ? { ...account, status } : account)),
       }));
     }
 
@@ -464,13 +315,9 @@ export function AppProvider({ children }) {
       data: viewData,
       currentUser,
       currentUserId,
-      sessionExpired,
       publicPosts,
-      setSessionExpired,
       getUserById,
       getPostById,
-      login,
-      register,
       logout,
       createPost,
       updatePost,
@@ -488,7 +335,7 @@ export function AppProvider({ children }) {
       setReportStatus,
       handleFutureSocialAuth,
     };
-  }, [auth, currentUser, currentUserId, data, sessionExpired]);
+  }, [auth, currentUser, currentUserId, data]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
