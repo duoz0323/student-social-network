@@ -53,9 +53,16 @@ export function PasswordRecoveryProvider({ children }) {
 
   const start = useCallback((identifier) => run(async (signal) => {
     const challenge = await passwordRecoveryService.start(identifier, signal);
-    setFlow({ step: PASSWORD_RECOVERY_STEP.OTP, challenge, resetAuthorization: null });
+    // Response luôn trung tính, vì vậy chỉ hiển thị thông báo trước; không tự ép người dùng nhập OTP.
+    setFlow({ step: PASSWORD_RECOVERY_STEP.NOTICE, challenge, resetAuthorization: null });
     return challenge;
   }), [run]);
+
+  const continueToOtp = useCallback(() => {
+    setFlow((current) => current.step === PASSWORD_RECOVERY_STEP.NOTICE && current.challenge
+      ? { ...current, step: PASSWORD_RECOVERY_STEP.OTP }
+      : current);
+  }, []);
 
   const verify = useCallback((code) => run(async (signal) => {
     const authorization = await passwordRecoveryService.verify(code, flow.challenge?.recoveryFlowToken, signal);
@@ -84,8 +91,8 @@ export function PasswordRecoveryProvider({ children }) {
   }), [flow.resetAuthorization?.resetAuthorizedToken, run]);
 
   const clearError = useCallback(() => { setError(''); setFieldErrors({}); }, []);
-  const value = useMemo(() => ({ flow, isSubmitting, error, fieldErrors, start, verify, resend, complete, clear, clearError }),
-    [flow, isSubmitting, error, fieldErrors, start, verify, resend, complete, clear, clearError]);
+  const value = useMemo(() => ({ flow, isSubmitting, error, fieldErrors, start, continueToOtp, verify, resend, complete, clear, clearError }),
+    [flow, isSubmitting, error, fieldErrors, start, continueToOtp, verify, resend, complete, clear, clearError]);
   // Context cần nhận các handler đóng trên ref khóa submit; ref chỉ được đọc khi handler chạy, không đọc trong render.
   // eslint-disable-next-line react-hooks/refs
   return createElement(PasswordRecoveryContext.Provider, { value }, children);

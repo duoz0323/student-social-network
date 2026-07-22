@@ -380,7 +380,7 @@ sequenceDiagram
 | Mục | Diễn giải |
 |---|---|
 | A | Reset password cho local account đủ điều kiện mà không lộ email tồn tại hay không. |
-| B | Nhập email → OTP → password mới. |
+| B | Nhập email → thông báo trung tính → người dùng xác nhận đã nhận mã → OTP → password mới. |
 | C | Pages → `PasswordRecoveryProvider/usePasswordRecovery` → `passwordRecoveryService` → `authApi`. |
 | D | Start `{email}`; verify `{code}` + flow header; complete password pair + reset-token header. |
 | E | Bốn method trong `PasswordRecoveryController`. |
@@ -388,7 +388,7 @@ sequenceDiagram
 | G | Challenge/User/Refresh repositories, HMAC, PasswordEncoder, async OTP event. |
 | H | Ghi/khóa `password_recovery_challenges`; complete cập nhật `users.password_hash` và revoke toàn bộ refresh token. |
 | I | Start luôn trung tính; verify thật trả resetAuthorizedToken; complete không tự login. |
-| J | Chuyển giữa `/forgot-password`, `/reset-password`, rồi về login. |
+| J | `/forgot-password` không tự mở form OTP; chỉ mở sau nút “Tôi đã nhận được mã”, sau đó `/reset-password` và về login. |
 | K | Decoy, OTP sai/hết hạn/locked, flow rotated, reset token used/expired. |
 | L | Breakpoint: `usePasswordRecovery`, `PasswordRecoveryServiceImpl.start/verify/complete`, `PasswordRecoveryOtpListener`. |
 

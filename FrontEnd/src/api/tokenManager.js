@@ -2,18 +2,30 @@ let accessToken = null;
 const REFRESH_TOKEN_KEY = 'unishare.auth.refresh-token';
 const SESSION_SNAPSHOT_KEY = 'unishare.auth.session';
 
-function readSessionValue(key) {
+function readPersistentValue(key) {
   try {
-    return sessionStorage.getItem(key);
+    const persistedValue = localStorage.getItem(key);
+    if (persistedValue !== null) return persistedValue;
+
+    // Chuyển phiên từ bản cũ dùng sessionStorage để người dùng không phải đăng nhập lại sau khi cập nhật.
+    const legacyValue = sessionStorage.getItem(key);
+    if (legacyValue !== null) {
+      localStorage.setItem(key, legacyValue);
+      sessionStorage.removeItem(key);
+    }
+    return legacyValue;
   } catch {
     return null;
   }
 }
 
-function writeSessionValue(key, value) {
+function writePersistentValue(key, value) {
   try {
-    if (value === null) sessionStorage.removeItem(key);
-    else sessionStorage.setItem(key, value);
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+
+    // Dọn dữ liệu bản cũ để chỉ còn một nguồn lưu trạng thái đăng nhập.
+    sessionStorage.removeItem(key);
   } catch {
     // Trình duyệt có thể chặn storage; phiên memory vẫn tiếp tục trong tab hiện tại.
   }
@@ -38,30 +50,30 @@ export const tokenManager = Object.freeze({
   },
 
   getRefreshToken() {
-    return readSessionValue(REFRESH_TOKEN_KEY);
+    return readPersistentValue(REFRESH_TOKEN_KEY);
   },
 
   setRefreshToken(token) {
-    writeSessionValue(REFRESH_TOKEN_KEY, typeof token === 'string' && token.trim() ? token : null);
+    writePersistentValue(REFRESH_TOKEN_KEY, typeof token === 'string' && token.trim() ? token : null);
   },
 
   getSessionSnapshot() {
     try {
-      const value = readSessionValue(SESSION_SNAPSHOT_KEY);
+      const value = readPersistentValue(SESSION_SNAPSHOT_KEY);
       return value ? JSON.parse(value) : null;
     } catch {
-      writeSessionValue(SESSION_SNAPSHOT_KEY, null);
+      writePersistentValue(SESSION_SNAPSHOT_KEY, null);
       return null;
     }
   },
 
   setSessionSnapshot(snapshot) {
-    writeSessionValue(SESSION_SNAPSHOT_KEY, snapshot ? JSON.stringify(snapshot) : null);
+    writePersistentValue(SESSION_SNAPSHOT_KEY, snapshot ? JSON.stringify(snapshot) : null);
   },
 
   clearSession() {
     accessToken = null;
-    writeSessionValue(REFRESH_TOKEN_KEY, null);
-    writeSessionValue(SESSION_SNAPSHOT_KEY, null);
+    writePersistentValue(REFRESH_TOKEN_KEY, null);
+    writePersistentValue(SESSION_SNAPSHOT_KEY, null);
   },
 });

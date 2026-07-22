@@ -1,5 +1,6 @@
 export const PASSWORD_RECOVERY_STEP = Object.freeze({
   IDENTIFIER: 'IDENTIFIER',
+  NOTICE: 'NOTICE',
   OTP: 'OTP',
   RESET: 'RESET',
 });
