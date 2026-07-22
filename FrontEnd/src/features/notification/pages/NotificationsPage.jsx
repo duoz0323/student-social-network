@@ -7,7 +7,18 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { formatDateTime } from '../../../utils/formatters.js';
 
-const TYPE_LABELS = { FOLLOW: 'đã theo dõi bạn', LIKE: 'đã thích bài viết của bạn', COMMENT: 'đã bình luận bài viết của bạn', REPLY: 'đã trả lời bình luận của bạn', REPORT_RESOLVED: 'đã xử lý báo cáo của bạn' };
+const TYPE_LABELS = {
+  FOLLOW: 'đã theo dõi bạn',
+  POST_LIKE: 'đã thích bài viết của bạn',
+  POST_COMMENT: 'đã bình luận bài viết của bạn',
+  COMMENT_REPLY: 'đã trả lời bình luận của bạn',
+  REPORT_RESOLVED: 'đã chấp nhận báo cáo của bạn',
+  REPORT_REJECTED: 'đã từ chối báo cáo của bạn',
+  POST_HIDDEN_BY_ADMIN: 'đã ẩn bài viết của bạn',
+  POST_RESTORED_BY_ADMIN: 'đã khôi phục bài viết của bạn',
+  ACCOUNT_BLOCKED: 'đã khóa tài khoản của bạn',
+  ACCOUNT_UNBLOCKED: 'đã mở khóa tài khoản của bạn',
+};
 
 export default function NotificationsPage() {
   const navigate = useNavigate();

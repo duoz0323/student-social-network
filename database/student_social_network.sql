@@ -955,6 +955,60 @@ SET character_set_client = @saved_cs_client;
 
 -- Dump completed on 2026-07-19 10:03:55
 
+--
+-- Counter triggers required by PostLikeService, CommentService and HashtagService
+--
+
+DELIMITER ;;
+CREATE TRIGGER `trg_post_likes_after_insert`
+AFTER INSERT ON `post_likes`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `like_count` = `like_count` + 1 WHERE `id` = NEW.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_post_likes_after_delete`
+AFTER DELETE ON `post_likes`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `like_count` = GREATEST(`like_count` - 1, 0) WHERE `id` = OLD.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_comments_after_insert`
+AFTER INSERT ON `comments`
+FOR EACH ROW
+BEGIN
+  IF NEW.`status` = 'PUBLISHED' THEN
+    UPDATE `posts` SET `comment_count` = `comment_count` + 1 WHERE `id` = NEW.`post_id`;
+  END IF;
+END;;
+
+CREATE TRIGGER `trg_comments_after_update`
+AFTER UPDATE ON `comments`
+FOR EACH ROW
+BEGIN
+  IF OLD.`status` = 'PUBLISHED' AND NEW.`status` = 'DELETED' THEN
+    UPDATE `posts` SET `comment_count` = GREATEST(`comment_count` - 1, 0) WHERE `id` = NEW.`post_id`;
+  ELSEIF OLD.`status` = 'DELETED' AND NEW.`status` = 'PUBLISHED' THEN
+    UPDATE `posts` SET `comment_count` = `comment_count` + 1 WHERE `id` = NEW.`post_id`;
+  END IF;
+END;;
+
+CREATE TRIGGER `trg_post_hashtags_after_insert`
+AFTER INSERT ON `post_hashtags`
+FOR EACH ROW
+BEGIN
+  UPDATE `hashtags` SET `post_count` = `post_count` + 1 WHERE `id` = NEW.`hashtag_id`;
+END;;
+
+CREATE TRIGGER `trg_post_hashtags_after_delete`
+AFTER DELETE ON `post_hashtags`
+FOR EACH ROW
+BEGIN
+  UPDATE `hashtags` SET `post_count` = GREATEST(`post_count` - 1, 0) WHERE `id` = OLD.`hashtag_id`;
+END;;
+DELIMITER ;
+
 
 -- DEV/DEMO SEED DATA
 
@@ -1028,10 +1082,136 @@ INSERT INTO user_auth_providers (
     (2002, 1005, 'FACEBOOK', 'demo-facebook-only-1005', NULL, NULL, @seed_time, @seed_time),
     (2003, 1006, 'GOOGLE', 'demo-local-google-1006', 'local.google@example.test', 1, @seed_time, @seed_time);
 
+-- Hồ sơ demo có avatar công khai để các màn hình Feed, Search, Follow và Comment hiển thị sát dữ liệu thật.
+UPDATE user_profiles SET
+    avatar_url = CASE user_id
+        WHEN 1001 THEN 'https://i.pravatar.cc/300?img=12'
+        WHEN 1002 THEN 'https://i.pravatar.cc/300?img=32'
+        WHEN 1003 THEN 'https://i.pravatar.cc/300?img=47'
+        WHEN 1004 THEN 'https://i.pravatar.cc/300?img=15'
+        WHEN 1005 THEN 'https://i.pravatar.cc/300?img=25'
+        WHEN 1006 THEN 'https://i.pravatar.cc/300?img=53'
+        ELSE avatar_url
+    END,
+    avatar_public_id = CASE WHEN user_id BETWEEN 1001 AND 1006 THEN CONCAT('demo/avatar-', user_id) ELSE avatar_public_id END,
+    bio = CASE user_id
+        WHEN 1002 THEN 'Sinh viên yêu thích nhiếp ảnh và các hoạt động trong trường.'
+        WHEN 1003 THEN 'Chia sẻ tài liệu, kinh nghiệm học tập và cuộc sống sinh viên.'
+        WHEN 1004 THEN 'Thích công nghệ, cà phê và khám phá những góc đẹp trong khuôn viên.'
+        WHEN 1005 THEN 'Quan tâm cơ hội thực tập, kỹ năng nghề nghiệp và thiết kế.'
+        WHEN 1006 THEN 'Lập trình viên tập sự, đang học Spring Boot và React.'
+        ELSE bio
+    END
+WHERE user_id BETWEEN 1001 AND 1006;
+
+INSERT INTO follows (follower_id, following_id, created_at) VALUES
+    (1002, 1003, '2026-07-20 01:00:00.000000'),
+    (1002, 1004, '2026-07-20 01:05:00.000000'),
+    (1003, 1002, '2026-07-20 01:10:00.000000'),
+    (1003, 1006, '2026-07-20 01:15:00.000000'),
+    (1004, 1002, '2026-07-20 01:20:00.000000'),
+    (1005, 1002, '2026-07-20 01:25:00.000000'),
+    (1006, 1003, '2026-07-20 01:30:00.000000');
+
+INSERT INTO posts (
+    id, author_id, content, status, is_edited, like_count, comment_count,
+    published_at, created_at, updated_at
+) VALUES
+    (3001, 1002, 'Ngày đầu quay lại trường, khuôn viên vẫn luôn là nơi mang lại nhiều năng lượng nhất.', 'PUBLISHED', 0, 0, 0, '2026-07-20 02:00:00.000000', '2026-07-20 02:00:00.000000', '2026-07-20 02:00:00.000000'),
+    (3002, 1003, 'Mình đang tìm thêm hai bạn lập nhóm ôn môn Cơ sở dữ liệu. Nhóm học vào tối thứ ba và thứ năm.', 'PUBLISHED', 0, 0, 0, '2026-07-20 04:30:00.000000', '2026-07-20 04:30:00.000000', '2026-07-20 04:30:00.000000'),
+    (3003, 1004, 'Một góc yên tĩnh trong thư viện rất phù hợp để hoàn thành đồ án cuối kỳ.', 'PUBLISHED', 0, 0, 0, '2026-07-21 01:15:00.000000', '2026-07-21 01:15:00.000000', '2026-07-21 01:15:00.000000'),
+    (3004, 1005, 'Có bạn nào đang chuẩn bị CV xin thực tập không? Mình vừa tổng hợp một số lưu ý từ buổi workshop nghề nghiệp.', 'PUBLISHED', 1, 0, 0, '2026-07-21 03:00:00.000000', '2026-07-21 02:45:00.000000', '2026-07-21 03:00:00.000000'),
+    (3005, 1006, 'Cuối cùng API tạo bài viết bằng Spring Boot và giao diện React cũng đã kết nối thành công!', 'PUBLISHED', 0, 0, 0, '2026-07-21 06:20:00.000000', '2026-07-21 06:20:00.000000', '2026-07-21 06:20:00.000000'),
+    (3006, 1002, 'Gợi ý một quán cà phê học bài gần trường: nhiều ổ cắm, khá yên tĩnh và có ánh sáng đẹp.', 'PUBLISHED', 0, 0, 0, '2026-07-22 01:00:00.000000', '2026-07-22 01:00:00.000000', '2026-07-22 01:00:00.000000'),
+    (3007, 1003, 'Câu lạc bộ tình nguyện đang tuyển thành viên cho chương trình Chào tân sinh viên.', 'PUBLISHED', 0, 0, 0, '2026-07-22 03:30:00.000000', '2026-07-22 03:30:00.000000', '2026-07-22 03:30:00.000000'),
+    (3008, 1004, NULL, 'PUBLISHED', 0, 0, 0, '2026-07-22 05:00:00.000000', '2026-07-22 05:00:00.000000', '2026-07-22 05:00:00.000000');
+
+-- Chỉ lưu URL và metadata ảnh; ứng dụng không lưu file nhị phân trong MySQL.
+INSERT INTO post_media (
+    id, post_id, media_url, storage_public_id, media_type, mime_type,
+    file_size_bytes, width_px, height_px, duration_seconds, thumbnail_url, display_order, created_at
+) VALUES
+    (4001, 3001, 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80', 'demo/posts/campus-3001', 'IMAGE', 'image/jpeg', 384512, 1200, 800, NULL, NULL, 0, '2026-07-20 02:00:00.000000'),
+    (4002, 3003, 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80', 'demo/posts/library-3003', 'IMAGE', 'image/jpeg', 412208, 1200, 800, NULL, NULL, 0, '2026-07-21 01:15:00.000000'),
+    (4003, 3005, 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', 'demo/posts/coding-3005', 'IMAGE', 'image/jpeg', 356740, 1200, 800, NULL, NULL, 0, '2026-07-21 06:20:00.000000'),
+    (4004, 3006, 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80', 'demo/posts/coffee-3006', 'IMAGE', 'image/jpeg', 298340, 1200, 800, NULL, NULL, 0, '2026-07-22 01:00:00.000000'),
+    (4005, 3007, 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80', 'demo/posts/club-3007-1', 'IMAGE', 'image/jpeg', 445670, 1200, 800, NULL, NULL, 0, '2026-07-22 03:30:00.000000'),
+    (4006, 3007, 'https://images.unsplash.com/photo-1529390079861-591de354faf5?auto=format&fit=crop&w=1200&q=80', 'demo/posts/club-3007-2', 'IMAGE', 'image/jpeg', 421850, 1200, 800, NULL, NULL, 1, '2026-07-22 03:30:00.000000'),
+    (4007, 3008, 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80', 'demo/posts/students-3008-1', 'IMAGE', 'image/jpeg', 478920, 1200, 800, NULL, NULL, 0, '2026-07-22 05:00:00.000000'),
+    (4008, 3008, 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80', 'demo/posts/students-3008-2', 'IMAGE', 'image/jpeg', 463110, 1200, 800, NULL, NULL, 1, '2026-07-22 05:00:00.000000');
+
+INSERT INTO hashtags (id, normalized_name, display_name, post_count, created_at, updated_at) VALUES
+    (5001, 'đời sống sinh viên', 'đời sống sinh viên', 0, @seed_time, @seed_time),
+    (5002, 'học tập', 'học tập', 0, @seed_time, @seed_time),
+    (5003, 'thực tập', 'thực tập', 0, @seed_time, @seed_time),
+    (5004, 'lập trình', 'lập trình', 0, @seed_time, @seed_time),
+    (5005, 'câu lạc bộ', 'câu lạc bộ', 0, @seed_time, @seed_time);
+
+INSERT INTO post_hashtags (post_id, hashtag_id, created_at) VALUES
+    (3001, 5001, '2026-07-20 02:00:00.000000'),
+    (3002, 5002, '2026-07-20 04:30:00.000000'),
+    (3003, 5002, '2026-07-21 01:15:00.000000'),
+    (3004, 5003, '2026-07-21 03:00:00.000000'),
+    (3005, 5004, '2026-07-21 06:20:00.000000'),
+    (3006, 5001, '2026-07-22 01:00:00.000000'),
+    (3007, 5005, '2026-07-22 03:30:00.000000'),
+    (3008, 5001, '2026-07-22 05:00:00.000000');
+
+INSERT INTO post_likes (user_id, post_id, created_at) VALUES
+    (1003, 3001, '2026-07-20 03:00:00.000000'), (1004, 3001, '2026-07-20 03:05:00.000000'),
+    (1005, 3001, '2026-07-20 03:10:00.000000'), (1002, 3002, '2026-07-20 05:00:00.000000'),
+    (1004, 3002, '2026-07-20 05:10:00.000000'), (1002, 3003, '2026-07-21 02:00:00.000000'),
+    (1003, 3003, '2026-07-21 02:05:00.000000'), (1006, 3003, '2026-07-21 02:10:00.000000'),
+    (1002, 3004, '2026-07-21 04:00:00.000000'), (1003, 3004, '2026-07-21 04:05:00.000000'),
+    (1004, 3005, '2026-07-21 07:00:00.000000'), (1005, 3005, '2026-07-21 07:05:00.000000'),
+    (1006, 3006, '2026-07-22 02:00:00.000000'), (1002, 3007, '2026-07-22 04:00:00.000000'),
+    (1005, 3007, '2026-07-22 04:05:00.000000'), (1006, 3008, '2026-07-22 05:30:00.000000');
+
+INSERT INTO comments (id, post_id, user_id, parent_comment_id, content, status, deleted_at, created_at, updated_at) VALUES
+    (6001, 3001, 1003, NULL, 'Ảnh đẹp quá, nhìn là muốn quay lại trường ngay!', 'PUBLISHED', NULL, '2026-07-20 03:20:00.000000', '2026-07-20 03:20:00.000000'),
+    (6002, 3001, 1002, 6001, 'Cảm ơn bạn, hôm đó thời tiết cũng rất đẹp.', 'PUBLISHED', NULL, '2026-07-20 03:30:00.000000', '2026-07-20 03:30:00.000000'),
+    (6003, 3002, 1006, NULL, 'Nhóm còn chỗ không? Mình muốn tham gia cùng.', 'PUBLISHED', NULL, '2026-07-20 05:20:00.000000', '2026-07-20 05:20:00.000000'),
+    (6004, 3003, 1002, NULL, 'Góc này ở tầng mấy vậy bạn?', 'PUBLISHED', NULL, '2026-07-21 02:20:00.000000', '2026-07-21 02:20:00.000000'),
+    (6005, 3003, 1004, 6004, 'Ở tầng ba, gần khu tài liệu tham khảo nhé.', 'PUBLISHED', NULL, '2026-07-21 02:30:00.000000', '2026-07-21 02:30:00.000000'),
+    (6006, 3004, 1003, NULL, 'Bạn chia sẻ tài liệu workshop giúp mình với nhé.', 'PUBLISHED', NULL, '2026-07-21 04:20:00.000000', '2026-07-21 04:20:00.000000'),
+    (6007, 3005, 1003, NULL, 'Chúc mừng! Nhớ chia sẻ kinh nghiệm tích hợp API nha.', 'PUBLISHED', NULL, '2026-07-21 07:20:00.000000', '2026-07-21 07:20:00.000000'),
+    (6008, 3006, 1005, NULL, 'Quán này có mở cuối tuần không?', 'PUBLISHED', NULL, '2026-07-22 02:15:00.000000', '2026-07-22 02:15:00.000000');
+
+INSERT INTO saved_posts (user_id, post_id, created_at) VALUES
+    (1002, 3004, '2026-07-21 04:10:00.000000'),
+    (1003, 3005, '2026-07-21 07:10:00.000000'),
+    (1004, 3006, '2026-07-22 02:10:00.000000'),
+    (1005, 3002, '2026-07-20 05:15:00.000000'),
+    (1006, 3003, '2026-07-21 02:15:00.000000');
+
+INSERT INTO reports (
+    id, reporter_id, post_id, reason, description, status, resolved_by, resolved_at,
+    resolution_note, post_content_snapshot, post_media_snapshot, created_at, updated_at
+) VALUES
+    (7001, 1005, 3002, 'OTHER', 'Dữ liệu demo cho màn hình quản trị báo cáo.', 'PENDING', NULL, NULL, NULL,
+     'Mình đang tìm thêm hai bạn lập nhóm ôn môn Cơ sở dữ liệu.', JSON_ARRAY(), '2026-07-22 05:40:00.000000', '2026-07-22 05:40:00.000000'),
+    (7002, 1004, 3004, 'SPAM', 'Báo cáo demo đã được quản trị viên xem xét.', 'REJECTED', 1001, '2026-07-22 06:00:00.000000',
+     'Nội dung không vi phạm tiêu chuẩn cộng đồng.', 'Có bạn nào đang chuẩn bị CV xin thực tập không?', JSON_ARRAY(), '2026-07-22 05:45:00.000000', '2026-07-22 06:00:00.000000');
+
+INSERT INTO notifications (
+    id, recipient_id, actor_id, type, post_id, comment_id, report_id, read_at, deleted_at, created_at, updated_at
+) VALUES
+    (8001, 1002, 1003, 'FOLLOW', NULL, NULL, NULL, NULL, NULL, '2026-07-20 01:10:00.000000', '2026-07-20 01:10:00.000000'),
+    (8002, 1002, 1003, 'POST_LIKE', 3001, NULL, NULL, NULL, NULL, '2026-07-20 03:00:00.000000', '2026-07-20 03:00:00.000000'),
+    (8003, 1002, 1003, 'POST_COMMENT', 3001, 6001, NULL, NULL, NULL, '2026-07-20 03:20:00.000000', '2026-07-20 03:20:00.000000'),
+    (8004, 1003, 1002, 'COMMENT_REPLY', 3001, 6002, NULL, NULL, NULL, '2026-07-20 03:30:00.000000', '2026-07-20 03:30:00.000000'),
+    (8005, 1004, 1002, 'POST_COMMENT', 3003, 6004, NULL, '2026-07-21 03:00:00.000000', NULL, '2026-07-21 02:20:00.000000', '2026-07-21 03:00:00.000000'),
+    (8006, 1005, 1001, 'REPORT_REJECTED', 3004, NULL, 7002, NULL, NULL, '2026-07-22 06:00:00.000000', '2026-07-22 06:00:00.000000');
+
 COMMIT;
 
--- Hậu kiểm nhanh: phải trả 8 users, 8 profiles, 3 provider links và 1 ADMIN.
+-- Hậu kiểm nhanh cho cả Auth và dữ liệu mạng xã hội demo.
 SELECT COUNT(*) AS seeded_users FROM users WHERE id BETWEEN 1001 AND 1008;
 SELECT COUNT(*) AS seeded_profiles FROM user_profiles WHERE user_id BETWEEN 1001 AND 1008;
 SELECT COUNT(*) AS seeded_provider_links FROM user_auth_providers WHERE id BETWEEN 2001 AND 2003;
 SELECT COUNT(*) AS seeded_admins FROM users WHERE role = 'ADMIN' AND id BETWEEN 1001 AND 1008;
+SELECT COUNT(*) AS seeded_posts FROM posts WHERE id BETWEEN 3001 AND 3008;
+SELECT COUNT(*) AS seeded_post_media FROM post_media WHERE id BETWEEN 4001 AND 4008;
+SELECT COUNT(*) AS seeded_comments FROM comments WHERE id BETWEEN 6001 AND 6008;
+SELECT COUNT(*) AS seeded_notifications FROM notifications WHERE id BETWEEN 8001 AND 8006;
+SELECT id, like_count, comment_count FROM posts WHERE id BETWEEN 3001 AND 3008 ORDER BY id;
