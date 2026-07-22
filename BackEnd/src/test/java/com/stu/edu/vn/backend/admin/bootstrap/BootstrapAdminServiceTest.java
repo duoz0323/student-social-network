@@ -16,6 +16,7 @@ import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,7 @@ class BootstrapAdminServiceTest {
         properties.setEmail(" Admin@Example.COM ");
         properties.setPassword(RAW_PASSWORD);
         properties.setDisplayName("  Quản trị viên hệ thống  ");
+        properties.setDateOfBirth(LocalDate.of(2000, 1, 1));
         service = new BootstrapAdminService(
                 properties,
                 userRepository,
@@ -86,7 +88,7 @@ class BootstrapAdminServiceTest {
         assertThat(profile.getAvatarUrl()).isNull();
         assertThat(profile.getAvatarPublicId()).isNull();
         assertThat(profile.getBio()).isNull();
-        assertThat(profile.getDateOfBirth()).isNull();
+        assertThat(profile.getDateOfBirth()).isEqualTo(LocalDate.of(2000, 1, 1));
     }
 
     @Test
@@ -122,6 +124,17 @@ class BootstrapAdminServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("BOOTSTRAP_ADMIN_PASSWORD")
                 .hasMessageNotContaining("weak-password");
+
+        verifyNoInteractions(userRepository, userProfileRepository);
+    }
+
+    @Test
+    void bootstrapRejectsUnderageDateOfBirthBeforeSaving() {
+        properties.setDateOfBirth(LocalDate.of(2010, 1, 1));
+
+        assertThatThrownBy(service::bootstrapIfEnabled)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("BOOTSTRAP_ADMIN_DATE_OF_BIRTH");
 
         verifyNoInteractions(userRepository, userProfileRepository);
     }

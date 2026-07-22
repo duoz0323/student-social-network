@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,7 @@ public class BootstrapAdminService {
     private static final int MAX_PASSWORD_LENGTH = 72;
     private static final int MIN_DISPLAY_NAME_LENGTH = 2;
     private static final int MAX_DISPLAY_NAME_LENGTH = 100;
+    private static final int MINIMUM_AGE = 18;
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$"
     );
@@ -58,6 +60,7 @@ public class BootstrapAdminService {
         String normalizedEmail = normalizeAndValidateEmail(properties.getEmail());
         String password = validatePassword(properties.getPassword());
         String displayName = normalizeAndValidateDisplayName(properties.getDisplayName());
+        LocalDate dateOfBirth = validateDateOfBirth(properties.getDateOfBirth());
 
         // Email tồn tại chỉ làm bootstrap bỏ qua, tuyệt đối không nâng role hoặc đổi mật khẩu tài khoản cũ.
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -77,7 +80,7 @@ public class BootstrapAdminService {
         profile.setAvatarUrl(null);
         profile.setAvatarPublicId(null);
         profile.setBio(null);
-        profile.setDateOfBirth(null);
+        profile.setDateOfBirth(dateOfBirth);
         // Tài khoản quản trị khởi tạo cần vượt qua profile guard để sử dụng API quản trị ngay sau khi tạo.
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         // saveAndFlush làm lỗi hồ sơ xuất hiện ngay trong transaction để bản ghi users được rollback cùng lúc.
@@ -110,6 +113,16 @@ public class BootstrapAdminService {
             throw invalidConfiguration("BOOTSTRAP_ADMIN_DISPLAY_NAME");
         }
         return displayName;
+    }
+
+    private LocalDate validateDateOfBirth(LocalDate dateOfBirth) {
+        LocalDate today = LocalDate.now(clock);
+        if (dateOfBirth == null
+                || dateOfBirth.isAfter(today)
+                || dateOfBirth.plusYears(MINIMUM_AGE).isAfter(today)) {
+            throw invalidConfiguration("BOOTSTRAP_ADMIN_DATE_OF_BIRTH");
+        }
+        return dateOfBirth;
     }
 
     private IllegalStateException invalidConfiguration(String propertyName) {

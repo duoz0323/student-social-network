@@ -101,5 +101,12 @@ auth:
     window: ${AUTH_RATE_LIMIT_WINDOW:1m}
     max-requests: ${AUTH_RATE_LIMIT_MAX_REQUESTS:30}
 
+bootstrap-admin:
+  enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+  email: ${BOOTSTRAP_ADMIN_EMAIL:}
+  password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  display-name: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:Quản trị viên}
+  date-of-birth: ${BOOTSTRAP_ADMIN_DATE_OF_BIRTH:2000-01-01}
+
 server:
   port: ${PORT:8080}

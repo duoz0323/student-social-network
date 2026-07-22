@@ -1,5 +1,6 @@
 package com.stu.edu.vn.backend.admin.bootstrap;
 
+import java.time.LocalDate;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -12,6 +13,7 @@ public class BootstrapAdminProperties {
     private String email;
     private String password;
     private String displayName = "Quản trị viên";
+    private LocalDate dateOfBirth = LocalDate.of(2000, 1, 1);
 
     public boolean isEnabled() {
         return enabled;
@@ -43,5 +45,13 @@ public class BootstrapAdminProperties {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
     }
 }
