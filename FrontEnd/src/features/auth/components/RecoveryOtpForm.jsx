@@ -37,11 +37,9 @@ export default function RecoveryOtpForm({ challenge, onVerify, onResend, onResta
         <Button 
           type="submit" 
           disabled={disabled || code.length !== 6}
-          loading={disabled}
-          loadingLabel="Đang xác minh..."
           className="w-full"
         >
-          Xác minh
+          {disabled ? 'Đang xử lý...' : 'Xác minh'}
         </Button>
       </div>
       

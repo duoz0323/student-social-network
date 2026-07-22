@@ -37,15 +37,7 @@ export default function AuthProvidersPage() {
     <section className="w-full min-w-0 max-w-4xl px-4 pb-28 pt-6 sm:px-6 lg:pb-10 lg:pt-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-600">Cài đặt tài khoản</p><h1 className="mt-1 text-2xl font-extrabold text-[var(--app-text)] sm:text-3xl">Phương thức đăng nhập</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">Quản lý các phương thức đã được Backend xác nhận cho tài khoản hiện tại.</p></div>
-        <Button
-          variant="secondary"
-          disabled={providers.isLoading || actions.isSubmitting}
-          loading={providers.isLoading}
-          loadingLabel="Đang tải..."
-          onClick={() => providers.refetch().catch(() => {})}
-        >
-          Làm mới
-        </Button>
+        <Button variant="secondary" disabled={providers.isLoading || actions.isSubmitting} onClick={() => providers.refetch().catch(() => {})}>Làm mới</Button>
       </div>
       {actions.error || providers.error ? <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{actions.error || providers.error}</div> : null}
       {actions.success ? <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{actions.success}</div> : null}

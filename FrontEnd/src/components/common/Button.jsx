@@ -1,6 +1,4 @@
-import LogoLoader from './LogoLoader.jsx';
-
-export default function Button({ children, type = 'button', variant = 'primary', size = 'md', disabled = false, loading = false, loadingLabel = 'Đang xử lý...', onClick, className = '' }) {
+export default function Button({ children, type = 'button', variant = 'primary', size = 'md', disabled = false, onClick, className = '' }) {
   const variants = {
     primary: 'bg-[#0f172a] text-white shadow-sm hover:bg-black hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border border-transparent',
     secondary: 'bg-white border border-gray-300 text-[#1e293b] shadow-sm hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
@@ -18,11 +16,11 @@ export default function Button({ children, type = 'button', variant = 'primary',
   return (
     <button
       type={type}
-      disabled={disabled || loading}
+      disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center font-semibold rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--app-brand)] transition-all duration-200 ${variants[variant]} ${sizes[size]} ${className} ${disabled || loading ? '!opacity-60 !cursor-not-allowed !scale-100 !shadow-none' : ''}`}
+      className={`inline-flex items-center justify-center font-semibold rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--app-brand)] transition-all duration-200 ${variants[variant]} ${sizes[size]} ${className} ${disabled ? '!opacity-60 !cursor-not-allowed !scale-100 !shadow-none' : ''}`}
     >
-      {loading ? <LogoLoader message={loadingLabel} size="sm" /> : children}
+      {children}
     </button>
   );
 }

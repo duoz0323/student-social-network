@@ -1,5 +1,4 @@
 import logo from '../../../assets/brand/logo.png';
-import LogoLoader from '../../../components/common/LogoLoader.jsx';
 import { SOCIAL_CONFLICT_ACTIONS, SOCIAL_CONFLICT_TYPES } from '../services/socialConflictService.js';
 
 const ACTION_PRESENTATION = Object.freeze({
@@ -61,7 +60,7 @@ export default function SocialConflictCard({ conflict, isResolving, isOutcomeUnk
                 onClick={() => onAction(action)}
                 className={`min-h-11 w-full rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${presentation.primary ? 'bg-slate-900 text-white hover:bg-black' : 'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'}`}
               >
-                {isResolving ? <LogoLoader size="sm" message="Đang xử lý..." /> : presentation.label}
+                {isResolving ? 'Đang xử lý...' : presentation.label}
               </button>
             );
           })}

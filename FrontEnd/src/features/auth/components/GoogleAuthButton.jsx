@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import Button from '../../../components/common/Button.jsx';
-import LogoLoader from '../../../components/common/LogoLoader.jsx';
 import { useGoogleAuth } from '../google/useGoogleAuth.js';
 
 // Icon Google nhiều màu chuẩn brand
@@ -38,7 +37,7 @@ export default function GoogleAuthButton(props) {
   }
 
   // Trạng thái đang tải SDK
-  if (googleAuth.isSdkLoading) return <Button type="button" variant="secondary" loading loadingLabel="Đang tải Google..." className={buttonClass}><GoogleIcon /> Tiếp tục với Google</Button>;
+  if (googleAuth.isSdkLoading) return <Button type="button" variant="secondary" disabled className={buttonClass}><GoogleIcon /> Đang tải Google...</Button>;
 
   // SDK không tải được, hiện nút retry
   if (!googleAuth.isGoogleReady) return (
@@ -72,8 +71,10 @@ export default function GoogleAuthButton(props) {
         disabled={googleAuth.isAuthenticating}
         className={buttonClass}
       >
-        {googleAuth.isAuthenticating ? <LogoLoader size="sm" message="Đang xác minh..." /> : <><GoogleIcon />{`${actionLabel} Google`}</>}
+        <GoogleIcon />
+        {`${actionLabel} Google`}
       </button>
+      {googleAuth.isAuthenticating ? <p className="mt-2 text-center text-xs font-semibold text-zinc-600">Đang xác minh...</p> : null}
       {googleAuth.error ? <p className="mt-2 text-xs font-semibold text-red-700">{googleAuth.error}</p> : null}
     </div>
   );

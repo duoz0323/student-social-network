@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/common/Button.jsx';
-import LogoLoader from '../../../components/common/LogoLoader.jsx';
 import AuthLayout from '../components/AuthLayout.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import OtpCountdown from '../components/OtpCountdown.jsx';
@@ -124,11 +123,9 @@ export default function VerifyRegistrationOtpPage() {
           <Button 
             type="submit" 
             disabled={busy || otp.length !== 6}
-            loading={registration.isVerifying}
-            loadingLabel="Đang xác minh..."
             className="w-full"
           >
-            Xác minh
+            {registration.isVerifying ? 'Đang xác minh...' : 'Xác minh'}
           </Button>
         </div>
 
@@ -140,7 +137,7 @@ export default function VerifyRegistrationOtpPage() {
             onClick={resend} 
             className="font-bold text-gray-900 hover:underline disabled:text-gray-400 disabled:no-underline transition-colors"
           >
-            {registration.isResending ? <LogoLoader size="sm" message="Đang gửi lại..." /> : 'Gửi lại mã'}
+            {registration.isResending ? 'Đang gửi lại...' : 'Gửi lại mã'}
           </button>
           {' '}
           <OtpCountdown resendAvailableAt={registration.resendAvailableAt} onChange={updateCountdown} render={(sec) => sec > 0 ? <span className="font-bold text-gray-900">(sau {sec}s)</span> : null} />

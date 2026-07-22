@@ -268,11 +268,9 @@ export default function AuthForm({
           <Button 
             type="submit" 
             disabled={submitting}
-            loading={submitting}
-            loadingLabel={isLogin ? 'Đang đăng nhập...' : 'Đang tạo tài khoản...'}
             className="w-full"
           >
-            {isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
+            {submitting ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
           </Button>
         </div>
 

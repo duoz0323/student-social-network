@@ -1,5 +1,4 @@
 import Button from '../../../components/common/Button.jsx';
-import LogoLoader from '../../../components/common/LogoLoader.jsx';
 import { useFacebookAuth } from '../facebook/useFacebookAuth.js';
 
 const buttonClass = 'flex h-[42px] w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-[13px] font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:border-violet-400 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]';
@@ -15,7 +14,7 @@ function FacebookIcon() {
 export default function FacebookAuthButton(props) {
   const facebook = useFacebookAuth(props);
   const actionLabel = props.actionLabel ?? 'Tiếp tục với';
-  if (facebook.isSdkLoading) return <Button type="button" variant="secondary" loading loadingLabel="Đang tải Facebook..." className={buttonClass}>Tiếp tục với Facebook</Button>;
+  if (facebook.isSdkLoading) return <Button type="button" variant="secondary" disabled className={buttonClass}>Đang tải Facebook...</Button>;
 
   return (
     <div>
@@ -25,10 +24,10 @@ export default function FacebookAuthButton(props) {
         disabled={!facebook.isConfigured || facebook.isAuthenticating}
         className={buttonClass}
       >
-        {facebook.isAuthenticating
-          ? <LogoLoader size="sm" message="Đang xác minh..." />
-          : <><FacebookIcon />{facebook.isReady ? `${actionLabel} Facebook` : facebook.isConfigured ? 'Thử tải lại Facebook' : `${actionLabel} Facebook`}</>}
+        <FacebookIcon />
+        {facebook.isReady ? `${actionLabel} Facebook` : facebook.isConfigured ? 'Thử tải lại Facebook' : `${actionLabel} Facebook`}
       </button>
+      {facebook.isAuthenticating ? <p className="mt-2 text-center text-xs font-semibold text-zinc-600">Đang xác minh...</p> : null}
       {facebook.error ? <p className="mt-2 text-xs font-semibold text-red-700">{facebook.error}</p> : null}
     </div>
   );

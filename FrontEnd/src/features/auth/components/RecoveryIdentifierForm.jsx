@@ -30,11 +30,9 @@ export default function RecoveryIdentifierForm({ email, onChange, onSubmit, disa
         <Button 
           type="submit" 
           disabled={disabled || !email}
-          loading={disabled}
-          loadingLabel="Đang gửi mã..."
           className="w-full"
         >
-          Gửi mã xác minh
+          {disabled ? 'Đang xử lý...' : 'Gửi mã xác minh'}
         </Button>
       </div>
       

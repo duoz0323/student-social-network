@@ -121,8 +121,8 @@ export default function NewPasswordForm({ onSubmit, onFieldChange, disabled, err
           8–72 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
         </p>
 
-        <Button type="submit" disabled={disabled} loading={disabled} loadingLabel="Đang cập nhật..." className="w-full">
-          Cập nhật mật khẩu
+        <Button type="submit" disabled={disabled} className="w-full">
+          {disabled ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
         </Button>
 
         <p className="mb-1 mt-5 text-center text-[13px] font-medium text-gray-600">
