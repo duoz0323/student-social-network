@@ -11,9 +11,11 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -23,6 +25,27 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupported(HttpServletRequest request) {
+        // Trả đúng 405 để thể hiện tài nguyên tồn tại nhưng API không cho phép phương thức ghi được yêu cầu.
+        ErrorResponse response = ErrorResponse.of(
+                ErrorCode.METHOD_NOT_ALLOWED.name(),
+                ErrorCode.METHOD_NOT_ALLOWED.getDefaultMessage(),
+                ErrorCode.METHOD_NOT_ALLOWED.getHttpStatus().value(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(ErrorCode.METHOD_NOT_ALLOWED.getHttpStatus()).body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(HttpServletRequest request) {
+        // Chuẩn hóa query parameter sai kiểu hoặc enum không hợp lệ thành validation error, không trả lỗi hệ thống.
+        ErrorResponse response = ErrorResponse.of(
+                ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
+                HttpStatus.BAD_REQUEST.value(), request.getRequestURI());
+        return ResponseEntity.badRequest().body(response);
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(
@@ -136,13 +159,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(HttpServletRequest request) {
+        ErrorCode errorCode = request.getRequestURI().startsWith("/api/v1/posts")
+                ? ErrorCode.POST_IMAGE_TOO_LARGE
+                : ErrorCode.AVATAR_FILE_TOO_LARGE;
         ErrorResponse response = ErrorResponse.of(
-                ErrorCode.AVATAR_FILE_TOO_LARGE.name(),
-                ErrorCode.AVATAR_FILE_TOO_LARGE.getDefaultMessage(),
-                ErrorCode.AVATAR_FILE_TOO_LARGE.getHttpStatus().value(),
+                errorCode.name(),
+                errorCode.getDefaultMessage(),
+                errorCode.getHttpStatus().value(),
                 request.getRequestURI()
         );
-        return ResponseEntity.status(ErrorCode.AVATAR_FILE_TOO_LARGE.getHttpStatus()).body(response);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 
     @ExceptionHandler(Exception.class)

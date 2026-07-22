@@ -1,5 +1,6 @@
 package com.stu.edu.vn.backend.storage;
 
+import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -9,5 +10,11 @@ public interface CloudinaryStorageService {
 
     CloudinaryUploadResult uploadAvatar(MultipartFile file);
 
+    CloudinaryUploadResult uploadPostImage(MultipartFile file);
+
+    CloudinaryUploadResult uploadPostVideo(MultipartFile file);
+
     void deleteImage(String publicId);
+
+    void deletePostMedia(String publicId, PostMediaType mediaType);
 }

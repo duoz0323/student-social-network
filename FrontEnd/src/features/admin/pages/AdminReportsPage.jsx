@@ -30,10 +30,7 @@ export default function AdminReportsPage() {
   return (
     <section>
       {/* Header */}
-      <div className="mb-8 animate-slide-up">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Quản lý báo cáo</h1>
-        <p className="mt-1.5 text-sm text-gray-500">Xem và xử lý các báo cáo vi phạm từ người dùng.</p>
-      </div>
+      
 
       {/* Toolbar */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm animate-slide-up-delayed-1">

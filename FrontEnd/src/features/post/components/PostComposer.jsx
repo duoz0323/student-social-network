@@ -5,7 +5,7 @@ import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 
-function ImageToolIcon() {
+function MediaToolIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -15,10 +15,21 @@ function ImageToolIcon() {
   );
 }
 
+function readVideoDuration(url) {
+  // Trình duyệt chỉ đọc metadata để kiểm tra UX; Backend vẫn là nơi quyết định cuối cùng.
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => resolve(video.duration);
+    video.onerror = () => resolve(Number.NaN);
+    video.src = url;
+  });
+}
+
 export default function PostComposer({ mode, onClose }) {
   const { createPost, currentUser } = useApp();
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState(null);
+  const [mediaPreviews, setMediaPreviews] = useState([]);
   const [error, setError] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const fileInputRef = useRef(null);
@@ -36,20 +47,32 @@ export default function PostComposer({ mode, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showOptions]);
 
-  function resetForm() {
+  function resetForm(revokePreview = true) {
     setContent('');
-    setImageUrl(null);
+    if (revokePreview) {
+      mediaPreviews.forEach((item) => URL.revokeObjectURL(item.url));
+    }
+    setMediaPreviews([]);
     setError('');
     setShowOptions(false);
   }
 
   function submit() {
-    const result = createPost({ content, hashtags: '', imageUrls: imageUrl ? [imageUrl] : [] });
+    const result = createPost({
+      content,
+      hashtags: '',
+      media: mediaPreviews.map((item) => ({
+        url: item.url,
+        mediaType: item.mediaType,
+        mimeType: item.file.type,
+      })),
+    });
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    resetForm();
+    // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.
+    resetForm(false);
     onClose();
   }
 
@@ -58,27 +81,69 @@ export default function PostComposer({ mode, onClose }) {
     onClose();
   }
 
-  function handleImageChange(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-       setError('Vui lòng chọn một tập tin hình ảnh.');
-       return;
+  async function handleMediaChange(event) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (!selectedFiles.length) return;
+
+    const selectedItems = selectedFiles.map((file) => ({
+      file,
+      mediaType: ['video/mp4', 'video/webm'].includes(file.type) ? 'VIDEO' : 'IMAGE',
+      supported: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'].includes(file.type),
+    }));
+    if (selectedItems.some((item) => !item.supported)) {
+      setError('Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc video MP4, WebM.');
+      return;
     }
-    
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
+    if (mediaPreviews.length + selectedItems.length > 4) {
+      setError('Mỗi bài viết chỉ được có tối đa 4 media.');
+      return;
+    }
+    const videoCount = mediaPreviews.filter((item) => item.mediaType === 'VIDEO').length
+      + selectedItems.filter((item) => item.mediaType === 'VIDEO').length;
+    if (videoCount > 1) {
+      setError('Mỗi bài viết chỉ được có tối đa 1 video.');
+      return;
+    }
+    const oversizedItem = selectedItems.find((item) => {
+      const maxSize = item.mediaType === 'VIDEO' ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+      return item.file.size > maxSize;
+    });
+    if (oversizedItem) {
+      setError(oversizedItem.mediaType === 'VIDEO'
+        ? 'Video không được vượt quá 100 MB.'
+        : 'Ảnh không được vượt quá 10 MB.');
+      return;
+    }
+
+    const newPreviews = [];
+    for (const item of selectedItems) {
+      const url = URL.createObjectURL(item.file);
+      if (item.mediaType === 'VIDEO') {
+        const duration = await readVideoDuration(url);
+        if (!Number.isFinite(duration) || duration <= 0 || duration > 180) {
+          URL.revokeObjectURL(url);
+          newPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+          setError('Video không được dài quá 3 phút.');
+          return;
+        }
+      }
+      newPreviews.push({ ...item, url });
+    }
+    setMediaPreviews((current) => [...current, ...newPreviews]);
     setError('');
   }
 
-  function handleRemoveImage() {
-    if (imageUrl) {
-       URL.revokeObjectURL(imageUrl);
-       setImageUrl(null);
-    }
+  function handleRemoveMedia(indexToRemove) {
+    setMediaPreviews((current) => current.filter((item, index) => {
+      if (index === indexToRemove) {
+        URL.revokeObjectURL(item.url);
+        return false;
+      }
+      return true;
+    }));
     if (fileInputRef.current) {
-       fileInputRef.current.value = '';
+      fileInputRef.current.value = '';
     }
   }
 
@@ -149,21 +214,22 @@ export default function PostComposer({ mode, onClose }) {
         <button 
           onClick={() => fileInputRef.current?.click()} 
           className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]" 
-          title="Thêm ảnh"
+          title="Thêm ảnh hoặc video"
         >
-          <ImageToolIcon />
+          <MediaToolIcon />
         </button>
         <input 
           type="file" 
-          accept="image/*" 
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          multiple
           hidden 
           ref={fileInputRef} 
-          onChange={handleImageChange} 
+          onChange={handleMediaChange}
         />
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-[var(--app-muted)]">{content.length}/500</span>
-        <Button disabled={(!content.trim() && !imageUrl) || content.length > 500} onClick={submit} className="!rounded-full px-6 py-2 min-h-[40px] font-bold bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-zinc-800 disabled:opacity-30 disabled:bg-[var(--app-text)] disabled:text-[var(--app-surface)] border-none">
+        <Button disabled={(!content.trim() && mediaPreviews.length === 0) || content.length > 500} onClick={submit} className="!rounded-full px-6 py-2 min-h-[40px] font-bold bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-zinc-800 disabled:opacity-30 disabled:bg-[var(--app-text)] disabled:text-[var(--app-surface)] border-none">
           Đăng
         </Button>
       </div>
@@ -192,16 +258,24 @@ export default function PostComposer({ mode, onClose }) {
           autoFocus
         />
         
-        {imageUrl && (
-          <div className="relative mt-2 max-w-fit mb-2">
-            <img src={imageUrl} alt="Preview" className="max-h-64 rounded-xl border border-[var(--app-border)] object-cover" />
-            <button 
-              onClick={handleRemoveImage}
-              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/60 text-white transition hover:bg-zinc-900/80"
-              title="Gỡ ảnh"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
+        {mediaPreviews.length > 0 && (
+          <div className={`mt-2 mb-2 grid gap-2 ${mediaPreviews.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {mediaPreviews.map((item, index) => (
+              <div key={`${item.file.name}-${item.file.lastModified}-${index}`} className="relative overflow-hidden rounded-xl border border-[var(--app-border)] bg-black">
+                {item.mediaType === 'VIDEO' ? (
+                  <video src={item.url} controls preload="metadata" className="aspect-square max-h-64 w-full object-contain" />
+                ) : (
+                  <img src={item.url} alt={`Xem trước media ${index + 1}`} className="aspect-square max-h-64 w-full object-cover" />
+                )}
+                <button
+                  onClick={() => handleRemoveMedia(index)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/60 text-white transition hover:bg-zinc-900/80"
+                  title={`Gỡ media ${index + 1}`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
