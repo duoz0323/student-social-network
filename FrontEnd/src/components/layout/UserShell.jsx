@@ -79,7 +79,7 @@ export default function UserShell() {
     { to: '/feed/for-you', label: 'Dành cho bạn', icon: <HomeIcon />, active: location.pathname.startsWith('/feed') },
     { to: '#create', label: 'Tạo bài viết', icon: <CreateIcon />, active: false, action: () => setComposerMode('modal') },
     { to: '/search', label: 'Tìm kiếm', icon: <SearchIcon />, active: location.pathname === '/search' },
-    { to: '#activity', label: 'Hoạt động', icon: <ActivityIcon />, active: false }, // MVP không có trang hoạt động riêng
+    { to: '/notifications', label: 'Thông báo', icon: <ActivityIcon />, active: location.pathname === '/notifications' },
     { to: '/profile/me', label: 'Trang cá nhân', icon: <ProfileIcon />, active: location.pathname === '/profile/me' },
     { to: '/saved', label: 'Bài viết đã lưu', icon: <BookmarkIcon />, active: location.pathname === '/saved' },
   ];
@@ -171,7 +171,7 @@ export default function UserShell() {
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
-        {navItems.filter(item => item.to.startsWith('/') && item.to !== '#activity').map((item) => (
+        {navItems.filter(item => item.to.startsWith('/')).map((item) => (
           <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
             <span aria-hidden="true" className="h-5 w-5">{item.icon}</span>
             <span>{item.label}</span>

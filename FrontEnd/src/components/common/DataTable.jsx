@@ -43,7 +43,7 @@ export default function DataTable({
           <tbody className="divide-y divide-gray-200 bg-white">
             {rows.map((row, index) => (
               <tr 
-                key={row.id} 
+                key={row.id ?? row.userId ?? row.postId ?? row.reportId ?? row.actionId ?? index}
                 id={`dt-row-${index}`}
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, index, row)}

@@ -1,341 +1,226 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, useState } from 'react';
+import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
 
 const AppContext = createContext(null);
-const DATA_KEY = 'unishare.react.mock-data-v2';
-
-function makeId(prefix) {
-  return `${prefix}-${Date.now()}`;
-}
-
-function readStoredData() {
-  try {
-    const raw = localStorage.getItem(DATA_KEY);
-    const data = raw ? JSON.parse(raw) : initialData;
-    const safeData = { ...data };
-    delete safeData.demoAccounts;
-    return safeData;
-  } catch {
-    localStorage.removeItem(DATA_KEY);
-    return initialData;
-  }
-}
-
-function sanitizeDataForStorage(data) {
-  const safeData = { ...data };
-  delete safeData.demoAccounts;
-  return {
-    ...safeData,
-    currentUserId: null,
-  };
-}
 
 function toViewUser(user) {
   if (!user) return null;
   const profile = user.profile ?? {};
   return {
     ...user,
-    displayName: profile.displayName ?? '',
-    avatarUrl: profile.avatarUrl ?? '',
-    birthDate: profile.dateOfBirth ?? null,
-    bio: profile.bio ?? '',
-    profileCompletedAt: profile.profileCompletedAt ?? null,
+    displayName: profile.displayName ?? user.displayName ?? '',
+    avatarUrl: profile.avatarUrl ?? user.avatarUrl ?? '',
+    birthDate: profile.dateOfBirth ?? user.birthDate ?? null,
+    bio: profile.bio ?? user.bio ?? '',
+    profileCompletedAt: profile.profileCompletedAt ?? user.profileCompletedAt ?? null,
   };
 }
 
-function persistData(data) {
-  localStorage.setItem(DATA_KEY, JSON.stringify(sanitizeDataForStorage(data)));
+function toPostView(post) {
+  return {
+    ...post,
+    authorId: post.author?.id ?? post.authorId,
+    imageUrls: (post.media ?? []).map((item) => item.url),
+    hashtags: post.hashtag ? [post.hashtag] : (post.hashtags ?? []),
+    edited: post.isEdited ?? post.edited ?? false,
+    likedByCurrentUser: post.likedByCurrentUser ?? post.viewer?.likedByCurrentUser ?? false,
+    savedByCurrentUser: post.savedByCurrentUser ?? post.viewer?.savedByCurrentUser ?? false,
+  };
 }
 
 export function AppProvider({ children }) {
   const auth = useAuth();
-  const [data, setDataState] = useState(() => readStoredData());
+  // Feed, saved posts và public profile chưa có endpoint GET; giữ dữ liệu hiển thị cũ cho tới khi Backend bổ sung contract.
+  const [data, setData] = useState(() => initialData);
   const currentUserId = auth.user?.id ?? null;
 
-  function setData(updater) {
-    setDataState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistData(next);
-      return next;
-    });
-  }
-
   const currentUser = useMemo(() => {
-    const mockCurrentUser = toViewUser(data.users.find((user) => user.id === currentUserId) ?? null);
-    // Cáº§u ná»‘i táº¡m giá»¯ UI mock hoáº¡t Ä‘á»™ng trong khi cÃ¡c module há»“ sÆ¡/feed chÆ°a tÃ­ch há»£p Backend.
-    if (!auth.isAuthenticated) return mockCurrentUser;
-    return mockCurrentUser ?? {
-      id: auth.user.id,
+    const knownUser = toViewUser(data.users.find((user) => String(user.id) === String(currentUserId)));
+    return knownUser ?? {
+      id: currentUserId,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: 'NgÆ°á»i dÃ¹ng UniShare',
+      displayName: 'Người dùng UniShare',
       avatarUrl: '',
       birthDate: null,
       bio: '',
       profileCompletedAt: auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null,
-      profile: { displayName: '', avatarUrl: '', dateOfBirth: null, bio: '', profileCompletedAt: null },
     };
-  }, [auth.isAuthenticated, auth.profileCompleted, auth.role, auth.user, currentUserId, data.users]);
+  }, [auth.profileCompleted, auth.role, currentUserId, data.users]);
 
   const value = useMemo(() => {
-    const viewUsers = data.users.map(toViewUser);
-    const viewData = { ...data, users: viewUsers };
+    const users = data.users.map(toViewUser);
     const publicPosts = data.posts.filter((post) => post.status === 'PUBLISHED');
 
-    function getRawUserById(userId) {
-      return data.users.find((user) => user.id === userId) ?? null;
-    }
-
     function getUserById(userId) {
-      return toViewUser(getRawUserById(userId));
+      return users.find((user) => String(user.id) === String(userId)) ?? null;
     }
 
     function getPostById(postId, includeHidden = false) {
-      return data.posts.find((post) => post.id === postId && (includeHidden || post.status === 'PUBLISHED')) ?? null;
+      return data.posts.find((post) => String(post.id) === String(postId)
+        && (includeHidden || post.status === 'PUBLISHED')) ?? null;
     }
 
-    function logout() { return auth.logout(); }
-
-    function createPost({ content, hashtags, imageUrls = [] }) {
-      const cleanContent = content.trim();
-      const normalizedHashtags = hashtags
-        .split(/[,\s]+/)
-        .map((tag) => tag.replace('#', '').trim().toLowerCase())
-        .filter(Boolean);
-
-      if (!cleanContent && (!imageUrls || imageUrls.length === 0)) {
-        return { ok: false, message: 'BÃ i viáº¿t cáº§n cÃ³ ná»™i dung hoáº·c hÃ¬nh áº£nh.' };
+    async function createPost(payload) {
+      try {
+        const response = await postApi.create(payload);
+        setData((previous) => ({ ...previous, posts: [toPostView(response), ...previous.posts] }));
+        return { ok: true, data: response };
+      } catch (error) {
+        return { ok: false, message: error.message };
       }
-
-      const post = {
-        id: makeId('post'),
-        authorId: currentUserId,
-        content: cleanContent,
-        imageUrls: imageUrls,
-        hashtags: [...new Set(normalizedHashtags)].slice(0, 8),
-        status: 'PUBLISHED',
-        likeCount: 0,
-        commentCount: 0,
-        edited: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setData((prev) => ({ ...prev, posts: [post, ...prev.posts] }));
-      return { ok: true };
     }
 
-    function updatePost(postId, payload) {
-      setData((prev) => ({
-        ...prev,
-        posts: prev.posts.map((post) =>
-          post.id === postId && post.authorId === currentUserId
-            ? {
-                ...post,
-                content: payload.content.trim(),
-                hashtags: payload.hashtags
-                  .split(/[,\s]+/)
-                  .map((tag) => tag.replace('#', '').trim().toLowerCase())
-                  .filter(Boolean),
-                edited: true,
-                updatedAt: new Date().toISOString(),
-              }
-            : post,
-        ),
+    async function updatePost(postId, payload) {
+      const current = data.posts.find((post) => String(post.id) === String(postId));
+      const response = await postApi.update(postId, {
+        content: payload.content,
+        hashtag: payload.hashtag ?? payload.hashtags?.split(',')[0],
+        keepMediaIds: current?.media?.map((item) => item.id) ?? [],
+        newMediaFiles: payload.newMediaFiles ?? [],
+      });
+      setData((previous) => ({
+        ...previous,
+        posts: previous.posts.map((post) => String(post.id) === String(postId) ? toPostView(response) : post),
+      }));
+      return response;
+    }
+
+    async function deletePost(postId) {
+      await postApi.remove(postId);
+      setData((previous) => ({
+        ...previous,
+        posts: previous.posts.map((post) => String(post.id) === String(postId) ? { ...post, status: 'DELETED' } : post),
       }));
     }
 
-    function deletePost(postId) {
-      setData((prev) => ({
-        ...prev,
-        posts: prev.posts.map((post) => (post.id === postId && post.authorId === currentUserId ? { ...post, status: 'DELETED' } : post)),
+    async function toggleLike(postId) {
+      const post = data.posts.find((item) => String(item.id) === String(postId));
+      const liked = post?.likedByCurrentUser
+        ?? data.likes.some((item) => String(item.postId) === String(postId) && String(item.userId) === String(currentUserId));
+      const response = liked ? await postApi.unlike(postId) : await postApi.like(postId);
+      setData((previous) => ({
+        ...previous,
+        posts: previous.posts.map((item) => String(item.id) === String(postId)
+          ? { ...item, likeCount: response.likeCount, likedByCurrentUser: response.likedByCurrentUser }
+          : item),
       }));
+      return response;
     }
 
-    function toggleLike(postId) {
-      const liked = data.likes.some((like) => like.postId === postId && like.userId === currentUserId);
-      setData((prev) => ({
-        ...prev,
-        likes: liked
-          ? prev.likes.filter((like) => !(like.postId === postId && like.userId === currentUserId))
-          : [...prev.likes, { postId, userId: currentUserId, createdAt: new Date().toISOString() }],
-        posts: prev.posts.map((post) =>
-          post.id === postId ? { ...post, likeCount: Math.max(0, post.likeCount + (liked ? -1 : 1)) } : post,
-        ),
+    async function toggleSave(postId) {
+      const post = data.posts.find((item) => String(item.id) === String(postId));
+      const saved = post?.savedByCurrentUser
+        ?? data.savedPosts.some((item) => String(item.postId) === String(postId) && String(item.userId) === String(currentUserId));
+      const response = saved ? await postApi.unsave(postId) : await postApi.save(postId);
+      setData((previous) => ({
+        ...previous,
+        savedPosts: response.saved
+          ? [...previous.savedPosts.filter((item) => String(item.postId) !== String(postId)), { postId, userId: currentUserId }]
+          : previous.savedPosts.filter((item) => String(item.postId) !== String(postId)),
+        posts: previous.posts.map((item) => String(item.id) === String(postId)
+          ? { ...item, savedByCurrentUser: response.saved }
+          : item),
       }));
+      return response;
     }
 
-    function toggleSave(postId) {
-      const saved = data.savedPosts.some((item) => item.postId === postId && item.userId === currentUserId);
-      setData((prev) => ({
-        ...prev,
-        savedPosts: saved
-          ? prev.savedPosts.filter((item) => !(item.postId === postId && item.userId === currentUserId))
-          : [...prev.savedPosts, { postId, userId: currentUserId, createdAt: new Date().toISOString() }],
+    async function addComment(postId, content) {
+      const response = await postApi.createComment(postId, content.trim());
+      setData((previous) => ({
+        ...previous,
+        comments: [...previous.comments, { ...response, id: response.commentId, authorId: response.userId }],
+        posts: previous.posts.map((post) => String(post.id) === String(postId)
+          ? { ...post, commentCount: post.commentCount + 1 }
+          : post),
       }));
+      return response;
     }
 
-    function addComment(postId, content) {
-      const cleanContent = content.trim();
-      if (!cleanContent) return;
-
-      setData((prev) => ({
-        ...prev,
-        comments: [
-          ...prev.comments,
-          { id: makeId('comment'), postId, authorId: currentUserId, content: cleanContent, createdAt: new Date().toISOString() },
-        ],
-        posts: prev.posts.map((post) => (post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post)),
-      }));
+    async function deleteComment(commentId) {
+      await postApi.deleteComment(commentId);
+      setData((previous) => ({ ...previous, comments: previous.comments.filter((item) => String(item.id) !== String(commentId)) }));
     }
 
-    function deleteComment(commentId) {
-      const target = data.comments.find((comment) => comment.id === commentId);
-      if (!target || target.authorId !== currentUserId) return;
-
-      setData((prev) => ({
-        ...prev,
-        comments: prev.comments.filter((comment) => comment.id !== commentId),
-        posts: prev.posts.map((post) =>
-          post.id === target.postId ? { ...post, commentCount: Math.max(0, post.commentCount - 1) } : post,
-        ),
+    async function toggleFollow(targetUserId) {
+      const following = data.follows.some((item) => String(item.followerId) === String(currentUserId)
+        && String(item.followingId) === String(targetUserId));
+      const response = following ? await socialApi.unfollow(targetUserId) : await socialApi.follow(targetUserId);
+      setData((previous) => ({
+        ...previous,
+        follows: response.followedByCurrentUser
+          ? [...previous.follows, { followerId: currentUserId, followingId: targetUserId }]
+          : previous.follows.filter((item) => !(String(item.followerId) === String(currentUserId)
+            && String(item.followingId) === String(targetUserId))),
       }));
+      return response;
     }
 
-    function toggleFollow(targetUserId) {
-      if (targetUserId === currentUserId) return;
-      const following = data.follows.some((follow) => follow.followerId === currentUserId && follow.followingId === targetUserId);
-
-      setData((prev) => ({
-        ...prev,
-        follows: following
-          ? prev.follows.filter((follow) => !(follow.followerId === currentUserId && follow.followingId === targetUserId))
-          : [...prev.follows, { followerId: currentUserId, followingId: targetUserId, createdAt: new Date().toISOString() }],
-        users: prev.users.map((user) => {
-          if (user.id === currentUserId) return { ...user, followingCount: Math.max(0, user.followingCount + (following ? -1 : 1)) };
-          if (user.id === targetUserId) return { ...user, followerCount: Math.max(0, user.followerCount + (following ? -1 : 1)) };
-          return user;
-        }),
+    async function updateProfile(payload) {
+      const response = await socialApi.updateProfile({
+        displayName: payload.displayName,
+        dateOfBirth: payload.dateOfBirth ?? payload.birthDate,
+        bio: payload.bio,
+      });
+      setData((previous) => ({
+        ...previous,
+        users: previous.users.map((user) => String(user.id) === String(currentUserId)
+          ? { ...user, profile: { ...user.profile, ...response } }
+          : user),
       }));
+      return response;
     }
 
-    function updateProfile(payload) {
-      setData((prev) => ({
-        ...prev,
-        users: prev.users.map((user) =>
-          user.id === currentUserId
-            ? {
-                ...user,
-                profile: {
-                  ...user.profile,
-                  displayName: payload.displayName ?? user.profile?.displayName ?? null,
-                  avatarUrl: payload.avatarUrl ?? user.profile?.avatarUrl ?? null,
-                  dateOfBirth: payload.dateOfBirth ?? payload.birthDate ?? user.profile?.dateOfBirth ?? null,
-                  bio: payload.bio ?? user.profile?.bio ?? null,
-                },
-              }
-            : user,
-        ),
-      }));
-    }
-
-    function completeOnboarding(payload) {
-      const displayName = payload.displayName.trim();
-      if (!displayName) {
-        return { ok: false, message: 'TÃªn hiá»ƒn thá»‹ lÃ  báº¯t buá»™c Ä‘á»ƒ hoÃ n táº¥t há»“ sÆ¡.' };
+    async function submitReport(postId, reason, description) {
+      try {
+        return { ok: true, data: await postApi.report(postId, { reason, description: description.trim() }) };
+      } catch (error) {
+        return { ok: false, message: error.message };
       }
+    }
 
-      setData((prev) => ({
-        ...prev,
-        users: prev.users.map((user) =>
-          user.id === currentUserId
-            ? {
-                ...user,
-                profile: {
-                  ...user.profile,
-                  displayName,
-                  avatarUrl: payload.avatarUrl || null,
-                  dateOfBirth: payload.dateOfBirth || null,
-                  bio: (payload.bio || '').trim() || null,
-                  profileCompletedAt: new Date().toISOString(),
-                },
-              }
-            : user,
-        ),
+    async function setUserStatus(userId, status) {
+      const response = status === 'BLOCKED'
+        ? await adminApi.blockUser(userId, 'OTHER')
+        : await adminApi.unblockUser(userId);
+      setData((previous) => ({
+        ...previous,
+        users: previous.users.map((user) => String(user.id) === String(userId) ? { ...user, status: response.status } : user),
       }));
-      return { ok: true };
+      return response;
     }
 
-    function submitReport(postId, reason, description) {
-      const existed = data.reports.some(
-        (report) => report.postId === postId && report.reporterId === currentUserId && report.status === 'PENDING',
-      );
-      if (existed) return { ok: false, message: 'Báº¡n Ä‘Ã£ gá»­i bÃ¡o cÃ¡o Ä‘ang chá» xá»­ lÃ½ cho bÃ i viáº¿t nÃ y.' };
-
-      setData((prev) => ({
-        ...prev,
-        reports: [
-          ...prev.reports,
-          {
-            id: makeId('report'),
-            postId,
-            reporterId: currentUserId,
-            reason,
-            description: description.trim(),
-            status: 'PENDING',
-            createdAt: new Date().toISOString(),
-          },
-        ],
+    async function setPostStatus(postId, status) {
+      const response = status === 'HIDDEN'
+        ? await adminApi.hidePost(postId, 'OTHER')
+        : await adminApi.restorePost(postId);
+      setData((previous) => ({
+        ...previous,
+        posts: previous.posts.map((post) => String(post.id) === String(postId) ? { ...post, status: response.status } : post),
       }));
-      return { ok: true };
+      return response;
     }
 
-    function setUserStatus(userId, status) {
-      setData((prev) => ({
-        ...prev,
-        users: prev.users.map((user) => (user.id === userId ? { ...user, status } : user)),
+    async function setReportStatus(reportId, status) {
+      const response = status === 'REJECTED'
+        ? await adminApi.rejectReport(reportId, 'Báo cáo không đủ căn cứ.')
+        : await adminApi.resolveReport(reportId, { resolutionNote: 'Báo cáo hợp lệ.', hidePost: false });
+      setData((previous) => ({
+        ...previous,
+        reports: previous.reports.map((report) => String(report.id) === String(reportId) ? { ...report, status: response.status } : report),
       }));
-    }
-
-    function setPostStatus(postId, status) {
-      setData((prev) => ({ ...prev, posts: prev.posts.map((post) => (post.id === postId ? { ...post, status } : post)) }));
-    }
-
-    function setReportStatus(reportId, status) {
-      setData((prev) => ({ ...prev, reports: prev.reports.map((report) => (report.id === reportId ? { ...report, status } : report)) }));
-    }
-
-    function handleFutureSocialAuth() {
-      return { ok: false, message: 'TÃ­nh nÄƒng Ä‘ang Ä‘Æ°á»£c phÃ¡t triá»ƒn.' };
+      return response;
     }
 
     return {
-      data: viewData,
-      currentUser,
-      currentUserId,
-      publicPosts,
-      getUserById,
-      getPostById,
-      logout,
-      createPost,
-      updatePost,
-      deletePost,
-      toggleLike,
-      toggleSave,
-      addComment,
-      deleteComment,
-      toggleFollow,
-      updateProfile,
-      completeOnboarding,
-      submitReport,
-      setUserStatus,
-      setPostStatus,
-      setReportStatus,
-      handleFutureSocialAuth,
+      data: { ...data, users }, currentUser, currentUserId, publicPosts, getUserById, getPostById,
+      logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
+      deleteComment, toggleFollow, updateProfile, submitReport, setUserStatus, setPostStatus, setReportStatus,
     };
-  }, [auth, currentUser, currentUserId, data]);
+  }, [auth.logout, currentUser, currentUserId, data]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -345,4 +230,3 @@ export function useApp() {
   if (!context) throw new Error('useApp must be used inside AppProvider');
   return context;
 }
-

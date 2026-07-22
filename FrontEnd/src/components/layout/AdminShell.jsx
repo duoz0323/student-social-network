@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Flag, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
 import logo from '../../assets/brand/logo.png';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
@@ -12,6 +12,7 @@ export default function AdminShell() {
     { to: '/admin/users', label: 'Người dùng', icon: Users },
     { to: '/admin/posts', label: 'Bài viết', icon: FileText },
     { to: '/admin/reports', label: 'Báo cáo', icon: Flag },
+    { to: '/admin/actions', label: 'Lịch sử', icon: History },
   ];
 
   return (

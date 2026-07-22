@@ -1,121 +1,63 @@
-import { useState } from 'react';
-import { Search, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, EyeOff, Search } from 'lucide-react';
+import { adminApi } from '../../../api/index.js';
 import Button from '../../../components/common/Button.jsx';
 import DataTable from '../../../components/common/DataTable.jsx';
-import { useApp } from '../../../contexts/AppContext.jsx';
+import { LoadingState } from '../../../components/common/StateBlock.jsx';
 
 export default function AdminPostsPage() {
-  const { data, getUserById, setPostStatus } = useApp();
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [result, setResult] = useState({ content: [], totalElements: 0, totalPages: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filteredRows = data.posts.filter((post) => post.content.toLowerCase().includes(query.toLowerCase()));
+  async function load(signal) {
+    setLoading(true);
+    try {
+      setResult(await adminApi.getPosts({ keyword: query.trim(), page: page - 1, size: pageSize }, signal));
+      setError('');
+    } catch (requestError) { if (requestError.code !== 'ERR_CANCELED') setError(requestError.message); }
+    finally { setLoading(false); }
+  }
 
-  const totalItems = filteredRows.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
-  
-  // Frontend pagination simulation
-  const paginatedRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      adminApi.getPosts({ keyword: query.trim(), page: page - 1, size: pageSize }, controller.signal)
+        .then((response) => { setResult(response); setError(''); })
+        .catch((requestError) => { if (requestError.code !== 'ERR_CANCELED') setError(requestError.message); })
+        .finally(() => setLoading(false));
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [query, page, pageSize]);
 
-  const handleSearch = (e) => {
-    setQuery(e.target.value);
-    setPage(1);
-  };
+  async function changeStatus(post) {
+    try {
+      if (post.status === 'HIDDEN') await adminApi.restorePost(post.postId);
+      else await adminApi.hidePost(post.postId, 'OTHER');
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+  }
 
   return (
     <section>
-      
-
-      {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm animate-slide-up-delayed-1">
-        <div className="relative w-full sm:max-w-md">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-            <Search size={16} />
-          </div>
-          <input 
-            value={query} 
-            onChange={handleSearch} 
-            placeholder="Tìm theo nội dung bài viết..." 
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-4 py-2 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all shadow-sm" 
-          />
-        </div>
-        <div className="text-sm font-medium text-gray-500 px-2">
-          Tổng cộng: <span className="text-gray-900 font-semibold">{totalItems}</span>
-        </div>
+      <div className="mb-6 flex items-center gap-3 rounded-xl border bg-white p-3"><Search size={16} />
+        <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm nội dung bài viết..." className="flex-1 outline-none" />
+        <span className="text-sm text-gray-500">Tổng: {result.totalElements}</span>
       </div>
-
-      {/* Data Table */}
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden mb-6 animate-slide-up-delayed-2">
-        <DataTable
-          rows={paginatedRows}
-          onRowKeyDown={(e, row) => {
-            if (e.key === 'Enter') {
-              setPostStatus(row.id, row.status === 'HIDDEN' ? 'PUBLISHED' : 'HIDDEN');
-            }
-          }}
-          pagination={{
-            currentPage: page,
-            totalPages,
-            onPageChange: setPage,
-            totalItems,
-            pageSize,
-            onPageSizeChange: (newSize) => {
-              setPageSize(newSize);
-              setPage(1);
-            }
-          }}
-          columns={[
-            { 
-              key: 'authorId', 
-              label: 'Tác giả', 
-              render: (row) => (
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700">
-                    {getUserById(row.authorId)?.displayName?.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="font-semibold text-sm text-gray-900">{getUserById(row.authorId)?.displayName}</span>
-                </div>
-              ) 
-            },
-            { 
-              key: 'content', 
-              label: 'Nội dung', 
-              className: 'max-w-[250px] sm:max-w-[400px]',
-              render: (row) => <div className="truncate text-sm text-gray-600" title={row.content}>{row.content}</div> 
-            },
-            { 
-              key: 'status', 
-              label: 'Trạng thái', 
-              render: (row) => (
-                <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md ${row.status === 'PUBLISHED' ? 'bg-gray-50 text-gray-700 border border-gray-200' : row.status === 'HIDDEN' ? 'bg-gray-100 text-gray-500' : 'bg-gray-800 text-white'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${row.status === 'PUBLISHED' ? 'bg-green-500' : row.status === 'HIDDEN' ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
-                  {row.status === 'PUBLISHED' ? 'Đã đăng' : row.status === 'HIDDEN' ? 'Đã ẩn' : row.status}
-                </span>
-              ) 
-            },
-            {
-              key: 'action',
-              label: '',
-              className: 'text-right',
-              render: (row) => (
-                <Button 
-                  size="sm" 
-                  variant={row.status === 'HIDDEN' ? 'primary' : 'secondary'} 
-                  onClick={() => setPostStatus(row.id, row.status === 'HIDDEN' ? 'PUBLISHED' : 'HIDDEN')}
-                  title="Phím tắt: Enter"
-                >
-                  {row.status === 'HIDDEN' ? (
-                    <><Eye size={14} /> Khôi phục</>
-                  ) : (
-                    <><EyeOff size={14} /> Ẩn bài</>
-                  )}
-                </Button>
-              ),
-            },
-          ]}
-        />
-      </div>
+      {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+      {loading ? <LoadingState /> : <DataTable rows={result.content} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
+        totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
+        { key: 'authorDisplayName', label: 'Tác giả' },
+        { key: 'contentPreview', label: 'Nội dung', className: 'max-w-sm', render: (row) => <p className="truncate">{row.contentPreview}</p> },
+        { key: 'status', label: 'Trạng thái' },
+        { key: 'pendingReportCount', label: 'Báo cáo chờ' },
+        { key: 'action', label: '', render: (row) => <Button size="sm" variant="secondary" disabled={row.status === 'DELETED'} onClick={() => changeStatus(row)}>
+          {row.status === 'HIDDEN' ? <><Eye size={14} /> Khôi phục</> : <><EyeOff size={14} /> Ẩn</>}
+        </Button> },
+      ]} />}
     </section>
   );
 }

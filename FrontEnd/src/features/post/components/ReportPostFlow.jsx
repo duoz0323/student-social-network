@@ -7,10 +7,9 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 const REPORT_REASONS = [
   { value: 'SPAM', label: 'Spam' },
   { value: 'HARASSMENT', label: 'Quấy rối' },
-  { value: 'HATE_SPEECH', label: 'Nội dung độc hại hoặc xúc phạm' },
+  { value: 'HARMFUL_CONTENT', label: 'Nội dung độc hại hoặc xúc phạm' },
   { value: 'VIOLENCE', label: 'Nội dung bạo lực' },
   { value: 'MISINFORMATION', label: 'Thông tin sai lệch' },
-  { value: 'SCHOOL_VIOLATION', label: 'Vi phạm quy chế trường học' },
   { value: 'INAPPROPRIATE', label: 'Nội dung không phù hợp' },
   { value: 'OTHER', label: 'Lý do khác' },
 ];
@@ -33,8 +32,8 @@ export default function ReportPostFlow({ open, post, onClose }) {
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
 
-  function submit() {
-    const result = submitReport(post.id, reason, description);
+  async function submit() {
+    const result = await submitReport(post.id, reason, description);
     if (!result.ok) {
       setMessage(result.message);
       return;

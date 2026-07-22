@@ -1,165 +1,117 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { socialApi } from '../../../api/index.js';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
-import { EmptyState } from '../../../components/common/StateBlock.jsx';
-import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
+import { EmptyState, LoadingState } from '../../../components/common/StateBlock.jsx';
+import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import PostCard from '../../post/components/PostCard.jsx';
-import ContentShell from '../../../components/layout/ContentShell.jsx';
+
+function normalizePost(post) {
+  return {
+    ...post,
+    id: post.postId,
+    authorId: post.author?.id,
+    imageUrls: (post.media ?? []).map((item) => item.url),
+    hashtags: post.hashtag ? [post.hashtag] : [],
+    edited: post.isEdited,
+  };
+}
 
 export default function SearchPage() {
-  const { data, publicPosts, currentUserId, toggleFollow } = useApp();
-  const [query, setQuery] = useState('');
-  const [unfollowTarget, setUnfollowTarget] = useState(null);
   const navigate = useNavigate();
-  const normalized = query.trim().toLowerCase();
+  const { currentUserId } = useApp();
+  const [query, setQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [following, setFollowing] = useState(new Set());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const results = useMemo(() => {
-    if (!normalized) return { users: [], posts: [], hashtags: [] };
-    const users = data.users.filter((user) => user.status === 'ACTIVE' && user.displayName.toLowerCase().includes(normalized));
-    const posts = publicPosts.filter((post) => post.content.toLowerCase().includes(normalized) || post.hashtags.some((tag) => tag.includes(normalized.replace('#', ''))));
-    const hashtags = [...new Set(publicPosts.flatMap((post) => post.hashtags))].filter((tag) => tag.includes(normalized.replace('#', '')));
-    return { users, posts, hashtags };
-  }, [data.users, normalized, publicPosts]);
+  useEffect(() => {
+    const keyword = query.trim();
+    if (!keyword) {
+      const resetTimer = setTimeout(() => { setUsers([]); setPosts([]); setError(''); }, 0);
+      return () => clearTimeout(resetTimer);
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const isHashtag = keyword.startsWith('#');
+        const [userPage, postPage] = await Promise.all([
+          socialApi.searchUsers({ q: keyword, page: 0, size: 20 }, controller.signal),
+          socialApi.searchPosts({ q: keyword, type: isHashtag ? 'HASHTAG' : 'CONTENT', page: 0, size: 20 }, controller.signal),
+        ]);
+        setUsers((userPage.content ?? []).map((user) => ({ ...user, id: user.userId })));
+        setPosts((postPage.content ?? []).map(normalizePost));
+        setError('');
+      } catch (requestError) {
+        if (requestError.code !== 'ERR_CANCELED') setError(requestError.message);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
-  const suggestions = data.users.filter((user) => user.status === 'ACTIVE' && user.id !== currentUserId).slice(0, 3);
+  async function toggleFollow(userId) {
+    try {
+      const response = following.has(userId)
+        ? await socialApi.unfollow(userId)
+        : await socialApi.follow(userId);
+      setFollowing((current) => {
+        const next = new Set(current);
+        if (response.followedByCurrentUser) next.add(userId); else next.delete(userId);
+        return next;
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
 
-  const headerContent = (
-    <div className="px-6 pb-3 pt-2">
-      <div className="relative flex items-center">
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-zinc-400">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.3-4.3"/>
-          </svg>
-        </div>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Tìm kiếm"
-          className="h-[44px] w-full rounded-full bg-[var(--app-surface-soft)] pl-11 pr-4 text-[15px] text-[var(--app-text)] placeholder:text-[var(--app-muted)] outline-none border border-transparent focus:border-[var(--app-border-strong)] focus:bg-[var(--app-surface)] transition"
-        />
-      </div>
+  const header = (
+    <div className="px-6 py-3">
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm người dùng, nội dung hoặc #hashtag"
+        className="h-11 w-full rounded-full bg-[var(--app-surface-soft)] px-5 outline-none focus:ring-1 focus:ring-[var(--app-border-strong)]" />
     </div>
   );
 
   return (
-    <ContentShell header={headerContent}>
-      <div className="pb-20">
-        {!normalized ? (
-          <div className="flex flex-col">
-            <div className="border-b border-[var(--app-border)] px-6 py-5">
-              <h2 className="text-[15px] font-bold text-[var(--app-text)] mb-3">Tìm kiếm phổ biến</h2>
-              <div className="flex flex-col">
-                {[
-                  { title: 'Bí quyết ôn thi cuối kỳ', sub: '1.2k bài viết' }, 
-                  { title: 'Quán ăn quanh trường', sub: 'Chia sẻ thực tế' }, 
-                  { title: 'Việc làm thêm cho sinh viên', sub: 'Hơn 500 cơ hội' }, 
-                  { title: 'Tài liệu giải tích 2', sub: 'PDF & Notes' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 py-3 border-b border-[var(--app-border)] last:border-0 cursor-pointer hover:bg-[var(--app-surface-soft)] transition" onClick={() => setQuery(item.title)}>
-                    <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-[var(--app-border)] text-[var(--app-text)]">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[15px] font-semibold text-[var(--app-text)]">{item.title}</span>
-                      <span className="text-[13px] text-[var(--app-muted)] mt-0.5">{item.sub}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="px-6 py-5">
-              <h2 className="text-[15px] font-bold text-[var(--app-text)] mb-3">Gợi ý theo dõi</h2>
-              <div className="flex flex-col">
-                {suggestions.map((user, idx) => {
-                  const isFollowing = data.follows.some((follow) => follow.followerId === currentUserId && follow.followingId === user.id);
-                  const userHandle = user.email ? `@${user.email.split('@')[0]}` : `@user${user.id.slice(-4)}`;
-                  const followersCount = (user.id.charCodeAt(0) * 10) + 120; // Fake followers count for mockup visually
-                  
-                  return (
-                    <div key={user.id} className={`flex items-start justify-between py-3 ${idx !== suggestions.length - 1 ? 'border-b border-[var(--app-border)]' : ''}`}>
-                      <div className="flex items-start gap-3 flex-1 cursor-pointer" onClick={() => navigate(`/profile/${user.id}`)}>
-                        <Avatar src={user.avatarUrl} name={user.displayName} size="md" className="!w-10 !h-10 text-sm mt-0.5" />
-                        <div className="flex flex-col pr-4">
-                          <span className="text-[15px] font-semibold text-[var(--app-text)] flex items-center gap-1">
-                            {user.displayName}
-                            {idx === 0 && <svg className="w-3.5 h-3.5 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.9 14.7L6 12.6l1.5-1.5 2.6 2.6 6.4-6.4 1.5 1.5-7.9 7.9z"/></svg>}
-                          </span>
-                          <span className="text-[14px] text-[var(--app-muted)]">{userHandle}</span>
-                          <span className="text-[14px] text-[var(--app-text)] mt-1.5 leading-snug line-clamp-2">{user.bio || 'Sinh viên chăm chỉ.'}</span>
-                          <span className="text-[14px] text-[var(--app-muted)] mt-1.5">{followersCount} người theo dõi</span>
-                        </div>
-                      </div>
-                      <Button 
-                        variant={isFollowing ? "secondary" : "primary"} 
-                        className={`shrink-0 !rounded-xl !h-[34px] px-5 font-bold text-[14px] mt-1 ${isFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}
-                        onClick={() => isFollowing ? setUnfollowTarget(user) : toggleFollow(user.id)}
-                      >
-                        {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col pt-4">
-            {results.users.length > 0 && (
-              <div className="px-6 pb-4 border-b border-[var(--app-border)]">
-                <h2 className="text-[15px] font-bold text-[var(--app-text)] mb-3">Người dùng</h2>
-                <div className="flex flex-col">
-                  {results.users.map((user) => {
-                    const userHandle = user.email ? `@${user.email.split('@')[0]}` : `@user${user.id.slice(-4)}`;
-                    return (
-                      <div key={user.id} className="flex items-center gap-3 py-2 cursor-pointer hover:bg-[var(--app-surface-soft)] transition rounded-lg px-2 -mx-2" onClick={() => navigate(user.id === currentUserId ? '/profile/me' : `/profile/${user.id}`)}>
-                        <Avatar src={user.avatarUrl} name={user.displayName} size="md" className="!w-10 !h-10 text-sm" />
-                        <div className="flex flex-col">
-                          <span className="text-[15px] font-semibold text-[var(--app-text)]">{user.displayName}</span>
-                          <span className="text-[14px] text-[var(--app-muted)]">{userHandle}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+    <ContentShell header={header}>
+      {!query.trim() ? (
+        <EmptyState title="Tìm kiếm UniShare" description="Nhập tên người dùng, nội dung bài viết hoặc hashtag." />
+      ) : loading ? <LoadingState message="Đang tìm kiếm..." /> : (
+        <div className="pb-16">
+          {error && <p className="m-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {users.length > 0 && (
+            <section className="border-b border-[var(--app-border)] p-5">
+              <h2 className="mb-3 font-bold">Người dùng</h2>
+              {users.map((user) => (
+                <div key={user.id} className="flex items-center gap-3 py-2">
+                  <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => navigate(String(user.id) === String(currentUserId) ? '/profile/me' : `/profile/${user.id}`)}>
+                    <Avatar src={user.avatarUrl} name={user.displayName} />
+                    <span><strong>{user.displayName}</strong><small className="block text-[var(--app-muted)]">{user.bio || 'Chưa có giới thiệu'}</small></span>
+                  </button>
+                  {String(user.id) !== String(currentUserId) && (
+                    <Button size="sm" variant={following.has(user.id) ? 'secondary' : 'primary'} onClick={() => toggleFollow(user.id)}>
+                      {following.has(user.id) ? 'Bỏ theo dõi' : 'Theo dõi'}
+                    </Button>
+                  )}
                 </div>
-              </div>
-            )}
-            
-            {results.hashtags.length > 0 && (
-              <div className="px-6 py-4 border-b border-[var(--app-border)] flex flex-wrap gap-2">
-                {results.hashtags.map((tag) => (
-                  <span key={tag} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 py-2 text-[14px] font-semibold text-[var(--app-text)] cursor-pointer hover:opacity-80 transition" onClick={() => setQuery(`#${tag}`)}>
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            
-            <div className="flex flex-col">
-              {results.posts.length ? (
-                results.posts.map((post) => <PostCard key={post.id} post={post} />)
-              ) : (
-                <div className="px-5 py-8">
-                  <EmptyState title="Không có kết quả" description="Thử lại bằng một từ khóa khác nhé." />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <UnfollowConfirmModal 
-        open={Boolean(unfollowTarget)}
-        user={unfollowTarget}
-        onClose={() => setUnfollowTarget(null)}
-        onConfirm={() => {
-          toggleFollow(unfollowTarget.id);
-          setUnfollowTarget(null);
-        }}
-      />
+              ))}
+            </section>
+          )}
+          {posts.map((post) => <PostCard key={post.id} post={post} />)}
+          {!error && users.length === 0 && posts.length === 0 && (
+            <EmptyState title="Không có kết quả" description="Thử lại với một từ khóa khác." />
+          )}
+        </div>
+      )}
     </ContentShell>
   );
 }

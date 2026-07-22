@@ -21,6 +21,8 @@ import AdminUsersPage from '../features/admin/pages/AdminUsersPage.jsx';
 import AdminPostsPage from '../features/admin/pages/AdminPostsPage.jsx';
 import AdminReportsPage from '../features/admin/pages/AdminReportsPage.jsx';
 import AdminReportDetailPage from '../features/admin/pages/AdminReportDetailPage.jsx';
+import AdminActionsPage from '../features/admin/pages/AdminActionsPage.jsx';
+import NotificationsPage from '../features/notification/pages/NotificationsPage.jsx';
 import ErrorPage from '../features/system/pages/ErrorPage.jsx';
 import { AdminRoute, GuestRoute, ProfileCompletionRoute, ProtectedRoute, RootRedirect } from './routeGuards.jsx';
 
@@ -48,6 +50,7 @@ export const router = createBrowserRouter([
       { path: '/profile/:userId', element: <ProfilePage /> },
       { path: '/saved', element: <SavedPostsPage /> },
       { path: '/search', element: <SearchPage /> },
+      { path: '/notifications', element: <NotificationsPage /> },
       { path: '/settings/auth-providers', element: <AuthProvidersPage /> },
     ],
   },
@@ -60,6 +63,7 @@ export const router = createBrowserRouter([
       { path: 'posts', element: <AdminPostsPage /> },
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'reports/:reportId', element: <AdminReportDetailPage /> },
+      { path: 'actions', element: <AdminActionsPage /> },
     ],
   },
   { path: '/register/success', element: <Navigate to="/onboarding/profile" replace /> },

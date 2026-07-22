@@ -4,6 +4,7 @@ import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
+import { postApi } from '../../../api/index.js';
 
 function MediaToolIcon() {
   return (
@@ -29,6 +30,8 @@ function readVideoDuration(url) {
 export default function PostComposer({ mode, onClose }) {
   const { createPost, currentUser } = useApp();
   const [content, setContent] = useState('');
+  const [hashtag, setHashtag] = useState('');
+  const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [error, setError] = useState('');
   const [showOptions, setShowOptions] = useState(false);
@@ -47,8 +50,22 @@ export default function PostComposer({ mode, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showOptions]);
 
+  useEffect(() => {
+    const keyword = hashtag.trim();
+    if (!keyword) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      postApi.suggestHashtags(keyword, controller.signal)
+        .then((response) => setHashtagSuggestions(response.suggestions ?? []))
+        .catch(() => setHashtagSuggestions([]));
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [hashtag]);
+
   function resetForm(revokePreview = true) {
     setContent('');
+    setHashtag('');
+    setHashtagSuggestions([]);
     if (revokePreview) {
       mediaPreviews.forEach((item) => URL.revokeObjectURL(item.url));
     }
@@ -57,22 +74,18 @@ export default function PostComposer({ mode, onClose }) {
     setShowOptions(false);
   }
 
-  function submit() {
-    const result = createPost({
+  async function submit() {
+    const result = await createPost({
       content,
-      hashtags: '',
-      media: mediaPreviews.map((item) => ({
-        url: item.url,
-        mediaType: item.mediaType,
-        mimeType: item.file.type,
-      })),
+      hashtag,
+      mediaFiles: mediaPreviews.map((item) => item.file),
     });
     if (!result.ok) {
       setError(result.message);
       return;
     }
     // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.
-    resetForm(false);
+    resetForm();
     onClose();
   }
 
@@ -257,6 +270,11 @@ export default function PostComposer({ mode, onClose }) {
           className="mt-1 min-h-[100px] w-full resize-none border-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-[var(--app-muted)]"
           autoFocus
         />
+        <input value={hashtag} onChange={(event) => setHashtag(event.target.value)} maxLength={100}
+          placeholder="#hashtag (tối đa 1)" className="mt-2 w-full rounded-xl border border-[var(--app-border)] px-3 py-2 text-sm outline-none" />
+        {hashtagSuggestions.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{hashtagSuggestions.slice(0, 5).map((item) => (
+          <button type="button" key={item.hashtagId} onClick={() => setHashtag(item.name)} className="rounded-full bg-[var(--app-surface-soft)] px-3 py-1 text-xs">#{item.name}</button>
+        ))}</div>}
         
         {mediaPreviews.length > 0 && (
           <div className={`mt-2 mb-2 grid gap-2 ${mediaPreviews.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>

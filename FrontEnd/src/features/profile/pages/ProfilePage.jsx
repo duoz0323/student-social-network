@@ -9,6 +9,7 @@ import ContentShell from '../../../components/layout/ContentShell.jsx';
 import PostCard from '../../post/components/PostCard.jsx';
 import PostComposer from '../../post/components/PostComposer.jsx';
 import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
+import { socialApi } from '../../../api/index.js';
 
 export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
@@ -20,8 +21,9 @@ export default function ProfilePage({ self = false }) {
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
   const [activeTab, setActiveTab] = useState('threads');
   const [unfollowTarget, setUnfollowTarget] = useState(null);
+  const [error, setError] = useState('');
   const profile = self ? currentUser : getUserById(userId);
-  const [draft, setDraft] = useState({ displayName: currentUser?.displayName ?? '', bio: currentUser?.bio ?? '', avatarUrl: currentUser?.avatarUrl ?? '' });
+  const [draft, setDraft] = useState({ displayName: currentUser?.displayName ?? '', bio: currentUser?.bio ?? '', avatarUrl: currentUser?.avatarUrl ?? '', dateOfBirth: currentUser?.birthDate ?? '' });
 
   if (!profile || profile.status === 'BLOCKED') {
     return <EmptyState title="Khong tim thay ho so" description="Ho so khong ton tai hoac dang bi khoa." actionLabel="Ve feed" onAction={() => navigate('/feed/for-you')} />;
@@ -30,26 +32,59 @@ export default function ProfilePage({ self = false }) {
   const isSelf = profile.id === currentUserId;
   const isFollowing = data.follows.some((follow) => follow.followerId === currentUserId && follow.followingId === profile.id);
   const posts = data.posts.filter((post) => post.authorId === profile.id && post.status === 'PUBLISHED');
-  const followers = data.follows.filter((follow) => follow.followingId === profile.id).map((follow) => getUserById(follow.followerId)).filter(Boolean);
-  const following = data.follows.filter((follow) => follow.followerId === profile.id).map((follow) => getUserById(follow.followingId)).filter(Boolean);
 
   const handle = profile.email ? `@${profile.email.split('@')[0]}` : `@user${profile.id.slice(-4)}`;
 
   function openEdit() {
-    setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl });
+    setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl, dateOfBirth: profile.birthDate ?? '' });
     setEditing(true);
   }
 
-  function saveProfile() {
-    updateProfile(draft);
-    setEditing(false);
+  async function saveProfile() {
+    try {
+      await updateProfile(draft);
+      setEditing(false);
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
-  function openFollowModal(type) {
-    if (!followModal) {
-      setModalUsers({ followers, following });
-    }
+  async function openFollowModal(type) {
     setFollowModal(type);
+    try {
+      const [followerItems, followingItems] = await Promise.all([
+        socialApi.getFollowers(profile.id), socialApi.getFollowing(profile.id),
+      ]);
+      const normalize = (user) => ({ ...user, id: user.userId });
+      setModalUsers({ followers: followerItems.map(normalize), following: followingItems.map(normalize) });
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  async function changeAvatar(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const response = await socialApi.uploadAvatar(file);
+      setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl }));
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  async function removeAvatar() {
+    try {
+      const response = await socialApi.deleteAvatar();
+      setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl || '' }));
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   function handleFollowClick(userTarget, isCurrentlyFollowing) {
@@ -208,7 +243,7 @@ export default function ProfilePage({ self = false }) {
         }
         footer={
           <Button 
-            disabled={!draft.displayName.trim()} 
+            disabled={!draft.displayName.trim() || !draft.dateOfBirth}
             onClick={saveProfile}
             className="w-full !bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80 !rounded-xl !h-[50px] !font-bold text-[16px]"
           >
@@ -217,9 +252,19 @@ export default function ProfilePage({ self = false }) {
         }
         footerClassName="!border-none !pt-2 !pb-6"
       >
+        {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col items-center mt-2 mb-6">
           <Avatar src={draft.avatarUrl} name={draft.displayName} size="lg" className="!w-[56px] !h-[56px] text-2xl" />
-          <button className="mt-2 text-[14px] font-semibold text-blue-600 hover:underline">Thay đổi ảnh</button>
+          <label className="mt-2 cursor-pointer text-[14px] font-semibold text-blue-600 hover:underline">Thay đổi ảnh
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={changeAvatar} />
+          </label>
+          {draft.avatarUrl && <button onClick={removeAvatar} className="mt-1 text-xs text-red-600">Xóa ảnh</button>}
+        </div>
+
+        <div className="mb-5">
+          <label className="text-[15px] font-semibold text-[var(--app-text)] mb-1.5 block">Ngày sinh</label>
+          <input type="date" required value={draft.dateOfBirth} onChange={(event) => setDraft({ ...draft, dateOfBirth: event.target.value })}
+            className="w-full rounded-xl border border-[var(--app-border)] px-3.5 py-3 text-[15px] outline-none" />
         </div>
 
         <div className="mb-5">

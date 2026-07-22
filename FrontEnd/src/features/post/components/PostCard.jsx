@@ -117,10 +117,12 @@ export default function PostCard({ post, detail = false }) {
   const [draft, setDraft] = useState(post.content);
   const [tags, setTags] = useState(post.hashtags.join(', '));
   const menuRef = useRef(null);
-  const author = getUserById(post.authorId);
+  const author = getUserById(post.authorId) ?? post.author;
   const isOwner = post.authorId === currentUserId;
-  const liked = data.likes.some((like) => like.postId === post.id && like.userId === currentUserId);
-  const saved = data.savedPosts.some((item) => item.postId === post.id && item.userId === currentUserId);
+  const liked = post.likedByCurrentUser
+    ?? data.likes.some((like) => String(like.postId) === String(post.id) && String(like.userId) === String(currentUserId));
+  const saved = post.savedByCurrentUser
+    ?? data.savedPosts.some((item) => String(item.postId) === String(post.id) && String(item.userId) === String(currentUserId));
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
