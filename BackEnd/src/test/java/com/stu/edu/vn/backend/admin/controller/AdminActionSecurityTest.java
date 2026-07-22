@@ -1,7 +1,11 @@
 package com.stu.edu.vn.backend.admin.controller;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,6 +60,27 @@ class AdminActionSecurityTest {
 
         mockMvc.perform(get("/api/v1/admin/actions").header("Authorization", "Bearer admin-token"))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/admin/actions/1").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void activeAdminCannotCreateUpdateOrDeleteHistory() throws Exception {
+        authenticate("admin-token", user(1L, UserRole.ADMIN));
+
+        // Lịch sử là dữ liệu append-only; module chỉ công khai hai endpoint GET.
+        mockMvc.perform(post("/api/v1/admin/actions").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+        mockMvc.perform(put("/api/v1/admin/actions/1").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+        mockMvc.perform(patch("/api/v1/admin/actions/1").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+        mockMvc.perform(delete("/api/v1/admin/actions/1").header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
 
     private void authenticate(String token, User user) {
