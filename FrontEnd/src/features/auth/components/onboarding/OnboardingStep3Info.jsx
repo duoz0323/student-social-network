@@ -1,4 +1,5 @@
 import { inputCls, todayIsoDate } from './onboardingUtils.js';
+import LogoLoader from '../../../../components/common/LogoLoader.jsx';
 import { ErrorMsg, PrimaryBtn, SecondaryBtn, SlidePanel } from './OnboardingShared.jsx';
 
 // Bước 3: Ngày sinh (bắt buộc, ≥18 tuổi) và bio (tùy chọn)
@@ -62,7 +63,7 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
 
       {/* Chỉ 2 nút: Hoàn tất và Quay lại */}
       <PrimaryBtn onClick={onFinish} disabled={isSubmitting}>
-        {isSubmitting ? 'Đang lưu hồ sơ...' : 'Hoàn tất hồ sơ'}
+        {isSubmitting ? <LogoLoader size="sm" message="Đang lưu hồ sơ..." /> : 'Hoàn tất hồ sơ'}
       </PrimaryBtn>
       <SecondaryBtn onClick={onBack} disabled={isSubmitting}>Quay lại</SecondaryBtn>
     </SlidePanel>

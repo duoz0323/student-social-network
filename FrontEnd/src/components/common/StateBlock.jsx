@@ -1,7 +1,8 @@
 import Button from './Button.jsx';
+import LogoLoader from './LogoLoader.jsx';
 
 export function LoadingState({ message = 'Đang tải dữ liệu...' }) {
-  return <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 text-center text-[var(--app-muted)] font-medium">{message}</div>;
+  return <div className="flex min-h-48 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8"><LogoLoader message={message} size="md" /></div>;
 }
 
 export function EmptyState({ title, description, actionLabel, onAction }) {

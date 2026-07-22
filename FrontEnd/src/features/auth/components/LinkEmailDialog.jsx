@@ -7,7 +7,7 @@ export default function LinkEmailDialog({ open, busy, onClose, onSubmit }) {
   const [email, setEmail] = useState('');
   return (
     <Modal open={open} title="Liên kết Email" onClose={busy ? undefined : onClose} footer={(
-      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button disabled={busy || !email.trim()} onClick={() => onSubmit(email)}>{busy ? 'Đang gửi...' : 'Gửi mã OTP'}</Button></>
+      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button disabled={busy || !email.trim()} loading={busy} loadingLabel="Đang gửi..." onClick={() => onSubmit(email)}>Gửi mã OTP</Button></>
     )}>
       <label className="block text-sm font-semibold text-[var(--app-text)]">
         Email mới

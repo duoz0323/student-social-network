@@ -16,7 +16,7 @@ export default function ReauthenticationDialog({ targetMethod, methods, open, bu
   if (!targetMethod) return null;
   return (
     <Modal open={open} title={`Xác thực lại để gỡ ${AUTH_PROVIDER_META[targetMethod].label}`} onClose={busy ? undefined : onClose} footer={(
-      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button variant="danger" disabled={busy || !proof || (proof === 'PASSWORD' && !password)} onClick={() => onSubmit(proof, password)}>{busy ? 'Đang xử lý...' : 'Xác thực và gỡ'}</Button></>
+      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button variant="danger" disabled={busy || !proof || (proof === 'PASSWORD' && !password)} loading={busy} loadingLabel="Đang xác thực..." onClick={() => onSubmit(proof, password)}>Xác thực và gỡ</Button></>
     )}>
       {proofs.length === 0 ? <p className="text-sm font-semibold text-red-600">Không có phương thức xác thực lại khả dụng.</p> : (
         <>

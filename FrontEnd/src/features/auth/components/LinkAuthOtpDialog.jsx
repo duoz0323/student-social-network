@@ -25,7 +25,7 @@ export default function LinkAuthOtpDialog({ flow, busy, onClose, onVerify, onRes
   const challengeExpired = countdown.challenge === 0;
   return (
     <Modal open title="Xác minh OTP liên kết" onClose={busy ? undefined : onClose} footer={(
-      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy flow</Button><Button disabled={busy || challengeExpired || !/^\d{6}$/.test(code)} onClick={() => onVerify(code)}>{busy ? 'Đang xác minh...' : 'Xác minh'}</Button></>
+      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy flow</Button><Button disabled={busy || challengeExpired || !/^\d{6}$/.test(code)} loading={busy} loadingLabel="Đang xác minh..." onClick={() => onVerify(code)}>Xác minh</Button></>
     )}>
       <p className="text-sm text-[var(--app-muted)]">Mã được gửi tới <strong className="text-[var(--app-text)]">{flow.maskedIdentifier}</strong>.</p>
       <input
