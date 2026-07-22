@@ -313,7 +313,7 @@ class AdminReportStatusTransactionIntegrationTest {
     }
 
     private User saveUser(String email, UserRole role) {
-        User user = new User(email, null, "hash");
+        User user = new User(email, "hash");
         user.setRole(role);
         return userRepository.saveAndFlush(user);
     }

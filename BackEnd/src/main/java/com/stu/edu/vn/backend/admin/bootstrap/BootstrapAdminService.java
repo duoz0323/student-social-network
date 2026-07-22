@@ -1,8 +1,6 @@
 package com.stu.edu.vn.backend.admin.bootstrap;
 
-import com.stu.edu.vn.backend.auth.support.IdentifierNormalizer;
-import com.stu.edu.vn.backend.auth.support.IdentifierType;
-import com.stu.edu.vn.backend.auth.support.NormalizedIdentifier;
+import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -66,7 +64,8 @@ public class BootstrapAdminService {
             return BootstrapAdminResult.ALREADY_EXISTS;
         }
 
-        User admin = new User(normalizedEmail, null, passwordEncoder.encode(password));
+        User admin = new User(normalizedEmail, passwordEncoder.encode(password));
+        admin.setEmailVerifiedAt(LocalDateTime.now(clock));
         admin.setRole(UserRole.ADMIN);
         admin.setStatus(UserStatus.ACTIVE);
         admin.setBlockedAt(null);
@@ -79,6 +78,7 @@ public class BootstrapAdminService {
         profile.setAvatarPublicId(null);
         profile.setBio(null);
         profile.setDateOfBirth(null);
+        // Tài khoản quản trị khởi tạo cần vượt qua profile guard để sử dụng API quản trị ngay sau khi tạo.
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         // saveAndFlush làm lỗi hồ sơ xuất hiện ngay trong transaction để bản ghi users được rollback cùng lúc.
         userProfileRepository.saveAndFlush(profile);
@@ -88,11 +88,7 @@ public class BootstrapAdminService {
 
     private String normalizeAndValidateEmail(String rawEmail) {
         try {
-            NormalizedIdentifier identifier = IdentifierNormalizer.normalize(rawEmail);
-            if (identifier.type() != IdentifierType.EMAIL) {
-                throw invalidConfiguration("BOOTSTRAP_ADMIN_EMAIL");
-            }
-            return identifier.value();
+            return EmailNormalizer.normalize(rawEmail).value();
         } catch (BusinessException exception) {
             throw invalidConfiguration("BOOTSTRAP_ADMIN_EMAIL");
         }

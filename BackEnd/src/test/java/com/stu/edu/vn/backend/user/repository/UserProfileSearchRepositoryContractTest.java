@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.user.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -12,7 +13,7 @@ class UserProfileSearchRepositoryContractTest {
 
     @Test
     void searchQueryUsesBoundSubstringFilteringApprovedFiltersAndStableOrdering() throws Exception {
-        Method method = UserProfileRepository.class.getMethod(
+        Method method = SearchUserProfileRepository.class.getMethod(
                 "searchCompletedActiveProfilesByDisplayName", String.class, Pageable.class);
         Query query = method.getAnnotation(Query.class);
 

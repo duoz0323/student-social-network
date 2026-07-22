@@ -187,7 +187,7 @@ class SavedPostServiceImplTest {
     }
 
     private User user(Long userId) {
-        User user = new User("student" + userId + "@example.com", null, "hash");
+        User user = new User("student" + userId + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", userId);
         return user;
     }

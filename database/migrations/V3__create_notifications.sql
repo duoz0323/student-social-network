@@ -30,9 +30,7 @@ CREATE TABLE notifications (
         REFERENCES comments (id)
         ON UPDATE RESTRICT
         ON DELETE CASCADE,
-    CONSTRAINT chk_notifications_not_self CHECK (
-        actor_id IS NULL OR actor_id <> recipient_id
-    ),
+    -- Service chặn tự thông báo; không dùng CHECK trên actor_id vì FK này có ON DELETE SET NULL (MySQL 3823).
     CONSTRAINT chk_notifications_target_by_type CHECK (
         (type = 'FOLLOW' AND post_id IS NULL AND comment_id IS NULL)
         OR

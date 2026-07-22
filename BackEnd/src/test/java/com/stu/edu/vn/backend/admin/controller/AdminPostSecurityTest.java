@@ -14,12 +14,17 @@ import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.security.JwtAuthenticationFilter;
+import com.stu.edu.vn.backend.security.AuthRateLimiter;
+import com.stu.edu.vn.backend.common.util.ClientIpAddressResolver;
 import com.stu.edu.vn.backend.security.JwtService;
 import com.stu.edu.vn.backend.security.SecurityConfig;
+import com.stu.edu.vn.backend.security.SecurityCorsProperties;
+import com.stu.edu.vn.backend.security.SecurityErrorResponseWriter;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -32,8 +37,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 
 @WebMvcTest(AdminPostController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, SecurityErrorResponseWriter.class, SecurityCorsProperties.class, GlobalExceptionHandler.class})
 class AdminPostSecurityTest {
+    @MockitoBean private AuthRateLimiter authRateLimiter;
+    @MockitoBean private ClientIpAddressResolver clientIpAddressResolver;
+    @MockitoBean private UserProfileRepository userProfileRepository;
     @Autowired private MockMvc mockMvc;
     @MockitoBean private AdminPostService service;
     @MockitoBean private JwtService jwtService;
@@ -110,10 +118,11 @@ class AdminPostSecurityTest {
     private void authenticate(String token, User user) {
         when(jwtService.extractUserIdFromAccessToken(token)).thenReturn(user.getId());
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userProfileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(user.getId())).thenReturn(true);
     }
 
     private User user(Long id, UserRole role, UserStatus status) {
-        User user = new User("post" + id + "@example.com", null, "hash");
+        User user = new User("post" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setRole(role);
         user.setStatus(status);

@@ -16,6 +16,7 @@ public class CloudinaryProperties {
     private String apiKey;
     private String apiSecret;
     private String avatarFolder = "student-social-network/avatars";
+    private String postFolder = "student-social-network/posts";
 
     public boolean isConfigured() {
         return hasText(cloudName) && hasText(apiKey) && hasText(apiSecret);

@@ -44,7 +44,7 @@ class CommentMapperTest {
     }
 
     private Comment comment(Long commentId, Comment parent, String content) {
-        User author = new User("student@example.com", null, "hash");
+        User author = new User("student@example.com", "hash");
         ReflectionTestUtils.setField(author, "id", 10L);
         Post post = new Post(author, "Noi dung bai viet");
         ReflectionTestUtils.setField(post, "id", 1L);

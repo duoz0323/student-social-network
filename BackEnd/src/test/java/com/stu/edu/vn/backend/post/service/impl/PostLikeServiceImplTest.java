@@ -156,7 +156,7 @@ class PostLikeServiceImplTest {
     }
 
     private User user(Long userId) {
-        User user = new User("student@example.com", null, "hash");
+        User user = new User("student@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", userId);
         return user;
     }

@@ -56,7 +56,7 @@ class AdminPostServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        admin = new User("admin@example.com", null, "hash");
+        admin = new User("admin@example.com", "hash");
         admin.setRole(UserRole.ADMIN);
         ReflectionTestUtils.setField(admin, "id", 1L);
         when(currentUserProvider.getCurrentUser())
@@ -234,7 +234,7 @@ class AdminPostServiceImplTest {
     }
 
     private Post post(Long id, PostStatus status) {
-        User author = new User("author" + id + "@example.com", null, "hash");
+        User author = new User("author" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(author, "id", 8L);
         Post post = new Post(author, "content");
         ReflectionTestUtils.setField(post, "id", id);

@@ -6,7 +6,7 @@ ALTER TABLE post_media
     MODIFY COLUMN mime_type ENUM(
         'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'
     ) NOT NULL,
-    ADD COLUMN duration_seconds SMALLINT UNSIGNED NULL AFTER height_px,
+    ADD COLUMN duration_seconds INT UNSIGNED NULL AFTER height_px,
     ADD COLUMN thumbnail_url VARCHAR(1000) NULL AFTER duration_seconds;
 
 ALTER TABLE post_media

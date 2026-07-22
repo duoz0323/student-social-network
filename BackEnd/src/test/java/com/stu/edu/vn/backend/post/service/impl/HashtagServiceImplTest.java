@@ -167,7 +167,7 @@ class HashtagServiceImplTest {
     }
 
     private User user(Long id, UserStatus status) {
-        User user = new User("user" + id + "@example.com", null, "hash");
+        User user = new User("user" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setStatus(status);
         return user;

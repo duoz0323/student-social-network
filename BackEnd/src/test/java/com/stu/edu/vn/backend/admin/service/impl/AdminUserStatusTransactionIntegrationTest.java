@@ -134,7 +134,7 @@ class AdminUserStatusTransactionIntegrationTest {
         Fixture fixture = createFixture(true);
         authenticate(fixture.adminId());
         doThrow(new IllegalStateException("revoke failed intentionally"))
-                .when(refreshTokenRepository).revokeActiveTokensByUserId(eq(fixture.userId()), any());
+                .when(refreshTokenRepository).revokeAllActiveByUserId(eq(fixture.userId()), any());
 
         assertThatThrownBy(() -> adminUserService.blockUser(
                 fixture.userId(), new AdminBlockUserRequest(AdminBlockReason.SPAM)))
@@ -213,10 +213,10 @@ class AdminUserStatusTransactionIntegrationTest {
     private Fixture createFixture(boolean includeTokens) {
         currentFixture = transactionTemplate.execute(status -> {
             String marker = UUID.randomUUID().toString().replace("-", "");
-            User admin = new User("status-admin-" + marker + "@example.com", null, "hash");
+            User admin = new User("status-admin-" + marker + "@example.com", "hash");
             admin.setRole(UserRole.ADMIN);
             admin = userRepository.saveAndFlush(admin);
-            User target = new User("status-user-" + marker + "@example.com", null, "hash");
+            User target = new User("status-user-" + marker + "@example.com", "hash");
             target = userRepository.saveAndFlush(target);
 
             String activeHash = tokenHash(marker, "a");

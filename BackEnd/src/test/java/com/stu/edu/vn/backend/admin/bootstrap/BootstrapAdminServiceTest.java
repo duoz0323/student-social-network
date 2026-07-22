@@ -56,7 +56,7 @@ class BootstrapAdminServiceTest {
     }
 
     @Test
-    void bootstrapCreatesCompletedActiveAdminWithHashedPassword() {
+    void bootstrapCreatesActiveAdminWithHashedPassword() {
         when(userRepository.existsByEmail("admin@example.com")).thenReturn(false);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userProfileRepository.saveAndFlush(any(UserProfile.class)))
@@ -73,7 +73,7 @@ class BootstrapAdminServiceTest {
         UserProfile profile = profileCaptor.getValue();
         assertThat(result).isEqualTo(BootstrapAdminResult.CREATED);
         assertThat(admin.getEmail()).isEqualTo("admin@example.com");
-        assertThat(admin.getPhoneNumber()).isNull();
+        assertThat(admin.getEmailVerifiedAt()).isEqualTo(LocalDateTime.now(CLOCK));
         assertThat(admin.getPasswordHash()).isNotEqualTo(RAW_PASSWORD);
         assertThat(passwordEncoder.matches(RAW_PASSWORD, admin.getPasswordHash())).isTrue();
         assertThat(admin.getRole()).isEqualTo(UserRole.ADMIN);
@@ -91,7 +91,7 @@ class BootstrapAdminServiceTest {
 
     @Test
     void bootstrapSkipsExistingAccountWithoutChangingRoleOrPassword() {
-        User existingUser = new User("admin@example.com", null, "existing-password-hash");
+        User existingUser = new User("admin@example.com", "existing-password-hash");
         existingUser.setRole(UserRole.USER);
         when(userRepository.existsByEmail("admin@example.com")).thenReturn(true);
 

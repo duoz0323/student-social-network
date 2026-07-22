@@ -87,7 +87,7 @@ class AdminActionRepositoryIntegrationTest {
     }
 
     private User saveUser(String email, UserRole role) {
-        User user = new User(email, null, "hash");
+        User user = new User(email, "hash");
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         return userRepository.saveAndFlush(user);

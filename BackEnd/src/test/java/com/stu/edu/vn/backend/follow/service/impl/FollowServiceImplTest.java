@@ -160,7 +160,7 @@ class FollowServiceImplTest {
     }
 
     private User user(Long id, UserStatus status) {
-        User user = new User("student" + id + "@example.com", null, "hash");
+        User user = new User("student" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setStatus(status);
         return user;

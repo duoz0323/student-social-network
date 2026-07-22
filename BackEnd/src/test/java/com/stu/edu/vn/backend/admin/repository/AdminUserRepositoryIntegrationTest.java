@@ -110,7 +110,7 @@ class AdminUserRepositoryIntegrationTest {
     }
 
     private User saveUser(String email, String phoneNumber, UserRole role, UserStatus status) {
-        User user = new User(email, phoneNumber, "hash");
+        User user = new User(email, "hash");
         user.setRole(role);
         user.setStatus(status);
         if (status == UserStatus.BLOCKED) {

@@ -330,7 +330,7 @@ class AdminReportServiceImplTest {
     }
 
     private User user(Long id, UserRole role) {
-        User user = new User("report-" + id + "@example.com", null, "hash");
+        User user = new User("report-" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setRole(role);
         return user;

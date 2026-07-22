@@ -22,11 +22,11 @@ import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
+import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
-import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,7 +41,7 @@ class SearchPostServiceImplTest {
 
     private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
     private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
-    private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
+    private final SearchUserProfileRepository userProfileRepository = org.mockito.Mockito.mock(SearchUserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
     private final PostMediaRepository postMediaRepository = org.mockito.Mockito.mock(PostMediaRepository.class);
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
@@ -163,7 +163,7 @@ class SearchPostServiceImplTest {
     }
 
     private User user(Long id, UserStatus status) {
-        User user = new User("u" + id + "@example.com", null, "hash");
+        User user = new User("u" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setStatus(status);
         return user;

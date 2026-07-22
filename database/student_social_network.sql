@@ -539,10 +539,13 @@ CREATE TABLE `post_media` (
   `post_id` bigint unsigned NOT NULL,
   `media_url` varchar(1000) NOT NULL,
   `storage_public_id` varchar(255) NOT NULL,
-  `mime_type` enum('image/jpeg','image/png','image/webp') NOT NULL,
+  `media_type` enum('IMAGE','VIDEO') NOT NULL,
+  `mime_type` enum('image/jpeg','image/png','image/webp','video/mp4','video/webm') NOT NULL,
   `file_size_bytes` bigint unsigned NOT NULL,
   `width_px` int unsigned DEFAULT NULL,
   `height_px` int unsigned DEFAULT NULL,
+  `duration_seconds` int unsigned DEFAULT NULL,
+  `thumbnail_url` varchar(1000) DEFAULT NULL,
   `display_order` tinyint unsigned NOT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
@@ -550,6 +553,7 @@ CREATE TABLE `post_media` (
   UNIQUE KEY `uq_post_media_post_order` (`post_id`,`display_order`),
   CONSTRAINT `fk_post_media_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `chk_post_media_display_order` CHECK ((`display_order` <= 3)),
+  CONSTRAINT `chk_post_media_duration` CHECK ((((`media_type` = _utf8mb4'IMAGE') and (`duration_seconds` is null)) or ((`media_type` = _utf8mb4'VIDEO') and (`duration_seconds` between 1 and 180)))),
   CONSTRAINT `chk_post_media_file_size` CHECK ((`file_size_bytes` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -684,6 +688,48 @@ CREATE TABLE `reports` (
 LOCK TABLES `reports` WRITE;
 /*!40000 ALTER TABLE `reports` DISABLE KEYS */;
 /*!40000 ALTER TABLE `reports` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `recipient_id` bigint unsigned NOT NULL,
+  `actor_id` bigint unsigned DEFAULT NULL,
+  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
+  `post_id` bigint unsigned DEFAULT NULL,
+  `comment_id` bigint unsigned DEFAULT NULL,
+  `report_id` bigint unsigned DEFAULT NULL,
+  `read_at` datetime(6) DEFAULT NULL,
+  `deleted_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `idx_notifications_recipient_created` (`recipient_id`,`deleted_at`,`created_at` DESC,`id` DESC),
+  KEY `idx_notifications_recipient_unread` (`recipient_id`,`deleted_at`,`read_at`,`id`),
+  KEY `fk_notifications_actor` (`actor_id`),
+  KEY `fk_notifications_post` (`post_id`),
+  KEY `fk_notifications_comment` (`comment_id`),
+  KEY `fk_notifications_report` (`report_id`),
+  CONSTRAINT `fk_notifications_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_notifications_comment` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_notifications_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_notifications_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_notifications_report` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Các quy tắc actor theo loại và chặn tự thông báo được kiểm tra ở service. MySQL không cho
+-- actor_id tham gia CHECK đồng thời dùng foreign key ON DELETE SET NULL (ERROR 3823).
+
+LOCK TABLES `notifications` WRITE;
+/*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
+/*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

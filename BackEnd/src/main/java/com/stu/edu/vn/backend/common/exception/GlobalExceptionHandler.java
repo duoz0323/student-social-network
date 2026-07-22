@@ -15,7 +15,6 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -126,17 +125,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpServletRequest request) {
-        ErrorResponse response = ErrorResponse.of(
-                ErrorCode.VALIDATION_ERROR.name(),
-                ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
-                HttpStatus.BAD_REQUEST.value(),
-                request.getRequestURI()
-        );
-        return ResponseEntity.badRequest().body(response);
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(HttpServletRequest request) {
         ErrorResponse response = ErrorResponse.of(
                 ErrorCode.VALIDATION_ERROR.name(),
                 ErrorCode.VALIDATION_ERROR.getDefaultMessage(),

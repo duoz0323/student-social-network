@@ -74,7 +74,7 @@ class AdminUserStatusServiceImplTest {
         assertThat(response)
                 .extracting("userId", "status", "blockedAt", "blockedReason")
                 .containsExactly(10L, UserStatus.BLOCKED, NOW, "SPAM");
-        verify(refreshTokenRepository).revokeActiveTokensByUserId(10L, NOW);
+        verify(refreshTokenRepository).revokeAllActiveByUserId(10L, NOW);
         verify(notificationService).createAccountBlockedNotification(10L);
 
         ArgumentCaptor<AccountStatusHistory> historyCaptor = ArgumentCaptor.forClass(AccountStatusHistory.class);
@@ -147,7 +147,7 @@ class AdminUserStatusServiceImplTest {
         assertThat(response)
                 .extracting("status", "blockedAt", "blockedReason")
                 .containsExactly(UserStatus.ACTIVE, null, null);
-        verify(refreshTokenRepository, never()).revokeActiveTokensByUserId(any(), any());
+        verify(refreshTokenRepository, never()).revokeAllActiveByUserId(any(), any());
 
         ArgumentCaptor<AccountStatusHistory> historyCaptor = ArgumentCaptor.forClass(AccountStatusHistory.class);
         ArgumentCaptor<AdminAction> actionCaptor = ArgumentCaptor.forClass(AdminAction.class);
@@ -180,7 +180,7 @@ class AdminUserStatusServiceImplTest {
         User target = user(10L, UserRole.USER, UserStatus.ACTIVE);
         when(adminUserRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(target));
         doThrow(new IllegalStateException("revoke failed"))
-                .when(refreshTokenRepository).revokeActiveTokensByUserId(10L, NOW);
+                .when(refreshTokenRepository).revokeAllActiveByUserId(10L, NOW);
 
         assertThatThrownBy(() -> service.blockUser(10L, new AdminBlockUserRequest(AdminBlockReason.SPAM)))
                 .isInstanceOf(IllegalStateException.class);
@@ -196,7 +196,7 @@ class AdminUserStatusServiceImplTest {
 
         assertThatThrownBy(() -> service.blockUser(10L, new AdminBlockUserRequest(AdminBlockReason.SPAM)))
                 .isInstanceOf(IllegalStateException.class);
-        verify(refreshTokenRepository).revokeActiveTokensByUserId(10L, NOW);
+        verify(refreshTokenRepository).revokeAllActiveByUserId(10L, NOW);
         verify(actionRepository, never()).save(any());
     }
 
@@ -239,7 +239,7 @@ class AdminUserStatusServiceImplTest {
     }
 
     private User user(Long id, UserRole role, UserStatus status) {
-        User user = new User("user" + id + "@example.com", null, "hash");
+        User user = new User("user" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         ReflectionTestUtils.setField(user, "updatedAt", LocalDateTime.of(2026, 7, 14, 7, 0));
         user.setRole(role);

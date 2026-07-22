@@ -8,6 +8,7 @@ import com.stu.edu.vn.backend.search.dto.response.SearchUserResponse;
 import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
+import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
 import com.stu.edu.vn.backend.search.service.SearchService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostHashtag;
@@ -22,7 +23,6 @@ import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
-import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,7 +47,7 @@ public class SearchServiceImpl implements SearchService {
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final SearchUserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
     private final PostMediaRepository postMediaRepository;
     private final PostHashtagRepository postHashtagRepository;
@@ -57,7 +57,7 @@ public class SearchServiceImpl implements SearchService {
     private final HashtagNormalizer hashtagNormalizer;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
-                             UserProfileRepository userProfileRepository, PostRepository postRepository,
+                             SearchUserProfileRepository userProfileRepository, PostRepository postRepository,
                              PostMediaRepository postMediaRepository, PostHashtagRepository postHashtagRepository,
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
                              SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer) {

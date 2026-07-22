@@ -129,7 +129,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         target.setBlockedReason(reason);
 
         // Bulk update không tải từng Refresh Token và chỉ tác động token chưa revoke, còn hạn tại thời điểm khóa.
-        refreshTokenRepository.revokeActiveTokensByUserId(target.getId(), now);
+        refreshTokenRepository.revokeAllActiveByUserId(target.getId(), now);
         accountStatusHistoryRepository.save(new AccountStatusHistory(
                 target, UserStatus.ACTIVE, UserStatus.BLOCKED, adminReference, reason));
         adminActionRepository.save(new AdminAction(
