@@ -23,28 +23,29 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ProfileCompletionFilter profileCompletionFilter;
     private final SecurityErrorResponseWriter errorResponseWriter;
     private final AuthRateLimitFilter authRateLimitFilter;
-        private final SecurityCorsProperties securityCorsProperties;
+    private final SecurityCorsProperties securityCorsProperties;
 
-        @Bean
-        public CorsConfigurationSource corsConfigurationSource() {
-                CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(securityCorsProperties.getAllowedOrigins());
-                configuration.setAllowedMethods(securityCorsProperties.getAllowedMethods());
-                configuration.setAllowedHeaders(securityCorsProperties.getAllowedHeaders());
-                configuration.setExposedHeaders(securityCorsProperties.getExposedHeaders());
-                configuration.setAllowCredentials(securityCorsProperties.isAllowCredentials());
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(securityCorsProperties.getAllowedOrigins());
+        configuration.setAllowedMethods(securityCorsProperties.getAllowedMethods());
+        configuration.setAllowedHeaders(securityCorsProperties.getAllowedHeaders());
+        configuration.setExposedHeaders(securityCorsProperties.getExposedHeaders());
+        configuration.setAllowCredentials(securityCorsProperties.isAllowCredentials());
 
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", configuration);
-                return source;
-        }
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -65,10 +66,12 @@ public class SecurityConfig {
                                 SecurityPaths.PUBLIC_GET_AUTH_ENDPOINTS.toArray(String[]::new)
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(authRateLimitFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(profileCompletionFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(authRateLimitFilter, ProfileCompletionFilter.class)
                 .build();
     }
 

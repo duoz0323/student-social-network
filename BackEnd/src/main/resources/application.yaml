@@ -17,6 +17,22 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_APP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 3000
+          timeout: 8000
+          writetimeout: 8000
+    default-encoding: UTF-8
 
 jwt:
   access-token-secret: ${JWT_ACCESS_TOKEN_SECRET:}
@@ -41,13 +57,8 @@ security:
 
 auth:
   otp-delivery:
-    connect-timeout: ${OTP_PROVIDER_CONNECT_TIMEOUT:3s}
-    read-timeout: ${OTP_PROVIDER_READ_TIMEOUT:8s}
-    brevo:
-      api-key: ${BREVO_API_KEY:}
-      sender-email: ${BREVO_SENDER_EMAIL:}
-      sender-name: ${BREVO_SENDER_NAME:UniShare}
-      base-url: ${BREVO_BASE_URL:https://api.brevo.com}
+    sender-name: ${MAIL_SENDER_NAME:UniShare}
+    otp-expiration: ${AUTH_OTP_EXPIRATION:10m}
   password-recovery:
     challenge-expiration: PT15M
     otp-expiration: PT10M

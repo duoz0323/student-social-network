@@ -7,7 +7,7 @@ import com.stu.edu.vn.backend.auth.repository.PasswordRecoveryChallengeRepositor
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Transaction ngắn claim/finalize delivery; không bao quanh lời gọi Brevo. */
+/** Transaction ngắn claim/finalize delivery; không bao quanh lời gọi Gmail SMTP. */
 @Service
 public class PasswordRecoveryDeliveryStatusService {
     private final PasswordRecoveryChallengeRepository repository;

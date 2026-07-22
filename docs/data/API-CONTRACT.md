@@ -133,7 +133,7 @@ Quy tắc:
 
 - Backend pessimistic-lock pending row và thực hiện transaction ngắn.
 - OTP hợp lệ mới tạo `users`, `user_profiles` và Refresh Token hash trong cùng transaction.
-- Không gọi Brevo/provider khi đang giữ lock.
+- Không gọi Gmail SMTP khi đang giữ lock hoặc transaction database.
 - Verify sau completion trả `AUTH_REGISTRATION_ALREADY_COMPLETED` và không phát lại token cũ.
 - Deadlock chỉ được retry hữu hạn; lỗi nghiệp vụ không được retry.
 

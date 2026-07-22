@@ -13,6 +13,9 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
 
+    /** Kiểm tra onboarding bằng truy vấn tồn tại, không tải toàn bộ hồ sơ cho mỗi request. */
+    boolean existsByUserIdAndProfileCompletedAtIsNotNull(Long userId);
+
     /**
      * Khóa hồ sơ trong transaction để các cập nhật onboarding, profile và avatar không ghi đè lẫn nhau.
      */

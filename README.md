@@ -219,7 +219,7 @@ Quy tắc:
 - Identifier không tồn tại, chưa verified, social-only hoặc `BLOCKED` đều nhận response start trung tính và một decoy challenge có lifecycle thật.
 - Challenge có TTL 15 phút; OTP 10 phút và không vượt challenge expiry; cooldown 60 giây; tối đa 5 lần sai; reset-authorized token 5 phút.
 - OTP và token chỉ lưu dạng HMAC hash. Recovery flow token và reset-authorized token chỉ truyền qua `X-Auth-Flow-Token`.
-- OTP delivery chạy bất đồng bộ sau commit, không enqueue cho decoy và không giữ transaction khi gọi Brevo.
+- OTP delivery chạy bất đồng bộ sau commit, không enqueue cho decoy và không giữ transaction khi gọi Gmail SMTP.
 - Complete đổi mật khẩu, đánh dấu token single-use và thu hồi toàn bộ Refresh Token trong cùng transaction; không tự đăng nhập hoặc cấp JWT mới.
 - Access Token stateless đã phát hành còn hiệu lực tới expiry vì hệ thống hiện chưa dùng `tokenVersion`.
 - `password_reset_tokens` là bảng legacy được giữ nguyên để audit; implementation mới không đọc hoặc ghi bảng này.
@@ -471,8 +471,8 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - JWT Authentication.
 - Google token verification.
 - Facebook access-token verification.
-- Java Mail hoặc dịch vụ email tương đương.
-- Brevo Transactional Email API.
+- Spring JavaMailSender.
+- Gmail SMTP cho toàn bộ email OTP.
 - Maven.
 - Lombok.
 - MapStruct hoặc mapper thủ công.
@@ -903,13 +903,14 @@ GOOGLE_CLIENT_ID=your_google_client_id
 FACEBOOK_APP_ID=your_facebook_app_id
 FACEBOOK_APP_SECRET=your_facebook_app_secret
 
-BREVO_API_KEY=your_brevo_api_key
-BREVO_SENDER_EMAIL=verified_sender@example.com
-BREVO_SENDER_NAME=UniShare
-# 4 = Brandname mặc định Verify/Notify; dùng 3 khi đã có Brandname riêng
+MAIL_USERNAME=your_gmail_address@gmail.com
+MAIL_APP_PASSWORD=your_16_character_google_app_password
+MAIL_SENDER_NAME=UniShare
 ```
 
-Không đưa thông tin bí mật lên GitHub.
+`MAIL_USERNAME` là tài khoản Gmail gửi OTP. `MAIL_APP_PASSWORD` phải là Google App Password,
+không dùng mật khẩu đăng nhập Google thông thường. `MAIL_SENDER_NAME` là tên hiển thị người gửi
+và mặc định là `UniShare`. Không đưa thông tin bí mật lên GitHub.
 
 Chạy Backend:
 
