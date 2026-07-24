@@ -12,7 +12,6 @@ public record AdminUserDetailResponse(
         String avatarUrl,
         String bio,
         String email,
-        String phoneNumber,
         UserStatus status,
         boolean profileCompleted,
         LocalDateTime profileCompletedAt,

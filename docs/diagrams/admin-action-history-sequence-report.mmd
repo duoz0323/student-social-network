@@ -1,0 +1,15 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant AC as AdminActionController
+    participant AS as AdminActionService
+    participant DB as MySQL
+
+    A->>FE: Mở lịch sử hoạt động
+    FE->>AC: GET /api/v1/admin/actions
+    AC->>AS: getActions(filters, page, size)
+    AS->>DB: Truy vấn admin_actions
+    DB-->>AS: Kết quả phân trang
+    AS-->>FE: PageResponse
+    FE-->>A: Hiển thị lịch sử hoạt động

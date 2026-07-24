@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant NC as NotificationController
+    participant NS as NotificationService
+    participant DB as MySQL
+
+    U->>FE: Mở danh sách thông báo
+    FE->>NC: GET /api/v1/notifications
+    NC->>NS: getNotifications(page, size)
+    NS->>DB: Truy vấn thông báo của người dùng
+    DB-->>NS: Kết quả phân trang
+    NS-->>FE: PageResponse
+    FE-->>U: Hiển thị thông báo
+    opt Đánh dấu đã đọc
+        FE->>NC: PATCH /notifications/{id}/read
+        NC->>NS: markAsRead(notificationId)
+        NS->>DB: Cập nhật read_at
+        NS-->>FE: NotificationReadResponse
+    end

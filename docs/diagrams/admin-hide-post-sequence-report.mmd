@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant PC as AdminPostController
+    participant PS as AdminPostService
+    participant DB as MySQL
+
+    A->>FE: Chọn ẩn bài viết
+    FE->>PC: PATCH /api/v1/admin/posts/{postId}/hide
+    PC->>PS: hidePost(postId, request)
+    PS->>DB: Khóa và kiểm tra trạng thái Post
+    alt Không thể ẩn bài viết
+        PS-->>FE: Trả lỗi trạng thái
+    else Hợp lệ
+        PS->>DB: Cập nhật HIDDEN và ghi AdminAction
+        DB-->>PS: Commit transaction
+        PS-->>FE: AdminPostStatusResponse
+        FE-->>A: Hiển thị bài viết đã bị ẩn
+    end

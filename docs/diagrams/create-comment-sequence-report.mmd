@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant CC as CommentController
+    participant CS as CommentService
+    participant DB as MySQL
+
+    U->>FE: Nhập nội dung bình luận
+    FE->>CC: POST /api/v1/posts/{postId}/comments
+    CC->>CS: createComment(postId, request)
+    CS->>DB: Kiểm tra bài viết và nội dung
+    alt Dữ liệu không hợp lệ
+        CS-->>FE: Trả lỗi bình luận
+    else Hợp lệ
+        CS->>DB: Lưu Comment
+        DB-->>CS: Commit transaction
+        CS-->>FE: CommentResponse
+        FE-->>U: Hiển thị bình luận mới
+    end

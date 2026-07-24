@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant PC as PostController
+    participant PS as PostService
+    participant DB as MySQL
+
+    U->>FE: Chọn xóa bài viết
+    FE->>PC: DELETE /api/v1/posts/{postId}
+    PC->>PS: deletePost(postId)
+    PS->>DB: Kiểm tra tác giả và trạng thái
+    alt Không được phép xóa
+        PS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        PS->>DB: Cập nhật trạng thái DELETED
+        DB-->>PS: Commit transaction
+        PS-->>FE: DeletePostResponse
+        FE-->>U: Loại bài viết khỏi giao diện
+    end

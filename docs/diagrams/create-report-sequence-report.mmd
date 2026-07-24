@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant RC as ReportController
+    participant RS as ReportService
+    participant DB as MySQL
+
+    U->>FE: Chọn báo cáo bài viết
+    FE->>RC: POST /api/v1/posts/{postId}/reports
+    RC->>RS: createPostReport(postId, request)
+    RS->>DB: Kiểm tra bài viết và báo cáo trùng
+    alt Không thể báo cáo
+        RS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        RS->>DB: Lưu Report và snapshot
+        DB-->>RS: Commit transaction
+        RS-->>FE: CreateReportResponse
+        FE-->>U: Thông báo gửi báo cáo thành công
+    end

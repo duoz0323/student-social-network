@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant RC as AdminReportController
+    participant RS as AdminReportService
+    participant DB as MySQL
+
+    A->>FE: Chọn xử lý báo cáo
+    FE->>RC: PATCH /api/v1/admin/reports/{id}/resolve
+    RC->>RS: resolveReport(reportId, request)
+    RS->>DB: Khóa và kiểm tra Report
+    alt Báo cáo không còn PENDING
+        RS-->>FE: Trả lỗi trạng thái
+    else Hợp lệ
+        RS->>DB: Cập nhật RESOLVED và ghi AdminAction
+        DB-->>RS: Commit transaction
+        RS-->>FE: AdminReportStatusResponse
+        FE-->>A: Hiển thị kết quả xử lý
+    end

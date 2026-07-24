@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant LC as PostLikeController
+    participant LS as PostLikeService
+    participant DB as MySQL
+
+    U->>FE: Chọn thích bài viết
+    FE->>LC: POST /api/v1/posts/{postId}/likes
+    LC->>LS: likePost(postId)
+    LS->>DB: Kiểm tra bài viết và lượt thích
+    alt Không thể thích
+        LS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        LS->>DB: Lưu post_likes
+        DB-->>LS: Cập nhật like_count
+        LS-->>FE: PostLikeResponse
+        FE-->>U: Hiển thị trạng thái đã thích
+    end

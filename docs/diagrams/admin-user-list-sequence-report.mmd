@@ -1,0 +1,15 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant UC as AdminUserController
+    participant US as AdminUserService
+    participant DB as MySQL
+
+    A->>FE: Mở danh sách người dùng
+    FE->>UC: GET /api/v1/admin/users
+    UC->>US: getUsers(keyword, status, page, size)
+    US->>DB: Truy vấn và lọc người dùng
+    DB-->>US: Kết quả phân trang
+    US-->>FE: PageResponse
+    FE-->>A: Hiển thị danh sách người dùng

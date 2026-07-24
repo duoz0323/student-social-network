@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant PC as UserProfileController
+    participant PS as UserProfileService
+    participant DB as MySQL
+
+    U->>FE: Chỉnh sửa thông tin hồ sơ
+    FE->>PC: PUT /api/v1/users/me/profile
+    PC->>PS: updateMyProfile(request)
+    PS->>PS: validateProfile()
+    alt Dữ liệu không hợp lệ
+        PS-->>FE: Trả lỗi cập nhật
+    else Dữ liệu hợp lệ
+        PS->>DB: Lưu user_profiles
+        DB-->>PS: Hồ sơ đã cập nhật
+        PS-->>FE: UserProfileResponse
+        FE-->>U: Hiển thị hồ sơ mới
+    end

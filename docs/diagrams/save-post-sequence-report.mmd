@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant SC as SavedPostController
+    participant SS as SavedPostService
+    participant DB as MySQL
+
+    U->>FE: Chọn lưu bài viết
+    FE->>SC: POST /api/v1/posts/{postId}/saves
+    SC->>SS: savePost(postId)
+    SS->>DB: Kiểm tra bài viết và bản ghi trùng
+    alt Không thể lưu
+        SS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        SS->>DB: Lưu saved_posts
+        DB-->>SS: Commit transaction
+        SS-->>FE: PostSaveResponse
+        FE-->>U: Hiển thị trạng thái đã lưu
+    end

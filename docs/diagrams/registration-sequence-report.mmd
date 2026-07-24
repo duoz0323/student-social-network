@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+
+    actor U as Người dùng
+    participant FE as Frontend
+    participant AC as AuthController
+    participant AS as Auth Services
+    participant DB as MySQL
+    participant ES as Email Service
+
+    U->>FE: Nhập thông tin đăng ký
+    FE->>AC: POST /api/v1/auth/registrations
+    AC->>AS: registrationService.start()
+    AS->>DB: transactionService.create()
+    Note over AS,DB: Tạo đăng ký tạm và OTP
+    DB-->>AS: Tạo thành công
+    AS->>ES: otpSender.send()
+    ES-->>U: Gửi mã OTP
+    AS-->>FE: Trả flow token
+
+    U->>FE: Nhập mã OTP
+    FE->>AC: POST /api/v1/auth/registrations/verify
+    AC->>AS: verificationService.verify()
+    AS->>DB: transactionService.verify()
+
+    alt OTP không hợp lệ hoặc hết hạn
+        DB-->>AS: Xác minh thất bại
+        AS-->>FE: Trả lỗi OTP
+        FE-->>U: Nhập lại hoặc gửi lại OTP
+    else OTP hợp lệ
+        AS->>DB: Tạo User, Profile và Refresh Token
+        AS->>AS: jwtService.generateAccessToken()
+        AS->>DB: pending.complete()
+        DB-->>AS: Hoàn tất transaction
+        AS-->>FE: Trả Access Token và Refresh Token
+        FE-->>U: Chuyển đến hoàn tất hồ sơ
+    end

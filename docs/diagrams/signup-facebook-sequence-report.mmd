@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FB as Facebook
+    participant AC as AuthController
+    participant AS as FacebookAuthService
+    participant DB as MySQL
+
+    U->>FE: Chọn đăng ký bằng Facebook
+    FE->>FB: Yêu cầu xác thực
+    FB-->>FE: Trả Access Token
+    FE->>AC: POST /api/v1/auth/oauth/facebook
+    AC->>AS: authenticate(request, ipAddress)
+    AS->>FB: verifier.verify()
+    AS->>DB: transactionService.authenticate()
+    alt Tài khoản xung đột
+        DB-->>FE: Yêu cầu xử lý xung đột
+    else Provider chưa tồn tại
+        AS->>DB: Tạo User, Profile và liên kết Facebook
+        AS->>AS: issueSession()
+        AS-->>FE: Trả Access Token và Refresh Token
+        FE-->>U: Chuyển đến hoàn tất hồ sơ
+    end

@@ -11,7 +11,6 @@ public record AdminUserListItemResponse(
         String displayName,
         String avatarUrl,
         String email,
-        String phoneNumber,
         UserStatus status,
         boolean profileCompleted,
         LocalDateTime createdAt

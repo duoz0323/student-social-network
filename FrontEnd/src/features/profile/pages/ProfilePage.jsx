@@ -33,7 +33,8 @@ export default function ProfilePage({ self = false }) {
   const isFollowing = data.follows.some((follow) => follow.followerId === currentUserId && follow.followingId === profile.id);
   const posts = data.posts.filter((post) => post.authorId === profile.id && post.status === 'PUBLISHED');
 
-  const handle = profile.email ? `@${profile.email.split('@')[0]}` : `@user${profile.id.slice(-4)}`;
+  // Hồ sơ công khai chỉ hiển thị tên hiển thị, không suy diễn username từ email hoặc userId.
+  const handle = profile.displayName;
 
   function openEdit() {
     setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl, dateOfBirth: profile.birthDate ?? '' });
@@ -346,7 +347,8 @@ export default function ProfilePage({ self = false }) {
         <div className="flex flex-col">
           {(followModal === 'followers' ? modalUsers.followers : modalUsers.following).map((user, index) => {
             const isUserFollowing = data.follows.some(f => f.followerId === currentUserId && f.followingId === user.id);
-            const userHandle = user.email ? `@${user.email.split('@')[0]}` : `@user${user.id.slice(-4)}`;
+            // Danh sách follow dùng displayName theo contract và không phụ thuộc kiểu dữ liệu của userId.
+            const userHandle = user.displayName;
             
             return (
               <div key={user.id} className={`flex w-full items-center justify-between py-3 ${index !== (followModal === 'followers' ? modalUsers.followers : modalUsers.following).length - 1 ? 'border-b border-[var(--app-border)]' : ''}`}>

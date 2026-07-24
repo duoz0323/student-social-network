@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant CC as CommentController
+    participant CS as CommentService
+    participant DB as MySQL
+
+    U->>FE: Chọn xóa bình luận
+    FE->>CC: DELETE /api/v1/comments/{commentId}
+    CC->>CS: deleteComment(commentId)
+    CS->>DB: Kiểm tra tác giả và trạng thái
+    alt Không có quyền xóa
+        CS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        CS->>DB: Xóa mềm Comment
+        DB-->>CS: Commit transaction
+        CS-->>FE: DeleteCommentResponse
+        FE-->>U: Loại bình luận khỏi giao diện
+    end

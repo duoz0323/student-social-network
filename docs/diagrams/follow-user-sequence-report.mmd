@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FC as FollowController
+    participant FS as FollowService
+    participant DB as MySQL
+
+    U->>FE: Chọn theo dõi người dùng
+    FE->>FC: POST /api/v1/users/{userId}/follow
+    FC->>FS: followUser(userId)
+    FS->>DB: Kiểm tra người dùng và quan hệ Follow
+    alt Tự theo dõi hoặc đã theo dõi
+        FS-->>FE: Trả lỗi nghiệp vụ
+    else Hợp lệ
+        FS->>DB: Lưu follows
+        DB-->>FS: Commit transaction
+        FS-->>FE: FollowStatusResponse
+        FE-->>U: Hiển thị trạng thái đang theo dõi
+    end

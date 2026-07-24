@@ -21,7 +21,6 @@ public class AdminUserMapper {
                 source.getDisplayName(),
                 source.getAvatarUrl(),
                 source.getEmail(),
-                source.getPhoneNumber(),
                 UserStatus.valueOf(source.getStatus()),
                 source.getProfileCompletedAt() != null,
                 source.getCreatedAt()
@@ -35,7 +34,6 @@ public class AdminUserMapper {
                 source.getAvatarUrl(),
                 source.getBio(),
                 source.getEmail(),
-                source.getPhoneNumber(),
                 UserStatus.valueOf(source.getStatus()),
                 source.getProfileCompletedAt() != null,
                 source.getProfileCompletedAt(),

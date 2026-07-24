@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant AC as AuthController
+    participant AS as AuthService
+    participant DB as MySQL
+
+    U->>FE: Nhập email và mật khẩu
+    FE->>AC: POST /api/v1/auth/login
+    AC->>AS: login(request, ipAddress)
+    AS->>DB: Tìm tài khoản theo email
+    AS->>AS: passwordEncoder.matches()
+    alt Thông tin sai hoặc tài khoản bị khóa
+        AS-->>FE: Trả lỗi đăng nhập
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        AS->>AS: refreshTokenIssuer.issue()
+        AS->>AS: jwtService.generateAccessToken()
+        AS-->>FE: Trả Access Token và Refresh Token
+        FE-->>U: Đăng nhập thành công
+    end

@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant PC as PostController
+    participant PS as PostService
+    participant DB as MySQL
+
+    U->>FE: Chọn xem bài viết
+    FE->>PC: GET /api/v1/posts/{postId}
+    PC->>PS: getPostDetail(postId)
+    PS->>DB: Tìm bài viết và dữ liệu liên quan
+    alt Bài viết không khả dụng
+        PS-->>FE: Trả lỗi không tìm thấy
+    else Bài viết hợp lệ
+        DB-->>PS: Post, tác giả và tương tác
+        PS-->>FE: PostDetailResponse
+        FE-->>U: Hiển thị chi tiết bài viết
+    end

@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant PC as PostController
+    participant PS as PostService
+    participant DB as MySQL
+
+    U->>FE: Chỉnh sửa bài viết
+    FE->>PC: PUT /api/v1/posts/{postId}
+    PC->>PS: updatePost(postId, request)
+    PS->>DB: Kiểm tra tác giả, trạng thái và thời hạn
+    alt Không có quyền hoặc quá 15 phút
+        PS-->>FE: Trả lỗi chỉnh sửa
+    else Hợp lệ
+        PS->>DB: Cập nhật Post và Hashtag
+        DB-->>PS: Commit transaction
+        PS-->>FE: PostDetailResponse
+        FE-->>U: Hiển thị bài viết đã sửa
+    end
