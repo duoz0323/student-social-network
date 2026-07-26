@@ -26,6 +26,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +62,7 @@ public class SavedPostServiceImpl implements SavedPostService {
     private final FeedPostBatchLoader feedPostBatchLoader;
     private final CursorCodec cursorCodec;
     private final TransactionTemplate saveTransactionTemplate;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     public SavedPostServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -73,7 +75,8 @@ public class SavedPostServiceImpl implements SavedPostService {
             PostMapper postMapper,
             FeedPostBatchLoader feedPostBatchLoader,
             CursorCodec cursorCodec,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            UserRelationshipPolicyService relationshipPolicyService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -85,6 +88,7 @@ public class SavedPostServiceImpl implements SavedPostService {
         this.postMapper = postMapper;
         this.feedPostBatchLoader = feedPostBatchLoader;
         this.cursorCodec = cursorCodec;
+        this.relationshipPolicyService = relationshipPolicyService;
         this.saveTransactionTemplate = new TransactionTemplate(transactionManager);
         // Tách INSERT sang transaction riêng để lỗi khóa trùng chỉ rollback INSERT cạnh tranh, không làm hỏng response idempotent bên ngoài.
         this.saveTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -95,7 +99,7 @@ public class SavedPostServiceImpl implements SavedPostService {
     public PostSaveResponse savePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanSave(userId);
-        ensurePostIsPublished(postId);
+        assertPostCanBeAccessed(userId, postId);
 
         if (savedPostRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             // Save đã tồn tại vẫn thành công và không tạo thêm dữ liệu theo nguyên tắc idempotent.
@@ -121,11 +125,20 @@ public class SavedPostServiceImpl implements SavedPostService {
     public PostSaveResponse unsavePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanSave(userId);
-        ensurePostIsPublished(postId);
+        assertPostCanBeAccessed(userId, postId);
 
         // Không gọi exists trước; một câu DELETE vừa tránh race condition vừa bảo đảm Unsave idempotent.
         savedPostRepository.deleteByUserIdAndPostId(userId, postId);
         return new PostSaveResponse(postId, false);
+    }
+
+    private void assertPostCanBeAccessed(Long userId, Long postId) {
+        var target = postRepository.findInteractionTargetById(postId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        if (target.getStatus() != PostStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
+        }
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
     }
 
     @Override

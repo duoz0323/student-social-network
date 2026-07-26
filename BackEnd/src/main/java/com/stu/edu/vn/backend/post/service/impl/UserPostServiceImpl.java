@@ -54,7 +54,7 @@ public class UserPostServiceImpl implements UserPostService {
         LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.createdAt();
         long postId = cursor == null ? Long.MAX_VALUE : cursor.postId();
         List<Post> fetched = postRepository.findProfilePosts(
-                userId, time, postId, PageRequest.of(0, limit + 1));
+                userId, viewerId, time, postId, PageRequest.of(0, limit + 1));
         boolean hasNext = fetched.size() > limit;
         List<Post> posts = fetched.stream().distinct().limit(limit).toList();
         List<FeedPostResponse> content = feedPostBatchLoader.map(posts, viewerId);

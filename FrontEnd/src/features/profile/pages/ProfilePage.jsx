@@ -90,6 +90,8 @@ export default function ProfilePage({ self = false }) {
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
   const [activeTab, setActiveTab] = useState('threads');
   const [unfollowTarget, setUnfollowTarget] = useState(null);
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState(null);
   const [loadedProfileKey, setLoadedProfileKey] = useState(null);
@@ -244,6 +246,21 @@ export default function ProfilePage({ self = false }) {
     }
   }
 
+  async function confirmBlock() {
+    if (blocking) return;
+    setBlocking(true);
+    try {
+      // Backend tự lấy blocker từ JWT; Frontend chỉ truyền tài khoản đích.
+      await socialApi.blockUser(profile.id);
+      setBlockConfirmOpen(false);
+      navigate('/feed/for-you', { replace: true });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBlocking(false);
+    }
+  }
+
   const profileHeaderNav = (
     <div className="flex h-[var(--header-height)] items-center justify-between px-6">
       <div className="flex items-center gap-2">
@@ -303,8 +320,12 @@ export default function ProfilePage({ self = false }) {
                 <button className="flex h-[36px] w-[36px] items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]" aria-label="Thông báo">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button className="flex h-[36px] w-[36px] items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)] border border-[var(--app-border)]" aria-label="Tùy chọn">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1.25"></circle><circle cx="19" cy="12" r="1.25"></circle><circle cx="5" cy="12" r="1.25"></circle></svg>
+                <button
+                  className="flex h-[36px] items-center justify-center rounded-full border border-[var(--app-border)] px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                  aria-label="Chặn người dùng"
+                  onClick={() => setBlockConfirmOpen(true)}
+                >
+                  Chặn
                 </button>
               </div>
             )}
@@ -373,6 +394,18 @@ export default function ProfilePage({ self = false }) {
           )}
         </div>
       </ContentShell>
+
+      <Modal
+        open={blockConfirmOpen}
+        title="Chặn người dùng này?"
+        onClose={() => !blocking && setBlockConfirmOpen(false)}
+        footer={<>
+          <Button variant="secondary" disabled={blocking} onClick={() => setBlockConfirmOpen(false)}>Hủy</Button>
+          <Button disabled={blocking} onClick={confirmBlock}>{blocking ? 'Đang xử lý...' : 'Chặn'}</Button>
+        </>}
+      >
+        Hai bạn sẽ không thể xem hồ sơ, bài viết hoặc tương tác với nhau. Quan hệ theo dõi hiện tại sẽ bị hủy.
+      </Modal>
 
       <Modal
         open={editing}

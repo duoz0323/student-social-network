@@ -28,6 +28,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -63,6 +64,7 @@ public class PostLikeServiceImpl implements PostLikeService {
     private final NotificationService notificationService;
     private final FeedPostBatchLoader feedPostBatchLoader;
     private final CursorCodec cursorCodec;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     @Override
     @Transactional
@@ -70,6 +72,7 @@ public class PostLikeServiceImpl implements PostLikeService {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanInteract(userId);
         PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
 
         if (postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_ALREADY_LIKED);
@@ -95,7 +98,8 @@ public class PostLikeServiceImpl implements PostLikeService {
     public PostLikeResponse unlikePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanInteract(userId);
-        findPublishedInteractionTarget(postId);
+        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
 
         if (!postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_NOT_LIKED);

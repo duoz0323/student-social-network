@@ -22,6 +22,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -48,6 +49,7 @@ public class CommentServiceImpl implements CommentService {
     private final NotificationService notificationService;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     public CommentServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -58,7 +60,8 @@ public class CommentServiceImpl implements CommentService {
             CommentMapper commentMapper,
             NotificationService notificationService,
             EntityManager entityManager,
-            Clock clock
+            Clock clock,
+            UserRelationshipPolicyService relationshipPolicyService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -69,6 +72,7 @@ public class CommentServiceImpl implements CommentService {
         this.notificationService = notificationService;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.relationshipPolicyService = relationshipPolicyService;
     }
 
     @Override
@@ -78,6 +82,7 @@ public class CommentServiceImpl implements CommentService {
         User currentUser = ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
         PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
 
         // Dùng reference để tạo khóa ngoại post_id mà không cần tải toàn bộ entity bài viết.
         Post postReference = postRepository.getReferenceById(postId);
@@ -113,7 +118,7 @@ public class CommentServiceImpl implements CommentService {
         }
 
         Long postId = parentComment.getPost().getId();
-        ensurePostIsPublished(postId);
+        assertPostCanBeAccessed(userId, postId);
 
         // post_id luôn lấy từ bình luận cha để Client không thể gắn reply sang bài viết khác.
         Comment reply = commentRepository.saveAndFlush(
@@ -134,7 +139,7 @@ public class CommentServiceImpl implements CommentService {
     public PageResponse<CommentResponse> getPublishedComments(Long postId, int page, int size) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanInteract(userId);
-        ensurePostIsPublished(postId);
+        assertPostCanBeAccessed(userId, postId);
 
         Page<Comment> comments = commentRepository.findVisibleRootComments(
                 postId,
@@ -161,7 +166,7 @@ public class CommentServiceImpl implements CommentService {
         if (parentComment.getParentComment() != null) {
             throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
         }
-        ensurePostIsPublished(parentComment.getPost().getId());
+        assertPostCanBeAccessed(userId, parentComment.getPost().getId());
 
         Page<CommentResponse> replies = commentRepository
                 .findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
@@ -218,6 +223,11 @@ public class CommentServiceImpl implements CommentService {
         if (status != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }
+    }
+
+    private void assertPostCanBeAccessed(Long userId, Long postId) {
+        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
     }
 
     private PostInteractionTargetProjection findPublishedInteractionTarget(Long postId) {

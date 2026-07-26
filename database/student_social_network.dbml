@@ -148,6 +148,19 @@ Table follows {
   Note: "chk_follows_not_self: CHECK ((`follower_id` <> `following_id`))"
 }
 
+Table user_blocks {
+  blocker_id bigint [not null, note: "UNSIGNED"]
+  blocked_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (blocker_id, blocked_id) [pk, name: "pk_user_blocks"]
+    (blocked_id, blocker_id) [name: "idx_user_blocks_blocked_blocker"]
+  }
+
+  Note: "chk_user_blocks_not_self: CHECK ((`blocker_id` <> `blocked_id`))"
+}
+
 Table hashtags {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   normalized_name varchar(100) [not null, unique]
@@ -553,6 +566,8 @@ Ref fk_comments_post: comments.post_id > posts.id [delete: cascade, update: rest
 Ref fk_comments_user: comments.user_id > users.id [delete: restrict, update: restrict]
 Ref fk_follows_follower: follows.follower_id > users.id [delete: cascade, update: restrict]
 Ref fk_follows_following: follows.following_id > users.id [delete: cascade, update: restrict]
+Ref fk_user_blocks_blocker: user_blocks.blocker_id > users.id [delete: cascade, update: restrict]
+Ref fk_user_blocks_blocked: user_blocks.blocked_id > users.id [delete: cascade, update: restrict]
 Ref fk_pending_completed_user: pending_registrations.completed_user_id > users.id [delete: set null, update: restrict]
 Ref fk_link_challenge_user: auth_method_link_challenges.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_social_pending_registration: social_auth_challenges.pending_registration_id > pending_registrations.id [delete: restrict, update: restrict]

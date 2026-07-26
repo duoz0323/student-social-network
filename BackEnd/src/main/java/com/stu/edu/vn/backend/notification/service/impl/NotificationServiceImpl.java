@@ -22,6 +22,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -42,6 +43,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationMapper notificationMapper;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     public NotificationServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -50,7 +52,8 @@ public class NotificationServiceImpl implements NotificationService {
             NotificationRepository notificationRepository,
             NotificationMapper notificationMapper,
             EntityManager entityManager,
-            Clock clock
+            Clock clock,
+            UserRelationshipPolicyService relationshipPolicyService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -59,6 +62,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.notificationMapper = notificationMapper;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.relationshipPolicyService = relationshipPolicyService;
     }
 
     @Override
@@ -195,6 +199,10 @@ public class NotificationServiceImpl implements NotificationService {
     ) {
         if (actorId != null && actorId.equals(recipientId)) {
             // Người thực hiện đã biết hành động của mình nên không tạo tự thông báo.
+            return;
+        }
+        if (actorId != null && relationshipPolicyService.existsBlockEitherDirection(actorId, recipientId)) {
+            // Block không phát sinh thông báo mới và không tiết lộ hành động chặn cho đối phương.
             return;
         }
         User actor = actorId == null ? null : entityManager.getReference(User.class, actorId);

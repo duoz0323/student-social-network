@@ -12,6 +12,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.service.UserProfileService;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final FollowRepository followRepository;
     private final UserProfileValidationSupport validationSupport;
     private final UserProfileMapper userProfileMapper;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     @Override
     @Transactional(readOnly = true)
@@ -74,6 +76,11 @@ public class UserProfileServiceImpl implements UserProfileService {
             Long currentUserId,
             boolean includePrivateFields
     ) {
+        if (!profileUserId.equals(currentUserId)
+                && relationshipPolicyService.existsBlockEitherDirection(currentUserId, profileUserId)) {
+            // Trả 404 để không tiết lộ sự tồn tại hoặc trạng thái Block của tài khoản.
+            throw new BusinessException(ErrorCode.PROFILE_NOT_FOUND);
+        }
         UserProfile profile = userProfileRepository.findById(profileUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
         if (profile.getUser().getStatus() != UserStatus.ACTIVE || profile.getProfileCompletedAt() == null) {

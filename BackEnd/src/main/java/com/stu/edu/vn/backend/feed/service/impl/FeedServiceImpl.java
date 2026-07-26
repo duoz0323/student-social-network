@@ -67,7 +67,7 @@ public class FeedServiceImpl implements FeedService {
         LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.createdAt();
         long postId = cursor == null ? Long.MAX_VALUE : cursor.postId();
         List<Post> posts = postRepository.findForYouFeed(
-                score, time, postId, PageRequest.of(0, limit + 1));
+                viewerId, score, time, postId, PageRequest.of(0, limit + 1));
         return loadFeed(posts, viewerId, limit, true);
     }
 

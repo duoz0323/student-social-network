@@ -15,6 +15,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class FollowServiceImpl implements FollowService {
     private final FollowRepository followRepository;
     private final FollowMapper followMapper;
     private final NotificationService notificationService;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     public FollowServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -39,7 +41,8 @@ public class FollowServiceImpl implements FollowService {
             UserProfileRepository userProfileRepository,
             FollowRepository followRepository,
             FollowMapper followMapper,
-            NotificationService notificationService
+            NotificationService notificationService,
+            UserRelationshipPolicyService relationshipPolicyService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -47,6 +50,7 @@ public class FollowServiceImpl implements FollowService {
         this.followRepository = followRepository;
         this.followMapper = followMapper;
         this.notificationService = notificationService;
+        this.relationshipPolicyService = relationshipPolicyService;
     }
 
     @Override
@@ -56,6 +60,7 @@ public class FollowServiceImpl implements FollowService {
         User currentUser = ensureCurrentUserCanUseSocialFeatures(currentUserId);
         ensureNotSelf(currentUserId, userId);
         User targetUser = findActiveTargetUser(userId);
+        relationshipPolicyService.assertNoBlock(currentUserId, userId);
 
         if (followRepository.existsByIdFollowerIdAndIdFollowingId(currentUserId, userId)) {
             throw new BusinessException(ErrorCode.FOLLOW_ALREADY_EXISTS);

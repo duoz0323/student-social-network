@@ -80,7 +80,8 @@ public class SearchServiceImpl implements SearchService {
         ensureCurrentUserCanSearch(currentUserId);
         String normalizedKeyword = normalizeKeyword(keyword);
         Page<SearchUserResponse> result = userProfileRepository
-                .searchCompletedActiveProfilesByDisplayName(escapeLikePattern(normalizedKeyword), PageRequest.of(page, size))
+                .searchCompletedActiveProfilesByDisplayName(
+                        escapeLikePattern(normalizedKeyword), currentUserId, PageRequest.of(page, size))
                 .map(this::toResponse);
         return PageResponse.from(result);
     }

@@ -30,6 +30,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -73,6 +74,7 @@ public class PostServiceImpl implements PostService {
     private final TransactionTemplate transactionTemplate;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final UserRelationshipPolicyService relationshipPolicyService;
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {
@@ -97,6 +99,9 @@ public class PostServiceImpl implements PostService {
         // Chỉ truy vấn bài PUBLISHED để HIDDEN/DELETED trả 404 và không lộ nội dung không hợp lệ.
         Post post = postRepository.findDetailHeaderByIdAndStatus(postId, PostStatus.PUBLISHED)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        if (relationshipPolicyService.existsBlockEitherDirection(viewerId, post.getAuthor().getId())) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
 
         // Tác giả bị khóa thì bài viết không được hiển thị; dùng POST_NOT_FOUND để tránh lộ bài của tài khoản không hợp lệ.
         if (post.getAuthor().getStatus() != UserStatus.ACTIVE || post.getAuthorProfile() == null) {

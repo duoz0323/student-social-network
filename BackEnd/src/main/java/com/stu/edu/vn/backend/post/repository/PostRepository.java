@@ -27,6 +27,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                     WHERE p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND (
                           (p.like_count + p.comment_count) < :cursorScore
                           OR ((p.like_count + p.comment_count) = :cursorScore AND p.published_at < :cursorTime)
@@ -35,6 +40,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                     ORDER BY (p.like_count + p.comment_count) DESC, p.published_at DESC, p.id DESC
                     """, nativeQuery = true)
     List<Post> findForYouFeed(
+            @Param("viewerId") Long viewerId,
             @Param("cursorScore") int cursorScore,
             @Param("cursorTime") LocalDateTime cursorTime,
             @Param("cursorPostId") Long cursorPostId,
@@ -51,6 +57,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND (p.published_at < :cursorTime OR (p.published_at = :cursorTime AND p.id < :cursorPostId))
                     ORDER BY p.published_at DESC, p.id DESC
                     """, nativeQuery = true)
@@ -70,11 +81,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND (p.published_at < :cursorTime OR (p.published_at = :cursorTime AND p.id < :cursorPostId))
                     ORDER BY p.published_at DESC, p.id DESC
                     """, nativeQuery = true)
     List<Post> findProfilePosts(
             @Param("authorId") Long authorId,
+            @Param("viewerId") Long viewerId,
             @Param("cursorTime") LocalDateTime cursorTime,
             @Param("cursorPostId") Long cursorPostId,
             Pageable limit
@@ -90,6 +107,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND (sp.created_at < :cursorTime OR (sp.created_at = :cursorTime AND p.id < :cursorPostId))
                     ORDER BY sp.created_at DESC, p.id DESC
                     """, nativeQuery = true)
@@ -111,6 +133,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND (pl.created_at < :cursorTime OR (pl.created_at = :cursorTime AND p.id < :cursorPostId))
                     ORDER BY pl.created_at DESC, p.id DESC
                     """, nativeQuery = true)

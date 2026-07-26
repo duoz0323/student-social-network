@@ -37,6 +37,8 @@ export const USER_ENDPOINTS = Object.freeze({
   follow: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/follow`,
   followers: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/followers`,
   following: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/following`,
+  block: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/block`,
+  blockedUsers: '/api/v1/users/me/blocked-users',
   posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
 });
 

@@ -33,6 +33,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                     LEFT JOIN user_profiles up ON up.user_id = n.actor_id
                     WHERE n.recipient_id = :recipientId
                       AND n.deleted_at IS NULL
+                      AND (n.actor_id IS NULL OR NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :recipientId AND ub.blocked_id = n.actor_id)
+                             OR (ub.blocker_id = n.actor_id AND ub.blocked_id = :recipientId)
+                      ))
                     ORDER BY n.created_at DESC, n.id DESC
                     """,
             countQuery = """
@@ -40,6 +45,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                     FROM notifications n
                     WHERE n.recipient_id = :recipientId
                       AND n.deleted_at IS NULL
+                      AND (n.actor_id IS NULL OR NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :recipientId AND ub.blocked_id = n.actor_id)
+                             OR (ub.blocker_id = n.actor_id AND ub.blocked_id = :recipientId)
+                      ))
                     """,
             nativeQuery = true
     )

@@ -20,6 +20,11 @@ public interface SearchUserProfileRepository extends JpaRepository<UserProfile, 
                       AND up.profile_completed_at IS NOT NULL
                       AND up.display_name IS NOT NULL
                       AND up.display_name LIKE CONCAT('%', :keyword, '%') ESCAPE '='
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = up.user_id)
+                             OR (ub.blocker_id = up.user_id AND ub.blocked_id = :viewerId)
+                      )
                     ORDER BY
                       CASE WHEN up.display_name LIKE CONCAT(:keyword, '%') ESCAPE '=' THEN 0 ELSE 1 END,
                       up.user_id DESC
@@ -32,11 +37,17 @@ public interface SearchUserProfileRepository extends JpaRepository<UserProfile, 
                       AND up.profile_completed_at IS NOT NULL
                       AND up.display_name IS NOT NULL
                       AND up.display_name LIKE CONCAT('%', :keyword, '%') ESCAPE '='
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = up.user_id)
+                             OR (ub.blocker_id = up.user_id AND ub.blocked_id = :viewerId)
+                      )
                     """,
             nativeQuery = true
     )
     Page<UserProfile> searchCompletedActiveProfilesByDisplayName(
             @Param("keyword") String escapedKeyword,
+            @Param("viewerId") Long viewerId,
             Pageable pageable
     );
 }
