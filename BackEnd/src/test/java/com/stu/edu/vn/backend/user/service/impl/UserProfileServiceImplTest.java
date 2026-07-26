@@ -6,16 +6,22 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.follow.repository.FollowRepository;
+import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.dto.request.UpdateUserProfileRequest;
 import com.stu.edu.vn.backend.user.dto.response.UserProfileResponse;
+import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
+import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -24,6 +30,9 @@ class UserProfileServiceImplTest {
 
     private final CurrentUserProfileProvider currentUserProfileProvider =
             org.mockito.Mockito.mock(CurrentUserProfileProvider.class);
+    private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
+    private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
+    private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-18T10:00:00Z"), ZoneOffset.UTC);
 
     private UserProfileServiceImpl service;
@@ -33,9 +42,50 @@ class UserProfileServiceImplTest {
         UserProfileMapper mapper = Mappers.getMapper(UserProfileMapper.class);
         service = new UserProfileServiceImpl(
                 currentUserProfileProvider,
+                currentUserProvider,
+                userProfileRepository,
+                followRepository,
                 new UserProfileValidationSupport(clock),
                 mapper
         );
+    }
+
+    @Test
+    void getMyProfileUsesJwtUserAndReturnsRealProfileStatistics() {
+        User user = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(user);
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(profile.getUserId()).thenReturn(10L);
+        when(profile.getDisplayName()).thenReturn("Nguyễn Văn A");
+        when(profile.getProfileCompletedAt()).thenReturn(LocalDateTime.now(clock));
+        when(followRepository.countByIdFollowingId(10L)).thenReturn(4L);
+        when(followRepository.countByIdFollowerId(10L)).thenReturn(3L);
+
+        UserProfileViewResponse response = service.getMyProfile();
+
+        assertThat(response.userId()).isEqualTo(10L);
+        assertThat(response.displayName()).isEqualTo("Nguyễn Văn A");
+        assertThat(response.followerCount()).isEqualTo(4L);
+        assertThat(response.followingCount()).isEqualTo(3L);
+        assertThat(response.followedByCurrentUser()).isFalse();
+    }
+
+    @Test
+    void getPublicProfileRejectsBlockedTargetWithoutLeakingStatus() {
+        User user = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(user);
+        when(user.getStatus()).thenReturn(UserStatus.BLOCKED);
+
+        assertThatThrownBy(() -> service.getPublicProfile(20L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PROFILE_NOT_FOUND);
     }
 
     @Test

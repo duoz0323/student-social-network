@@ -1,59 +1,58 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../../assets/brand/logo.png';
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../common/Button.jsx';
+import BrandLockup from '../common/BrandLockup.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
 import MoreMenu from './MoreMenu.jsx';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext.jsx';
 
 // SVG Icons cho Sidebar
-function HomeIcon() {
+function HomeIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
       <path d="M12 3l9 7v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10l9-7z" />
     </svg>
   );
 }
 
-function CreateIcon() {
+function CreateIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-      <line x1="12" x2="12" y1="8" y2="16" />
-      <line x1="8" x2="16" y1="12" y2="12" />
+      <path d="M12 8v8M8 12h8" stroke={active ? 'var(--app-bg)' : 'currentColor'} />
     </svg>
   );
 }
 
-function SearchIcon() {
+function SearchIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? '3' : '2'} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" />
       <line x1="21" x2="16.65" y1="21" y2="16.65" />
     </svg>
   );
 }
 
-function ActivityIcon() {
+function ActivityIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   );
 }
 
-function ProfileIcon() {
+function ProfileIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" fill={active ? 'currentColor' : 'none'} />
+      <circle cx="12" cy="7" r="4" fill={active ? 'currentColor' : 'none'} />
     </svg>
   );
 }
 
-function BookmarkIcon() {
+function BookmarkIcon({ active = false }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
@@ -76,12 +75,12 @@ export default function UserShell() {
   const navigate = useNavigate();
 
   const navItems = [
-    { to: '/feed/for-you', label: 'Dành cho bạn', icon: <HomeIcon />, active: location.pathname.startsWith('/feed') },
-    { to: '#create', label: 'Tạo bài viết', icon: <CreateIcon />, active: false, action: () => setComposerMode('modal') },
-    { to: '/search', label: 'Tìm kiếm', icon: <SearchIcon />, active: location.pathname === '/search' },
-    { to: '/notifications', label: 'Thông báo', icon: <ActivityIcon />, active: location.pathname === '/notifications' },
-    { to: '/profile/me', label: 'Trang cá nhân', icon: <ProfileIcon />, active: location.pathname === '/profile/me' },
-    { to: '/saved', label: 'Bài viết đã lưu', icon: <BookmarkIcon />, active: location.pathname === '/saved' },
+    { to: '/feed/for-you', label: 'Dành cho bạn', icon: (active) => <HomeIcon active={active} />, active: location.pathname.startsWith('/feed') },
+    { to: '#create', label: 'Tạo bài viết', icon: (active) => <CreateIcon active={active} />, active: false, action: () => setComposerMode('modal') },
+    { to: '/search', label: 'Tìm kiếm', icon: (active) => <SearchIcon active={active} />, active: location.pathname === '/search' },
+    { to: '/notifications', label: 'Thông báo', icon: (active) => <ActivityIcon active={active} />, active: location.pathname === '/notifications' },
+    { to: '/profile/me', label: 'Trang cá nhân', icon: (active) => <ProfileIcon active={active} />, active: location.pathname === '/profile/me' },
+    { to: '/saved', label: 'Bài viết đã lưu', icon: (active) => <BookmarkIcon active={active} />, active: location.pathname === '/saved' },
   ];
 
   return (
@@ -92,29 +91,28 @@ export default function UserShell() {
       */}
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[var(--sidebar-width)] bg-[var(--app-bg)] px-4 py-5 lg:flex lg:flex-col">
         {/* Logo */}
-        <Link to="/feed/for-you" className="flex items-center gap-3 px-4 mb-8">
-          <img src={logo} alt="UniShare" className="h-9 w-9 object-contain" />
-          <span className="text-[22px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
+        <Link to="/feed/for-you" className="mb-8 rounded-2xl px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]">
+          <BrandLockup />
         </Link>
         
         {/* Navigation Items */}
         <nav className="grid gap-1 mt-2">
           {navItems.map((item) => {
-            const buttonClass = `flex min-h-[52px] items-center gap-4 rounded-[12px] px-4 transition-colors hover:bg-[var(--app-surface-soft)] ${
+            const buttonClass = `interactive-row flex min-h-[52px] items-center gap-4 rounded-[12px] px-4 hover:bg-[var(--app-surface-soft)] ${
               item.active ? 'bg-[var(--app-surface-soft)] font-bold text-[var(--app-text)]' : 'font-normal text-[var(--app-text)]'
             }`;
 
             if (item.action) {
               return (
                 <button key={item.label} onClick={item.action} className={buttonClass}>
-                  <span className="flex w-6 justify-center text-[var(--app-text)]">{item.icon}</span>
+                  <span className="interactive-icon flex w-6 justify-center text-[var(--app-text)]">{item.icon(item.active)}</span>
                   <span className="text-[15px]">{item.label}</span>
                 </button>
               );
             }
             return (
               <NavLink key={item.to} to={item.to} className={buttonClass}>
-                <span className="flex w-6 justify-center text-[var(--app-text)]">{item.icon}</span>
+                <span className="interactive-icon flex w-6 justify-center text-[var(--app-text)]">{item.icon(item.active)}</span>
                 <span className="text-[15px]">{item.label}</span>
               </NavLink>
             );
@@ -123,7 +121,13 @@ export default function UserShell() {
 
         {/* Nút Xem thêm & Menu ở góc dưới trái */}
         <div className="relative mt-auto">
-          <MoreMenu open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} onLogout={logout} onSettings={() => navigate('/settings/auth-providers')} />
+          <MoreMenu
+            open={moreMenuOpen}
+            onClose={() => setMoreMenuOpen(false)}
+            onLogout={logout}
+            onSettings={() => navigate('/settings/auth-providers')}
+            onLikedPosts={() => navigate('/liked')}
+          />
           <button
             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
             className={`flex min-h-[52px] w-full items-center gap-4 rounded-[12px] px-4 font-normal text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-soft)] ${
@@ -139,8 +143,7 @@ export default function UserShell() {
       {/* Mobile header */}
       <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-4 lg:hidden">
         <Link to="/feed/for-you" className="flex items-center gap-2">
-          <img src={logo} alt="UniShare" className="h-7 w-7 object-contain" />
-          <span className="text-[20px] font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
+          <BrandLockup compact />
         </Link>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
@@ -173,13 +176,20 @@ export default function UserShell() {
       <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
         {navItems.filter(item => item.to.startsWith('/')).map((item) => (
           <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
-            <span aria-hidden="true" className="h-5 w-5">{item.icon}</span>
+            <span aria-hidden="true" className="h-5 w-5">{item.icon(item.active)}</span>
             <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
       <PostComposer mode={composerMode} onClose={() => setComposerMode(null)} />
+
+      {/* Feed dùng pathname ổn định để quay lại đúng vị trí dù navigation tạo location key mới. */}
+      <ScrollRestoration
+        getKey={(nextLocation) => nextLocation.pathname.startsWith('/feed/')
+          ? nextLocation.pathname
+          : nextLocation.key}
+      />
       
       {/* Nút + nổi ở góc dưới phải */}
       <button 

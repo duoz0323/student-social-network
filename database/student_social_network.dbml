@@ -1,0 +1,583 @@
+// =============================================================================
+// STUDENT SOCIAL NETWORK - DATABASE MODEL (DBML)
+// Tự động đồng bộ từ file SQL mới: student_social_network(2).sql
+// =============================================================================
+
+Project student_social_network {
+  database_type: "MySQL"
+  Note: "DBML được sinh từ student_social_network(2).sql; cấu trúc bảng, cột, index và khóa ngoại bám theo file SQL nguồn."
+}
+
+// =============================================================================
+// ENUM KHAI BÁO TRỰC TIẾP TRONG SQL
+// =============================================================================
+
+Enum admin_actions_action_type_enum {
+  BLOCK_USER
+  UNBLOCK_USER
+  HIDE_POST
+  RESTORE_POST
+  RESOLVE_REPORT
+  REJECT_REPORT
+}
+
+Enum admin_actions_target_type_enum {
+  USER
+  POST
+  REPORT
+}
+
+Enum comments_status_enum {
+  PUBLISHED
+  DELETED
+}
+
+Enum post_media_media_type_enum {
+  IMAGE
+  VIDEO
+}
+
+Enum post_media_mime_type_enum {
+  "image/jpeg"
+  "image/png"
+  "image/webp"
+  "video/mp4"
+  "video/webm"
+}
+
+Enum posts_status_enum {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+Enum reports_reason_enum {
+  SPAM
+  HARASSMENT
+  HARMFUL_CONTENT
+  VIOLENCE
+  MISINFORMATION
+  INAPPROPRIATE
+  OTHER
+}
+
+Enum reports_status_enum {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+Enum notifications_type_enum {
+  FOLLOW
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+  REPORT_RESOLVED
+  REPORT_REJECTED
+  POST_HIDDEN_BY_ADMIN
+  POST_RESTORED_BY_ADMIN
+  ACCOUNT_BLOCKED
+  ACCOUNT_UNBLOCKED
+}
+
+Table account_status_histories {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  old_status varchar(16) [not null]
+  new_status varchar(16) [not null]
+  changed_by bigint [not null, note: "UNSIGNED"]
+  reason varchar(500) [not null]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (changed_by) [name: "fk_account_status_histories_changed_by"]
+    (user_id, created_at, id) [name: "idx_account_status_histories_user_created"]
+  }
+
+  Note: "chk_account_status_histories_old_status: CHECK ((`old_status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_account_status_histories_new_status: CHECK ((`new_status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_account_status_histories_changed: CHECK ((`old_status` <> `new_status`))"
+}
+
+Table admin_actions {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  admin_id bigint [not null, note: "UNSIGNED"]
+  action_type admin_actions_action_type_enum [not null]
+  target_type admin_actions_target_type_enum [not null]
+  target_id bigint [not null, note: "UNSIGNED"]
+  note varchar(1000)
+  old_data json
+  new_data json
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (target_type, target_id, created_at, id) [name: "idx_admin_actions_target_created"]
+    (admin_id, created_at, id) [name: "idx_admin_actions_admin_created"]
+  }
+}
+
+Table comments {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  parent_comment_id bigint [note: "UNSIGNED"]
+  content varchar(1000) [not null]
+  status comments_status_enum [not null, default: 'PUBLISHED']
+  deleted_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (parent_comment_id) [name: "fk_comments_parent"]
+    (post_id, parent_comment_id, status, created_at, id) [name: "idx_comments_post_parent_created"]
+    (user_id, status, created_at, id) [name: "idx_comments_user_created"]
+  }
+
+  Note: "chk_comments_content_not_empty: CHECK ((char_length(trim(`content`)) > 0)) | chk_comments_deleted_state: CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or ((`status` = _utf8mb4'PUBLISHED') and (`deleted_at` is null))))"
+}
+
+Table follows {
+  follower_id bigint [not null, note: "UNSIGNED"]
+  following_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (follower_id, following_id) [pk, name: "pk_follows"]
+    (following_id, created_at, follower_id) [name: "idx_follows_following_created_at"]
+    (follower_id, created_at, following_id) [name: "idx_follows_follower_created_at"]
+  }
+
+  Note: "chk_follows_not_self: CHECK ((`follower_id` <> `following_id`))"
+}
+
+Table hashtags {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  normalized_name varchar(100) [not null, unique]
+  display_name varchar(100) [not null]
+  post_count int [not null, default: '0', note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (post_count, id) [name: "idx_hashtags_post_count"]
+  }
+
+  Note: "chk_hashtags_not_empty: CHECK ((char_length(`normalized_name`) > 0))"
+}
+
+Table pending_registrations {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  registration_type varchar(16) [not null]
+  identifier_normalized varchar(255) [note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  active_identifier_key varchar(272) [unique, note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  password_hash varchar(255)
+  flow_token_hash char(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  otp_hash char(64) [note: "CHARSET ascii COLLATE ascii_bin"]
+  otp_version int [not null, default: '1', note: "UNSIGNED"]
+  otp_expires_at datetime(6) [not null]
+  failed_attempts tinyint [not null, default: '0', note: "UNSIGNED"]
+  resend_available_at datetime(6) [not null]
+  resend_count smallint [not null, default: '0', note: "UNSIGNED"]
+  delivery_status varchar(16) [not null, default: 'PENDING']
+  delivery_attempt_count smallint [not null, default: '0', note: "UNSIGNED"]
+  last_delivery_attempt_at datetime(6)
+  last_delivery_succeeded_at datetime(6)
+  delivery_failure_code varchar(64)
+  status varchar(16) [not null, default: 'PENDING']
+  expires_at datetime(6) [not null]
+  completed_user_id bigint [unique, note: "UNSIGNED"]
+  terminal_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (identifier_normalized, status, expires_at, id) [name: "idx_pending_identifier_state"]
+    (status, expires_at, id) [name: "idx_pending_expiry"]
+    (status, terminal_at, id) [name: "idx_pending_cleanup"]
+  }
+
+  Note: "chk_pending_registration_type: CHECK ((`registration_type` = _utf8mb4'EMAIL')) | chk_pending_status: CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_pending_delivery_status: CHECK ((`delivery_status` in (_utf8mb4'PENDING',_utf8mb4'SENT',_utf8mb4'FAILED',_utf8mb4'UNKNOWN'))) | chk_pending_attempts: CHECK ((`failed_attempts` <= 5)) | chk_pending_times: CHECK (((`expires_at` > `created_at`) and (`otp_expires_at` > `created_at`) and (`otp_expires_at` <= `expires_at`) and (`resend_available_at` <= `expires_at`))) | chk_pending_delivery_failure: CHECK (((`status` <> _utf8mb4'PENDING') or (`delivery_status` <> _utf8mb4'FAILED') or (`delivery_failure_code` is not null))) | chk_pending_lifecycle: CHECK (((`status` = _utf8mb4'PENDING' and `identifier_normalized` is not null and `active_identifier_key` = concat(`registration_type`,_utf8mb4':',`identifier_normalized`) and `password_hash` is not null and `flow_token_hash` is not null and `otp_hash` is not null and `terminal_at` is null) or (`status` = _utf8mb4'COMPLETED' and `identifier_normalized` is not null and `active_identifier_key` is null and `password_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null) or (`status` in (_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `identifier_normalized` is null and `active_identifier_key` is null and `password_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null)))"
+}
+
+Table auth_method_link_challenges {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  purpose varchar(16) [not null]
+  identifier_normalized varchar(255) [note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  active_identifier_key varchar(272) [unique, note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  active_user_purpose_key varchar(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  flow_token_hash char(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  otp_hash char(64) [note: "CHARSET ascii COLLATE ascii_bin"]
+  otp_version int [not null, default: '1', note: "UNSIGNED"]
+  otp_expires_at datetime(6) [not null]
+  failed_attempts tinyint [not null, default: '0', note: "UNSIGNED"]
+  resend_available_at datetime(6) [not null]
+  resend_count smallint [not null, default: '0', note: "UNSIGNED"]
+  delivery_status varchar(16) [not null, default: 'PENDING']
+  delivery_attempt_count smallint [not null, default: '0', note: "UNSIGNED"]
+  last_delivery_attempt_at datetime(6)
+  last_delivery_succeeded_at datetime(6)
+  delivery_failure_code varchar(64)
+  status varchar(16) [not null, default: 'PENDING']
+  expires_at datetime(6) [not null]
+  terminal_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (user_id, status, expires_at, id) [name: "idx_link_user_state"]
+    (status, expires_at, id) [name: "idx_link_expiry"]
+    (status, terminal_at, id) [name: "idx_link_cleanup"]
+  }
+
+  Note: "chk_link_purpose: CHECK ((`purpose` = _utf8mb4'LINK_EMAIL')) | chk_link_status: CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_link_delivery_status: CHECK ((`delivery_status` in (_utf8mb4'PENDING',_utf8mb4'SENT',_utf8mb4'FAILED',_utf8mb4'UNKNOWN'))) | chk_link_attempts: CHECK ((`failed_attempts` <= 5)) | chk_link_times: CHECK (((`expires_at` > `created_at`) and (`otp_expires_at` > `created_at`) and (`otp_expires_at` <= `expires_at`) and (`resend_available_at` <= `expires_at`))) | chk_link_delivery_failure: CHECK (((`status` <> _utf8mb4'PENDING') or (`delivery_status` <> _utf8mb4'FAILED') or (`delivery_failure_code` is not null))) | chk_link_lifecycle: CHECK (((`status` = _utf8mb4'PENDING' and `identifier_normalized` is not null and `active_identifier_key` = concat(`purpose`,_utf8mb4':',`identifier_normalized`) and `active_user_purpose_key` = concat(cast(`user_id` as char),_utf8mb4':',`purpose`) and `flow_token_hash` is not null and `otp_hash` is not null and `terminal_at` is null) or (`status` in (_utf8mb4'COMPLETED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `identifier_normalized` is null and `active_identifier_key` is null and `active_user_purpose_key` is null and `flow_token_hash` is null and `otp_hash` is null and `delivery_failure_code` is null and `terminal_at` is not null)))"
+}
+
+Table social_auth_challenges {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  conflict_token_hash char(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  provider varchar(16) [not null]
+  provider_user_id varchar(255) [note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  provider_identity_fingerprint char(64) [not null, note: "CHARSET ascii COLLATE ascii_bin"]
+  provider_email varchar(255) [note: "CHARSET utf8mb4 COLLATE utf8mb4_bin"]
+  provider_email_verified tinyint(1)
+  active_provider_key varchar(96) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  conflict_type varchar(64) [not null]
+  pending_registration_id bigint [note: "UNSIGNED"]
+  conflicting_user_id bigint [note: "UNSIGNED"]
+  resolution_action varchar(64)
+  resolved_user_id bigint [note: "UNSIGNED"]
+  status varchar(16) [not null, default: 'PENDING']
+  expires_at datetime(6) [not null]
+  terminal_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (pending_registration_id, status, expires_at, id) [name: "idx_social_pending_registration"]
+    (conflicting_user_id, status, id) [name: "idx_social_conflicting_user"]
+    (status, expires_at, id) [name: "idx_social_expiry"]
+    (status, terminal_at, id) [name: "idx_social_cleanup"]
+  }
+
+  Note: "chk_social_provider: CHECK ((`provider` in (_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_social_conflict_type: CHECK ((`conflict_type` in (_utf8mb4'PENDING_EMAIL_MISMATCH',_utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER'))) | chk_social_resolution_action: CHECK ((`resolution_action` is null or `resolution_action` in (_utf8mb4'CONTINUE_OTP',_utf8mb4'CANCEL_PENDING_AND_CONTINUE_SOCIAL',_utf8mb4'LOGIN_EXISTING_ACCOUNT',_utf8mb4'START_ACCOUNT_RECOVERY'))) | chk_social_status: CHECK ((`status` in (_utf8mb4'PENDING',_utf8mb4'RESOLVED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_social_times: CHECK ((`expires_at` > `created_at`)) | chk_social_context: CHECK (((`conflict_type` = _utf8mb4'PENDING_EMAIL_MISMATCH' and `pending_registration_id` is not null) or (`conflict_type` = _utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER' and `conflicting_user_id` is not null))) | chk_social_action_by_conflict: CHECK (((`resolution_action` is null and `resolved_user_id` is null) or (`conflict_type` = _utf8mb4'PENDING_EMAIL_MISMATCH' and `resolution_action` = _utf8mb4'CONTINUE_OTP' and `resolved_user_id` is null) or (`conflict_type` = _utf8mb4'PENDING_EMAIL_MISMATCH' and `resolution_action` = _utf8mb4'CANCEL_PENDING_AND_CONTINUE_SOCIAL' and `resolved_user_id` is not null) or (`conflict_type` = _utf8mb4'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER' and `resolution_action` in (_utf8mb4'LOGIN_EXISTING_ACCOUNT',_utf8mb4'START_ACCOUNT_RECOVERY') and `resolved_user_id` is null))) | chk_social_lifecycle: CHECK (((`status` = _utf8mb4'PENDING' and `conflict_token_hash` is not null and `provider_user_id` is not null and `active_provider_key` = concat(`provider`,_utf8mb4':',`provider_identity_fingerprint`) and `terminal_at` is null and `resolution_action` is null and `resolved_user_id` is null and ((`provider_email` is null and `provider_email_verified` is null) or (`provider_email` is not null and `provider_email_verified` is not null))) or (`status` = _utf8mb4'RESOLVED' and `conflict_token_hash` is null and `provider_user_id` is null and `provider_email` is null and `provider_email_verified` is null and `active_provider_key` is null and `resolution_action` is not null and `terminal_at` is not null) or (`status` in (_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `conflict_token_hash` is null and `provider_user_id` is null and `provider_email` is null and `provider_email_verified` is null and `active_provider_key` is null and `resolution_action` is null and `resolved_user_id` is null and `terminal_at` is not null)))"
+}
+
+Table reauthentication_challenges {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  token_hash char(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  proof_method varchar(32) [not null]
+  scope varchar(32) [not null]
+  target_auth_method varchar(16) [not null]
+  active_user_scope_key varchar(96) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
+  status varchar(16) [not null, default: 'ACTIVE']
+  expires_at datetime(6) [not null]
+  terminal_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (user_id, status, expires_at, id) [name: "idx_reauth_user_state"]
+    (status, expires_at, id) [name: "idx_reauth_expiry"]
+    (status, terminal_at, id) [name: "idx_reauth_cleanup"]
+  }
+
+  Note: "chk_reauth_proof_method: CHECK ((`proof_method` in (_utf8mb4'LOCAL_PASSWORD',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_scope: CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD'))) | chk_reauth_target_method: CHECK ((`target_auth_method` in (_utf8mb4'EMAIL',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_reauth_times: CHECK ((`expires_at` > `created_at`)) | chk_reauth_lifecycle: CHECK (((`status` = _utf8mb4'ACTIVE' and `token_hash` is not null and `active_user_scope_key` = concat(cast(`user_id` as char),_utf8mb4':',`scope`) and `terminal_at` is null) or (`status` in (_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `token_hash` is null and `active_user_scope_key` is null and `terminal_at` is not null)))"
+}
+
+Table password_recovery_challenges {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [note: "UNSIGNED"]
+  is_decoy boolean [not null]
+  subject_key_hash char(64) [not null]
+  active_subject_key_hash char(64) [unique]
+  delivery_channel varchar(16) [not null]
+  recovery_flow_token_hash char(64) [unique]
+  otp_hash char(64)
+  reset_token_hash char(64) [unique]
+  otp_expires_at datetime(6) [not null]
+  challenge_expires_at datetime(6) [not null]
+  reset_token_expires_at datetime(6)
+  resend_available_at datetime(6) [not null]
+  failed_attempts int [not null, default: 0, note: "UNSIGNED"]
+  otp_version int [not null, default: 1, note: "UNSIGNED"]
+  status varchar(16) [not null, default: 'PENDING']
+  delivery_status varchar(16) [not null]
+  delivery_attempts int [not null, default: 0, note: "UNSIGNED"]
+  delivery_failure_code varchar(64)
+  verified_at datetime(6)
+  completed_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (status, challenge_expires_at, id) [name: "idx_recovery_expiry"]
+    (status, updated_at, id) [name: "idx_recovery_cleanup"]
+    (user_id, status, id) [name: "idx_recovery_user_status"]
+  }
+
+  Note: "chk_recovery_channel: CHECK (`delivery_channel` = 'EMAIL') | chk_recovery_status: CHECK (`status` IN ('PENDING','VERIFIED','COMPLETED','EXPIRED','LOCKED')) | chk_recovery_delivery: CHECK (`delivery_status` IN ('NOT_APPLICABLE','PENDING','SENDING','SENT','FAILED','UNKNOWN')) | chk_recovery_expiry: CHECK (`otp_expires_at` <= `challenge_expires_at`) | chk_recovery_decoy: CHECK ((`is_decoy` = true AND `user_id` IS NULL AND `delivery_status` = 'NOT_APPLICABLE') OR (`is_decoy` = false AND `user_id` IS NOT NULL)) | chk_recovery_pending: CHECK ((`status` = 'PENDING' AND `active_subject_key_hash` IS NOT NULL AND `recovery_flow_token_hash` IS NOT NULL AND `otp_hash` IS NOT NULL AND `reset_token_hash` IS NULL) OR `status` <> 'PENDING') | chk_recovery_verified: CHECK ((`status` = 'VERIFIED' AND `is_decoy` = false AND `recovery_flow_token_hash` IS NULL AND `otp_hash` IS NULL AND `reset_token_hash` IS NOT NULL AND `verified_at` IS NOT NULL) OR `status` <> 'VERIFIED') | chk_recovery_completed: CHECK ((`status` = 'COMPLETED' AND `reset_token_hash` IS NOT NULL AND `completed_at` IS NOT NULL) OR `status` <> 'COMPLETED')"
+}
+
+Table password_reset_tokens {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  delivery_channel varchar(16) [not null]
+  token_hash char(64) [not null, unique]
+  expires_at datetime(6) [not null]
+  used_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (user_id, used_at, expires_at, id) [name: "idx_password_reset_tokens_user_state"]
+  }
+
+  Note: "chk_password_reset_tokens_delivery_channel: CHECK ((`delivery_channel` = _utf8mb4'EMAIL')) | chk_password_reset_tokens_expiry: CHECK ((`expires_at` > `created_at`)) | chk_password_reset_tokens_used_at: CHECK (((`used_at` is null) or (`used_at` >= `created_at`)))"
+}
+
+Table post_hashtags {
+  post_id bigint [not null, note: "UNSIGNED"]
+  hashtag_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (post_id, hashtag_id) [pk, name: "pk_post_hashtags"]
+    (hashtag_id, post_id) [name: "idx_post_hashtags_hashtag_post"]
+  }
+}
+
+Table post_likes {
+  user_id bigint [not null, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (user_id, post_id) [pk, name: "pk_post_likes"]
+    (user_id, created_at, post_id) [name: "idx_post_likes_user_created"]
+    (post_id, created_at, user_id) [name: "idx_post_likes_post_created"]
+  }
+}
+
+Table post_media {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  media_url varchar(1000) [not null]
+  storage_public_id varchar(255) [not null, unique]
+  media_type post_media_media_type_enum [not null]
+  mime_type post_media_mime_type_enum [not null]
+  file_size_bytes bigint [not null, note: "UNSIGNED"]
+  width_px int [note: "UNSIGNED"]
+  height_px int [note: "UNSIGNED"]
+  duration_seconds int [note: "UNSIGNED"]
+  thumbnail_url varchar(1000)
+  display_order tinyint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (post_id, display_order) [unique, name: "uq_post_media_post_order"]
+  }
+
+  Note: "chk_post_media_display_order: CHECK ((`display_order` <= 3)) | chk_post_media_duration: CHECK ((((`media_type` = _utf8mb4'IMAGE') and (`duration_seconds` is null)) or ((`media_type` = _utf8mb4'VIDEO') and (`duration_seconds` between 1 and 180)))) | chk_post_media_file_size: CHECK ((`file_size_bytes` > 0))"
+}
+
+Table posts {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  author_id bigint [not null, note: "UNSIGNED"]
+  content varchar(500)
+  status posts_status_enum [not null, default: 'PUBLISHED']
+  is_edited tinyint(1) [not null, default: '0']
+  like_count int [not null, default: '0', note: "UNSIGNED"]
+  comment_count int [not null, default: '0', note: "UNSIGNED"]
+  published_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  hidden_by bigint [note: "UNSIGNED"]
+  hidden_at datetime(6)
+  hidden_reason varchar(500)
+  deleted_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (hidden_by) [name: "fk_posts_hidden_by"]
+    (author_id, status, published_at, id) [name: "idx_posts_author_status_published"]
+    (status, published_at, id) [name: "idx_posts_status_published"]
+    (status, like_count, comment_count, published_at, id) [name: "idx_posts_status_engagement"]
+    (content) [name: "ftx_posts_content"]
+  }
+
+  Note: "chk_posts_deleted_state: CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or (`status` <> _utf8mb4'DELETED'))) | chk_posts_hidden_state: CHECK ((((`status` = _utf8mb4'HIDDEN') and (`hidden_at` is not null) and (`hidden_by` is not null)) or (`status` <> _utf8mb4'HIDDEN')))"
+}
+
+Table refresh_tokens {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  token_hash char(64) [not null, unique]
+  device_id varchar(100)
+  device_info varchar(500)
+  ip_address varchar(45)
+  expires_at datetime(6) [not null]
+  revoked_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (user_id, revoked_at, expires_at, id) [name: "idx_refresh_tokens_user_expiry"]
+  }
+
+  Note: "chk_refresh_tokens_expiry: CHECK ((`expires_at` > `created_at`)) | chk_refresh_tokens_revoked_at: CHECK (((`revoked_at` is null) or (`revoked_at` >= `created_at`)))"
+}
+
+Table reports {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  reporter_id bigint [not null, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  reason reports_reason_enum [not null]
+  description varchar(1000)
+  status reports_status_enum [not null, default: 'PENDING']
+  resolved_by bigint [note: "UNSIGNED"]
+  resolved_at datetime(6)
+  resolution_note varchar(1000)
+  post_content_snapshot varchar(500)
+  post_media_snapshot json
+  pending_report_key varchar(100) [unique, note: "Generated column: GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'PENDING') then concat(`reporter_id`,_utf8mb3':',`post_id`) else NULL end)) STORED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (resolved_by) [name: "fk_reports_resolved_by"]
+    (status, created_at, id) [name: "idx_reports_status_created"]
+    (post_id, status, created_at, id) [name: "idx_reports_post_status"]
+    (reporter_id, created_at, id) [name: "idx_reports_reporter_created"]
+  }
+
+  Note: "chk_reports_resolution_state: CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))"
+}
+
+Table notifications {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  recipient_id bigint [not null, note: "UNSIGNED"]
+  actor_id bigint [note: "UNSIGNED"]
+  type notifications_type_enum [not null]
+  post_id bigint [note: "UNSIGNED"]
+  comment_id bigint [note: "UNSIGNED"]
+  report_id bigint [note: "UNSIGNED"]
+  read_at datetime(6)
+  deleted_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (recipient_id, deleted_at, created_at, id) [name: "idx_notifications_recipient_created"]
+    (recipient_id, deleted_at, read_at, id) [name: "idx_notifications_recipient_unread"]
+    (actor_id) [name: "fk_notifications_actor"]
+    (post_id) [name: "fk_notifications_post"]
+    (comment_id) [name: "fk_notifications_comment"]
+    (report_id) [name: "fk_notifications_report"]
+  }
+}
+
+Table saved_posts {
+  user_id bigint [not null, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (user_id, post_id) [pk, name: "pk_saved_posts"]
+    (user_id, created_at, post_id) [name: "idx_saved_posts_user_created"]
+    (post_id, created_at, user_id) [name: "idx_saved_posts_post_created"]
+  }
+}
+
+Table user_auth_providers {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  provider varchar(16) [not null]
+  provider_user_id varchar(255) [not null]
+  provider_email varchar(255)
+  provider_email_verified tinyint(1)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (provider, provider_user_id) [unique, name: "uq_user_auth_provider_identity"]
+    (user_id, provider) [unique, name: "uq_user_auth_provider_per_user"]
+    (user_id, provider, id) [name: "idx_user_auth_providers_user"]
+  }
+
+  Note: "chk_user_auth_providers_provider: CHECK ((`provider` in (_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_user_auth_providers_provider_user_id: CHECK ((char_length(trim(`provider_user_id`)) > 0)) | chk_user_auth_providers_email: CHECK (((`provider_email` is null and `provider_email_verified` is null) or (`provider_email` is not null and `provider_email_verified` is not null)))"
+}
+
+Table user_profiles {
+  user_id bigint [pk, not null, note: "UNSIGNED"]
+  display_name varchar(100)
+  avatar_url varchar(1000)
+  avatar_public_id varchar(255)
+  bio varchar(500)
+  date_of_birth date
+  profile_completed_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (display_name) [name: "ftx_user_profiles_display_name"]
+  }
+
+  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
+}
+
+Table users {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  email varchar(255) [unique]
+  email_verified_at datetime(6)
+  password_hash varchar(255)
+  role varchar(16) [not null, default: 'USER']
+  status varchar(16) [not null, default: 'ACTIVE']
+  blocked_at datetime(6)
+  blocked_reason varchar(500)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (status, created_at, id) [name: "idx_users_status_created_at"]
+  }
+
+  Note: "chk_users_role: CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))) | chk_users_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_users_blocked_data: CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))) | chk_users_email_not_blank: CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))) | chk_users_email_verification_consistency: CHECK (((`email` is not null) or (`email_verified_at` is null))) | chk_users_password_verified_email: CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null)))"
+}
+
+// =============================================================================
+// KHÓA NGOẠI
+// =============================================================================
+
+Ref fk_account_status_histories_changed_by: account_status_histories.changed_by > users.id [delete: restrict, update: restrict]
+Ref fk_account_status_histories_user: account_status_histories.user_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_actions_admin: admin_actions.admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_comments_parent: comments.parent_comment_id > comments.id [delete: cascade, update: restrict]
+Ref fk_comments_post: comments.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_comments_user: comments.user_id > users.id [delete: restrict, update: restrict]
+Ref fk_follows_follower: follows.follower_id > users.id [delete: cascade, update: restrict]
+Ref fk_follows_following: follows.following_id > users.id [delete: cascade, update: restrict]
+Ref fk_pending_completed_user: pending_registrations.completed_user_id > users.id [delete: set null, update: restrict]
+Ref fk_link_challenge_user: auth_method_link_challenges.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_social_pending_registration: social_auth_challenges.pending_registration_id > pending_registrations.id [delete: restrict, update: restrict]
+Ref fk_social_conflicting_user: social_auth_challenges.conflicting_user_id > users.id [delete: restrict, update: restrict]
+Ref fk_social_resolved_user: social_auth_challenges.resolved_user_id > users.id [delete: restrict, update: restrict]
+Ref fk_reauth_user: reauthentication_challenges.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_recovery_user: password_recovery_challenges.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_password_reset_tokens_user: password_reset_tokens.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_post_hashtags_hashtag: post_hashtags.hashtag_id > hashtags.id [delete: restrict, update: restrict]
+Ref fk_post_hashtags_post: post_hashtags.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_post_likes_post: post_likes.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_post_likes_user: post_likes.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_post_media_post: post_media.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_posts_author: posts.author_id > users.id [delete: restrict, update: restrict]
+Ref fk_posts_hidden_by: posts.hidden_by > users.id [delete: restrict, update: restrict]
+Ref fk_refresh_tokens_user: refresh_tokens.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_reports_post: reports.post_id > posts.id [delete: restrict, update: restrict]
+Ref fk_reports_reporter: reports.reporter_id > users.id [delete: restrict, update: restrict]
+Ref fk_reports_resolved_by: reports.resolved_by > users.id [delete: restrict, update: restrict]
+Ref fk_notifications_actor: notifications.actor_id > users.id [delete: set null, update: restrict]
+Ref fk_notifications_comment: notifications.comment_id > comments.id [delete: set null, update: restrict]
+Ref fk_notifications_post: notifications.post_id > posts.id [delete: set null, update: restrict]
+Ref fk_notifications_recipient: notifications.recipient_id > users.id [delete: cascade, update: restrict]
+Ref fk_notifications_report: notifications.report_id > reports.id [delete: set null, update: restrict]
+Ref fk_saved_posts_post: saved_posts.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_saved_posts_user: saved_posts.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_user_auth_providers_user: user_auth_providers.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_user_profiles_user: user_profiles.user_id > users.id [delete: cascade, update: restrict]

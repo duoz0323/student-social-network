@@ -4,6 +4,8 @@ import com.stu.edu.vn.backend.post.entity.SavedPost;
 import com.stu.edu.vn.backend.post.entity.SavedPostId;
 import java.util.Collection;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,9 @@ public interface SavedPostRepository extends JpaRepository<SavedPost, SavedPostI
     // Chỉ lấy khóa post đã lưu cho cả trang, không truy vấn trạng thái Save trong vòng lặp mapping.
     @Query("select sp.id.postId from SavedPost sp where sp.id.userId = :userId and sp.id.postId in :postIds")
     List<Long> findSavedPostIds(@Param("userId") Long userId, @Param("postIds") Collection<Long> postIds);
+
+    @Query("select sp.createdAt from SavedPost sp where sp.id.userId = :userId and sp.id.postId = :postId")
+    Optional<LocalDateTime> findCreatedAt(@Param("userId") Long userId, @Param("postId") Long postId);
 
     @Modifying
     @Query(

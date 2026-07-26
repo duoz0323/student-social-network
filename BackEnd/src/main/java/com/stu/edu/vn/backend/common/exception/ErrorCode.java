@@ -30,6 +30,7 @@ public enum ErrorCode {
     SEARCH_HASHTAG_INVALID(HttpStatus.BAD_REQUEST, "Hashtag tìm kiếm không hợp lệ"),
     SEARCH_KEYWORD_REQUIRED(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được để trống"),
     SEARCH_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa tìm kiếm không được vượt quá 100 ký tự"),
+    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "Cursor phân trang không hợp lệ"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ"),
     INVALID_IDENTIFIER(HttpStatus.BAD_REQUEST, "Email không hợp lệ"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng"),

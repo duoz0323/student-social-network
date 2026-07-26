@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FC as FeedBoardController
+    participant FS as FeedBoardService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn xóa Feed Board
+    FE-->>U: Yêu cầu xác nhận
+    U->>FE: Xác nhận xóa
+    FE->>FC: DELETE /api/v1/feed-boards/{feedBoardId}
+    FC->>FS: deleteFeedBoard(feedBoardId)
+    FS->>DB: Khóa và kiểm tra chủ sở hữu Feed Board
+    alt Không tồn tại hoặc không có quyền
+        FS-->>FE: Trả lỗi xóa Feed Board
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        FS->>DB: Xóa Feed Board theo chính sách dữ liệu
+        DB-->>FS: Commit transaction
+        FS-->>FE: DeleteFeedBoardResponse
+        FE-->>U: Loại Feed Board khỏi giao diện
+    end

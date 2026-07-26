@@ -5,6 +5,7 @@ import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -17,6 +18,109 @@ import org.springframework.data.repository.query.Param;
  * Repository truy vấn bài viết theo id, trạng thái và tác giả mà không chứa nghiệp vụ.
  */
 public interface PostRepository extends JpaRepository<Post, Long> {
+
+    @Query(value = """
+                    SELECT p.*
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND (
+                          (p.like_count + p.comment_count) < :cursorScore
+                          OR ((p.like_count + p.comment_count) = :cursorScore AND p.published_at < :cursorTime)
+                          OR ((p.like_count + p.comment_count) = :cursorScore AND p.published_at = :cursorTime AND p.id < :cursorPostId)
+                      )
+                    ORDER BY (p.like_count + p.comment_count) DESC, p.published_at DESC, p.id DESC
+                    """, nativeQuery = true)
+    List<Post> findForYouFeed(
+            @Param("cursorScore") int cursorScore,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
+
+    @Query(value = """
+                    SELECT p.*
+                    FROM posts p
+                    JOIN follows f ON f.following_id = p.author_id
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE f.follower_id = :viewerId
+                      AND p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND (p.published_at < :cursorTime OR (p.published_at = :cursorTime AND p.id < :cursorPostId))
+                    ORDER BY p.published_at DESC, p.id DESC
+                    """, nativeQuery = true)
+    List<Post> findFollowingFeed(
+            @Param("viewerId") Long viewerId,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
+
+    @Query(value = """
+                    SELECT p.*
+                    FROM posts p
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE p.author_id = :authorId
+                      AND p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND (p.published_at < :cursorTime OR (p.published_at = :cursorTime AND p.id < :cursorPostId))
+                    ORDER BY p.published_at DESC, p.id DESC
+                    """, nativeQuery = true)
+    List<Post> findProfilePosts(
+            @Param("authorId") Long authorId,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
+
+    @Query(value = """
+                    SELECT p.*
+                    FROM saved_posts sp
+                    JOIN posts p ON p.id = sp.post_id
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE sp.user_id = :viewerId
+                      AND p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND (sp.created_at < :cursorTime OR (sp.created_at = :cursorTime AND p.id < :cursorPostId))
+                    ORDER BY sp.created_at DESC, p.id DESC
+                    """, nativeQuery = true)
+    // Danh sách chỉ chứa bài còn khả dụng và giữ đúng thứ tự người dùng lưu gần nhất.
+    List<Post> findSavedPosts(
+            @Param("viewerId") Long viewerId,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
+
+    @Query(value = """
+                    SELECT p.*
+                    FROM post_likes pl
+                    JOIN posts p ON p.id = pl.post_id
+                    JOIN users u ON u.id = p.author_id
+                    JOIN user_profiles up ON up.user_id = p.author_id
+                    WHERE pl.user_id = :viewerId
+                      AND p.status = 'PUBLISHED'
+                      AND u.status = 'ACTIVE'
+                      AND up.profile_completed_at IS NOT NULL
+                      AND (pl.created_at < :cursorTime OR (pl.created_at = :cursorTime AND p.id < :cursorPostId))
+                    ORDER BY pl.created_at DESC, p.id DESC
+                    """, nativeQuery = true)
+    // Danh sách chỉ chứa bài còn khả dụng và giữ đúng thứ tự người dùng Like gần nhất.
+    List<Post> findLikedPosts(
+            @Param("viewerId") Long viewerId,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
 
     /**
      * Tìm nội dung bằng FULLTEXT MySQL nhưng chỉ trả bài công khai của tác giả đang hoạt động và đã hoàn tất hồ sơ.

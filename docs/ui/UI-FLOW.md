@@ -90,7 +90,9 @@ FEED-01
 → Tab Dành cho bạn tải bài PUBLISHED hợp lệ
 → Tab Đang theo dõi tải bài của người đang follow
 → Hiển thị danh sách PostCard
-→ Người dùng cuộn hoặc tải thêm theo phân trang
+→ Người dùng cuộn đến gần cuối danh sách
+→ Frontend gửi lại nextCursor opaque để tải trang tiếp theo
+→ Dừng khi hasNext = false
 ```
 
 Nếu Feed Following rỗng:
@@ -159,6 +161,15 @@ Like/Unlike:
 PostCard hoặc POST-01
 → Bấm biểu tượng thích
 → Cập nhật trạng thái liked/unliked và số lượt thích
+```
+
+Danh sách bài đã thích:
+
+```text
+Menu Xem thêm → Đã thích
+→ Route /liked
+→ Tải GET /api/v1/posts/liked bằng Cursor Pagination
+→ Unlike một bài thì loại bài đó khỏi danh sách hiện tại
 ```
 
 Bình luận:

@@ -1,0 +1,26 @@
+import { lazy, Suspense } from 'react';
+
+// Các màn hình sau đăng nhập được tách theo route để guest không phải tải Feed và Admin ngay từ đầu.
+export const AuthProvidersPage = lazy(() => import('../features/auth/pages/AuthProvidersPage.jsx'));
+export const FeedPage = lazy(() => import('../features/feed/pages/FeedPage.jsx'));
+export const PostDetailPage = lazy(() => import('../features/post/pages/PostDetailPage.jsx'));
+export const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage.jsx'));
+export const SavedPostsPage = lazy(() => import('../features/post/pages/SavedPostsPage.jsx'));
+export const LikedPostsPage = lazy(() => import('../features/post/pages/LikedPostsPage.jsx'));
+export const SearchPage = lazy(() => import('../features/search/pages/SearchPage.jsx'));
+export const NotificationsPage = lazy(() => import('../features/notification/pages/NotificationsPage.jsx'));
+export const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage.jsx'));
+export const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage.jsx'));
+export const AdminPostsPage = lazy(() => import('../features/admin/pages/AdminPostsPage.jsx'));
+export const AdminReportsPage = lazy(() => import('../features/admin/pages/AdminReportsPage.jsx'));
+export const AdminReportDetailPage = lazy(() => import('../features/admin/pages/AdminReportDetailPage.jsx'));
+export const AdminActionsPage = lazy(() => import('../features/admin/pages/AdminActionsPage.jsx'));
+
+export function LazyRouteBoundary({ children }) {
+  const fallback = (
+    <div className="flex min-h-48 items-center justify-center text-sm text-[var(--app-muted)]">
+      Đang tải...
+    </div>
+  );
+  return <Suspense fallback={fallback}>{children}</Suspense>;
+}

@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant HC as AdminHashtagController
+    participant HS as AdminHashtagService
+    participant DB as MySQL
+
+    Note over A,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    A->>FE: Chọn ẩn hashtag
+    FE->>HC: PATCH /api/v1/admin/hashtags/{id}/hide
+    HC->>HS: hideHashtag(hashtagId)
+    HS->>DB: Khóa và kiểm tra trạng thái hashtag
+    alt Không thể ẩn
+        HS-->>FE: Trả lỗi trạng thái
+        FE-->>A: Hiển thị thông báo lỗi
+    else Hợp lệ
+        HS->>DB: Cập nhật trạng thái ẩn và ghi lịch sử
+        DB-->>HS: Commit transaction
+        HS-->>FE: HashtagStatusResponse
+        FE-->>A: Hiển thị hashtag đã ẩn
+    end

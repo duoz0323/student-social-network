@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -91,7 +92,7 @@ class PostServiceImplTest {
                 new PostImageFileValidator(),
                 new HashtagNormalizer(),
                 cloudinaryStorageService,
-                new PostMapper(),
+                Mappers.getMapper(PostMapper.class),
                 transactionTemplate,
                 entityManager,
                 clock

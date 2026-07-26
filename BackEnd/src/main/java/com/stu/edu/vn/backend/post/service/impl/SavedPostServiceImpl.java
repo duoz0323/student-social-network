@@ -1,21 +1,40 @@
 package com.stu.edu.vn.backend.post.service.impl;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
+import com.stu.edu.vn.backend.common.cursor.CursorCodec;
+import com.stu.edu.vn.backend.common.cursor.TimeCursor;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.post.dto.response.PostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostSaveResponse;
 import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.post.entity.PostHashtag;
+import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.entity.SavedPost;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.mapper.PostMapper;
+import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
+import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.service.SavedPostService;
+import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
+import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -27,12 +46,20 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Service
 public class SavedPostServiceImpl implements SavedPostService {
+    private static final int MAX_PAGE_SIZE = 20;
+    private static final java.time.LocalDateTime FIRST_PAGE_TIME =
+            java.time.LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
     private final SavedPostRepository savedPostRepository;
+    private final PostMediaRepository postMediaRepository;
+    private final PostHashtagRepository postHashtagRepository;
+    private final PostMapper postMapper;
+    private final FeedPostBatchLoader feedPostBatchLoader;
+    private final CursorCodec cursorCodec;
     private final TransactionTemplate saveTransactionTemplate;
 
     public SavedPostServiceImpl(
@@ -41,6 +68,11 @@ public class SavedPostServiceImpl implements SavedPostService {
             UserProfileRepository userProfileRepository,
             PostRepository postRepository,
             SavedPostRepository savedPostRepository,
+            PostMediaRepository postMediaRepository,
+            PostHashtagRepository postHashtagRepository,
+            PostMapper postMapper,
+            FeedPostBatchLoader feedPostBatchLoader,
+            CursorCodec cursorCodec,
             PlatformTransactionManager transactionManager
     ) {
         this.currentUserProvider = currentUserProvider;
@@ -48,6 +80,11 @@ public class SavedPostServiceImpl implements SavedPostService {
         this.userProfileRepository = userProfileRepository;
         this.postRepository = postRepository;
         this.savedPostRepository = savedPostRepository;
+        this.postMediaRepository = postMediaRepository;
+        this.postHashtagRepository = postHashtagRepository;
+        this.postMapper = postMapper;
+        this.feedPostBatchLoader = feedPostBatchLoader;
+        this.cursorCodec = cursorCodec;
         this.saveTransactionTemplate = new TransactionTemplate(transactionManager);
         // Tách INSERT sang transaction riêng để lỗi khóa trùng chỉ rollback INSERT cạnh tranh, không làm hỏng response idempotent bên ngoài.
         this.saveTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -89,6 +126,53 @@ public class SavedPostServiceImpl implements SavedPostService {
         // Không gọi exists trước; một câu DELETE vừa tránh race condition vừa bảo đảm Unsave idempotent.
         savedPostRepository.deleteByUserIdAndPostId(userId, postId);
         return new PostSaveResponse(postId, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPageResponse<FeedPostResponse> getSavedPosts(String encodedCursor, int limit) {
+        if (limit < 1 || limit > MAX_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        Long viewerId = currentUserProvider.getCurrentUserId();
+        ensureCurrentUserCanSave(viewerId);
+        TimeCursor cursor = cursorCodec.decode(encodedCursor, TimeCursor.class);
+        if (cursor != null && !cursor.isValid()) {
+            throw new BusinessException(ErrorCode.INVALID_CURSOR);
+        }
+        java.time.LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.createdAt();
+        long postId = cursor == null ? Long.MAX_VALUE : cursor.postId();
+        List<Post> fetched = postRepository.findSavedPosts(
+                viewerId, time, postId, PageRequest.of(0, limit + 1));
+        boolean hasNext = fetched.size() > limit;
+        List<Post> posts = fetched.stream().distinct().limit(limit).toList();
+        List<FeedPostResponse> content = feedPostBatchLoader.map(posts, viewerId);
+        String nextCursor = null;
+        if (hasNext && !posts.isEmpty()) {
+            Post last = posts.get(posts.size() - 1);
+            java.time.LocalDateTime savedAt = savedPostRepository.findCreatedAt(viewerId, last.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR));
+            nextCursor = cursorCodec.encode(new TimeCursor(savedAt, last.getId()));
+        }
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
+    }
+
+    private Map<Long, List<PostMedia>> loadMedia(List<Long> postIds) {
+        Map<Long, List<PostMedia>> result = new HashMap<>();
+        for (PostMedia item : postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(postIds)) {
+            result.computeIfAbsent(item.getPost().getId(), ignored -> new ArrayList<>()).add(item);
+        }
+        return result;
+    }
+
+    private Map<Long, String> loadHashtags(List<Long> postIds) {
+        Map<Long, String> result = new HashMap<>();
+        for (PostHashtag relation : postHashtagRepository.findWithHashtagByPostIds(postIds)) {
+            if (result.put(relation.getPost().getId(), relation.getHashtag().getNormalizedName()) != null) {
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            }
+        }
+        return result;
     }
 
     private User ensureCurrentUserCanSave(Long userId) {

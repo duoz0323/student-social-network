@@ -158,7 +158,7 @@ export default function AuthLayout({ children }) {
               background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #2563eb 100%)',
             }}
           >
-            <div className="bg-white rounded-[18px] overflow-hidden shadow-2xl">
+            <div className="auth-card-theme bg-white rounded-[18px] overflow-hidden shadow-2xl">
               {children}
             </div>
           </div>

@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
+import { toPostView } from '../features/post/utils/postViewModel.js';
 
 const AppContext = createContext(null);
 
@@ -19,21 +20,9 @@ function toViewUser(user) {
   };
 }
 
-function toPostView(post) {
-  return {
-    ...post,
-    authorId: post.author?.id ?? post.authorId,
-    imageUrls: (post.media ?? []).map((item) => item.url),
-    hashtags: post.hashtag ? [post.hashtag] : (post.hashtags ?? []),
-    edited: post.isEdited ?? post.edited ?? false,
-    likedByCurrentUser: post.likedByCurrentUser ?? post.viewer?.likedByCurrentUser ?? false,
-    savedByCurrentUser: post.savedByCurrentUser ?? post.viewer?.savedByCurrentUser ?? false,
-  };
-}
-
 export function AppProvider({ children }) {
   const auth = useAuth();
-  // Feed, saved posts và public profile chưa có endpoint GET; giữ dữ liệu hiển thị cũ cho tới khi Backend bổ sung contract.
+  // Context chỉ giữ snapshot dùng chung cho tương tác và hồ sơ; các danh sách Post tự tải qua service chuyên biệt.
   const [data, setData] = useState(() => initialData);
   const currentUserId = auth.user?.id ?? null;
 
@@ -97,9 +86,9 @@ export function AppProvider({ children }) {
       }));
     }
 
-    async function toggleLike(postId) {
+    async function toggleLike(postId, currentLiked) {
       const post = data.posts.find((item) => String(item.id) === String(postId));
-      const liked = post?.likedByCurrentUser
+      const liked = currentLiked ?? post?.likedByCurrentUser
         ?? data.likes.some((item) => String(item.postId) === String(postId) && String(item.userId) === String(currentUserId));
       const response = liked ? await postApi.unlike(postId) : await postApi.like(postId);
       setData((previous) => ({
@@ -111,9 +100,9 @@ export function AppProvider({ children }) {
       return response;
     }
 
-    async function toggleSave(postId) {
+    async function toggleSave(postId, currentSaved) {
       const post = data.posts.find((item) => String(item.id) === String(postId));
-      const saved = post?.savedByCurrentUser
+      const saved = currentSaved ?? post?.savedByCurrentUser
         ?? data.savedPosts.some((item) => String(item.postId) === String(postId) && String(item.userId) === String(currentUserId));
       const response = saved ? await postApi.unsave(postId) : await postApi.save(postId);
       setData((previous) => ({

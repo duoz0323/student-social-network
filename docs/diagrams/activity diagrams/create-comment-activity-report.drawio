@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram id="create-comment-activity" name="create-comment">
+    <mxGraphModel dx="827" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="lane-user" value="Người dùng" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="230" height="675" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-ui" value="Giao diện" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="30" width="230" height="675" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-server" value="Server" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="490" y="30" width="230" height="675" as="geometry"/>
+        </mxCell>
+        <mxCell id="start" value="" style="ellipse;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="101" y="45" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="user-action" value="Nhập nội dung bình luận" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="30" y="100" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ui-request" value="Gửi yêu cầu bình luận" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-ui">
+          <mxGeometry x="30" y="175" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="server-check" value="Kiểm tra bài viết và nội dung" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-server">
+          <mxGeometry x="30" y="250" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="decision" value="Hợp lệ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-server">
+          <mxGeometry x="65" y="325" width="100" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ui-error" value="Thông báo lỗi bình luận" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-ui">
+          <mxGeometry x="30" y="410" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="server-success" value="Lưu bình luận" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-server">
+          <mxGeometry x="30" y="410" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ui-success" value="Hiển thị bình luận mới" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-ui">
+          <mxGeometry x="30" y="500" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="end" value="" style="ellipse;shape=doubleEllipse;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="96" y="585" width="38" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="start" target="user-action">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="Nội dung bình luận" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="user-action" target="ui-request">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="ui-request" target="server-check">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="server-check" target="decision">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="Không" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="decision" target="ui-error">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="ui-error" target="end">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="Có" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="decision" target="server-success">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="server-success" target="ui-success">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="ui-success" target="end">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant RC as UserRelationshipController
+    participant RS as UserRelationshipService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn hạn chế người dùng
+    FE->>RC: POST /api/v1/users/{userId}/restrict
+    RC->>RS: restrictUser(userId)
+    RS->>DB: Kiểm tra người dùng và quan hệ Restrict
+    alt Không thể hạn chế
+        RS-->>FE: Trả lỗi nghiệp vụ
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        RS->>DB: Lưu quan hệ Restrict
+        DB-->>RS: Commit transaction
+        RS-->>FE: UserRestrictStatusResponse
+        FE-->>U: Hiển thị trạng thái đã hạn chế
+    end

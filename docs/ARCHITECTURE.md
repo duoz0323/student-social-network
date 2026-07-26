@@ -173,8 +173,8 @@ MySQL là nguồn dữ liệu chuẩn.
 
 - Truy vấn bài của người đang Follow.
 - Chỉ PUBLISHED.
-- Sắp xếp `created_at DESC`.
-- Phân trang.
+- Sắp xếp ổn định `published_at DESC, id DESC`.
+- Dùng Cursor Pagination và keyset query.
 
 ### For You
 
@@ -188,6 +188,15 @@ score = freshnessScore
 
 Không sử dụng Machine Learning.
 
+### Cursor Pagination cho danh sách bài viết
+
+- Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu và bài đã thích dùng Cursor Pagination.
+- Request đầu truyền `limit`; request sau truyền nguyên `nextCursor` opaque do Backend trả về.
+- `limit` mặc định 10, tối đa 20; Backend lấy `limit + 1` để xác định `hasNext`.
+- Feed For You dùng cursor gồm `score`, `publishedAt`, `postId`; danh sách theo thời gian dùng
+  `createdAt`, `postId`.
+- Search, bình luận, Follow và Admin tiếp tục dùng `PageResponse`.
+
 ## 8. Bảo mật
 
 - Mật khẩu băm.
@@ -200,7 +209,7 @@ Không sử dụng Machine Learning.
 
 ## 9. Phân trang
 
-- Mặc định 20.
-- Tối đa 100.
-- Mọi danh sách đều phân trang.
+- Danh sách bài viết phục vụ Infinite Scroll dùng Cursor Pagination, mặc định 10 và tối đa 20.
+- Các danh sách cần số trang/tổng số tiếp tục dùng `PageResponse` theo contract từng endpoint.
+- Không dùng `page`, `offset` hoặc `COUNT(*)` cho các endpoint Cursor Pagination.
 

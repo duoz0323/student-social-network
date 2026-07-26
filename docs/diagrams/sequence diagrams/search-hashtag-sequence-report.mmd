@@ -1,0 +1,16 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant SC as SearchController
+    participant SS as SearchService
+    participant DB as MySQL
+
+    U->>FE: Nhập từ khóa hashtag
+    FE->>SC: GET /api/v1/search/hashtags?q=...
+    SC->>SS: searchHashtags(keyword, page, size)
+    SS->>SS: Chuẩn hóa từ khóa
+    SS->>DB: Truy vấn hashtag đang hiển thị
+    DB-->>SS: Kết quả phân trang
+    SS-->>FE: PageResponse
+    FE-->>U: Hiển thị hashtag phù hợp

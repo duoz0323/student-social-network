@@ -25,7 +25,7 @@
 - FEED-01.
 - POST-01, POST-02, POST-03, POST-04, POST-05, POST-06, POST-07, POST-08, POST-09, POST-10.
 - PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04.
-- SEARCH-01, SAVED-01.
+- SEARCH-01, SAVED-01, LIKED-01.
 - ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06.
 - SYS-01, SYS-02, SYS-03, SYS-04.
 
@@ -55,10 +55,10 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | AUTH-04 | Onboarding ảnh đại diện | `docs/ui/screens/auth/update-profile-2.jpg` | User chưa hoàn tất hồ sơ | Thêm ảnh đại diện tùy chọn. | Chọn ảnh preview hoặc bỏ qua. | Route `/onboarding/profile`, bước 2/3. | Phạm vi triển khai: MVP_CURRENT. Không upload API thật trong mock Frontend. |
 | AUTH-05 | Onboarding ngày sinh và bio | `docs/ui/screens/auth/update-profile-3.jpg` | User chưa hoàn tất hồ sơ | Nhập ngày sinh bắt buộc và bio tùy chọn. | Ngày sinh, bio, hoàn tất hồ sơ; không cho bỏ qua ngày sinh. | Route `/onboarding/profile`, bước 3/3; hoàn tất cập nhật `profileCompletedAt`. | Phạm vi triển khai: MVP_CURRENT. Ngày sinh không được lớn hơn ngày hiện tại và người dùng phải đủ 18 tuổi. |
 | AUTH-06 | Hoàn tất hồ sơ thành công | `docs/ui/screens/auth/update-profile-success.jpg` | User đã hoàn tất hồ sơ | Xác nhận hồ sơ đã sẵn sàng. | Thông báo thành công, nút khám phá Feed. | Route `/onboarding/success`; nút chính đến `/feed/for-you`. | Phạm vi triển khai: MVP_CURRENT. Chỉ truy cập khi đã đăng nhập và `profileCompletedAt` khác `NULL`. |
-| AUTH-P2-01 | Quên mật khẩu | `docs/ui/screens/auth/forget-password.jpg` | Khách | Bắt đầu luồng quên mật khẩu sau MVP. | Nhập email. | Luồng P2/future. | Phạm vi triển khai: FUTURE_DEVELOPMENT. Không thuộc tiêu chí nghiệm thu MVP hiện tại. |
-| AUTH-P2-02 | Nhập mã xác minh đổi mật khẩu | `docs/ui/screens/auth/verified-for-change-pass.jpg` | Khách | Nhập mã xác minh khi đặt lại mật khẩu. | Các ô nhập mã, tiếp tục, gửi lại mã. | Luồng P2/future. | Phạm vi triển khai: FUTURE_DEVELOPMENT. |
-| AUTH-P2-03 | Đổi mật khẩu | `docs/ui/screens/auth/change-password.jpg` | Khách | Tạo mật khẩu mới. | Nhập mật khẩu mới, xác nhận mật khẩu, lưu mật khẩu. | Luồng P2/future. | Phạm vi triển khai: FUTURE_DEVELOPMENT. |
-| AUTH-P2-04 | Đổi mật khẩu thành công | `docs/ui/screens/auth/change-success.jpg` | Khách | Xác nhận đổi mật khẩu thành công. | Thông báo thành công, nút đăng nhập. | Đi đến AUTH-01 nếu triển khai P2. | Phạm vi triển khai: FUTURE_DEVELOPMENT. |
+| AUTH-P2-01 | Quên mật khẩu | `docs/ui/screens/auth/forget-password.jpg` | Khách | Bắt đầu Password Recovery cho tài khoản local đủ điều kiện. | Nhập email và nhận response trung tính chống account enumeration. | Route `/forgot-password`; thành công chuyển bước OTP. | Phạm vi triển khai: MVP_CURRENT; đã tích hợp Backend Password Recovery. |
+| AUTH-P2-02 | Nhập mã xác minh đổi mật khẩu | `docs/ui/screens/auth/verified-for-change-pass.jpg` | Khách | Xác minh OTP đặt lại mật khẩu. | Nhập mã, tiếp tục, gửi lại theo cooldown. | Dùng `X-Auth-Flow-Token`; thành công chuyển `/reset-password`. | Phạm vi triển khai: MVP_CURRENT. |
+| AUTH-P2-03 | Đổi mật khẩu | `docs/ui/screens/auth/change-password.jpg` | Khách | Đặt mật khẩu mới sau khi OTP hợp lệ. | Nhập mật khẩu mới, xác nhận mật khẩu, lưu. | Route `/reset-password`; complete thành công thu hồi Refresh Token hiện có. | Phạm vi triển khai: MVP_CURRENT. |
+| AUTH-P2-04 | Đổi mật khẩu thành công | `docs/ui/screens/auth/change-success.jpg` | Khách | Xác nhận đổi mật khẩu thành công. | Thông báo thành công, nút đăng nhập. | Đi đến AUTH-01; không tự cấp JWT mới. | Phạm vi triển khai: MVP_CURRENT. |
 
 ## Feed
 
@@ -90,12 +90,13 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | PROFILE-03 | Modal chỉnh sửa hồ sơ | `docs/ui/screens/profile/model-edit-profile.jpg` | User | Cập nhật hồ sơ cá nhân. | Avatar, tên hiển thị, bio/thông tin cá nhân, ngày sinh bắt buộc, lưu. | Mở từ PROFILE-01. | Phạm vi triển khai: MVP_CURRENT. Không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi; không triển khai username hoặc hồ sơ riêng tư dù có trong ảnh. |
 | PROFILE-04 | Modal danh sách follower/following | `docs/ui/screens/other/model-list-follow.jpg` | User | Xem người theo dõi và đang theo dõi. | Tab Người theo dõi/Đang theo dõi, danh sách user theo displayName, nút theo dõi/trạng thái đang theo dõi. | Mở từ PROFILE-01/02; chọn user điều hướng `/profile/:userId`. | Phạm vi triển khai: MVP_CURRENT. |
 
-## Search và Saved Posts
+## Search, Saved Posts và Liked Posts
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
 | SEARCH-01 | Tìm kiếm và khám phá | `docs/ui/screens/search/model-search-and-discovery.jpg` | User | Tìm kiếm người dùng, bài viết hoặc hashtag. | Thanh tìm kiếm, tìm kiếm phổ biến, gợi ý theo dõi. | Từ sidebar; kết quả user đến `/profile/:userId`; kết quả bài đến POST-01. | Phạm vi triển khai: MVP_CURRENT. Tìm user theo displayName, không theo username. Tên ảnh có "discovery" nhưng Discovery Map thuộc FUTURE_DEVELOPMENT. |
 | SAVED-01 | Bài viết đã lưu | `docs/ui/screens/post/post-saved.jpg` | User | Xem các bài đã lưu. | Danh sách bài đã lưu, PostCard. | Trùng ảnh với POST-07. | Phạm vi triển khai: MVP_CURRENT. Biến thể thuộc nhóm Post nhưng liên quan trực tiếp đến Saved Posts. |
+| LIKED-01 | Bài viết đã thích | Chưa có ảnh riêng | User | Xem các bài đã Like của chính mình. | Danh sách PostCard đã thích, Unlike loại bài khỏi danh sách ngay. | Từ mục “Đã thích” trong menu “Xem thêm”; route `/liked`; mở POST-01. | Chỉ chủ tài khoản xem; dữ liệu lấy từ API phân trang. |
 
 ## Admin
 

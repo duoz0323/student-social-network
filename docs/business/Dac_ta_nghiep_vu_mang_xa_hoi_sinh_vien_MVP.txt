@@ -36,7 +36,7 @@ Khách chưa đăng nhập được phép:
 
 - Đăng ký tài khoản.
 - Đăng nhập.
-- Yêu cầu đặt lại mật khẩu.
+- Khôi phục mật khẩu bằng OTP đối với tài khoản local đủ điều kiện.
 
 Khách chưa đăng nhập không được phép sử dụng các chức năng mạng xã hội.
 
@@ -49,7 +49,7 @@ Người dùng được phép:
 - Quản lý hồ sơ cá nhân.
 - Theo dõi người dùng khác.
 - Đăng và quản lý bài viết.
-- Like, bình luận và lưu bài viết.
+- Like, xem bài đã thích, bình luận và lưu bài viết.
 - Xem Feed.
 - Tìm kiếm.
 - Báo cáo bài viết vi phạm.
@@ -169,12 +169,10 @@ Quy trình hoàn tất hồ sơ ban đầu:
 
 1.2. Đăng nhập
 
-Người dùng đăng nhập bằng một trong hai thông tin sau và mật khẩu:
+Người dùng đăng nhập bằng email đã xác minh và mật khẩu.
 
-- Email.
-
-Hệ thống phải tự xác định dữ liệu người dùng nhập là email hay email để truy vấn
-đúng trường dữ liệu tương ứng.
+Tài khoản social-only có password_hash bằng NULL không được đăng nhập local cho
+đến khi liên kết email, xác minh OTP và thiết lập mật khẩu hợp lệ.
 
 Khi đăng nhập thành công, hệ thống cấp:
 
@@ -192,10 +190,24 @@ Khi đăng xuất, Refresh Token của phiên hiện tại bị thu hồi hoặc
 
 1.4. Quên mật khẩu
 
-Người dùng có thể yêu cầu đặt lại mật khẩu thông qua email đã đăng ký.
+Người dùng có thể khôi phục mật khẩu bằng OTP thông qua email đã xác minh.
 
-Chức năng này có thể được triển khai sau khi các luồng mạng xã hội chính đã hoàn
-thành nếu tiến độ thực hiện không đảm bảo.
+Quy tắc:
+
+- Chỉ tài khoản ACTIVE đã có password_hash và phương thức EMAIL tương ứng đã verified
+  mới đủ điều kiện khôi phục mật khẩu.
+- Tài khoản social-only không dùng luồng này để tạo mật khẩu lần đầu.
+- Email không tồn tại, chưa verified, social-only hoặc BLOCKED đều nhận response khởi
+  tạo trung tính và decoy challenge để chống dò tài khoản.
+- Challenge có hiệu lực 15 phút; OTP có hiệu lực 10 phút nhưng không vượt quá thời hạn
+  challenge; resend sau 60 giây; tối đa 5 lần nhập sai.
+- OTP, recovery flow token và reset-authorized token chỉ lưu dạng HMAC hash.
+- Flow token truyền qua header `X-Auth-Flow-Token`, không truyền trong URL.
+- Sau khi OTP hợp lệ, reset-authorized token single-use có hiệu lực 5 phút.
+- Hoàn tất đổi mật khẩu và thu hồi toàn bộ Refresh Token trong cùng transaction.
+- Hệ thống không tự đăng nhập hoặc cấp JWT mới sau khi đổi mật khẩu.
+- Access Token stateless đã phát hành còn hiệu lực đến expiry vì hệ thống chưa dùng
+  tokenVersion.
 
 2. Hồ sơ người dùng
 
@@ -304,13 +316,18 @@ Sau khi chỉnh sửa, bài viết phải lưu thời gian cập nhật và hi�
 
 5.1. Like
 
-Người dùng có thể Like hoặc Unlike bài viết.
+Người dùng có thể:
+
+- Like hoặc Unlike bài viết.
+- Xem danh sách bài viết đã thích của chính mình.
 
 Quy tắc:
 
 - Mỗi người chỉ được Like một bài tối đa một lần.
 - Không được Like bài đã bị xóa hoặc bị ẩn.
 - Hệ thống hiển thị tổng số lượt Like.
+- Danh sách bài đã thích chỉ hiển thị với chủ tài khoản.
+- Khi Unlike tại danh sách bài đã thích, bài được loại khỏi danh sách hiện tại.
 
 5.2. Bình luận
 
@@ -324,7 +341,7 @@ Quy tắc:
 
 - Chỉ người dùng đã đăng nhập được bình luận.
 - Không được bình luận trên bài bị ẩn hoặc bị xóa.
-- Nếu đủ thời gian, hệ thống có thể hỗ trợ trả lời bình luận tối đa một cấp.
+- Hệ thống hỗ trợ trả lời bình luận tối đa một cấp.
 
 5.3. Lưu bài viết
 
@@ -350,7 +367,7 @@ Quy tắc:
 
 - Sắp xếp theo thời gian đăng giảm dần.
 - Không hiển thị bài bị xóa hoặc bị ẩn.
-- Sử dụng phân trang.
+- Sử dụng Cursor Pagination, sắp xếp ổn định theo published_at DESC, id DESC.
 - Khi người dùng Unfollow, bài viết của tài khoản đó không còn thuộc nguồn của
   Feed Following.
 
@@ -379,6 +396,28 @@ Công thức tham khảo:
                  + Số bình luận × Trọng số bình luận
 
 Trọng số được cấu hình trong Backend và có thể điều chỉnh khi kiểm thử.
+
+6.3. Cursor Pagination và Infinite Scroll
+
+Các danh sách bài viết sau dùng Cursor Pagination:
+
+- Feed For You.
+- Feed Following.
+- Bài viết trên hồ sơ.
+- Bài viết đã lưu.
+- Bài viết đã thích.
+
+Quy tắc:
+
+- Request đầu truyền limit; request tiếp theo truyền nguyên nextCursor do Backend trả về.
+- limit mặc định là 10, tối thiểu 1 và tối đa 20.
+- Response gồm content, nextCursor và hasNext.
+- Cursor là chuỗi Base64URL opaque; Frontend không tự tạo hoặc sửa cursor.
+- Feed For You dùng cursor chứa score, publishedAt và postId.
+- Các danh sách theo thời gian dùng cursor chứa createdAt và postId.
+- Backend dùng keyset query và lấy limit + 1, không dùng page, offset hoặc COUNT tổng.
+- Cursor không hợp lệ trả lỗi INVALID_CURSOR.
+- Search bài viết/hashtag, bình luận, Follow và Admin tiếp tục dùng PageResponse.
 
 7. Hashtag
 
@@ -472,6 +511,29 @@ Admin có thể:
 - Đánh dấu báo cáo không hợp lệ.
 - Ẩn bài viết nếu xác định có vi phạm.
 
+10.4. Lịch sử thao tác quản trị
+
+- Admin có thể xem danh sách và chi tiết các hành động quản trị đã được ghi nhận.
+- Chỉ ADMIN được truy cập API lịch sử thao tác.
+- Lịch sử dùng để truy vết thao tác khóa/mở tài khoản, ẩn/khôi phục bài và xử lý báo cáo.
+
+11. Thông báo đơn giản
+
+Hệ thống tạo thông báo cho các sự kiện Follow, Like bài, bình luận, trả lời bình luận,
+xử lý báo cáo, ẩn/khôi phục bài và khóa/mở khóa tài khoản.
+
+Người dùng có thể:
+
+- Xem danh sách thông báo có phân trang.
+- Xem số thông báo chưa đọc.
+- Đánh dấu một thông báo hoặc toàn bộ thông báo là đã đọc.
+- Xóa thông báo khỏi danh sách của mình.
+
+Quy tắc:
+
+- Người dùng chỉ xem và thao tác trên thông báo của chính mình.
+- Đây là thông báo trong hệ thống; thông báo realtime vẫn nằm ngoài phạm vi MVP.
+
 ================================================================================
 III. DANH SÁCH MODULE CHỨC NĂNG MVP
 ================================================================================
@@ -482,7 +544,9 @@ III. DANH SÁCH MODULE CHỨC NĂNG MVP
 - Đăng nhập.
 - Đăng xuất.
 - Refresh Token.
-- Quên mật khẩu và đặt lại mật khẩu nếu đủ thời gian.
+- Khôi phục và đặt lại mật khẩu bằng OTP.
+- Đăng ký/đăng nhập Google và Facebook.
+- Liên kết, xem và gỡ phương thức đăng nhập.
 
 2. Module hồ sơ người dùng
 
@@ -516,7 +580,9 @@ III. DANH SÁCH MODULE CHỨC NĂNG MVP
 
 - Like.
 - Unlike.
+- Xem danh sách bài đã thích.
 - Bình luận.
+- Trả lời bình luận một cấp.
 - Xóa bình luận.
 - Lưu bài viết.
 - Bỏ lưu bài viết.
@@ -542,6 +608,14 @@ III. DANH SÁCH MODULE CHỨC NĂNG MVP
 - Quản lý người dùng.
 - Quản lý bài viết.
 - Quản lý báo cáo.
+- Xem lịch sử thao tác quản trị.
+
+10. Module thông báo
+
+- Xem danh sách thông báo.
+- Xem số thông báo chưa đọc.
+- Đánh dấu một hoặc tất cả thông báo là đã đọc.
+- Xóa thông báo.
 
 ================================================================================
 IV. YÊU CẦU PHI CHỨC NĂNG
@@ -564,8 +638,10 @@ IV. YÊU CẦU PHI CHỨC NĂNG
 - Các API thông thường có thời gian phản hồi trung bình không quá 2 giây trong
   môi trường kiểm thử.
 - API Feed trả tối đa 20 bài viết trên mỗi lần tải.
-- Tất cả danh sách phải hỗ trợ phân trang.
-- Kích thước trang mặc định là 20 bản ghi.
+- Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu và bài đã thích dùng
+  Cursor Pagination với limit mặc định 10 và tối đa 20.
+- Search, bình luận, Follow và Admin dùng PageResponse theo contract từng endpoint.
+- Endpoint Cursor Pagination không truy vấn COUNT tổng và không dùng page hoặc offset.
 - Hệ thống đáp ứng tối thiểu 30 đến 50 người dùng đồng thời trong môi trường
   kiểm thử luận văn.
 
@@ -633,19 +709,23 @@ VI. CÁC BẢNG DỮ LIỆU DỰ KIẾN CHO MVP
 3. pending_registrations
 4. user_auth_providers
 5. refresh_tokens
-6. password_reset_tokens
-7. follows
-8. posts
-9. post_media
-10. hashtags
-11. post_hashtags
-12. post_likes
-13. comments
-14. saved_posts
-15. reports
-16. notifications (tùy chọn)
-17. account_status_histories (tùy chọn)
-18. admin_actions (tùy chọn)
+6. password_recovery_challenges
+7. password_reset_tokens (legacy, chỉ giữ để audit; implementation mới không đọc/ghi)
+8. auth_method_link_challenges
+9. reauthentication_challenges
+10. social_auth_challenges
+11. follows
+12. posts
+13. post_media
+14. hashtags
+15. post_hashtags
+16. post_likes
+17. comments
+18. saved_posts
+19. reports
+20. notifications
+21. account_status_histories
+22. admin_actions
 
 ================================================================================
 VII. TIÊU CHÍ NGHIỆM THU MVP
@@ -662,6 +742,7 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
 7. Backend xác minh Google/Facebook token trước khi tin dữ liệu provider.
 8. Provider đã liên kết luôn đăng nhập về đúng users.id.
 9. Không tự động gộp hai tài khoản ACTIVE chỉ vì trùng email.
+10. Pending chỉ được hoàn tất hoặc hủy sau khi Backend xác minh social token thành công.
 11. Liên kết provider lấy user_id đích từ JWT hiện tại.
 12. Hệ thống từ chối gỡ phương thức đăng nhập cuối cùng.
 13. Social-only account chưa có mật khẩu không đăng nhập local được.
@@ -678,17 +759,21 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
 24. Bài bị xóa hoặc bị ẩn không xuất hiện trên Feed.
 25. Người dùng Like và Unlike bài viết.
 26. Một người không Like một bài hai lần.
-27. Người dùng bình luận và xóa bình luận của mình.
-28. Người dùng lưu và bỏ lưu bài viết.
-29. Feed Following hiển thị bài của tài khoản đang theo dõi.
-30. Feed For You hiển thị các bài viết hợp lệ.
-31. Người dùng tìm được tài khoản và bài viết.
-32. Người dùng gửi được báo cáo bài viết.
-33. Admin xử lý được người dùng, bài viết và báo cáo.
-34. Các API danh sách đều có phân trang.
-35. API từ chối thao tác khi người dùng không có quyền.
-36. Mật khẩu không được lưu dưới dạng văn bản thuần.
-37. Hình ảnh không hợp lệ phải bị Backend từ chối.
+27. Người dùng xem được danh sách bài đã thích của chính mình.
+28. Người dùng bình luận, trả lời một cấp và xóa bình luận của mình.
+29. Người dùng lưu, bỏ lưu và xem danh sách bài đã lưu.
+30. Feed Following hiển thị bài của tài khoản đang theo dõi.
+31. Feed For You hiển thị các bài viết hợp lệ.
+32. Năm danh sách bài Infinite Scroll dùng cursor ổn định và không trả trùng bài khi tải tiếp.
+33. Cursor không hợp lệ bị từ chối bằng INVALID_CURSOR.
+34. Người dùng tìm được tài khoản và bài viết.
+35. Người dùng gửi được báo cáo bài viết.
+36. Admin xử lý được người dùng, bài viết, báo cáo và xem lịch sử thao tác.
+37. Người dùng xem và quản lý được thông báo đơn giản.
+38. API danh sách dùng đúng CursorPageResponse hoặc PageResponse theo contract.
+39. API từ chối thao tác khi người dùng không có quyền.
+40. Mật khẩu, OTP, flow token và Refresh Token không được lưu dạng văn bản thuần.
+41. Hình ảnh không hợp lệ phải bị Backend từ chối.
 
 ================================================================================
 
@@ -700,6 +785,7 @@ MỨC P0 - BẮT BUỘC HOÀN THÀNH
 - Đăng ký local bằng email và xác minh OTP.
 - Đăng ký và đăng nhập Google/Facebook.
 - Đăng nhập local và đăng xuất.
+- Khôi phục mật khẩu bằng OTP cho tài khoản local đủ điều kiện.
 - Quy trình hoàn tất hồ sơ ban đầu.
 - JWT Access Token và Refresh Token.
 - Hồ sơ người dùng.
@@ -707,6 +793,7 @@ MỨC P0 - BẮT BUỘC HOÀN THÀNH
 - Tạo, xem, chỉnh sửa và xóa bài viết.
 - Upload hình ảnh.
 - Like và Unlike.
+- Xem danh sách bài viết đã thích.
 - Bình luận.
 - Feed Following.
 - Feed For You cơ bản.
@@ -724,7 +811,6 @@ MỨC P1 - CẦN HOÀN THÀNH NẾU ĐỦ TIẾN ĐỘ
 
 MỨC P2 - CHỈ THỰC HIỆN KHI P0 VÀ P1 ĐÃ ỔN ĐỊNH
 
-- Quên mật khẩu.
 - Trả lời bình luận một cấp.
 - Thông báo trong hệ thống.
 - Lịch sử thao tác quản trị đơn giản.

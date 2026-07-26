@@ -3,15 +3,18 @@ package com.stu.edu.vn.backend.post.controller;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
 import com.stu.edu.vn.backend.post.service.PostLikeService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -66,5 +69,22 @@ class PostLikeControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("POST_ALREADY_LIKED"));
+    }
+
+    @Test
+    void getLikedPostsReturnsCurrentUsersPagedList() throws Exception {
+        // Danh sách đã thích chỉ lấy user từ JWT trong Service và giữ contract phân trang ổn định.
+        when(postLikeService.getLikedPosts(null, 10))
+                .thenReturn(new CursorPageResponse<>(List.of(), null, false));
+
+        mockMvc.perform(get("/api/v1/posts/liked")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+
+        verify(postLikeService).getLikedPosts(null, 10);
     }
 }

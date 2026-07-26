@@ -27,7 +27,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `Avatar` | Hiển thị ảnh đại diện hoặc fallback. | Feed, post, profile, search, admin detail. | `src`, `name`, `size`, `verified`. | Dùng chung. |
 | `Badge` | Hiển thị trạng thái hoặc nhãn ngắn. | Admin, report detail, PostCard nếu cần. | `tone`, `children`. | Dùng chung. |
 | `DataTable` | Bảng dữ liệu có header, row, empty/loading và phân trang. | ADMIN-02, ADMIN-04, ADMIN-05. | `columns`, `rows`, `loading`, `pagination`, `onRowAction`. | Dùng chung admin, có thể tái dùng. |
-| `Pagination` | Điều hướng trang cho danh sách. | Admin tables, search/feed nếu dùng phân trang dạng nút. | `page`, `totalPages`, `onChange`. | Dùng chung. |
+| `Pagination` | Điều hướng trang cho danh sách dạng trang. | Admin tables và search. | `page`, `totalPages`, `onChange`. | Không dùng cho các danh sách bài Infinite Scroll. |
 
 ## 3. Authentication component
 
@@ -44,8 +44,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; tên hiển thị và ngày sinh bắt buộc, ngày sinh phải cho thấy người dùng đủ 18 tuổi; avatar và bio có thể bỏ qua. | Module auth/profile. |
 | `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
 | `OnboardingSuccessPage` | Màn hình hồ sơ đã sẵn sàng sau khi `profileCompletedAt` được cập nhật. | AUTH-06. | Nút chính điều hướng `/feed/for-you`. | Module auth/profile. |
-| `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, FUTURE_DEVELOPMENT. |
-| `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-P2-03. | `errors`, `submitting`, `onSubmit`. | Module auth, FUTURE_DEVELOPMENT. |
+| `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, đã tích hợp với Password Recovery API. |
+| `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-P2-03. | `errors`, `submitting`, `onSubmit`. | Module auth, đã tích hợp với Password Recovery API. |
 | `RouteGuard` | Phân loại khách, user chưa hoàn tất hồ sơ và user đã hoàn tất hồ sơ. | Router Auth/Onboarding/User/Admin. | `currentUser.status`, `currentUser.profile.profileCompletedAt`, `role`. | Router. |
 | `Toast` hoặc inline message | Hiển thị lỗi form và thông báo nghiệp vụ. | AUTH-01, AUTH-02, OTP, Social conflict, Onboarding. | `message`, `type`. | Có thể dùng inline trong MVP. |
 
@@ -55,7 +55,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `PostCard` | Hiển thị bài viết trong feed, profile, saved và search. | FEED-01, PROFILE-01/02, POST-07, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
+| `PostCard` | Hiển thị bài viết trong feed, profile, saved, liked và search. | FEED-01, PROFILE-01/02, POST-07, LIKED-01, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
+| `InfinitePostList` | Tải nối tiếp PostCard bằng cursor và quản lý loading/empty/end state. | Feed, profile, saved, liked. | `loadPage(cursor)`, `initialItems`, `hasNext`, `onItemsChange`. | Dùng chung cho năm danh sách bài Cursor Pagination. |
 | `PostAuthor` | Hiển thị tác giả bài viết bằng displayName và avatar. | FEED-01, POST-01, PROFILE-01/02, POST-07. | `authorId` hoặc `user`, `onOpenProfile`. Điều hướng bằng `/profile/:userId`. | Dùng chung module post/profile. |
 | `PostDetail` | Hiển thị bài viết đầy đủ và khu vực bình luận. | POST-01. | `post`, `comments`, `currentUser`, action callbacks. | Module post. |
 | `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxImages`, `submitting`, `onSubmit`. | Module post. |
@@ -107,5 +108,5 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `ErrorPage` | Trang lỗi 403, 404, 500. | SYS-01, SYS-02, SYS-03. | `code`, `title`, `description`, `primaryAction`. | Dùng chung router/system. |
 | `SessionExpiredModal` | Thông báo phiên hết hạn và điều hướng đăng nhập lại. | SYS-04. | `open`, `onLoginAgain`. | Dùng chung auth/system. |
 | `LoadingState` | Trạng thái đang tải dữ liệu. | Feed, search, admin tables, profile. | `variant`, `message`. | Dùng chung. |
-| `EmptyState` | Trạng thái không có dữ liệu. | Feed Following rỗng, search rỗng, saved rỗng, admin table rỗng. | `title`, `description`, `action`. | Dùng chung. |
+| `EmptyState` | Trạng thái không có dữ liệu. | Feed Following rỗng, search rỗng, saved/liked rỗng, admin table rỗng. | `title`, `description`, `action`. | Dùng chung. |
 

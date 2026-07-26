@@ -26,6 +26,8 @@ function updatePostForm(payload) {
 export const postApi = Object.freeze({
   create: (payload, signal) => requestData(httpClient.post(POST_ENDPOINTS.root, createPostForm(payload), { signal })),
   getDetail: (postId, signal) => requestData(httpClient.get(POST_ENDPOINTS.detail(postId), { signal })),
+  getSaved: (params, signal) => requestData(httpClient.get(POST_ENDPOINTS.saved, { params: compactParams(params), signal })),
+  getLiked: (params, signal) => requestData(httpClient.get(POST_ENDPOINTS.liked, { params: compactParams(params), signal })),
   update: (postId, payload, signal) => requestData(httpClient.put(POST_ENDPOINTS.detail(postId), updatePostForm(payload), { signal })),
   remove: (postId, signal) => requestData(httpClient.delete(POST_ENDPOINTS.detail(postId), { signal })),
   like: (postId, signal) => requestData(httpClient.post(POST_ENDPOINTS.likes(postId), undefined, { signal })),

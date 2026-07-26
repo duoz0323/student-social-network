@@ -15,3 +15,10 @@ export function compactParams(params = {}) {
     Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
   );
 }
+
+// Payload Auth giữ chuỗi rỗng để Backend trả validation đúng field; chỉ bỏ thuộc tính chưa được cung cấp.
+export function withoutUndefined(payload = {}) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+}

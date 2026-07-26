@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.post.controller;
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import com.stu.edu.vn.backend.post.dto.response.HashtagSuggestionListResponse;
 import com.stu.edu.vn.backend.post.service.HashtagService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,13 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/hashtags")
+@RequiredArgsConstructor
 public class HashtagController {
 
     private final HashtagService hashtagService;
-
-    public HashtagController(HashtagService hashtagService) {
-        this.hashtagService = hashtagService;
-    }
 
     @GetMapping("/suggestions")
     public ResponseEntity<ApiResponse<HashtagSuggestionListResponse>> getSuggestions(

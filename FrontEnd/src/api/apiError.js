@@ -35,8 +35,24 @@ export class ApiError extends Error {
   }
 }
 
+export function isRequestCanceled(error) {
+  return axios.isCancel(error)
+    || error?.code === 'ERR_CANCELED'
+    || error?.name === 'CanceledError'
+    || error?.name === 'AbortError';
+}
+
 export function normalizeApiError(error) {
   if (error instanceof ApiError) return error;
+
+  if (isRequestCanceled(error)) {
+    // AbortController là lifecycle bình thường khi đổi route, không phải lỗi kết nối máy chủ.
+    return new ApiError({
+      code: 'ERR_CANCELED',
+      message: 'Yêu cầu đã được hủy.',
+      originalError: error,
+    });
+  }
 
   if (!axios.isAxiosError(error)) {
     return new ApiError({

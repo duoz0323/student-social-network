@@ -46,7 +46,7 @@ class AdminUserControllerTest {
     void listUsesDefaultPaginationAndReturnsOnlyApprovedFields() throws Exception {
         LocalDateTime timestamp = LocalDateTime.of(2026, 7, 14, 8, 0);
         var item = new AdminUserListItemResponse(
-                10L, "Minh", "avatar", "minh@example.com", "0900000000",
+                10L, "Minh", "avatar", "minh@example.com",
                 UserStatus.ACTIVE, true, timestamp);
         when(adminUserService.getUsers(null, null, 0, 20))
                 .thenReturn(new PageResponse<>(List.of(item), 0, 20, 1, 1, true, true));
@@ -108,7 +108,7 @@ class AdminUserControllerTest {
     void detailReturnsApprovedFieldsWithoutSensitiveData() throws Exception {
         LocalDateTime timestamp = LocalDateTime.of(2026, 7, 14, 8, 0);
         var detail = new AdminUserDetailResponse(
-                10L, "Minh", "avatar", "bio", "minh@example.com", "0900000000",
+                10L, "Minh", "avatar", "bio", "minh@example.com",
                 UserStatus.ACTIVE, false, null, null, null, timestamp, timestamp);
         when(adminUserService.getUserDetail(10L)).thenReturn(detail);
 

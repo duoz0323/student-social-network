@@ -10,21 +10,25 @@ import VerifyRegistrationOtpPage from '../features/auth/pages/VerifyRegistration
 import SocialConflictPendingPage from '../features/auth/pages/SocialConflictPendingPage.jsx';
 import OnboardingProfilePage from '../features/auth/pages/OnboardingProfilePage.jsx';
 import OnboardingSuccessPage from '../features/auth/pages/OnboardingSuccessPage.jsx';
-import AuthProvidersPage from '../features/auth/pages/AuthProvidersPage.jsx';
-import FeedPage from '../features/feed/pages/FeedPage.jsx';
-import PostDetailPage from '../features/post/pages/PostDetailPage.jsx';
-import ProfilePage from '../features/profile/pages/ProfilePage.jsx';
-import SavedPostsPage from '../features/post/pages/SavedPostsPage.jsx';
-import SearchPage from '../features/search/pages/SearchPage.jsx';
-import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage.jsx';
-import AdminUsersPage from '../features/admin/pages/AdminUsersPage.jsx';
-import AdminPostsPage from '../features/admin/pages/AdminPostsPage.jsx';
-import AdminReportsPage from '../features/admin/pages/AdminReportsPage.jsx';
-import AdminReportDetailPage from '../features/admin/pages/AdminReportDetailPage.jsx';
-import AdminActionsPage from '../features/admin/pages/AdminActionsPage.jsx';
-import NotificationsPage from '../features/notification/pages/NotificationsPage.jsx';
 import ErrorPage from '../features/system/pages/ErrorPage.jsx';
 import { AdminRoute, GuestRoute, ProfileCompletionRoute, ProtectedRoute, RootRedirect } from './routeGuards.jsx';
+import {
+  AdminActionsPage,
+  AdminDashboardPage,
+  AdminPostsPage,
+  AdminReportDetailPage,
+  AdminReportsPage,
+  AdminUsersPage,
+  AuthProvidersPage,
+  FeedPage,
+  LazyRouteBoundary,
+  LikedPostsPage,
+  NotificationsPage,
+  PostDetailPage,
+  ProfilePage,
+  SavedPostsPage,
+  SearchPage,
+} from './lazyRoutes.jsx';
 
 export const router = createBrowserRouter([
   { path: '/', element: <RootRedirect /> },
@@ -42,13 +46,14 @@ export const router = createBrowserRouter([
   { path: '/onboarding/profile', element: <ProfileCompletionRoute><OnboardingProfilePage /></ProfileCompletionRoute> },
   { path: '/onboarding/success', element: <ProfileCompletionRoute requireCompleted><OnboardingSuccessPage /></ProfileCompletionRoute> },
   {
-    element: <ProtectedRoute><UserShell /></ProtectedRoute>,
+    element: <ProtectedRoute><LazyRouteBoundary><UserShell /></LazyRouteBoundary></ProtectedRoute>,
     children: [
       { path: '/feed/:type', element: <FeedPage /> },
       { path: '/posts/:postId', element: <PostDetailPage /> },
       { path: '/profile/me', element: <ProfilePage self /> },
       { path: '/profile/:userId', element: <ProfilePage /> },
       { path: '/saved', element: <SavedPostsPage /> },
+      { path: '/liked', element: <LikedPostsPage /> },
       { path: '/search', element: <SearchPage /> },
       { path: '/notifications', element: <NotificationsPage /> },
       { path: '/settings/auth-providers', element: <AuthProvidersPage /> },
@@ -56,7 +61,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <AdminRoute><AdminShell /></AdminRoute>,
+    element: <AdminRoute><LazyRouteBoundary><AdminShell /></LazyRouteBoundary></AdminRoute>,
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'users', element: <AdminUsersPage /> },

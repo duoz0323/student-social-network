@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export default function MoreMenu({ open, onClose, onLogout, onSettings }) {
+export default function MoreMenu({ open, onClose, onLogout, onSettings, onLikedPosts }) {
   const menuRef = useRef(null);
 
   // Đóng menu khi click ra ngoài
@@ -30,7 +30,7 @@ export default function MoreMenu({ open, onClose, onLogout, onSettings }) {
         Cài đặt
       </button>
       <div className="my-2 h-[1px] w-full bg-[var(--app-border)]"></div>
-      <button className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
+      <button onClick={() => { onClose(); onLikedPosts?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
         Đã thích
       </button>
       <button className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">

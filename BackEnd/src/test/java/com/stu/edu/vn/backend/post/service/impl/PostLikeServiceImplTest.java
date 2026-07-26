@@ -10,11 +10,16 @@ import static org.mockito.Mockito.when;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
+import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
+import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostLike;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.mapper.PostMapper;
+import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
+import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -36,7 +41,12 @@ class PostLikeServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
+    private final PostMediaRepository postMediaRepository = org.mockito.Mockito.mock(PostMediaRepository.class);
+    private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
+    private final PostMapper postMapper = org.mockito.Mockito.mock(PostMapper.class);
     private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
+    private final FeedPostBatchLoader feedPostBatchLoader = org.mockito.Mockito.mock(FeedPostBatchLoader.class);
+    private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
 
     private PostLikeServiceImpl postLikeService;
 
@@ -48,7 +58,12 @@ class PostLikeServiceImplTest {
                 userProfileRepository,
                 postRepository,
                 postLikeRepository,
-                notificationService
+                postMediaRepository,
+                postHashtagRepository,
+                postMapper,
+                notificationService,
+                feedPostBatchLoader,
+                cursorCodec
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);

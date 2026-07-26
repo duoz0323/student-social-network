@@ -38,7 +38,7 @@ MVP phải hoàn thiện một luồng xuyên suốt:
 - Gửi lại OTP theo giới hạn tần suất.
 - Đăng ký hoặc đăng nhập bằng Google/Facebook.
 - Đăng nhập.
-- Yêu cầu đặt lại mật khẩu nếu triển khai P2.
+- Khôi phục mật khẩu bằng OTP đối với tài khoản local đủ điều kiện.
 
 Không được sử dụng chức năng mạng xã hội.
 
@@ -57,6 +57,7 @@ Không được sử dụng chức năng mạng xã hội.
 - Follow/Unfollow.
 - Tạo, xem, sửa và xóa bài.
 - Like/Unlike.
+- Xem danh sách bài viết đã thích của chính mình.
 - Bình luận và xóa bình luận của mình.
 - Lưu/Bỏ lưu bài.
 - Xem Feed For You.
@@ -153,7 +154,7 @@ Bài viết gồm:
 
 - Nội dung tối đa 500 ký tự.
 - Tối đa 4 ảnh.
-- Nhiều hashtag.
+- Tối đa một hashtag.
 
 Quy tắc:
 
@@ -170,6 +171,7 @@ Quy tắc:
 #### Like
 
 - Like/Unlike.
+- Xem danh sách bài viết đã thích của chính mình.
 - Một người Like một bài tối đa một lần.
 - Không Like bài HIDDEN hoặc DELETED.
 
@@ -193,7 +195,7 @@ Quy tắc:
 - Chỉ bài của tài khoản đang Follow.
 - Sắp xếp thời gian giảm dần.
 - Không gồm bài HIDDEN hoặc DELETED.
-- Có phân trang.
+- Dùng Cursor Pagination, sắp xếp ổn định theo `published_at DESC, id DESC`.
 
 #### For You
 
@@ -204,11 +206,12 @@ Quy tắc:
   - Số bình luận.
 - Không dùng Machine Learning.
 - Hạn chế lặp liên tiếp cùng tác giả.
+- Dùng Cursor Pagination với cursor chứa đủ khóa xếp hạng `score`, `publishedAt`, `postId`.
 
 ### 4.7 Hashtag
 
 - Chuẩn hóa chữ thường.
-- Một bài có nhiều hashtag.
+- Một bài có tối đa một hashtag.
 - Xem bài theo hashtag.
 
 ### 4.8 Tìm kiếm
@@ -305,7 +308,6 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 ### P2
 
-- Quên mật khẩu.
 - Reply bình luận một cấp.
 - Thông báo đơn giản.
 - Lịch sử thao tác quản trị đơn giản.

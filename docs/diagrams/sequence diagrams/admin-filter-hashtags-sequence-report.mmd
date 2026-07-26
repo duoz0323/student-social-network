@@ -1,0 +1,16 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant HC as AdminHashtagController
+    participant HS as AdminHashtagService
+    participant DB as MySQL
+
+    Note over A,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    A->>FE: Nhập điều kiện lọc hashtag
+    FE->>HC: GET /api/v1/admin/hashtags
+    HC->>HS: getHashtags(filters, page, size)
+    HS->>DB: Truy vấn hashtag theo điều kiện
+    DB-->>HS: Kết quả phân trang
+    HS-->>FE: PageResponse
+    FE-->>A: Hiển thị danh sách hashtag

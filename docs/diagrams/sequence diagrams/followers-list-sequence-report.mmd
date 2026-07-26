@@ -1,0 +1,15 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FC as FollowController
+    participant FS as FollowService
+    participant DB as MySQL
+
+    U->>FE: Mở danh sách người theo dõi
+    FE->>FC: GET /api/v1/users/{userId}/followers?page=0&size=20
+    FC->>FS: getFollowers(userId, page, size)
+    FS->>DB: Truy vấn quan hệ Follow và hồ sơ
+    DB-->>FS: Danh sách người theo dõi phân trang
+    FS-->>FE: PageResponse
+    FE-->>U: Hiển thị danh sách người theo dõi

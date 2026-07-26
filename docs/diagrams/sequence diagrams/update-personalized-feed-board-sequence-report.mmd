@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FC as FeedBoardController
+    participant FS as FeedBoardService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn sửa Feed Board
+    FE-->>U: Hiển thị cấu hình hiện tại
+    U->>FE: Thay đổi tên hoặc tiêu chí
+    FE->>FC: PUT /api/v1/feed-boards/{feedBoardId}
+    FC->>FS: updateFeedBoard(feedBoardId, request)
+    FS->>DB: Khóa và kiểm tra chủ sở hữu Feed Board
+    FS->>FS: Kiểm tra cấu hình mới
+    alt Không có quyền hoặc cấu hình không hợp lệ
+        FS-->>FE: Trả lỗi cập nhật Feed Board
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        FS->>DB: Cập nhật Feed Board và các quy tắc
+        DB-->>FS: Commit transaction
+        FS->>DB: Lấy lại bài PUBLISHED phù hợp
+        DB-->>FS: Danh sách bài viết ứng viên
+        FS->>FS: Xếp hạng lại nội dung
+        FS-->>FE: FeedBoardResponse đã cập nhật
+        FE-->>U: Hiển thị Feed Board mới
+    end

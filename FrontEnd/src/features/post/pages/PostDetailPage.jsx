@@ -7,16 +7,7 @@ import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { shortTime } from '../../../utils/formatters.js';
 import PostCard from '../components/PostCard.jsx';
-
-function normalizePost(post) {
-  return {
-    ...post,
-    authorId: post.author?.id,
-    imageUrls: (post.media ?? []).map((item) => item.url),
-    hashtags: post.hashtag ? [post.hashtag] : [],
-    edited: post.isEdited,
-  };
-}
+import { toPostView } from '../utils/postViewModel.js';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -36,7 +27,7 @@ export default function PostDetailPage() {
       postApi.getDetail(postId, controller.signal),
       postApi.getComments(postId, { page: 0, size: 50 }, controller.signal),
     ]).then(([postResponse, commentPage]) => {
-      setPost(normalizePost(postResponse));
+      setPost(toPostView(postResponse));
       setComments(commentPage.content ?? []);
     }).catch((requestError) => {
       if (requestError.code !== 'ERR_CANCELED') setError(requestError.message);
@@ -50,7 +41,7 @@ export default function PostDetailPage() {
     try {
       const created = await postApi.createComment(postId, comment.trim());
       setComments((items) => [...items, created]);
-      setPost((item) => ({ ...item, commentCount: item.commentCount + 1 }));
+      setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
       setComment('');
     } catch (requestError) {
       setError(requestError.message);
@@ -61,6 +52,8 @@ export default function PostDetailPage() {
     try {
       await postApi.deleteComment(commentId);
       setComments((items) => items.filter((item) => item.commentId !== commentId));
+      // Backend trigger đã giảm posts.comment_count; cập nhật cùng thay đổi lên giao diện.
+      setPost((item) => ({ ...item, commentCount: Math.max(0, (Number(item.commentCount) || 0) - 1) }));
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -79,6 +72,8 @@ export default function PostDetailPage() {
     try {
       const created = await postApi.createReply(commentId, content);
       setReplies((current) => ({ ...current, [commentId]: [...(current[commentId] ?? []), created] }));
+      // Reply cũng là một bản ghi comments nên được tính vào bộ đếm bình luận của bài viết.
+      setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
       setReplyDrafts((current) => ({ ...current, [commentId]: '' }));
     } catch (requestError) { setError(requestError.message); }
   }
@@ -106,7 +101,7 @@ export default function PostDetailPage() {
           className="flex-1 bg-transparent px-2 py-2 outline-none" placeholder="Viết bình luận..." />
         <button type="submit" disabled={!comment.trim()} className="font-bold text-blue-600 disabled:opacity-40">Đăng</button>
       </form>
-      {error && <p className="m-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && <p className="app-error m-4 rounded-xl p-3 text-sm">{error}</p>}
       {comments.length === 0 ? (
         <EmptyState title="Chưa có bình luận" description="Hãy là người đầu tiên bình luận." />
       ) : comments.map((item) => (
@@ -122,7 +117,7 @@ export default function PostDetailPage() {
             <p className="mt-1 whitespace-pre-wrap">{item.content}</p>
             {item.replyCount > 0 && replies[item.commentId] === undefined && <button onClick={() => loadReplies(item.commentId)} className="mt-2 text-xs font-semibold text-blue-600">Xem {item.replyCount} phản hồi</button>}
             {(replies[item.commentId] ?? []).map((reply) => <div key={reply.commentId} className="mt-3 border-l-2 pl-3"><strong>{reply.displayName}</strong><p>{reply.content}</p></div>)}
-            <div className="mt-3 flex gap-2"><input value={replyDrafts[item.commentId] ?? ''} onChange={(event) => setReplyDrafts((current) => ({ ...current, [item.commentId]: event.target.value }))} placeholder="Viết phản hồi..." className="min-w-0 flex-1 rounded-lg border px-3 py-1 text-sm" /><button onClick={() => submitReply(item.commentId)} className="text-sm font-semibold text-blue-600">Trả lời</button></div>
+            <div className="mt-3 flex gap-2"><input value={replyDrafts[item.commentId] ?? ''} onChange={(event) => setReplyDrafts((current) => ({ ...current, [item.commentId]: event.target.value }))} placeholder="Viết phản hồi..." className="app-field min-w-0 flex-1 rounded-lg border px-3 py-1 text-sm outline-none transition" /><button onClick={() => submitReply(item.commentId)} className="text-sm font-semibold text-[var(--app-brand)]">Trả lời</button></div>
           </div>
         </article>
       ))}

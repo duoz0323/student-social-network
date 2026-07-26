@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 class PostRepositoryContractTest {
 
@@ -36,5 +37,37 @@ class PostRepositoryContractTest {
                 .isNotNull();
         assertThat(PostHashtagRepository.class.getMethod("findWithHashtagByPostId", Long.class)
                 .getAnnotation(EntityGraph.class).attributePaths()).containsExactly("hashtag");
+    }
+
+    @Test
+    void cursorQueriesUseKeysetWithoutCountQuery() throws Exception {
+        // Các danh sách cuộn vô hạn phải giới hạn bằng Pageable trang 0 nhưng không được sinh COUNT/OFFSET nghiệp vụ.
+        Method forYou = PostRepository.class.getMethod(
+                "findForYouFeed", int.class, LocalDateTime.class, Long.class,
+                org.springframework.data.domain.Pageable.class);
+        Method following = PostRepository.class.getMethod(
+                "findFollowingFeed", Long.class, LocalDateTime.class, Long.class,
+                org.springframework.data.domain.Pageable.class);
+        Method profile = PostRepository.class.getMethod(
+                "findProfilePosts", Long.class, LocalDateTime.class, Long.class,
+                org.springframework.data.domain.Pageable.class);
+        Method saved = PostRepository.class.getMethod(
+                "findSavedPosts", Long.class, LocalDateTime.class, Long.class,
+                org.springframework.data.domain.Pageable.class);
+        Method liked = PostRepository.class.getMethod(
+                "findLikedPosts", Long.class, LocalDateTime.class, Long.class,
+                org.springframework.data.domain.Pageable.class);
+
+        for (Method method : new Method[]{forYou, following, profile, saved, liked}) {
+            Query query = method.getAnnotation(Query.class);
+            assertThat(method.getReturnType()).isEqualTo(java.util.List.class);
+            assertThat(query.countQuery()).isBlank();
+            assertThat(query.value()).doesNotContainIgnoringCase("OFFSET", "COUNT(");
+            assertThat(query.value()).contains("p.status = 'PUBLISHED'", "p.id < :cursorPostId");
+        }
+        assertThat(forYou.getAnnotation(Query.class).value())
+                .contains("(p.like_count + p.comment_count)", "ORDER BY", "p.id DESC");
+        assertThat(following.getAnnotation(Query.class).value())
+                .contains("f.follower_id = :viewerId", "f.following_id = p.author_id");
     }
 }

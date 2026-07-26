@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant SC as UserSettingsController
+    participant SS as UserSettingsService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn quyền gắn thẻ
+    FE->>SC: PUT /api/v1/users/me/settings/tagging
+    SC->>SS: updateTaggingSettings(request)
+    SS->>SS: Kiểm tra giá trị cài đặt
+    alt Không hợp lệ
+        SS-->>FE: Trả lỗi cài đặt
+    else Hợp lệ
+        SS->>DB: Lưu quyền gắn thẻ
+        DB-->>SS: Commit transaction
+        SS-->>FE: UserSettingsResponse
+        FE-->>U: Hiển thị cài đặt đã lưu
+    end

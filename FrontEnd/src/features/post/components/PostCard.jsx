@@ -5,11 +5,13 @@ import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { shortTime, formatNumber } from '../../../utils/formatters.js';
+import PostMediaGrid from './PostMediaGrid.jsx';
 import ReportPostFlow from './ReportPostFlow.jsx';
+import { copyPostLink } from '../utils/postViewModel.js';
 
 function SuccessIcon() {
   return (
-    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-[var(--app-text)]">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--app-surface-soft)] text-[var(--app-text)]">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
       </svg>
@@ -107,22 +109,31 @@ function LinkIcon() {
   );
 }
 
-export default function PostCard({ post, detail = false }) {
+export default function PostCard({ post, detail = false, onSaveChange, onLikeChange }) {
   const navigate = useNavigate();
   const { currentUserId, getUserById, data, toggleLike, toggleSave, updatePost, deletePost } = useApp();
+  const content = post.content ?? '';
+  const hashtags = Array.isArray(post.hashtags) ? post.hashtags : [];
+  const imageUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+  const hasMedia = (post.media?.length ?? imageUrls.length) > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleteStep, setDeleteStep] = useState(null); // null | 'confirm' | 'success'
   const [reporting, setReporting] = useState(false);
-  const [draft, setDraft] = useState(post.content);
-  const [tags, setTags] = useState(post.hashtags.join(', '));
+  const [draft, setDraft] = useState(content);
+  const [tags, setTags] = useState(hashtags.join(', '));
   const menuRef = useRef(null);
   const author = getUserById(post.authorId) ?? post.author;
   const isOwner = post.authorId === currentUserId;
-  const liked = post.likedByCurrentUser
+  const initialLiked = post.likedByCurrentUser
     ?? data.likes.some((like) => String(like.postId) === String(post.id) && String(like.userId) === String(currentUserId));
-  const saved = post.savedByCurrentUser
+  const initialSaved = post.savedByCurrentUser
     ?? data.savedPosts.some((item) => String(item.postId) === String(post.id) && String(item.userId) === String(currentUserId));
+  const [liked, setLiked] = useState(initialLiked);
+  const [saved, setSaved] = useState(initialSaved);
+  const [likeCountFromInteraction, setLikeCountFromInteraction] = useState(null);
+  // Ưu tiên số mới nhất do API Like/Unlike trả về; trước tương tác dùng dữ liệu Feed/Post Detail.
+  const likeCount = likeCountFromInteraction ?? (Number(post.likeCount) || 0);
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
@@ -154,6 +165,21 @@ export default function PostCard({ post, detail = false }) {
     if (detail) navigate('/feed/for-you');
   }
 
+  async function handleLike() {
+    const response = await toggleLike(post.id, liked);
+    setLiked(response.likedByCurrentUser);
+    setLikeCountFromInteraction(Number(response.likeCount) || 0);
+    // Cho màn hình Đã thích loại bài khỏi danh sách ngay khi người dùng Unlike.
+    onLikeChange?.(post.id, response.likedByCurrentUser);
+  }
+
+  async function handleSave() {
+    const response = await toggleSave(post.id, saved);
+    setSaved(response.saved);
+    // Cho màn hình Saved loại bài khỏi danh sách ngay khi người dùng bỏ lưu.
+    onSaveChange?.(post.id, response.saved);
+  }
+
   // Đóng menu sau khi chọn hành động
   function menuAction(action) {
     setMenuOpen(false);
@@ -161,7 +187,7 @@ export default function PostCard({ post, detail = false }) {
   }
 
   return (
-    <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border-b border-[var(--app-border-strong)] bg-[var(--app-surface)] px-5 py-4">
+    <article className="post-card grid grid-cols-[42px_minmax(0,1fr)] gap-3 border-b border-[var(--app-border-strong)] bg-[var(--app-surface)] px-5 py-4">
       {/* Avatar tác giả — bấm vào điều hướng đến trang cá nhân */}
       <Link to={author.id === currentUserId ? '/profile/me' : `/profile/${author.id}`} className="pt-0.5">
         <Avatar src={author.avatarUrl} name={author.displayName} />
@@ -198,7 +224,7 @@ export default function PostCard({ post, detail = false }) {
               <div className="post-menu-dropdown">
                 {isOwner ? (
                   <>
-                    <button onClick={() => menuAction(() => toggleSave(post.id))}>
+                    <button onClick={() => menuAction(handleSave)}>
                       <span>{saved ? 'Bỏ lưu' : 'Lưu'}</span>
                       <BookmarkIcon />
                     </button>
@@ -213,7 +239,7 @@ export default function PostCard({ post, detail = false }) {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => menuAction(() => toggleSave(post.id))}>
+                    <button onClick={() => menuAction(handleSave)}>
                       <span>{saved ? 'Bỏ lưu' : 'Lưu'}</span>
                       <BookmarkIcon />
                     </button>
@@ -223,7 +249,7 @@ export default function PostCard({ post, detail = false }) {
                     </button>
                   </>
                 )}
-                <button onClick={() => menuAction(() => navigator.clipboard?.writeText(window.location.origin + '/posts/' + post.id))}>
+                <button onClick={() => menuAction(() => copyPostLink(post.id))}>
                   <span>Sao chép liên kết</span>
                   <LinkIcon />
                 </button>
@@ -234,39 +260,34 @@ export default function PostCard({ post, detail = false }) {
 
         {/* Nội dung bài viết — bấm vào mở chi tiết nếu không phải trang detail */}
         <button className="mt-1 block w-full text-left" onClick={() => !detail && navigate(`/posts/${post.id}`)}>
-          <p className="whitespace-pre-line text-[15px] leading-6 text-[var(--app-text)]">{post.content}</p>
-          {post.hashtags.length ? (
+          {content && <p className="whitespace-pre-line text-[15px] leading-6 text-[var(--app-text)]">{content}</p>}
+          {hashtags.length ? (
             <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
-              {post.hashtags.map((tag) => (
+              {hashtags.map((tag) => (
                 <span key={tag} className="text-[15px] font-semibold text-[var(--app-brand)]">#{tag}</span>
               ))}
             </div>
           ) : null}
-          {post.imageUrls.length ? (
-            <div className="mt-3 overflow-hidden rounded-[14px] bg-[var(--app-surface-soft)]">
-              <img src={post.imageUrls[0]} alt="Ảnh bài viết" className="w-full object-cover" />
-            </div>
-          ) : null}
         </button>
+        {/* Media nằm ngoài nút điều hướng để controls của video có thể tương tác độc lập. */}
+        <PostMediaGrid post={post} />
 
         {/* Thanh hành động: like, comment, repost (visual), share */}
         <footer className="mt-3 flex items-center gap-6">
-          <button className={`post-action ${liked ? 'text-red-500' : ''}`} onClick={() => toggleLike(post.id)}>
+          <button className={`post-action ${liked ? 'post-action--active text-red-500' : ''}`} onClick={handleLike}>
             <HeartIcon filled={liked} />
-            <span className="font-normal">{formatNumber(post.likeCount)}</span>
+            <span className="font-normal">{formatNumber(likeCount)}</span>
           </button>
           <button className="post-action" onClick={() => navigate(`/posts/${post.id}`)}>
             <CommentIcon />
-            <span className="font-normal">{formatNumber(post.commentCount)}</span>
+            <span className="font-normal">{formatNumber(Number(post.commentCount) || 0)}</span>
           </button>
           {/* Repost — chỉ ghi nhận visual, MVP không có nghiệp vụ repost */}
-          <button className="post-action" onClick={() => toggleSave(post.id)} title={saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}>
+          <button className={`post-action ${saved ? 'post-action--active text-[var(--app-text)]' : ''}`} onClick={handleSave} title={saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}>
             <RepostIcon />
-            <span className="font-normal">{formatNumber(post.repostCount ?? Math.floor((post.likeCount * 3) / 2) + 5)}</span>
           </button>
-          <button className="post-action" onClick={() => navigator.clipboard?.writeText(window.location.origin + '/posts/' + post.id)} title="Chia sẻ liên kết">
+          <button className="post-action" onClick={() => copyPostLink(post.id)} title="Chia sẻ liên kết">
             <ShareIcon />
-            <span className="font-normal">{formatNumber(post.shareCount ?? Math.floor((post.likeCount * 2) / 3) + 2)}</span>
           </button>
         </footer>
       </div>
@@ -279,7 +300,7 @@ export default function PostCard({ post, detail = false }) {
         footer={
           <div className="flex w-full items-center gap-3">
             <Button variant="secondary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={() => setEditing(false)}>Hủy</Button>
-            <Button className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" disabled={!draft.trim() || draft.length > 500} onClick={saveEdit}>Lưu thay đổi</Button>
+            <Button className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" disabled={(!draft.trim() && !hasMedia) || draft.length > 500} onClick={saveEdit}>Lưu thay đổi</Button>
           </div>
         }
         footerClassName="!border-none !pt-2 !pb-6"
@@ -289,7 +310,7 @@ export default function PostCard({ post, detail = false }) {
           <p className="text-sm font-bold">{author.displayName}</p>
         </div>
         <textarea
-          className="min-h-32 w-full resize-none rounded-xl border border-[var(--app-border)] p-3 text-[15px] outline-none focus:border-[var(--app-text)] focus:ring-2 focus:ring-black/5"
+          className="app-field min-h-32 w-full resize-none rounded-xl border p-3 text-[15px] outline-none transition"
           value={draft}
           maxLength={500}
           onChange={(event) => setDraft(event.target.value)}
@@ -299,7 +320,7 @@ export default function PostCard({ post, detail = false }) {
           <span>{draft.length}/500</span>
         </div>
         <input
-          className="mt-3 w-full rounded-xl border border-[var(--app-border)] p-3 text-sm outline-none focus:border-[var(--app-text)] focus:ring-2 focus:ring-black/5"
+          className="app-field mt-3 w-full rounded-xl border p-3 text-sm outline-none transition"
           value={tags}
           onChange={(event) => setTags(event.target.value)}
           placeholder="Hashtag cách nhau bằng dấu phẩy"

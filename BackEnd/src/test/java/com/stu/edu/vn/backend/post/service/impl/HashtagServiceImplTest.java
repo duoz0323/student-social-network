@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class HashtagServiceImplTest {
@@ -42,7 +43,7 @@ class HashtagServiceImplTest {
                 userProfileRepository,
                 hashtagRepository,
                 new HashtagNormalizer(),
-                new HashtagMapper()
+                Mappers.getMapper(HashtagMapper.class)
         );
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));

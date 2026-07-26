@@ -129,7 +129,7 @@ export default function ReportPostFlow({ open, post, onClose }) {
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Hãy cung cấp thêm thông tin để chúng tôi hiểu rõ vấn đề."
             maxLength={500}
-            className="min-h-28 w-full resize-none rounded-xl border border-[var(--app-border)] p-3 text-sm outline-none transition focus:border-[var(--app-text)] focus:ring-2 focus:ring-black/5"
+            className="app-field min-h-28 w-full resize-none rounded-xl border p-3 text-sm outline-none transition"
           />
           <div className="mt-1 text-right text-xs text-[var(--app-muted)]">{description.length}/500</div>
 

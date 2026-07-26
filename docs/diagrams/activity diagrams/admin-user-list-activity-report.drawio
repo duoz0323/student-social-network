@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram id="admin-user-list-activity" name="admin-user-list">
+    <mxGraphModel dx="827" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="lane-user" value="Người dùng" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="230" height="650" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-ui" value="Giao diện" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="30" width="230" height="650" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-server" value="Server" style="swimlane;horizontal=1;startSize=30;html=1;rounded=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="490" y="30" width="230" height="650" as="geometry"/>
+        </mxCell>
+        <mxCell id="start" value="" style="ellipse;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="101" y="45" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="n1" value="Mở danh sách người dùng" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="30" y="100" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2" value="Gửi bộ lọc và phân trang" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-ui">
+          <mxGeometry x="30" y="175" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3" value="Truy vấn và lọc người dùng" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-server">
+          <mxGeometry x="30" y="250" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="n4" value="Hiển thị danh sách người dùng" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfe6f7;strokeColor=#000000;" vertex="1" parent="lane-ui">
+          <mxGeometry x="30" y="325" width="170" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="end" value="" style="ellipse;shape=doubleEllipse;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="lane-user">
+          <mxGeometry x="96" y="400" width="38" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="start" target="n1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="n1" target="n2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="n2" target="n3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="Danh sách phân trang" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="n4" target="end">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

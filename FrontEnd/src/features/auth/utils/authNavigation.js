@@ -4,7 +4,7 @@ export function getAuthenticatedHome({ role, user, profileCompleted }) {
 }
 
 const RETURN_ROUTE_PREFIXES = ['/feed/', '/posts/', '/profile/', '/admin/'];
-const RETURN_ROUTE_EXACT = new Set(['/saved', '/search', '/admin']);
+const RETURN_ROUTE_EXACT = new Set(['/saved', '/liked', '/search', '/admin']);
 
 export function getSafeReturnPath(requestedPath, session) {
   if (typeof requestedPath !== 'string' || !requestedPath.startsWith('/') || requestedPath.startsWith('//') || requestedPath.includes('\\')) return null;

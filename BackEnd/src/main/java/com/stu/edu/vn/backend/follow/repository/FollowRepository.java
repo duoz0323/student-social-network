@@ -16,6 +16,11 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
     // Kiểm tra sớm giúp trả lỗi nghiệp vụ rõ ràng trước khi database chặn khóa chính trùng.
     boolean existsByIdFollowerIdAndIdFollowingId(Long followerId, Long followingId);
 
+    // Hai phép đếm phục vụ phần thống kê trên trang hồ sơ.
+    long countByIdFollowingId(Long followingId);
+
+    long countByIdFollowerId(Long followerId);
+
     // Xóa trực tiếp bằng hai thành phần khóa kép để Unfollow vẫn hoạt động khi target đã bị khóa.
     @Modifying
     @Query("""

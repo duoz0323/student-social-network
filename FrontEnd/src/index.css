@@ -11,6 +11,12 @@
   --app-muted: #6b7280;
   --app-active: #111111;
   --app-brand: #5b2cff;
+  --app-control-bg: #ffffff;
+  --app-focus-ring: rgba(91, 44, 255, 0.2);
+  --status-active: #047857;
+  --status-active-bg: #ecfdf5;
+  --status-blocked: #b91c1c;
+  --status-blocked-bg: #fef2f2;
   --sidebar-width: 248px;
   --feed-width: 640px;
   --right-panel-width: 320px;
@@ -19,10 +25,16 @@
   --radius-button: 999px;
   --radius-input: 10px;
   --space-page: 18px;
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
+  --motion-slow: 420ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--app-text);
   background: var(--app-bg);
   font-synthesis: none;
+  color-scheme: light;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -30,6 +42,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --app-bg: #000000;
     --app-surface: #121212;
     --app-surface-soft: #1e1e1e;
@@ -39,11 +52,20 @@
     --app-muted: #a1a1aa;
     --app-active: #ffffff;
     --app-brand: #7c5cff;
+    --app-control-bg: #18181b;
+    --app-focus-ring: rgba(124, 92, 255, 0.3);
+    --status-active: #6ee7b7;
+    --status-active-bg: rgba(6, 78, 59, 0.32);
+    --status-blocked: #fca5a5;
+    --status-blocked-bg: rgba(127, 29, 29, 0.32);
   }
 }
 
 /* Force light theme variables for Admin area regardless of OS preference */
-.admin-theme {
+.admin-theme,
+.auth-card-theme {
+  color-scheme: light;
+  color: var(--app-text);
   --app-bg: #f9fafb;
   --app-surface: #ffffff;
   --app-surface-soft: #f3f4f6;
@@ -52,6 +74,12 @@
   --app-text: #111827;
   --app-muted: #6b7280;
   --app-active: #111111;
+  --app-control-bg: #ffffff;
+  --app-focus-ring: rgba(91, 44, 255, 0.2);
+  --status-active: #047857;
+  --status-active-bg: #ecfdf5;
+  --status-blocked: #b91c1c;
+  --status-blocked-bg: #fef2f2;
 }
 
 * {
@@ -71,8 +99,15 @@ select {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  color: var(--app-text);
+}
+
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 img {
@@ -83,6 +118,199 @@ img {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Các primitive dùng chung giữ độ tương phản ổn định ở cả hai color scheme. */
+.brand-logo {
+  border-radius: 22%;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px var(--app-border), 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--app-text);
+}
+
+.brand-mark {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform-origin: 50% 62%;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+  isolation: isolate;
+}
+
+.brand-mark::after {
+  position: absolute;
+  top: -35%;
+  bottom: -35%;
+  left: -65%;
+  width: 38%;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.72),
+    transparent
+  );
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: rotate(18deg);
+}
+
+.brand-mark__image {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  object-fit: contain;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.brand-lockup:hover .brand-mark {
+  animation: brand-mark-wiggle 760ms var(--motion-ease-spring);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.2);
+}
+
+.brand-lockup:hover .brand-mark::after {
+  animation: brand-mark-shine 900ms var(--motion-ease-out);
+}
+
+.brand-lockup:hover .brand-mark__image {
+  transform: scale(1.045);
+}
+
+.brand-lockup:active .brand-mark {
+  animation: none;
+  transform: scale(0.92);
+}
+
+.brand-wordmark {
+  display: block;
+  white-space: nowrap;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  transform-origin: left center;
+}
+
+.brand-lockup:hover .brand-wordmark {
+  animation: brand-wordmark-bounce 760ms var(--motion-ease-spring);
+}
+
+.brand-lockup:active .brand-wordmark {
+  animation: none;
+  transform: translateX(1px) scale(0.97);
+}
+
+.brand-lockup--compact {
+  gap: 9px;
+}
+
+.brand-lockup--compact .brand-mark {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  padding: 1px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+.brand-lockup--compact .brand-wordmark {
+  font-size: 19px;
+}
+
+@keyframes brand-mark-wiggle {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  35% {
+    transform: rotate(-7deg) scale(1.08);
+  }
+  68% {
+    transform: rotate(3deg) scale(1.045);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes brand-mark-shine {
+  0% {
+    left: -65%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.72;
+  }
+  100% {
+    left: 125%;
+    opacity: 0;
+  }
+}
+
+@keyframes brand-wordmark-bounce {
+  0% {
+    letter-spacing: -0.04em;
+    transform: translateX(0) scale(1);
+  }
+  42% {
+    letter-spacing: -0.025em;
+    transform: translateX(3px) scale(1.035);
+  }
+  72% {
+    letter-spacing: -0.035em;
+    transform: translateX(1px) scale(1.012);
+  }
+  100% {
+    letter-spacing: -0.04em;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark,
+  .brand-mark::after,
+  .brand-mark__image,
+  .brand-wordmark {
+    animation: none !important;
+    transition: none;
+  }
+}
+
+.app-field {
+  background: var(--app-control-bg);
+  color: var(--app-text);
+  border-color: var(--app-border-strong);
+  caret-color: var(--app-text);
+}
+
+.app-field::placeholder {
+  color: var(--app-muted);
+}
+
+.app-field:focus {
+  border-color: var(--app-brand);
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.app-error {
+  border: 1px solid color-mix(in srgb, var(--status-blocked) 35%, transparent);
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked);
 }
 
 /* Token dung chung de cac man hinh gan anh Stitch nhung van giu Tailwind trong component. */
@@ -104,6 +332,49 @@ a {
   width: min(100%, var(--feed-width));
   min-height: 100vh;
   background: var(--app-surface);
+}
+
+/* Motion dùng chung chỉ phản hồi theo thao tác, không làm xê dịch nội dung khi cuộn. */
+.interactive-row {
+  transition:
+    color var(--motion-fast) ease,
+    background-color var(--motion-base) ease,
+    transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.interactive-row:active {
+  transform: scale(0.985);
+}
+
+.interactive-row > .interactive-icon {
+  transition: transform var(--motion-base) var(--motion-ease-spring);
+}
+
+.interactive-row:hover > .interactive-icon {
+  transform: scale(1.08);
+}
+
+.feed-tab-indicator {
+  animation: tab-indicator-in var(--motion-slow) var(--motion-ease-out) both;
+  transform-origin: center;
+}
+
+.composer-trigger {
+  transition:
+    background-color var(--motion-base) ease,
+    border-color var(--motion-base) ease;
+}
+
+.composer-trigger:hover {
+  background: color-mix(in srgb, var(--app-surface-soft) 70%, transparent);
+}
+
+.post-card {
+  transition: background-color var(--motion-base) ease;
+}
+
+.post-card:hover {
+  background: color-mix(in srgb, var(--app-surface) 94%, var(--app-surface-soft));
 }
 
 @media (max-width: 1023px) {
@@ -149,11 +420,30 @@ a {
   font-weight: 700;
   padding: 6px 2px;
   border-radius: 8px;
-  transition: color 0.15s ease;
+  transition:
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-ease-out);
 }
 
 .post-action:hover {
   color: var(--app-text);
+  transform: translateY(-1px);
+}
+
+.post-action:active {
+  transform: translateY(0) scale(0.9);
+}
+
+.post-action svg {
+  transition: transform var(--motion-base) var(--motion-ease-spring);
+}
+
+.post-action:hover svg {
+  transform: scale(1.12);
+}
+
+.post-action--active svg {
+  animation: interaction-pop 420ms var(--motion-ease-spring);
 }
 
 /* Dropdown menu overlay cho nút "..." trên PostCard */
@@ -213,6 +503,32 @@ a {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes tab-indicator-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0.35);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes interaction-pop {
+  0% {
+    transform: scale(0.78);
+  }
+
+  55% {
+    transform: scale(1.22);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -327,4 +643,23 @@ a {
 .animate-slide-up-delayed-3 {
   animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .interactive-row:active,
+  .interactive-row:hover > .interactive-icon,
+  .post-action:hover,
+  .post-action:active,
+  .post-action:hover svg {
+    transform: none;
+  }
 }

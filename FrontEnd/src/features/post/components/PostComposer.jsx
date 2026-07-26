@@ -30,8 +30,12 @@ function readVideoDuration(url) {
 export default function PostComposer({ mode, onClose }) {
   const { createPost, currentUser } = useApp();
   const [content, setContent] = useState('');
-  const [hashtag, setHashtag] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [topicQuery, setTopicQuery] = useState('');
+  const [topicPickerOpen, setTopicPickerOpen] = useState(false);
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
+  const [topicSearchResult, setTopicSearchResult] = useState(null);
+  const [topicSearching, setTopicSearching] = useState(false);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [error, setError] = useState('');
   const [showOptions, setShowOptions] = useState(false);
@@ -51,21 +55,33 @@ export default function PostComposer({ mode, onClose }) {
   }, [showOptions]);
 
   useEffect(() => {
-    const keyword = hashtag.trim();
+    const keyword = topicQuery.trim();
     if (!keyword) return undefined;
     const controller = new AbortController();
     const timer = setTimeout(() => {
+      setTopicSearching(true);
       postApi.suggestHashtags(keyword, controller.signal)
-        .then((response) => setHashtagSuggestions(response.suggestions ?? []))
-        .catch(() => setHashtagSuggestions([]));
+        .then((response) => {
+          setTopicSearchResult(response);
+          setHashtagSuggestions(response.suggestions ?? []);
+        })
+        .catch(() => {
+          setTopicSearchResult(null);
+          setHashtagSuggestions([]);
+        })
+        .finally(() => setTopicSearching(false));
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [hashtag]);
+  }, [topicQuery]);
 
   function resetForm(revokePreview = true) {
     setContent('');
-    setHashtag('');
+    setSelectedTopic(null);
+    setTopicQuery('');
+    setTopicPickerOpen(false);
     setHashtagSuggestions([]);
+    setTopicSearchResult(null);
+    setTopicSearching(false);
     if (revokePreview) {
       mediaPreviews.forEach((item) => URL.revokeObjectURL(item.url));
     }
@@ -77,7 +93,7 @@ export default function PostComposer({ mode, onClose }) {
   async function submit() {
     const result = await createPost({
       content,
-      hashtag,
+      hashtag: selectedTopic?.name ?? null,
       mediaFiles: mediaPreviews.map((item) => item.file),
     });
     if (!result.ok) {
@@ -158,6 +174,35 @@ export default function PostComposer({ mode, onClose }) {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  }
+
+  function openTopicPicker() {
+    setTopicQuery(selectedTopic?.name ?? '');
+    setTopicSearchResult(null);
+    setHashtagSuggestions([]);
+    setTopicPickerOpen(true);
+  }
+
+  function changeTopicQuery(event) {
+    setTopicQuery(event.target.value);
+    setTopicSearchResult(null);
+    setHashtagSuggestions([]);
+  }
+
+  function selectTopic(name, isNew = false) {
+    // Backend vẫn chuẩn hóa và quyết định tạo mới trong transaction của bài viết.
+    setSelectedTopic({ name, isNew });
+    setTopicQuery('');
+    setTopicPickerOpen(false);
+    setTopicSearchResult(null);
+    setHashtagSuggestions([]);
+  }
+
+  function removeSelectedTopic() {
+    setSelectedTopic(null);
+    setTopicQuery('');
+    setTopicSearchResult(null);
+    setHashtagSuggestions([]);
   }
 
   if (!mode) return null;
@@ -255,11 +300,87 @@ export default function PostComposer({ mode, onClose }) {
         <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName} size="sm" />
       </div>
       
-      <div className="flex-1 pb-1">
+      <div className="relative flex-1 pb-1">
         <div className="flex items-center gap-1">
           <p className="text-[15px] font-bold text-[var(--app-text)]">{currentUser?.displayName}</p>
           <span className="mx-0.5 text-xs text-[var(--app-muted)]">›</span>
-          <span className="text-[15px] text-[var(--app-muted)]">Cộng đồng hoặc chủ đề</span>
+          <div className="relative min-w-0">
+            {topicPickerOpen ? (
+              <input
+                value={topicQuery}
+                onChange={changeTopicQuery}
+                maxLength={100}
+                placeholder="Cộng đồng hoặc chủ đề"
+                className="w-[180px] max-w-[38vw] border-none bg-transparent p-0 text-[15px] font-semibold text-[var(--app-brand)] outline-none placeholder:font-normal placeholder:text-[var(--app-muted)]"
+                autoFocus
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={openTopicPicker}
+                className={`block max-w-[220px] truncate text-left text-[15px] transition hover:underline ${
+                  selectedTopic ? 'font-semibold text-[var(--app-brand)]' : 'text-[var(--app-muted)]'
+                }`}
+              >
+                {selectedTopic ? selectedTopic.name : 'Cộng đồng hoặc chủ đề'}
+              </button>
+            )}
+
+            {topicPickerOpen && (
+              <div className="absolute left-0 top-7 z-50 w-[330px] max-w-[calc(100vw-88px)] overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
+                <div className="max-h-[350px] overflow-y-auto">
+                  {!topicQuery.trim() && (
+                    <p className="px-4 py-5 text-sm text-[var(--app-muted)]">
+                      Nhập tên để tìm hoặc gắn một chủ đề mới.
+                    </p>
+                  )}
+
+                  {topicSearching && topicQuery.trim() && (
+                    <p className="px-4 py-5 text-sm text-[var(--app-muted)]">Đang tìm chủ đề...</p>
+                  )}
+
+                  {!topicSearching && topicSearchResult?.canUseAsNewHashtag && topicSearchResult.normalizedKeyword && (
+                    <button
+                      type="button"
+                      onClick={() => selectTopic(topicSearchResult.normalizedKeyword, true)}
+                      className="block w-full border-b border-[var(--app-border)] px-4 py-3.5 text-left transition hover:bg-[var(--app-surface-soft)]"
+                    >
+                      <span className="block truncate text-[15px] font-semibold text-[var(--app-text)]">
+                        {topicSearchResult.normalizedKeyword}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-[var(--app-muted)]">+ Gắn thẻ chủ đề mới</span>
+                    </button>
+                  )}
+
+                  {!topicSearching && hashtagSuggestions.map((item) => (
+                    <button
+                      type="button"
+                      key={item.hashtagId}
+                      onClick={() => selectTopic(item.name)}
+                      className="block w-full border-b border-[var(--app-border)] px-4 py-3.5 text-left transition last:border-b-0 hover:bg-[var(--app-surface-soft)]"
+                    >
+                      <span className="flex items-center gap-2 text-[15px] font-semibold text-[var(--app-brand)]">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                          <circle cx="2" cy="5" r="2" />
+                          <circle cx="6.5" cy="2" r="1.5" />
+                          <circle cx="7.5" cy="7" r="1.5" />
+                        </svg>
+                        <span className="truncate">{item.name}</span>
+                      </span>
+                      <span className="mt-1 block text-[13px] text-[var(--app-muted)]">{item.postCount} bài viết</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {selectedTopic && (
+            <button type="button" onClick={removeSelectedTopic} className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--app-muted)] hover:bg-[var(--app-surface-soft)]" aria-label="Bỏ chủ đề đã chọn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         
         <textarea
@@ -270,12 +391,6 @@ export default function PostComposer({ mode, onClose }) {
           className="mt-1 min-h-[100px] w-full resize-none border-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-[var(--app-muted)]"
           autoFocus
         />
-        <input value={hashtag} onChange={(event) => setHashtag(event.target.value)} maxLength={100}
-          placeholder="#hashtag (tối đa 1)" className="mt-2 w-full rounded-xl border border-[var(--app-border)] px-3 py-2 text-sm outline-none" />
-        {hashtagSuggestions.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{hashtagSuggestions.slice(0, 5).map((item) => (
-          <button type="button" key={item.hashtagId} onClick={() => setHashtag(item.name)} className="rounded-full bg-[var(--app-surface-soft)] px-3 py-1 text-xs">#{item.name}</button>
-        ))}</div>}
-        
         {mediaPreviews.length > 0 && (
           <div className={`mt-2 mb-2 grid gap-2 ${mediaPreviews.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {mediaPreviews.map((item, index) => (
@@ -310,7 +425,7 @@ export default function PostComposer({ mode, onClose }) {
         footer={commonFooter}
       >
         {commonBody}
-        {error && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="app-error mt-3 rounded-xl px-3 py-2 text-sm">{error}</p>}
       </Modal>
     );
   }
@@ -330,7 +445,7 @@ export default function PostComposer({ mode, onClose }) {
         
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {commonBody}
-          {error && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="app-error mt-2 rounded-xl px-3 py-2 text-sm">{error}</p>}
         </div>
 
         <div className="shrink-0 border-t border-[var(--app-border)] px-5 py-4">

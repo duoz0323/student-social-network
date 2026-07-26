@@ -1,25 +1,25 @@
-import { useNavigate, useParams } from 'react-router-dom';
 import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
-import { EmptyState } from '../../../components/common/StateBlock.jsx';
-import { useApp } from '../../../contexts/AppContext.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
+import { feedApi } from '../../../api/index.js';
+import { useApp } from '../../../contexts/AppContext.jsx';
+import InfinitePostList from '../../post/components/InfinitePostList.jsx';
 import PostComposer from '../../post/components/PostComposer.jsx';
-import PostCard from '../../post/components/PostCard.jsx';
+import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
+import { toPostView } from '../../post/utils/postViewModel.js';
 
 export default function FeedPage() {
   const { type = 'for-you' } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useApp();
   const [composerOpen, setComposerOpen] = useState(false);
-  const { publicPosts, data, currentUserId, currentUser } = useApp();
-  const followingIds = data.follows.filter((follow) => follow.followerId === currentUserId).map((follow) => follow.followingId);
-
-  // For You ưu tiên bài mới và tương tác, Following chỉ lấy tác giả đang theo dõi.
-  const posts =
-    type === 'following'
-      ? publicPosts.filter((post) => followingIds.includes(post.authorId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      : [...publicPosts].sort((a, b) => b.likeCount + b.commentCount - (a.likeCount + b.commentCount) || new Date(b.createdAt) - new Date(a.createdAt));
+  const feedState = useInfinitePosts({
+    cacheKey: `feed:${type}`,
+    request: type === 'following' ? feedApi.getFollowing : feedApi.getForYou,
+    normalizePost: toPostView,
+  });
 
   const feedTabs = (
     <div className="flex h-[var(--header-height)] justify-center gap-12">
@@ -28,23 +28,27 @@ export default function FeedPage() {
         onClick={() => navigate('/feed/for-you')}
       >
         Dành cho bạn
-        {type === 'for-you' && <span className="absolute bottom-0 left-1/2 h-[3px] w-full -translate-x-1/2 rounded-full bg-[var(--app-text)]" />}
+        {type === 'for-you' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
       </button>
       <button
         className={`relative px-4 text-[15px] font-bold transition ${type === 'following' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
         onClick={() => navigate('/feed/following')}
       >
         Đang theo dõi
-        {type === 'following' && <span className="absolute bottom-0 left-1/2 h-[3px] w-full -translate-x-1/2 rounded-full bg-[var(--app-text)]" />}
+        {type === 'following' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
       </button>
     </div>
   );
 
+  function closeComposer() {
+    setComposerOpen(false);
+    feedState.reload();
+  }
+
   return (
     <>
       <ContentShell header={feedTabs}>
-        {/* Composer nhanh: avatar + placeholder + nút đăng */}
-        <div className="flex items-center gap-4 border-b border-[var(--app-border-strong)] px-5 pb-4 pt-4">
+        <div className="composer-trigger flex items-center gap-4 border-b border-[var(--app-border-strong)] px-5 pb-4 pt-4">
           <Avatar src={currentUser.avatarUrl} name={currentUser.displayName} />
           <button className="flex-1 text-left text-[15px] text-[var(--app-muted)]" onClick={() => setComposerOpen(true)}>
             Có gì mới?
@@ -53,17 +57,16 @@ export default function FeedPage() {
             Đăng
           </Button>
         </div>
-
-        {/* Danh sách bài viết */}
-        <div className="pb-0">
-          {posts.length ? (
-            posts.map((post) => <PostCard key={post.id} post={post} />)
-          ) : (
-            <EmptyState title="Feed đang trống" description="Hãy tìm kiếm và theo dõi bạn bè để thấy bài viết mới." actionLabel="Đi đến tìm kiếm" onAction={() => navigate('/search')} />
-          )}
-        </div>
+        <InfinitePostList
+          {...feedState}
+          errorTitle="Không thể tải Feed"
+          emptyTitle="Feed đang trống"
+          emptyDescription={type === 'following'
+            ? 'Hãy theo dõi thêm bạn bè để thấy bài viết mới.'
+            : 'Chưa có bài viết phù hợp để hiển thị.'}
+        />
       </ContentShell>
-      <PostComposer mode={composerOpen ? 'modal' : null} onClose={() => setComposerOpen(false)} />
+      <PostComposer mode={composerOpen ? 'modal' : null} onClose={closeComposer} />
     </>
   );
 }

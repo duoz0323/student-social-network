@@ -4,6 +4,8 @@ import com.stu.edu.vn.backend.post.entity.PostLike;
 import com.stu.edu.vn.backend.post.entity.PostLikeId;
 import java.util.Collection;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,9 @@ public interface PostLikeRepository extends JpaRepository<PostLike, PostLikeId> 
     // Chỉ lấy khóa post đã Like cho cả trang, tránh gọi exists riêng cho từng bài.
     @Query("select pl.id.postId from PostLike pl where pl.id.userId = :userId and pl.id.postId in :postIds")
     List<Long> findLikedPostIds(@Param("userId") Long userId, @Param("postIds") Collection<Long> postIds);
+
+    @Query("select pl.createdAt from PostLike pl where pl.id.userId = :userId and pl.id.postId = :postId")
+    Optional<LocalDateTime> findCreatedAt(@Param("userId") Long userId, @Param("postId") Long postId);
 
     // Xóa Like bằng khóa chính kép và trả số dòng bị ảnh hưởng để phát hiện trường hợp chưa từng Like.
     @Modifying

@@ -2,10 +2,15 @@ package com.stu.edu.vn.backend.user.service.impl;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.follow.repository.FollowRepository;
+import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.dto.request.UpdateUserProfileRequest;
 import com.stu.edu.vn.backend.user.dto.response.UserProfileResponse;
+import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
+import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.service.UserProfileService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +25,27 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserProfileServiceImpl implements UserProfileService {
 
     private final CurrentUserProfileProvider currentUserProfileProvider;
+    private final CurrentUserProvider currentUserProvider;
+    private final UserProfileRepository userProfileRepository;
+    private final FollowRepository followRepository;
     private final UserProfileValidationSupport validationSupport;
     private final UserProfileMapper userProfileMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileViewResponse getMyProfile() {
+        Long currentUserId = currentUserProvider.getCurrentUserId();
+        return getAvailableProfile(currentUserId, currentUserId, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileViewResponse getPublicProfile(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.PROFILE_NOT_FOUND);
+        }
+        return getAvailableProfile(userId, currentUserProvider.getCurrentUserId(), false);
+    }
 
     @Override
     @Transactional
@@ -43,5 +67,31 @@ public class UserProfileServiceImpl implements UserProfileService {
         profile.setBio(bio);
 
         return userProfileMapper.toUserProfileResponse(profile);
+    }
+
+    private UserProfileViewResponse getAvailableProfile(
+            Long profileUserId,
+            Long currentUserId,
+            boolean includePrivateFields
+    ) {
+        UserProfile profile = userProfileRepository.findById(profileUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
+        if (profile.getUser().getStatus() != UserStatus.ACTIVE || profile.getProfileCompletedAt() == null) {
+            // Không tiết lộ trạng thái khóa hoặc onboarding của tài khoản qua API hồ sơ công khai.
+            throw new BusinessException(ErrorCode.PROFILE_NOT_FOUND);
+        }
+
+        return new UserProfileViewResponse(
+                profile.getUserId(),
+                profile.getDisplayName(),
+                profile.getAvatarUrl(),
+                // Ngày sinh chỉ cần cho chủ tài khoản chỉnh sửa, không trả ở hồ sơ người khác.
+                includePrivateFields ? profile.getDateOfBirth() : null,
+                profile.getBio(),
+                followRepository.countByIdFollowingId(profileUserId),
+                followRepository.countByIdFollowerId(profileUserId),
+                !profileUserId.equals(currentUserId)
+                        && followRepository.existsByIdFollowerIdAndIdFollowingId(currentUserId, profileUserId)
+        );
     }
 }

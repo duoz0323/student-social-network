@@ -3,6 +3,8 @@ import { httpClient } from './httpClient.js';
 import { compactParams, requestData } from './requestData.js';
 
 export const socialApi = Object.freeze({
+  getMyProfile: (signal) => requestData(httpClient.get(USER_ENDPOINTS.profile, { signal })),
+  getProfile: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.publicProfile(userId), { signal })),
   updateProfile: (payload, signal) => requestData(httpClient.put(USER_ENDPOINTS.profile, payload, { signal })),
   uploadAvatar: (file, signal) => {
     const formData = new FormData();
@@ -14,6 +16,9 @@ export const socialApi = Object.freeze({
   unfollow: (userId, signal) => requestData(httpClient.delete(USER_ENDPOINTS.follow(userId), { signal })),
   getFollowers: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.followers(userId), { signal })),
   getFollowing: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.following(userId), { signal })),
+  getUserPosts: (userId, params, signal) => requestData(
+    httpClient.get(USER_ENDPOINTS.posts(userId), { params: compactParams(params), signal }),
+  ),
   searchUsers: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchUsers, { params: compactParams(params), signal })),
   searchPosts: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchPosts, { params: compactParams(params), signal })),
   getNotifications: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.notifications, { params: compactParams(params), signal })),

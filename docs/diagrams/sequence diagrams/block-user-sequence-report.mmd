@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant RC as UserRelationshipController
+    participant RS as UserRelationshipService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn chặn người dùng
+    FE->>U: Yêu cầu xác nhận
+    U->>FE: Xác nhận chặn
+    FE->>RC: POST /api/v1/users/{userId}/block
+    RC->>RS: blockUser(userId)
+    RS->>DB: Kiểm tra người dùng và quan hệ Block
+    alt Không thể chặn
+        RS-->>FE: Trả lỗi nghiệp vụ
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        RS->>DB: Lưu quan hệ Block
+        DB-->>RS: Commit transaction
+        RS-->>FE: UserBlockStatusResponse
+        FE-->>U: Hiển thị trạng thái đã chặn
+    end

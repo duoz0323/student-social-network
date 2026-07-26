@@ -7,17 +7,7 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import PostCard from '../../post/components/PostCard.jsx';
-
-function normalizePost(post) {
-  return {
-    ...post,
-    id: post.postId,
-    authorId: post.author?.id,
-    imageUrls: (post.media ?? []).map((item) => item.url),
-    hashtags: post.hashtag ? [post.hashtag] : [],
-    edited: post.isEdited,
-  };
-}
+import { toPostView } from '../../post/utils/postViewModel.js';
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -45,7 +35,7 @@ export default function SearchPage() {
           socialApi.searchPosts({ q: keyword, type: isHashtag ? 'HASHTAG' : 'CONTENT', page: 0, size: 20 }, controller.signal),
         ]);
         setUsers((userPage.content ?? []).map((user) => ({ ...user, id: user.userId })));
-        setPosts((postPage.content ?? []).map(normalizePost));
+        setPosts((postPage.content ?? []).map(toPostView));
         setError('');
       } catch (requestError) {
         if (requestError.code !== 'ERR_CANCELED') setError(requestError.message);
@@ -87,7 +77,7 @@ export default function SearchPage() {
         <EmptyState title="Tìm kiếm UniShare" description="Nhập tên người dùng, nội dung bài viết hoặc hashtag." />
       ) : loading ? <LoadingState message="Đang tìm kiếm..." /> : (
         <div className="pb-16">
-          {error && <p className="m-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {error && <p className="app-error m-4 rounded-xl p-3 text-sm">{error}</p>}
           {users.length > 0 && (
             <section className="border-b border-[var(--app-border)] p-5">
               <h2 className="mb-3 font-bold">Người dùng</h2>

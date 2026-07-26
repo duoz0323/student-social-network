@@ -61,6 +61,7 @@
 
 - Một user Like một post một lần.
 - Không Like bài HIDDEN/DELETED.
+- Danh sách bài đã Like chỉ chủ tài khoản xem.
 
 ## 6. Comment
 
@@ -78,7 +79,7 @@
 - Following: bài của người đang Follow, mới nhất trước.
 - For You: bài hợp lệ, điểm cơ bản.
 - Không hiển thị HIDDEN/DELETED.
-- Có phân trang.
+- Feed và các danh sách bài dùng Infinite Scroll phải dùng Cursor Pagination theo API contract.
 
 ## 9. Search
 
@@ -105,7 +106,8 @@
 
 ## 12. API
 
-- Danh sách có phân trang.
+- Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu và bài đã thích dùng Cursor Pagination.
+- Search, bình luận, Follow và Admin dùng `PageResponse`.
 - HTTP status đúng.
 - Không trả Entity.
 - Không trả dữ liệu nhạy cảm.

@@ -32,14 +32,18 @@ export const AUTH_ENDPOINTS = Object.freeze({
 export const USER_ENDPOINTS = Object.freeze({
   onboarding: USER_ONBOARDING_BASE,
   profile: '/api/v1/users/me/profile',
+  publicProfile: (userId) => `/api/v1/users/${encodeURIComponent(userId)}`,
   avatar: '/api/v1/users/me/avatar',
   follow: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/follow`,
   followers: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/followers`,
   following: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/following`,
+  posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
 });
 
 export const POST_ENDPOINTS = Object.freeze({
   root: '/api/v1/posts',
+  saved: '/api/v1/posts/saved',
+  liked: '/api/v1/posts/liked',
   detail: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}`,
   likes: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/likes`,
   saves: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/saves`,
@@ -51,6 +55,8 @@ export const POST_ENDPOINTS = Object.freeze({
 });
 
 export const DISCOVERY_ENDPOINTS = Object.freeze({
+  feedForYou: '/api/v1/feeds/for-you',
+  feedFollowing: '/api/v1/feeds/following',
   searchUsers: '/api/v1/search/users',
   searchPosts: '/api/v1/search/posts',
   notifications: '/api/v1/notifications',

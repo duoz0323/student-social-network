@@ -297,6 +297,7 @@ Trạng thái bài viết:
 ### ❤️ 5. Tương tác bài viết
 
 - Like và Unlike bài viết.
+- Xem danh sách bài viết đã thích của chính mình.
 - Thêm bình luận.
 - Xem danh sách bình luận.
 - Xóa bình luận của chính mình.
@@ -309,6 +310,7 @@ Quy tắc:
 - Mỗi người chỉ được lưu một bài tối đa một lần.
 - Không được tương tác với bài viết đã bị ẩn hoặc xóa.
 - Danh sách bài viết đã lưu chỉ hiển thị với chủ tài khoản.
+- Danh sách bài viết đã thích chỉ hiển thị với chủ tài khoản.
 
 ### 📰 6. Bảng tin
 
@@ -317,7 +319,7 @@ Quy tắc:
 - Hiển thị bài viết của những người dùng đang được theo dõi.
 - Sắp xếp theo thời gian đăng giảm dần.
 - Không hiển thị bài viết bị ẩn hoặc bị xóa.
-- Hỗ trợ phân trang.
+- Dùng Cursor Pagination để cuộn vô hạn, sắp xếp ổn định theo `published_at DESC, id DESC`.
 
 #### Feed For You
 
@@ -335,6 +337,30 @@ Công thức xếp hạng tham khảo:
     + Số lượt Like × Trọng số Like
     + Số bình luận × Trọng số bình luận
 ```
+
+Các danh sách bài viết dùng Infinite Scroll gồm Feed For You, Feed Following, bài trên hồ sơ,
+bài đã lưu và bài đã thích. Các API này dùng Cursor Pagination:
+
+- Request đầu: `?limit=10`.
+- Request tiếp theo: `?limit=10&cursor=<opaque-cursor>`.
+- `limit` mặc định 10, từ 1 đến 20.
+- Response dữ liệu: `{ "content": [], "nextCursor": null, "hasNext": false }`.
+- Cursor do Backend tạo dưới dạng Base64URL opaque; Client không tự tạo hoặc sửa cursor.
+- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; các danh sách theo thời gian
+  giữ `createdAt`, `postId`.
+- Backend dùng keyset và lấy `limit + 1`, không dùng `page`, `offset` hoặc truy vấn tổng `COUNT(*)`.
+- Cursor không hợp lệ trả mã nghiệp vụ `INVALID_CURSOR`.
+
+Các endpoint đã chuyển:
+
+- `GET /api/v1/feeds/for-you`.
+- `GET /api/v1/feeds/following`.
+- `GET /api/v1/users/{userId}/posts`.
+- `GET /api/v1/posts/saved`.
+- `GET /api/v1/posts/liked`.
+
+Search bài viết/hashtag, bình luận, Follow và Admin vẫn dùng `PageResponse` vì giao diện hiện tại
+không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 
 ### #️⃣ 7. Hashtag
 
@@ -418,7 +444,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Follow và Unfollow.
 - CRUD bài viết.
 - Upload hình ảnh.
-- Like và Unlike.
+- Like, Unlike và xem danh sách bài viết đã thích.
 - Bình luận.
 - Feed Following.
 - Feed For You.
@@ -437,8 +463,6 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 ### P2 – Thực hiện nếu đủ tiến độ
 
-- Quên mật khẩu.
-- Đặt lại mật khẩu.
 - Trả lời bình luận một cấp.
 - Thông báo đơn giản.
 
@@ -1001,7 +1025,7 @@ npm run preview
 19. Người dùng tạo bài có nội dung hoặc hình ảnh.
 20. Chỉ tác giả được sửa hoặc xóa bài của mình.
 21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed.
-22. Like, bình luận và Save hoạt động đúng.
+22. Like, Unlike, danh sách bài viết đã thích, bình luận và Save hoạt động đúng.
 23. Feed Following và Feed For You trả đúng dữ liệu hợp lệ.
 24. Tìm kiếm người dùng và bài viết hoạt động đúng.
 25. Người dùng gửi được báo cáo.
@@ -1036,8 +1060,9 @@ npm run preview
 
 - API thông thường phản hồi trung bình không quá 2 giây trong môi trường kiểm thử.
 - Feed trả tối đa 20 bài viết mỗi lần tải.
-- API danh sách hỗ trợ phân trang.
-- Kích thước trang mặc định là 20.
+- API danh sách hỗ trợ phân trang theo contract của từng module.
+- Danh sách bài viết Infinite Scroll dùng cursor với `limit` mặc định 10 và tối đa 20; các danh
+  sách còn dùng `PageResponse` giữ kích thước trang theo endpoint hiện tại.
 - Hệ thống hướng đến 30–50 người dùng đồng thời trong môi trường kiểm thử.
 - Tránh truy vấn N+1.
 - Không tải toàn bộ Entity Relationship không cần thiết.
@@ -1175,6 +1200,7 @@ Các tài liệu phân tích và thiết kế được lưu trong thư mục `do
 - Thiết kế giao diện.
 - Kịch bản kiểm thử.
 - Hướng dẫn sử dụng hệ thống.
+- Ma trận trạng thái triển khai: [`docs/IMPLEMENTATION-STATUS.md`](docs/IMPLEMENTATION-STATUS.md).
 
 ---
 

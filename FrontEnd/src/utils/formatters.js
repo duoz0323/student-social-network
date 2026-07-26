@@ -1,11 +1,13 @@
 export function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value));
+  }).format(date);
 }
 
 // Hiển thị thời gian tương đối: "vừa xong", "X phút", "X giờ", "X ngày"
@@ -13,6 +15,8 @@ export function formatDateTime(value) {
 export function shortTime(value) {
   const now = new Date();
   const date = new Date(value);
+  // Dữ liệu thời gian không hợp lệ không được làm crash toàn bộ PostCard.
+  if (Number.isNaN(date.getTime())) return '—';
   const diffSeconds = Math.floor((now - date) / 1000);
 
   if (diffSeconds < 60) return 'vừa xong';

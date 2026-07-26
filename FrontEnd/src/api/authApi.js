@@ -1,30 +1,16 @@
 import { AUTH_ENDPOINTS } from './apiEndpoints.js';
-import { normalizeApiError } from './apiError.js';
 import { httpClient } from './httpClient.js';
+import { requestData, withoutUndefined } from './requestData.js';
 
 const FLOW_TOKEN_HEADER = 'X-Auth-Flow-Token';
-// Public Auth request khÃ´ng nháº­n JWT cÅ© vÃ  cÅ©ng khÃ´ng kÃ­ch hoáº¡t refresh session.
+// Public Auth request không nhận JWT cũ và không kích hoạt refresh session.
 const PUBLIC_REQUEST = Object.freeze({ skipAuth: true, skipAuthRefresh: true });
-
-function withoutUndefined(payload) {
-  return Object.fromEntries(Object.entries(payload ?? {}).filter(([, value]) => value !== undefined));
-}
 
 function flowTokenConfig(flowToken, extraConfig = {}) {
   return {
     ...extraConfig,
     headers: flowToken ? { ...extraConfig.headers, [FLOW_TOKEN_HEADER]: flowToken } : extraConfig.headers,
   };
-}
-
-async function requestData(request) {
-  try {
-    const response = await request;
-    // Backend bá»c payload nghiá»‡p vá»¥ trong ApiResponse.data.
-    return response.data?.data ?? response.data;
-  } catch (error) {
-    throw normalizeApiError(error);
-  }
 }
 
 export const authApi = Object.freeze({

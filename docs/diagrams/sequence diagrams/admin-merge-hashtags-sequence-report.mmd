@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor A as Quản trị viên
+    participant FE as Admin Frontend
+    participant HC as AdminHashtagController
+    participant HS as AdminHashtagService
+    participant DB as MySQL
+
+    Note over A,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    A->>FE: Chọn hashtag nguồn và hashtag đích
+    FE->>HC: PATCH /api/v1/admin/hashtags/merge
+    HC->>HS: mergeHashtags(request)
+    HS->>DB: Khóa và kiểm tra các hashtag
+    alt Không thể gộp
+        HS-->>FE: Trả lỗi nghiệp vụ
+        FE-->>A: Hiển thị thông báo lỗi
+    else Hợp lệ
+        HS->>DB: Chuyển liên kết bài viết sang hashtag đích
+        HS->>DB: Cập nhật hashtag nguồn và ghi lịch sử
+        DB-->>HS: Commit transaction
+        HS-->>FE: HashtagMergeResponse
+        FE-->>A: Hiển thị kết quả gộp
+    end

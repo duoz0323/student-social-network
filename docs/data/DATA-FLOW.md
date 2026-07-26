@@ -123,8 +123,13 @@ GET /api/v1/feeds/following hoặc /api/v1/feeds/for-you
 → Kiểm tra profile_completed_at khác NULL
 → Chỉ lấy post PUBLISHED
 → Sắp xếp/xếp hạng theo nghiệp vụ README
-→ Phân trang → trả kết quả
+→ Decode và kiểm tra cursor opaque nếu có
+→ Keyset query lấy limit + 1
+→ Trả content, nextCursor và hasNext
 ```
+
+Cùng cơ chế Cursor Pagination được dùng cho bài trên hồ sơ, bài đã lưu và bài đã thích.
+Search, bình luận, Follow và Admin vẫn dùng `PageResponse`.
 
 ## 11. Search
 

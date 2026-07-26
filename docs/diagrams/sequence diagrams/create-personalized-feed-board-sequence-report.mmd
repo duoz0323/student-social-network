@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant FC as FeedBoardController
+    participant FS as FeedBoardService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Chọn tạo Feed Board cá nhân
+    FE-->>U: Hiển thị biểu mẫu cấu hình
+    U->>FE: Nhập tên và tiêu chí cá nhân hóa
+    FE->>FC: POST /api/v1/feed-boards
+    FC->>FS: createFeedBoard(request)
+    FS->>FS: Kiểm tra tên và tiêu chí
+    alt Cấu hình không hợp lệ
+        FS-->>FE: Trả lỗi cấu hình Feed Board
+        FE-->>U: Hiển thị thông báo lỗi
+    else Cấu hình hợp lệ
+        FS->>DB: Lưu Feed Board và các quy tắc
+        DB-->>FS: Commit transaction
+        FS->>DB: Lấy bài PUBLISHED phù hợp
+        DB-->>FS: Danh sách bài viết ứng viên
+        FS->>FS: Xếp hạng cơ bản theo độ mới và tương tác
+        FS-->>FE: FeedBoardResponse và nội dung ban đầu
+        FE-->>U: Hiển thị Feed Board đã tạo
+    end

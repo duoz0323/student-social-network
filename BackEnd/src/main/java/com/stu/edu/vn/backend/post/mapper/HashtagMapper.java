@@ -2,20 +2,17 @@ package com.stu.edu.vn.backend.post.mapper;
 
 import com.stu.edu.vn.backend.post.dto.response.HashtagSuggestionItemResponse;
 import com.stu.edu.vn.backend.post.entity.Hashtag;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
- * Mapper giới hạn trường hashtag được phép trả cho chức năng autocomplete.
+ * Mapper giới hạn các trường hashtag được phép trả cho chức năng autocomplete.
  */
-@Component
-public class HashtagMapper {
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface HashtagMapper {
 
-    public HashtagSuggestionItemResponse toSuggestionItem(Hashtag hashtag) {
-        // displayName là tên dành cho giao diện; normalizedName chỉ phục vụ tìm kiếm và kiểm tra trùng.
-        return new HashtagSuggestionItemResponse(
-                hashtag.getId(),
-                hashtag.getDisplayName(),
-                hashtag.getPostCount()
-        );
-    }
+    @Mapping(target = "hashtagId", source = "id")
+    @Mapping(target = "name", source = "displayName")
+    HashtagSuggestionItemResponse toSuggestionItem(Hashtag hashtag);
 }

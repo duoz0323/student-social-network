@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Triển khai API tạo bài: validate trước upload, rồi lưu database trong một transaction ngắn.
  */
 @Service
+@RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostServiceImpl.class);
@@ -71,40 +73,6 @@ public class PostServiceImpl implements PostService {
     private final TransactionTemplate transactionTemplate;
     private final EntityManager entityManager;
     private final Clock clock;
-
-    public PostServiceImpl(
-            CurrentUserProvider currentUserProvider,
-            UserRepository userRepository,
-            UserProfileRepository userProfileRepository,
-            PostRepository postRepository,
-            PostMediaRepository postMediaRepository,
-            HashtagRepository hashtagRepository,
-            PostHashtagRepository postHashtagRepository,
-            PostValidationSupport postValidationSupport,
-            PostImageFileValidator postImageFileValidator,
-            HashtagNormalizer hashtagNormalizer,
-            CloudinaryStorageService cloudinaryStorageService,
-            PostMapper postMapper,
-            TransactionTemplate transactionTemplate,
-            EntityManager entityManager,
-            Clock clock
-    ) {
-        this.currentUserProvider = currentUserProvider;
-        this.userRepository = userRepository;
-        this.userProfileRepository = userProfileRepository;
-        this.postRepository = postRepository;
-        this.postMediaRepository = postMediaRepository;
-        this.hashtagRepository = hashtagRepository;
-        this.postHashtagRepository = postHashtagRepository;
-        this.postValidationSupport = postValidationSupport;
-        this.postImageFileValidator = postImageFileValidator;
-        this.hashtagNormalizer = hashtagNormalizer;
-        this.cloudinaryStorageService = cloudinaryStorageService;
-        this.postMapper = postMapper;
-        this.transactionTemplate = transactionTemplate;
-        this.entityManager = entityManager;
-        this.clock = clock;
-    }
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {

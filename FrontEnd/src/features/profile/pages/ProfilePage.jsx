@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
@@ -6,15 +6,84 @@ import Modal from '../../../components/common/Modal.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
-import PostCard from '../../post/components/PostCard.jsx';
+import InfinitePostList from '../../post/components/InfinitePostList.jsx';
+import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
 import PostComposer from '../../post/components/PostComposer.jsx';
 import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
 import { socialApi } from '../../../api/index.js';
+import { isRequestCanceled } from '../../../api/apiError.js';
+import { toPostView } from '../../post/utils/postViewModel.js';
+
+function ProfilePageSkeleton({ self, onBack }) {
+  // Skeleton giữ nguyên khung trang thật để chuyển route không bị co giãn hoặc nhảy bố cục.
+  const header = (
+    <div className="flex h-[var(--header-height)] items-center px-6">
+      {!self && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="-ml-2 mr-3 flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]"
+          aria-label="Quay lại"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+      <div className="h-5 w-36 animate-pulse rounded-md bg-[var(--app-border)]" />
+    </div>
+  );
+
+  return (
+    <ContentShell header={header}>
+      <div className="animate-pulse">
+        <div className="px-6 pb-0 pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-7 w-44 rounded-lg bg-[var(--app-border)]" />
+              <div className="h-4 w-28 rounded-md bg-[var(--app-border)]" />
+            </div>
+            <div className="h-[84px] w-[84px] shrink-0 rounded-full bg-[var(--app-border)]" />
+          </div>
+
+          <div className="mt-5 space-y-2">
+            <div className="h-4 w-full rounded-md bg-[var(--app-border)]" />
+            <div className="h-4 w-3/5 rounded-md bg-[var(--app-border)]" />
+          </div>
+
+          <div className="mt-5 flex gap-5">
+            <div className="h-4 w-28 rounded-md bg-[var(--app-border)]" />
+            <div className="h-4 w-28 rounded-md bg-[var(--app-border)]" />
+          </div>
+
+          <div className="mt-6 h-9 w-full rounded-xl bg-[var(--app-border)]" />
+
+          <div className="mt-4 grid grid-cols-3 border-b border-[var(--app-border)]">
+            <div className="mx-auto mb-3 h-4 w-16 rounded-md bg-[var(--app-border)]" />
+            <div className="mx-auto mb-3 h-4 w-16 rounded-md bg-[var(--app-border)]" />
+            <div className="mx-auto mb-3 h-4 w-16 rounded-md bg-[var(--app-border)]" />
+          </div>
+        </div>
+
+        <div className="border-b border-[var(--app-border)] px-6 py-5">
+          <div className="flex gap-3">
+            <div className="h-10 w-10 shrink-0 rounded-full bg-[var(--app-border)]" />
+            <div className="flex-1 space-y-3">
+              <div className="h-4 w-32 rounded-md bg-[var(--app-border)]" />
+              <div className="h-4 w-full rounded-md bg-[var(--app-border)]" />
+              <div className="h-4 w-4/5 rounded-md bg-[var(--app-border)]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </ContentShell>
+  );
+}
 
 export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { currentUser, currentUserId, getUserById, data, toggleFollow, updateProfile } = useApp();
+  const { currentUserId, data, toggleFollow, updateProfile } = useApp();
   const [editing, setEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [followModal, setFollowModal] = useState(null);
@@ -22,16 +91,65 @@ export default function ProfilePage({ self = false }) {
   const [activeTab, setActiveTab] = useState('threads');
   const [unfollowTarget, setUnfollowTarget] = useState(null);
   const [error, setError] = useState('');
-  const profile = self ? currentUser : getUserById(userId);
-  const [draft, setDraft] = useState({ displayName: currentUser?.displayName ?? '', bio: currentUser?.bio ?? '', avatarUrl: currentUser?.avatarUrl ?? '', dateOfBirth: currentUser?.birthDate ?? '' });
+  const [profile, setProfile] = useState(null);
+  const [loadedProfileKey, setLoadedProfileKey] = useState(null);
+  const profileKey = self ? 'me' : String(userId);
+  const profileUserId = self ? currentUserId : userId;
+  const postState = useInfinitePosts({
+    cacheKey: `profile-posts:${profileUserId ?? 'unknown'}`,
+    request: (params) => socialApi.getUserPosts(profileUserId, params),
+    normalizePost: toPostView,
+    enabled: Boolean(profileUserId),
+  });
+  const [draft, setDraft] = useState({ displayName: '', bio: '', avatarUrl: '', dateOfBirth: '' });
 
-  if (!profile || profile.status === 'BLOCKED') {
-    return <EmptyState title="Khong tim thay ho so" description="Ho so khong ton tai hoac dang bi khoa." actionLabel="Ve feed" onAction={() => navigate('/feed/for-you')} />;
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const request = self
+      ? socialApi.getMyProfile(controller.signal)
+      : socialApi.getProfile(userId, controller.signal);
+
+    request
+      .then((response) => {
+        // Chuẩn hóa contract Backend về view model đang dùng trong trang hồ sơ.
+        const loadedProfile = {
+          ...response,
+          id: response.userId,
+          birthDate: response.dateOfBirth ?? null,
+          status: 'ACTIVE',
+        };
+        setProfile(loadedProfile);
+        setLoadedProfileKey(profileKey);
+        setError('');
+        setDraft({
+          displayName: loadedProfile.displayName ?? '',
+          bio: loadedProfile.bio ?? '',
+          avatarUrl: loadedProfile.avatarUrl ?? '',
+          dateOfBirth: loadedProfile.birthDate ?? '',
+        });
+      })
+      .catch((requestError) => {
+        if (!isRequestCanceled(requestError)) {
+          setProfile(null);
+          setLoadedProfileKey(profileKey);
+          setError(requestError.message);
+        }
+      });
+
+    return () => controller.abort();
+  }, [profileKey, self, userId]);
+
+  if (loadedProfileKey !== profileKey) {
+    return <ProfilePageSkeleton self={self} onBack={() => navigate(-1)} />;
   }
 
-  const isSelf = profile.id === currentUserId;
-  const isFollowing = data.follows.some((follow) => follow.followerId === currentUserId && follow.followingId === profile.id);
-  const posts = data.posts.filter((post) => post.authorId === profile.id && post.status === 'PUBLISHED');
+  if (!profile) {
+    return <EmptyState title="Không tìm thấy hồ sơ" description={error || 'Hồ sơ không tồn tại hoặc không khả dụng.'} actionLabel="Về feed" onAction={() => navigate('/feed/for-you')} />;
+  }
+
+  const isSelf = String(profile.id) === String(currentUserId);
+  const isFollowing = profile.followedByCurrentUser;
 
   // Hồ sơ công khai chỉ hiển thị tên hiển thị, không suy diễn username từ email hoặc userId.
   const handle = profile.displayName;
@@ -44,6 +162,13 @@ export default function ProfilePage({ self = false }) {
   async function saveProfile() {
     try {
       await updateProfile(draft);
+      setProfile((current) => ({
+        ...current,
+        displayName: draft.displayName.trim(),
+        bio: draft.bio?.trim() ?? '',
+        birthDate: draft.dateOfBirth,
+        dateOfBirth: draft.dateOfBirth,
+      }));
       setEditing(false);
       setError('');
     } catch (requestError) {
@@ -72,6 +197,7 @@ export default function ProfilePage({ self = false }) {
     try {
       const response = await socialApi.uploadAvatar(file);
       setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl }));
+      setProfile((current) => ({ ...current, avatarUrl: response.avatarUrl }));
       setError('');
     } catch (requestError) {
       setError(requestError.message);
@@ -82,23 +208,38 @@ export default function ProfilePage({ self = false }) {
     try {
       const response = await socialApi.deleteAvatar();
       setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl || '' }));
+      setProfile((current) => ({ ...current, avatarUrl: response.avatarUrl || '' }));
       setError('');
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  function handleFollowClick(userTarget, isCurrentlyFollowing) {
+  async function handleFollowClick(userTarget, isCurrentlyFollowing) {
     if (isCurrentlyFollowing) {
       setUnfollowTarget(userTarget);
     } else {
-      toggleFollow(userTarget.id);
+      const response = await toggleFollow(userTarget.id);
+      if (String(userTarget.id) === String(profile.id)) {
+        setProfile((current) => ({
+          ...current,
+          followedByCurrentUser: response.followedByCurrentUser,
+          followerCount: current.followerCount + 1,
+        }));
+      }
     }
   }
 
-  function confirmUnfollow() {
+  async function confirmUnfollow() {
     if (unfollowTarget) {
-      toggleFollow(unfollowTarget.id);
+      const response = await toggleFollow(unfollowTarget.id);
+      if (String(unfollowTarget.id) === String(profile.id)) {
+        setProfile((current) => ({
+          ...current,
+          followedByCurrentUser: response.followedByCurrentUser,
+          followerCount: Math.max(0, current.followerCount - 1),
+        }));
+      }
       setUnfollowTarget(null);
     }
   }
@@ -205,7 +346,7 @@ export default function ProfilePage({ self = false }) {
         
         {isSelf && (
           <div className="flex items-center gap-4 border-b border-[var(--app-border)] px-6 pb-4 pt-4">
-            <Avatar src={currentUser.avatarUrl} name={currentUser.displayName} size="sm" className="!w-9 !h-9 text-sm" />
+            <Avatar src={profile.avatarUrl} name={profile.displayName} size="sm" className="!w-9 !h-9 text-sm" />
             <button className="flex-1 text-left text-[15px] text-[var(--app-muted)]" onClick={() => setComposerOpen(true)}>
               Có gì mới?
             </button>
@@ -217,7 +358,12 @@ export default function ProfilePage({ self = false }) {
 
         <div className="min-h-[50vh]">
           {activeTab === 'threads' && (
-            posts.length ? posts.map((post) => <PostCard key={post.id} post={post} />) : <EmptyState title="Chưa có bài viết" description="Các bài đã đăng sẽ hiển thị tại đây." />
+            <InfinitePostList
+              {...postState}
+              errorTitle="Không thể tải bài viết"
+              emptyTitle="Chưa có bài viết"
+              emptyDescription="Các bài đã đăng sẽ hiển thị tại đây."
+            />
           )}
           {activeTab === 'replies' && (
             <EmptyState title="Chưa có câu trả lời" description="Các bình luận của bạn sẽ xuất hiện ở đây." />
@@ -253,7 +399,7 @@ export default function ProfilePage({ self = false }) {
         }
         footerClassName="!border-none !pt-2 !pb-6"
       >
-        {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && <p className="app-error mb-4 rounded-xl p-3 text-sm">{error}</p>}
         <div className="flex flex-col items-center mt-2 mb-6">
           <Avatar src={draft.avatarUrl} name={draft.displayName} size="lg" className="!w-[56px] !h-[56px] text-2xl" />
           <label className="mt-2 cursor-pointer text-[14px] font-semibold text-blue-600 hover:underline">Thay đổi ảnh
@@ -265,7 +411,7 @@ export default function ProfilePage({ self = false }) {
         <div className="mb-5">
           <label className="text-[15px] font-semibold text-[var(--app-text)] mb-1.5 block">Ngày sinh</label>
           <input type="date" required value={draft.dateOfBirth} onChange={(event) => setDraft({ ...draft, dateOfBirth: event.target.value })}
-            className="w-full rounded-xl border border-[var(--app-border)] px-3.5 py-3 text-[15px] outline-none" />
+            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" />
         </div>
 
         <div className="mb-5">
@@ -274,7 +420,7 @@ export default function ProfilePage({ self = false }) {
             <span className="text-[13px] text-[var(--app-muted)]">{draft.displayName.length}/50</span>
           </div>
           <input 
-            className="w-full rounded-xl border border-[var(--app-border)] px-3.5 py-3 text-[15px] outline-none focus:border-zinc-400" 
+            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" 
             value={draft.displayName} 
             maxLength={50}
             onChange={(e) => setDraft({ ...draft, displayName: e.target.value })} 
@@ -298,7 +444,7 @@ export default function ProfilePage({ self = false }) {
             <span className="text-[13px] text-[var(--app-muted)]">{(draft.bio || '').length}/160</span>
           </div>
           <textarea 
-            className="w-full rounded-xl border border-[var(--app-border)] px-3.5 py-3 text-[15px] outline-none focus:border-zinc-400 min-h-[96px] resize-none" 
+            className="app-field w-full min-h-[96px] resize-none rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" 
             placeholder="Viết vài dòng giới thiệu về bạn"
             value={draft.bio} 
             maxLength={160}
@@ -371,7 +517,7 @@ export default function ProfilePage({ self = false }) {
               </div>
             )
           })}
-          {!(followModal === 'followers' ? modalUsers.followers : modalUsers.following).length ? <p className="text-[14px] text-zinc-500 text-center py-6">Danh sách trống.</p> : null}
+          {!(followModal === 'followers' ? modalUsers.followers : modalUsers.following).length ? <p className="py-6 text-center text-[14px] text-[var(--app-muted)]">Danh sách trống.</p> : null}
         </div>
       </Modal>
 

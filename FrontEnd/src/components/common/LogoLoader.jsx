@@ -14,8 +14,8 @@ export default function LogoLoader({ message = 'Đang tải...', size = 'md', fu
       <span className={`relative flex shrink-0 items-center justify-center ${styles.frame}`} aria-hidden="true">
         <span className={`absolute inset-0 animate-spin rounded-full ${styles.ring} border-transparent border-t-[var(--app-brand)] border-r-violet-500`} />
         <span className="absolute inset-[12%] animate-pulse rounded-full bg-violet-500/10" />
-        <span className="absolute inset-[18%] flex items-center justify-center rounded-full bg-white shadow-sm">
-          <img src={logo} alt="" className={`${styles.logo} object-contain`} />
+        <span className="absolute inset-[18%] flex items-center justify-center rounded-full bg-[var(--app-control-bg)] shadow-sm">
+          <img src={logo} alt="" className={`brand-logo ${styles.logo} object-contain`} />
         </span>
       </span>
       {message ? <span className={`${size === 'sm' ? 'text-inherit' : 'text-sm font-medium text-[var(--app-muted)]'}`}>{message}</span> : null}

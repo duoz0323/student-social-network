@@ -909,13 +909,40 @@ Request:
 
 ### DELETE `/api/v1/posts/{postId}/save`
 
-### GET `/api/v1/users/me/saved-posts?page=0&size=20`
+### GET `/api/v1/posts/saved?limit=10&cursor=<opaque-cursor>`
+
+`cursor` không truyền ở lần tải đầu.
+
+### GET `/api/v1/posts/liked?limit=10&cursor=<opaque-cursor>`
 
 ## 6. Feed
 
-### GET `/api/v1/feeds/for-you?page=0&size=20`
+### GET `/api/v1/feeds/for-you?limit=10&cursor=<opaque-cursor>`
 
-### GET `/api/v1/feeds/following?page=0&size=20`
+### GET `/api/v1/feeds/following?limit=10&cursor=<opaque-cursor>`
+
+### GET `/api/v1/users/{userId}/posts?limit=10&cursor=<opaque-cursor>`
+
+Các endpoint danh sách bài viết ở trên dùng cùng response:
+
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách bài viết thành công",
+  "data": {
+    "content": [],
+    "nextCursor": "eyJjcmVhdGVkQXQiOiIyMDI2LTA3LTI0VDEwOjMwOjAwIiwicG9zdElkIjo5OX0",
+    "hasNext": true
+  }
+}
+```
+
+- Request đầu chỉ truyền `limit`; request tiếp theo truyền nguyên `nextCursor` do Backend trả về.
+- `limit` mặc định 10, tối thiểu 1 và tối đa 20.
+- Cursor là Base64URL opaque và chứa đủ khóa `ORDER BY`; cursor sai trả `INVALID_CURSOR`.
+- Không dùng `page`, `size`, `offset`, `totalElements` hoặc `totalPages` cho các endpoint này.
+- Search bài viết/hashtag, bình luận, Follow và Admin vẫn dùng PageResponse vì cần phân trang
+  truyền thống hoặc metadata tổng số.
 
 ## 7. Search
 

@@ -1,5 +1,7 @@
 package com.stu.edu.vn.backend.post.service;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
+import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostSaveResponse;
 
 /**
@@ -10,4 +12,8 @@ public interface SavedPostService {
     PostSaveResponse savePost(Long postId);
 
     PostSaveResponse unsavePost(Long postId);
+
+    CursorPageResponse<FeedPostResponse> getSavedPosts(String cursor, int limit);
+
+
 }

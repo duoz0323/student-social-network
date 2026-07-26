@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Xử lý điều kiện truy cập, chuẩn hóa và truy vấn gợi ý hashtag hiện có.
  */
 @Service
+@RequiredArgsConstructor
 public class HashtagServiceImpl implements HashtagService {
 
     private static final int MIN_KEYWORD_LENGTH = 2;
@@ -35,22 +37,6 @@ public class HashtagServiceImpl implements HashtagService {
     private final HashtagRepository hashtagRepository;
     private final HashtagNormalizer hashtagNormalizer;
     private final HashtagMapper hashtagMapper;
-
-    public HashtagServiceImpl(
-            CurrentUserProvider currentUserProvider,
-            UserRepository userRepository,
-            UserProfileRepository userProfileRepository,
-            HashtagRepository hashtagRepository,
-            HashtagNormalizer hashtagNormalizer,
-            HashtagMapper hashtagMapper
-    ) {
-        this.currentUserProvider = currentUserProvider;
-        this.userRepository = userRepository;
-        this.userProfileRepository = userProfileRepository;
-        this.hashtagRepository = hashtagRepository;
-        this.hashtagNormalizer = hashtagNormalizer;
-        this.hashtagMapper = hashtagMapper;
-    }
 
     @Override
     @Transactional(readOnly = true)

@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant FE as Frontend
+    participant MC as MessageController
+    participant MS as MessageService
+    participant DB as MySQL
+
+    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
+    U->>FE: Nhập và gửi tin nhắn
+    FE->>MC: POST /api/v1/conversations/{id}/messages
+    MC->>MS: sendMessage(conversationId, request)
+    MS->>DB: Kiểm tra thành viên và quyền nhắn tin
+    alt Không được phép gửi
+        MS-->>FE: Trả lỗi nghiệp vụ
+        FE-->>U: Hiển thị thông báo lỗi
+    else Hợp lệ
+        MS->>DB: Lưu tin nhắn
+        DB-->>MS: Commit transaction
+        MS-->>FE: MessageResponse
+        FE-->>U: Hiển thị tin nhắn đã gửi
+    end
