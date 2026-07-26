@@ -44,7 +44,14 @@ export const router = createBrowserRouter([
   { path: '/register/verify', element: <GuestRoute><VerifyRegistrationOtpPage /></GuestRoute> },
   { path: '/auth/social-conflict', element: <GuestRoute><SocialConflictPendingPage /></GuestRoute> },
   { path: '/onboarding/profile', element: <ProfileCompletionRoute><OnboardingProfilePage /></ProfileCompletionRoute> },
-  { path: '/onboarding/success', element: <ProfileCompletionRoute requireCompleted><OnboardingSuccessPage /></ProfileCompletionRoute> },
+  {
+    path: '/onboarding/success',
+    element: (
+      <ProfileCompletionRoute requireCompleted allowCompletionTransition>
+        <OnboardingSuccessPage />
+      </ProfileCompletionRoute>
+    ),
+  },
   {
     element: <ProtectedRoute><LazyRouteBoundary><UserShell /></LazyRouteBoundary></ProtectedRoute>,
     children: [
