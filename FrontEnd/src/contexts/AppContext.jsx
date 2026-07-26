@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
@@ -24,6 +24,7 @@ export function AppProvider({ children }) {
   const auth = useAuth();
   // Context chỉ giữ snapshot dùng chung cho tương tác và hồ sơ; các danh sách Post tự tải qua service chuyên biệt.
   const [data, setData] = useState(() => initialData);
+  const createPostInFlightRef = useRef(false);
   const currentUserId = auth.user?.id ?? null;
 
   const currentUser = useMemo(() => {
@@ -54,12 +55,20 @@ export function AppProvider({ children }) {
     }
 
     async function createPost(payload) {
+      // Lớp phòng vệ thứ hai: không cho bất kỳ composer nào gửi thêm POST khi request trước chưa kết thúc.
+      if (createPostInFlightRef.current) {
+        return { ok: false, message: 'Bài viết đang được đăng. Vui lòng chờ trong giây lát.' };
+      }
+      createPostInFlightRef.current = true;
+
       try {
         const response = await postApi.create(payload);
         setData((previous) => ({ ...previous, posts: [toPostView(response), ...previous.posts] }));
         return { ok: true, data: response };
       } catch (error) {
         return { ok: false, message: error.message };
+      } finally {
+        createPostInFlightRef.current = false;
       }
     }
 

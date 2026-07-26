@@ -38,9 +38,11 @@ export default function PostComposer({ mode, onClose }) {
   const [topicSearching, setTopicSearching] = useState(false);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const fileInputRef = useRef(null);
   const optionsRef = useRef(null);
+  const submitInFlightRef = useRef(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -91,21 +93,33 @@ export default function PostComposer({ mode, onClose }) {
   }
 
   async function submit() {
-    const result = await createPost({
-      content,
-      hashtag: selectedTopic?.name ?? null,
-      mediaFiles: mediaPreviews.map((item) => item.file),
-    });
-    if (!result.ok) {
-      setError(result.message);
-      return;
+    // Ref khóa đồng bộ ngay trong lần click đầu, không chờ React render lại trạng thái disabled.
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const result = await createPost({
+        content,
+        hashtag: selectedTopic?.name ?? null,
+        mediaFiles: mediaPreviews.map((item) => item.file),
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.
+      resetForm();
+      onClose();
+    } finally {
+      submitInFlightRef.current = false;
+      setIsSubmitting(false);
     }
-    // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.
-    resetForm();
-    onClose();
   }
 
   function handleClose() {
+    if (submitInFlightRef.current) return;
     resetForm();
     onClose();
   }
@@ -209,7 +223,14 @@ export default function PostComposer({ mode, onClose }) {
 
   const commonHeader = (
     <header className="shrink-0 relative flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
-      <button onClick={handleClose} className="text-[15px] font-medium text-[var(--app-muted)] transition hover:text-[var(--app-text)]">Hủy</button>
+      <button
+        type="button"
+        onClick={handleClose}
+        disabled={isSubmitting}
+        className="text-[15px] font-medium text-[var(--app-muted)] transition hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Hủy
+      </button>
       <h2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[17px] font-bold text-[var(--app-text)]">Bài viết mới</h2>
       <button className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -287,8 +308,17 @@ export default function PostComposer({ mode, onClose }) {
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-[var(--app-muted)]">{content.length}/500</span>
-        <Button disabled={(!content.trim() && mediaPreviews.length === 0) || content.length > 500} onClick={submit} className="!rounded-full px-6 py-2 min-h-[40px] font-bold bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-zinc-800 disabled:opacity-30 disabled:bg-[var(--app-text)] disabled:text-[var(--app-surface)] border-none">
-          Đăng
+        <Button
+          disabled={isSubmitting || (!content.trim() && mediaPreviews.length === 0) || content.length > 500}
+          onClick={submit}
+          className="!rounded-full px-6 py-2 min-h-[40px] min-w-[104px] gap-2 font-bold bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-zinc-800 disabled:opacity-50 disabled:bg-[var(--app-text)] disabled:text-[var(--app-surface)] border-none"
+        >
+          {isSubmitting ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+              <span>Đang đăng...</span>
+            </>
+          ) : 'Đăng'}
         </Button>
       </div>
     </div>

@@ -1,5 +1,21 @@
+const API_DATE_TIME_WITHOUT_TIME_ZONE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/;
+
+/**
+ * Backend hiện lưu timestamp do MySQL sinh theo UTC nhưng LocalDateTime không chứa offset.
+ * Bổ sung ký hiệu UTC để trình duyệt không hiểu nhầm timestamp đó là giờ cục bộ.
+ */
+export function parseApiDateTime(value) {
+  if (value instanceof Date) return value;
+  const normalizedValue =
+    typeof value === 'string' && API_DATE_TIME_WITHOUT_TIME_ZONE.test(value)
+      ? `${value}Z`
+      : value;
+  return new Date(normalizedValue);
+}
+
 export function formatDateTime(value) {
-  const date = new Date(value);
+  const date = parseApiDateTime(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
@@ -14,7 +30,7 @@ export function formatDateTime(value) {
 // phù hợp với mockup hiển thị "· 2h", "· 4h" bên cạnh tên tác giả.
 export function shortTime(value) {
   const now = new Date();
-  const date = new Date(value);
+  const date = parseApiDateTime(value);
   // Dữ liệu thời gian không hợp lệ không được làm crash toàn bộ PostCard.
   if (Number.isNaN(date.getTime())) return '—';
   const diffSeconds = Math.floor((now - date) / 1000);

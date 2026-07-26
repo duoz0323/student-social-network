@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/brand/logo.png';
 import { useApp } from '../../../contexts/AppContext.jsx';
-import { useAuth } from '../hooks/useAuth.js';
 import { onboardingService } from '../services/onboardingService.js';
 import { todayIsoDate, calcAge } from '../components/onboarding/onboardingUtils.js';
 import { OnboardingBackground, StepIndicator } from '../components/onboarding/OnboardingShared.jsx';
@@ -12,7 +11,6 @@ import OnboardingStep3Info from '../components/onboarding/OnboardingStep3Info.js
 
 export default function OnboardingProfilePage() {
   const { currentUser } = useApp();
-  const auth = useAuth();
   const navigate = useNavigate();
 
   // State form chia sẻ giữa cả 3 bước
@@ -74,9 +72,14 @@ export default function OnboardingProfilePage() {
     setError('');
     try {
       const result = await onboardingService.completeProfile(form);
-      // Chỉ mở Feed sau khi Backend đã commit profile và phiên Frontend phản ánh trạng thái mới.
-      auth.updateProfileCompletion(Boolean(result.profileCompleted));
-      navigate('/onboarding/success', { replace: true });
+      if (!result.profileCompleted) {
+        throw new Error('Backend chưa xác nhận hồ sơ đã hoàn tất. Vui lòng thử lại.');
+      }
+      // Đánh dấu chuyển tiếp hợp lệ để route success hiển thị trước khi guard nhận trạng thái profile mới.
+      navigate('/onboarding/success', {
+        replace: true,
+        state: { onboardingJustCompleted: true },
+      });
     } catch (submitError) {
       setError(submitError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
     } finally {

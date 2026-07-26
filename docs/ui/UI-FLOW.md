@@ -23,6 +23,8 @@ AUTH-02 Đăng ký
 → AUTH-05 Onboarding bước 3: nhập ngày sinh bắt buộc, kiểm tra đủ 18 tuổi; bio có thể bỏ qua
 → Cập nhật profileCompletedAt
 → AUTH-06 /onboarding/success
+→ Hiển thị tạo tài khoản thành công
+→ Người dùng chọn Vào trang chủ
 → FEED-01 Feed người dùng
 ```
 

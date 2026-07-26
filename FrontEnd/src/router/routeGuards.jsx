@@ -29,11 +29,21 @@ export function ProtectedRoute({ children }) {
   return children;
 }
 
-export function ProfileCompletionRoute({ children, requireCompleted = false }) {
+export function ProfileCompletionRoute({
+  children,
+  requireCompleted = false,
+  allowCompletionTransition = false,
+}) {
   const auth = useAuth();
+  const location = useLocation();
+  const hasValidCompletionTransition = allowCompletionTransition
+    && location.state?.onboardingJustCompleted === true;
+
   if (auth.isInitializing) return <AuthBootstrap>{children}</AuthBootstrap>;
   if (!auth.isAuthenticated) return <Navigate to="/login" replace />;
-  if (requireCompleted && !auth.profileCompleted) return <Navigate to="/onboarding/profile" replace />;
+  if (requireCompleted && !auth.profileCompleted && !hasValidCompletionTransition) {
+    return <Navigate to="/onboarding/profile" replace />;
+  }
   if (!requireCompleted && auth.profileCompleted) return <Navigate to={getAuthenticatedHome(auth)} replace />;
   return children;
 }

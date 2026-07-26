@@ -1,87 +1,125 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-// Trang thành công sau khi hoàn tất onboarding hồ sơ
+import { useLocation, useNavigate } from 'react-router-dom';
+import BrandLockup from '../../../components/common/BrandLockup.jsx';
+import Button from '../../../components/common/Button.jsx';
+import { useAuth } from '../hooks/useAuth.js';
+
+// Trang xác nhận đăng ký hoàn tất, dùng cùng ngôn ngữ thiết kế với khu vực Auth.
 export default function OnboardingSuccessPage() {
   const navigate = useNavigate();
-  // Delay animation xuất hiện icon tích
-  const [checked, setChecked] = useState(false);
+  const location = useLocation();
+  const { updateProfileCompletion } = useAuth();
+  const [isPreparing, setIsPreparing] = useState(true);
+  const [showCheckmark, setShowCheckmark] = useState(false);
+
   useEffect(() => {
-    const t = setTimeout(() => setChecked(true), 200);
-    return () => clearTimeout(t);
+    if (location.state?.onboardingJustCompleted) {
+      // Chỉ cập nhật AuthContext sau khi route success đã mount để tránh guard chuyển thẳng sang Feed.
+      updateProfileCompletion(true);
+    }
+  }, [location.state, updateProfileCompletion]);
+
+  useEffect(() => {
+    // Chuyển tiếp ngắn giúp người dùng nhận biết hệ thống đang chuẩn bị giao diện sau khi Backend đã lưu xong.
+    const revealTimer = setTimeout(() => setIsPreparing(false), 600);
+    const checkmarkTimer = setTimeout(() => setShowCheckmark(true), 760);
+    return () => {
+      clearTimeout(revealTimer);
+      clearTimeout(checkmarkTimer);
+    };
   }, []);
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 bg-[#0c1120] overflow-hidden">
-
-      {/* Lưới chấm nền */}
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0c1120] px-4 py-10">
+      {/* Nền chấm nhỏ đồng bộ với các màn hình đăng nhập và đăng ký. */}
       <div
-        className="absolute inset-0 opacity-[0.07] pointer-events-none"
+        className="pointer-events-none absolute inset-0 opacity-[0.08]"
         style={{
           backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)',
-          backgroundSize: '26px 26px',
+          backgroundSize: '300px 300px',
         }}
       />
 
-      {/* Orb tím lớn – nền animated */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.14) 0%, transparent 65%)',
-          animation: 'float 9s ease-in-out infinite',
-        }}
-      />
-      {/* Orb xanh lam */}
-      <div
-        className="absolute -bottom-40 -right-20 w-[450px] h-[450px] rounded-full pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(37,99,235,0.13) 0%, transparent 65%)',
-          animation: 'float 11s ease-in-out infinite reverse',
-        }}
-      />
-
-      {/* Card */}
-      <div
-        className="relative z-10 w-full max-w-[420px]"
-        style={{
-          animation: 'fadeInUp 0.5s ease-out both',
-          background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 45%, #2563eb 100%)',
-          borderRadius: '24px',
-          padding: '2px',
-        }}
-      >
-        <div className="bg-white rounded-[22px] px-8 py-10 text-center">
-
-          {/* Icon tích thành công với scale-in animation */}
+      <section className="relative z-10 w-full max-w-[430px]">
+        {isPreparing ? (
           <div
-            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full"
-            style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              transform: checked ? 'scale(1)' : 'scale(0)',
-              transition: 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            }}
+            className="rounded-[24px] border border-slate-200 bg-white px-6 py-12 text-center shadow-[0_24px_70px_rgba(0,0,0,0.32)] sm:px-10"
+            role="status"
+            aria-live="polite"
           >
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <div className="flex justify-center">
+              <BrandLockup compact />
+            </div>
+            <div className="mx-auto mb-5 mt-9 h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-slate-900" />
+            <p className="text-base font-semibold text-slate-900">Đang chuẩn bị trang của bạn...</p>
+            <p className="mt-2 text-sm text-slate-500">Chỉ mất một chút thời gian.</p>
           </div>
+        ) : (
+          <div className="animate-[fadeInUp_0.42s_ease-out_both] rounded-[24px] border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.32)] sm:px-10 sm:py-10">
+            <div className="flex justify-center">
+              <BrandLockup compact />
+            </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Hồ sơ đã hoàn tất!
-          </h2>
-          <p className="text-base text-gray-500 leading-relaxed max-w-[290px] mx-auto mb-8">
-            Chào mừng bạn đến với cộng đồng sinh viên UniShare. Hãy bắt đầu khám phá và kết nối ngay!
-          </p>
+            {/* Dấu tích đen trắng không viền, đồng bộ với hệ màu chính của giao diện. */}
+            <div
+              className="mx-auto mb-5 mt-8 h-20 w-20 drop-shadow-[0_10px_18px_rgba(15,23,42,0.22)]"
+              style={{
+                opacity: showCheckmark ? 1 : 0,
+                transform: showCheckmark ? 'scale(1)' : 'scale(0.72)',
+                transition: 'opacity 220ms ease-out, transform 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            >
+              <svg className="h-full w-full" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+                <circle cx="40" cy="40" r="32" fill="#0f172a" />
+                <path
+                  d="M23.5 40.5 35 52l22-24"
+                  stroke="white"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pathLength="1"
+                  style={{
+                    strokeDasharray: 1,
+                    strokeDashoffset: showCheckmark ? 0 : 1,
+                    transition: 'stroke-dashoffset 480ms ease-out 120ms',
+                  }}
+                />
+              </svg>
+            </div>
+            <h1 className="mb-3 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-[28px]">
+              Tạo tài khoản thành công!
+            </h1>
+            <p className="mx-auto max-w-[320px] text-[15px] leading-6 text-slate-600">
+              Hồ sơ của bạn đã sẵn sàng. Bắt đầu khám phá những bài viết mới và kết nối cùng cộng đồng UniShare.
+            </p>
 
-          {/* Nút chính */}
-          <button
-            type="button"
-            onClick={() => navigate('/feed/for-you')}
-            className="w-full h-12 rounded-xl bg-gray-900 hover:bg-black text-white text-base font-semibold transition-colors shadow-sm"
-          >
-            Khám phá Feed
-          </button>
-        </div>
-      </div>
+            <div className="mt-8 border-t border-slate-200 pt-6">
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => navigate('/feed/for-you', { replace: true })}
+                className="w-full gap-2"
+              >
+                <span>Vào trang chủ</span>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

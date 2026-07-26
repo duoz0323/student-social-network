@@ -1,9 +1,24 @@
-import { inputCls, todayIsoDate } from './onboardingUtils.js';
+import { useState } from 'react';
+import {
+  displayDateToIso,
+  formatBirthDateInput,
+  inputCls,
+  isoDateToDisplay,
+} from './onboardingUtils.js';
 import { ErrorMsg, PrimaryBtn, SecondaryBtn, SlidePanel } from './OnboardingShared.jsx';
 
 // Bước 3: Ngày sinh (bắt buộc, ≥18 tuổi) và bio (tùy chọn)
 // Chỉ có 2 nút: Hoàn tất và Quay lại
 export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, onBioChange, onFinish, onBack, error, isSubmitting }) {
+  const [displayDate, setDisplayDate] = useState(() => isoDateToDisplay(dateOfBirth));
+
+  function handleDateChange(event) {
+    const formattedDate = formatBirthDateInput(event.target.value);
+    setDisplayDate(formattedDate);
+    // State cha và request API vẫn giữ chuẩn ISO yyyy-MM-dd.
+    onDateChange(displayDateToIso(formattedDate));
+  }
+
   return (
     <SlidePanel stepKey={3}>
       <div className="mb-6">
@@ -23,11 +38,15 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
             <span className="ml-2 text-sm font-normal text-red-500">Bắt buộc</span>
           </label>
           <input
-            type="date"
-            value={dateOfBirth}
-            max={todayIsoDate()}
-            onChange={(e) => onDateChange(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            autoComplete="bday"
+            placeholder="DD/MM/YYYY"
+            value={displayDate}
+            maxLength={10}
+            onChange={handleDateChange}
             className={inputCls + ' h-12 text-base'}
+            aria-label="Ngày sinh theo định dạng ngày tháng năm"
           />
           {dateOfBirth && (
             <p className="mt-2 text-sm text-gray-400">
