@@ -28,7 +28,7 @@ public interface AdminUserRepository extends Repository<User, Long> {
                            up.display_name AS displayName,
                            up.avatar_url AS avatarUrl,
                            u.email AS email,
-                           u.phone_number AS phoneNumber,
+                           CAST(NULL AS CHAR) AS phoneNumber,
                            u.status AS status,
                            up.profile_completed_at AS profileCompletedAt,
                            u.created_at AS createdAt
@@ -39,7 +39,6 @@ public interface AdminUserRepository extends Repository<User, Long> {
                       AND (
                           :keyword IS NULL
                           OR LOWER(u.email) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
-                          OR u.phone_number LIKE CONCAT('%', :keyword, '%') ESCAPE '='
                           OR LOWER(up.display_name) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
                       )
                     ORDER BY u.created_at DESC, u.id DESC
@@ -53,7 +52,6 @@ public interface AdminUserRepository extends Repository<User, Long> {
                       AND (
                           :keyword IS NULL
                           OR LOWER(u.email) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
-                          OR u.phone_number LIKE CONCAT('%', :keyword, '%') ESCAPE '='
                           OR LOWER(up.display_name) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
                       )
                     """,
@@ -72,7 +70,7 @@ public interface AdminUserRepository extends Repository<User, Long> {
                            up.avatar_url AS avatarUrl,
                            up.bio AS bio,
                            u.email AS email,
-                           u.phone_number AS phoneNumber,
+                           CAST(NULL AS CHAR) AS phoneNumber,
                            u.role AS role,
                            u.status AS status,
                            up.profile_completed_at AS profileCompletedAt,

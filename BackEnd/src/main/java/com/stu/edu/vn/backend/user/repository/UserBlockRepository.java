@@ -5,12 +5,29 @@ import com.stu.edu.vn.backend.user.entity.UserBlockId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** Repository tập trung mọi phép kiểm tra quan hệ chặn để các module dùng cùng một định nghĩa. */
 public interface UserBlockRepository extends JpaRepository<UserBlock, UserBlockId> {
     boolean existsByIdBlockerIdAndIdBlockedId(Long blockerId, Long blockedId);
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO user_blocks (blocker_id, blocked_id, created_at)
+            VALUES (:blockerId, :blockedId, CURRENT_TIMESTAMP(6))
+            ON DUPLICATE KEY UPDATE created_at = user_blocks.created_at
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("blockerId") Long blockerId, @Param("blockedId") Long blockedId);
+
+    @Modifying
+    @Query("""
+            DELETE FROM UserBlock blockRelation
+            WHERE blockRelation.id.blockerId = :blockerId
+              AND blockRelation.id.blockedId = :blockedId
+            """)
+    int deleteBlock(@Param("blockerId") Long blockerId, @Param("blockedId") Long blockedId);
 
     @Query("""
             SELECT CASE WHEN COUNT(blockRelation) > 0 THEN TRUE ELSE FALSE END

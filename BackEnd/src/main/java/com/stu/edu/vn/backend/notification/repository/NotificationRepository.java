@@ -58,7 +58,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Pageable pageable
     );
 
-    long countByRecipient_IdAndReadAtIsNullAndDeletedAtIsNull(Long recipientId);
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM notifications n
+            WHERE n.recipient_id = :recipientId
+              AND n.read_at IS NULL
+              AND n.deleted_at IS NULL
+              AND (n.actor_id IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM user_blocks ub
+                  WHERE (ub.blocker_id = :recipientId AND ub.blocked_id = n.actor_id)
+                     OR (ub.blocker_id = n.actor_id AND ub.blocked_id = :recipientId)
+              ))
+            """, nativeQuery = true)
+    long countByRecipient_IdAndReadAtIsNullAndDeletedAtIsNull(@Param("recipientId") Long recipientId);
 
     Optional<Notification> findByIdAndRecipient_IdAndDeletedAtIsNull(Long id, Long recipientId);
 

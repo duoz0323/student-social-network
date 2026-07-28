@@ -6,6 +6,7 @@ export const FeedPage = lazy(() => import('../features/feed/pages/FeedPage.jsx')
 export const PostDetailPage = lazy(() => import('../features/post/pages/PostDetailPage.jsx'));
 export const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage.jsx'));
 export const BlockedUsersPage = lazy(() => import('../features/profile/pages/BlockedUsersPage.jsx'));
+export const RestrictedUsersPage = lazy(() => import('../features/profile/pages/RestrictedUsersPage.jsx'));
 export const SavedPostsPage = lazy(() => import('../features/post/pages/SavedPostsPage.jsx'));
 export const LikedPostsPage = lazy(() => import('../features/post/pages/LikedPostsPage.jsx'));
 export const SearchPage = lazy(() => import('../features/search/pages/SearchPage.jsx'));

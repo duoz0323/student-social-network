@@ -50,6 +50,9 @@ class FollowRepositoryContractTest {
                 .containsIgnoringCase("CASE WHEN EXISTS")
                 .contains("THEN TRUE ELSE FALSE")
                 .contains("AS followedByCurrentUser")
+                .contains("FROM UserBlock blockRelation")
+                .contains("blockRelation.id.blockerId = :currentUserId")
+                .contains("blockRelation.id.blockedId = :currentUserId")
                 .contains("ORDER BY relation.createdAt DESC")
                 .doesNotContain("SELECT *", "LIMIT");
     }

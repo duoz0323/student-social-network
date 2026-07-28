@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,12 +21,14 @@ import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetProjection;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +52,8 @@ class SavedPostServiceImplTest {
     private final PlatformTransactionManager transactionManager = org.mockito.Mockito.mock(PlatformTransactionManager.class);
     private final FeedPostBatchLoader feedPostBatchLoader = org.mockito.Mockito.mock(FeedPostBatchLoader.class);
     private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
 
     private SavedPostServiceImpl savedPostService;
 
@@ -65,14 +70,16 @@ class SavedPostServiceImplTest {
                 postMapper,
                 feedPostBatchLoader,
                 cursorCodec,
-                transactionManager
+                transactionManager,
+                relationshipPolicyService
         );
 
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(10L)));
-        when(postRepository.findStatusById(15L)).thenReturn(Optional.of(PostStatus.PUBLISHED));
+        PostInteractionTargetProjection publishedTarget = target(PostStatus.PUBLISHED, 20L);
+        when(postRepository.findInteractionTargetById(15L)).thenReturn(Optional.of(publishedTarget));
         when(postRepository.getReferenceById(15L)).thenReturn(post(15L, 20L));
     }
 
@@ -127,7 +134,7 @@ class SavedPostServiceImplTest {
 
     @Test
     void saveMissingPostReturnsPostNotFound() {
-        when(postRepository.findStatusById(15L)).thenReturn(Optional.empty());
+        when(postRepository.findInteractionTargetById(15L)).thenReturn(Optional.empty());
 
         assertBusinessError(() -> savedPostService.savePost(15L), ErrorCode.POST_NOT_FOUND);
         verify(savedPostRepository, never()).existsByIdUserIdAndIdPostId(any(), any());
@@ -135,10 +142,12 @@ class SavedPostServiceImplTest {
 
     @Test
     void saveHiddenOrDeletedPostReturnsPostNotAvailable() {
-        when(postRepository.findStatusById(15L)).thenReturn(Optional.of(PostStatus.HIDDEN));
+        PostInteractionTargetProjection hiddenTarget = target(PostStatus.HIDDEN, 20L);
+        when(postRepository.findInteractionTargetById(15L)).thenReturn(Optional.of(hiddenTarget));
         assertBusinessError(() -> savedPostService.savePost(15L), ErrorCode.POST_NOT_AVAILABLE);
 
-        when(postRepository.findStatusById(15L)).thenReturn(Optional.of(PostStatus.DELETED));
+        PostInteractionTargetProjection deletedTarget = target(PostStatus.DELETED, 20L);
+        when(postRepository.findInteractionTargetById(15L)).thenReturn(Optional.of(deletedTarget));
         assertBusinessError(() -> savedPostService.savePost(15L), ErrorCode.POST_NOT_AVAILABLE);
         verify(savedPostRepository, never()).saveAndFlush(any());
     }
@@ -151,7 +160,7 @@ class SavedPostServiceImplTest {
 
         assertBusinessError(() -> savedPostService.savePost(15L), ErrorCode.USER_BLOCKED);
         verify(userProfileRepository, never()).findById(any());
-        verify(postRepository, never()).findStatusById(any());
+        verify(postRepository, never()).findInteractionTargetById(any());
     }
 
     @Test
@@ -161,7 +170,7 @@ class SavedPostServiceImplTest {
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
 
         assertBusinessError(() -> savedPostService.savePost(15L), ErrorCode.PROFILE_NOT_COMPLETED);
-        verify(postRepository, never()).findStatusById(any());
+        verify(postRepository, never()).findInteractionTargetById(any());
     }
 
     @Test
@@ -219,5 +228,30 @@ class SavedPostServiceImplTest {
         Post post = new Post(user(authorId), "Noi dung");
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
+    }
+
+    @Test
+    void saveAndUnsaveRejectBlockedAuthorBeforeChangingRelation() {
+        doThrow(new BusinessException(ErrorCode.USER_RELATIONSHIP_BLOCKED))
+                .when(relationshipPolicyService).assertNoBlock(10L, 20L);
+
+        assertThatThrownBy(() -> savedPostService.savePost(15L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        assertThatThrownBy(() -> savedPostService.unsavePost(15L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        verify(savedPostRepository, never()).save(any());
+        verify(savedPostRepository, never()).deleteByUserIdAndPostId(any(), any());
+    }
+
+    private PostInteractionTargetProjection target(PostStatus status, Long authorId) {
+        PostInteractionTargetProjection projection =
+                org.mockito.Mockito.mock(PostInteractionTargetProjection.class);
+        when(projection.getStatus()).thenReturn(status);
+        when(projection.getAuthorId()).thenReturn(authorId);
+        return projection;
     }
 }

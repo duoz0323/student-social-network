@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-export default function MoreMenu({ open, onClose, onLogout, onSettings, onLikedPosts }) {
+export default function MoreMenu({
+  open, onClose, onLogout, onSettings, onBlockedUsers, onRestrictedUsers, onLikedPosts,
+}) {
   const menuRef = useRef(null);
 
   // Đóng menu khi click ra ngoài
@@ -28,6 +30,12 @@ export default function MoreMenu({ open, onClose, onLogout, onSettings, onLikedP
       </button>
       <button onClick={() => { onClose(); onSettings?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
         Cài đặt
+      </button>
+      <button onClick={() => { onClose(); onBlockedUsers?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
+        Tài khoản đã chặn
+      </button>
+      <button onClick={() => { onClose(); onRestrictedUsers?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">
+        Tài khoản đã hạn chế
       </button>
       <div className="my-2 h-[1px] w-full bg-[var(--app-border)]"></div>
       <button onClick={() => { onClose(); onLikedPosts?.(); }} className="flex w-full items-center justify-between px-5 py-3 text-left text-[15px] font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]">

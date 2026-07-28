@@ -51,6 +51,14 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
             JOIN UserProfile profile ON profile.userId = follower.id
             WHERE relation.id.followingId = :userId
               AND follower.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              AND NOT EXISTS (
+                  SELECT blockRelation.id
+                  FROM UserBlock blockRelation
+                  WHERE (blockRelation.id.blockerId = :currentUserId
+                         AND blockRelation.id.blockedId = follower.id)
+                     OR (blockRelation.id.blockerId = follower.id
+                         AND blockRelation.id.blockedId = :currentUserId)
+              )
             ORDER BY relation.createdAt DESC, relation.id.followerId DESC
             """)
     List<FollowUserProjection> findActiveFollowers(
@@ -76,6 +84,14 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
             JOIN UserProfile profile ON profile.userId = following_user.id
             WHERE relation.id.followerId = :userId
               AND following_user.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              AND NOT EXISTS (
+                  SELECT blockRelation.id
+                  FROM UserBlock blockRelation
+                  WHERE (blockRelation.id.blockerId = :currentUserId
+                         AND blockRelation.id.blockedId = following_user.id)
+                     OR (blockRelation.id.blockerId = following_user.id
+                         AND blockRelation.id.blockedId = :currentUserId)
+              )
             ORDER BY relation.createdAt DESC, relation.id.followingId DESC
             """)
     List<FollowUserProjection> findActiveFollowing(

@@ -29,6 +29,7 @@ import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -314,6 +315,7 @@ class AdminReportStatusTransactionIntegrationTest {
 
     private User saveUser(String email, UserRole role) {
         User user = new User(email, "hash");
+        user.setEmailVerifiedAt(LocalDateTime.now());
         user.setRole(role);
         return userRepository.saveAndFlush(user);
     }
@@ -321,6 +323,8 @@ class AdminReportStatusTransactionIntegrationTest {
     private void saveProfile(User user, String displayName) {
         UserProfile profile = new UserProfile(user);
         profile.setDisplayName(displayName);
+        // Hồ sơ hoàn tất phải có ngày sinh để thỏa check constraint của schema MySQL thật.
+        profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(NOW.minusDays(1));
         userProfileRepository.saveAndFlush(profile);
     }

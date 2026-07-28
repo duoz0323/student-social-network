@@ -4,6 +4,11 @@ import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
 import { toPostView } from '../features/post/utils/postViewModel.js';
+import Toast from '../components/common/Toast.jsx';
+import {
+  invalidateUserBlockCaches,
+  removeBlockedUserFromState,
+} from '../features/profile/utils/userBlockState.js';
 
 const AppContext = createContext(null);
 
@@ -24,6 +29,8 @@ export function AppProvider({ children }) {
   const auth = useAuth();
   // Context chỉ giữ snapshot dùng chung cho tương tác và hồ sơ; các danh sách Post tự tải qua service chuyên biệt.
   const [data, setData] = useState(() => initialData);
+  const [toast, setToast] = useState(null);
+  const [userRelationshipRevision, setUserRelationshipRevision] = useState(0);
   const createPostInFlightRef = useRef(false);
   const currentUserId = auth.user?.id ?? null;
 
@@ -157,6 +164,23 @@ export function AppProvider({ children }) {
       return response;
     }
 
+    function invalidateUserRelationshipData() {
+      // Revision buộc các màn hình giữ state cục bộ như Post Detail/Comment tải lại từ Backend.
+      invalidateUserBlockCaches();
+      setUserRelationshipRevision((revision) => revision + 1);
+    }
+
+    function applyUserBlock(targetUserId) {
+      // Một điểm cập nhật chung loại dữ liệu bị chặn khỏi Context và cache cursor liên quan.
+      invalidateUserRelationshipData();
+      setData((previous) => removeBlockedUserFromState(previous, currentUserId, targetUserId));
+    }
+
+    function showToast(message, type = 'success') {
+      // Toast đặt tại Provider để không biến mất khi thao tác Block điều hướng sang route khác.
+      setToast({ message, type });
+    }
+
     async function updateProfile(payload) {
       const response = await socialApi.updateProfile({
         displayName: payload.displayName,
@@ -214,13 +238,21 @@ export function AppProvider({ children }) {
     }
 
     return {
-      data: { ...data, users }, currentUser, currentUserId, publicPosts, getUserById, getPostById,
+      data: { ...data, users }, currentUser, currentUserId, userRelationshipRevision,
+      publicPosts, getUserById, getPostById,
       logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
-      deleteComment, toggleFollow, updateProfile, submitReport, setUserStatus, setPostStatus, setReportStatus,
+      deleteComment, toggleFollow, applyUserBlock, invalidateUserRelationshipData,
+      showToast, updateProfile, submitReport,
+      setUserStatus, setPostStatus, setReportStatus,
     };
-  }, [auth.logout, currentUser, currentUserId, data]);
+  }, [auth.logout, currentUser, currentUserId, data, userRelationshipRevision]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      {toast ? <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} /> : null}
+    </AppContext.Provider>
+  );
 }
 
 export function useApp() {

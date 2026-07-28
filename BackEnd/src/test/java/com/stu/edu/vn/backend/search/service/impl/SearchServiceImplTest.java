@@ -61,14 +61,14 @@ class SearchServiceImplTest {
         UserProfile resultProfile = profile(20L, "Nguyễn Minh", true);
         resultProfile.setAvatarUrl("https://cdn.example/avatar.png");
         resultProfile.setBio("Sinh viên CNTT");
-        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any()))
+        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(resultProfile), PageRequest.of(0, 20), 1));
 
         var response = searchService.searchUsers("  Minh  ", 0, 20);
 
         verify(currentUserProvider).getCurrentUserId();
         verify(userRepository).findById(10L);
-        verify(userProfileRepository).searchCompletedActiveProfilesByDisplayName("Minh", PageRequest.of(0, 20));
+        verify(userProfileRepository).searchCompletedActiveProfilesByDisplayName("Minh", 10L, PageRequest.of(0, 20));
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst())
                 .extracting("userId", "displayName", "avatarUrl", "bio")
@@ -77,17 +77,18 @@ class SearchServiceImplTest {
 
     @Test
     void searchEscapesLikeWildcardCharacters() {
-        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any()))
+        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         searchService.searchUsers("50%_off=now", 0, 20);
 
-        verify(userProfileRepository).searchCompletedActiveProfilesByDisplayName("50=%=_off==now", PageRequest.of(0, 20));
+        verify(userProfileRepository).searchCompletedActiveProfilesByDisplayName(
+                "50=%=_off==now", 10L, PageRequest.of(0, 20));
     }
 
     @Test
     void emptyResultReturnsEmptyPageResponse() {
-        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any()))
+        when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 10), 0));
 
         var response = searchService.searchUsers("không tồn tại", 1, 10);
@@ -103,7 +104,7 @@ class SearchServiceImplTest {
         assertError(() -> searchService.searchUsers(null, 0, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
         assertError(() -> searchService.searchUsers("   ", 0, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
         assertError(() -> searchService.searchUsers("a".repeat(101), 0, 20), ErrorCode.SEARCH_KEYWORD_TOO_LONG);
-        verify(userProfileRepository, never()).searchCompletedActiveProfilesByDisplayName(any(), any());
+        verify(userProfileRepository, never()).searchCompletedActiveProfilesByDisplayName(any(), any(), any());
     }
 
     @Test
@@ -120,7 +121,7 @@ class SearchServiceImplTest {
 
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", false)));
         assertError(() -> searchService.searchUsers("minh", 0, 20), ErrorCode.PROFILE_NOT_COMPLETED);
-        verify(userProfileRepository, never()).searchCompletedActiveProfilesByDisplayName(any(), any());
+        verify(userProfileRepository, never()).searchCompletedActiveProfilesByDisplayName(any(), any(), any());
     }
 
     private void assertError(Runnable action, ErrorCode errorCode) {

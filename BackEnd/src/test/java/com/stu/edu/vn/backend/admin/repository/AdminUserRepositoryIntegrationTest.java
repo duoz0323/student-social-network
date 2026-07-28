@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -47,10 +48,9 @@ class AdminUserRepositoryIntegrationTest {
     @Test
     void queriesSearchFilterOrderExcludeAdminAndDoNotCauseNPlusOne() {
         String marker = "adm" + UUID.randomUUID().toString().replace("-", "");
-        String phonePrefix = marker.substring(0, 16);
-        User activeUser = saveUser(marker + "ALPHA@example.com", phonePrefix + "01", UserRole.USER, UserStatus.ACTIVE);
-        User blockedUser = saveUser(marker + "blocked@example.com", phonePrefix + "02", UserRole.USER, UserStatus.BLOCKED);
-        User admin = saveUser(marker + "admin@example.com", phonePrefix + "03", UserRole.ADMIN, UserStatus.ACTIVE);
+        User activeUser = saveUser(marker + "ALPHA@example.com", UserRole.USER, UserStatus.ACTIVE);
+        User blockedUser = saveUser(marker + "blocked@example.com", UserRole.USER, UserStatus.BLOCKED);
+        User admin = saveUser(marker + "admin@example.com", UserRole.ADMIN, UserStatus.ACTIVE);
         saveProfile(activeUser, marker + " Name 50%_off=now", true);
         saveProfile(blockedUser, marker + " Blocked", false);
         saveProfile(admin, marker + " Admin", true);
@@ -61,10 +61,6 @@ class AdminUserRepositoryIntegrationTest {
                 marker.toLowerCase() + "alpha@example.com", null, PageRequest.of(0, 20)).getContent())
                 .extracting(AdminUserListProjection::getUserId)
                 .containsExactly(activeUser.getId());
-        assertThat(adminUserRepository.findManagedUsers(
-                phonePrefix + "02", null, PageRequest.of(0, 20)).getContent())
-                .extracting(AdminUserListProjection::getUserId)
-                .containsExactly(blockedUser.getId());
         assertThat(adminUserRepository.findManagedUsers(
                 marker.toUpperCase() + " NAME", null, PageRequest.of(0, 20)).getContent())
                 .extracting(AdminUserListProjection::getUserId)
@@ -109,8 +105,9 @@ class AdminUserRepositoryIntegrationTest {
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
     }
 
-    private User saveUser(String email, String phoneNumber, UserRole role, UserStatus status) {
+    private User saveUser(String email, UserRole role, UserStatus status) {
         User user = new User(email, "hash");
+        user.setEmailVerifiedAt(LocalDateTime.now());
         user.setRole(role);
         user.setStatus(status);
         if (status == UserStatus.BLOCKED) {
@@ -124,6 +121,8 @@ class AdminUserRepositoryIntegrationTest {
     private void saveProfile(User user, String displayName, boolean completed) {
         UserProfile profile = new UserProfile(user);
         profile.setDisplayName(displayName);
+        // Chỉ hồ sơ đã hoàn tất mới cần ngày sinh theo check constraint hiện hành.
+        profile.setDateOfBirth(completed ? LocalDate.of(2000, 1, 1) : null);
         profile.setProfileCompletedAt(completed ? LocalDateTime.of(2026, 7, 14, 8, 0) : null);
         userProfileRepository.saveAndFlush(profile);
     }

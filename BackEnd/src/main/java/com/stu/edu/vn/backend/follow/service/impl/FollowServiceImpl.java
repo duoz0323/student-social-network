@@ -100,6 +100,7 @@ public class FollowServiceImpl implements FollowService {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanUseSocialFeatures(currentUserId);
         ensureListOwnerIsActive(userId);
+        relationshipPolicyService.assertNoBlock(currentUserId, userId);
 
         return followRepository.findActiveFollowers(userId, currentUserId)
                 .stream()
@@ -113,6 +114,7 @@ public class FollowServiceImpl implements FollowService {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanUseSocialFeatures(currentUserId);
         ensureListOwnerIsActive(userId);
+        relationshipPolicyService.assertNoBlock(currentUserId, userId);
 
         return followRepository.findActiveFollowing(userId, currentUserId)
                 .stream()

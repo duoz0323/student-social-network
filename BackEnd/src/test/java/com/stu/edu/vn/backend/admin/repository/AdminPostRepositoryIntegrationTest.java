@@ -22,6 +22,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
@@ -103,6 +104,7 @@ class AdminPostRepositoryIntegrationTest {
 
     private User saveUser(String email, UserRole role, UserStatus status) {
         User user = new User(email, "hash");
+        user.setEmailVerifiedAt(LocalDateTime.now());
         user.setRole(role);
         user.setStatus(status);
         if (status == UserStatus.BLOCKED) {
@@ -115,6 +117,8 @@ class AdminPostRepositoryIntegrationTest {
     private void saveProfile(User user, String displayName) {
         UserProfile profile = new UserProfile(user);
         profile.setDisplayName(displayName);
+        // Hồ sơ hoàn tất phải có ngày sinh để phản ánh đúng contract database.
+        profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(LocalDateTime.of(2026, 7, 15, 7, 0));
         userProfileRepository.saveAndFlush(profile);
     }

@@ -135,10 +135,11 @@ public class SavedPostServiceImpl implements SavedPostService {
     private void assertPostCanBeAccessed(Long userId, Long postId) {
         var target = postRepository.findInteractionTargetById(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        // Kiểm tra Block trước trạng thái để không tiết lộ bài viết của tài khoản đã chặn.
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
         if (target.getStatus() != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }
-        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
     }
 
     @Override

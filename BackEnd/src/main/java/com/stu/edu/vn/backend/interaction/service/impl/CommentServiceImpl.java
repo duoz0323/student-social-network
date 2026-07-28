@@ -81,8 +81,7 @@ public class CommentServiceImpl implements CommentService {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
-        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
-        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
+        PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
 
         // Dùng reference để tạo khóa ngoại post_id mà không cần tải toàn bộ entity bài viết.
         Post postReference = postRepository.getReferenceById(postId);
@@ -119,6 +118,8 @@ public class CommentServiceImpl implements CommentService {
 
         Long postId = parentComment.getPost().getId();
         assertPostCanBeAccessed(userId, postId);
+        // Không cho tạo Reply trực tiếp vào bình luận của tài khoản có Block với người hiện tại.
+        relationshipPolicyService.assertNoBlock(userId, parentComment.getAuthor().getId());
 
         // post_id luôn lấy từ bình luận cha để Client không thể gắn reply sang bài viết khác.
         Comment reply = commentRepository.saveAndFlush(
@@ -143,11 +144,12 @@ public class CommentServiceImpl implements CommentService {
 
         Page<Comment> comments = commentRepository.findVisibleRootComments(
                 postId,
+                userId,
                 CommentStatus.PUBLISHED,
                 PageRequest.of(page, size)
         );
         List<Long> commentIds = comments.getContent().stream().map(Comment::getId).toList();
-        Map<Long, Long> replyCounts = getPublishedReplyCounts(commentIds);
+        Map<Long, Long> replyCounts = getPublishedReplyCounts(commentIds, userId);
 
         return PageResponse.from(comments.map(comment -> commentMapper.toResponse(
                 comment,
@@ -167,10 +169,13 @@ public class CommentServiceImpl implements CommentService {
             throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
         }
         assertPostCanBeAccessed(userId, parentComment.getPost().getId());
+        // Cha có Block với viewer thì ẩn cả nhánh, kể cả khi viewer là chủ bài viết.
+        relationshipPolicyService.assertNoBlock(userId, parentComment.getAuthor().getId());
 
         Page<CommentResponse> replies = commentRepository
-                .findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
+                .findVisibleReplies(
                         parentCommentId,
+                        userId,
                         CommentStatus.PUBLISHED,
                         PageRequest.of(page, size)
                 )
@@ -226,13 +231,14 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private void assertPostCanBeAccessed(Long userId, Long postId) {
-        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
-        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
+        findAccessibleInteractionTarget(userId, postId);
     }
 
-    private PostInteractionTargetProjection findPublishedInteractionTarget(Long postId) {
+    private PostInteractionTargetProjection findAccessibleInteractionTarget(Long userId, Long postId) {
         PostInteractionTargetProjection target = postRepository.findInteractionTargetById(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        // Kiểm tra Block trước trạng thái để không làm lộ bài không còn quyền truy cập.
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
         if (target.getStatus() != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }
@@ -251,11 +257,15 @@ public class CommentServiceImpl implements CommentService {
         return normalizedContent;
     }
 
-    private Map<Long, Long> getPublishedReplyCounts(List<Long> commentIds) {
+    private Map<Long, Long> getPublishedReplyCounts(List<Long> commentIds, Long viewerId) {
         if (commentIds.isEmpty()) {
             return Map.of();
         }
-        return commentRepository.countRepliesByParentIdsAndStatus(commentIds, CommentStatus.PUBLISHED)
+        return commentRepository.countVisibleRepliesByParentIdsAndStatus(
+                        commentIds,
+                        viewerId,
+                        CommentStatus.PUBLISHED
+                )
                 .stream()
                 .collect(Collectors.toMap(
                         projection -> projection.getCommentId(),

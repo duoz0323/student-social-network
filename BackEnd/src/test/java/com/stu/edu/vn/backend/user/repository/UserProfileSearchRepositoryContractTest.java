@@ -14,7 +14,7 @@ class UserProfileSearchRepositoryContractTest {
     @Test
     void searchQueryUsesBoundSubstringFilteringApprovedFiltersAndStableOrdering() throws Exception {
         Method method = SearchUserProfileRepository.class.getMethod(
-                "searchCompletedActiveProfilesByDisplayName", String.class, Pageable.class);
+                "searchCompletedActiveProfilesByDisplayName", String.class, Long.class, Pageable.class);
         Query query = method.getAnnotation(Query.class);
 
         assertThat(method.getReturnType()).isEqualTo(Page.class);
@@ -25,9 +25,11 @@ class UserProfileSearchRepositoryContractTest {
                 .contains("up.profile_completed_at IS NOT NULL")
                 .contains("up.display_name IS NOT NULL")
                 .contains("CASE WHEN up.display_name LIKE CONCAT(:keyword, '%')")
+                .contains("user_blocks", ":viewerId")
                 .contains("up.user_id DESC")
                 .doesNotContain("email", "phone_number", "password_hash");
         assertThat(query.countQuery())
-                .contains("COUNT(*)", "LIKE CONCAT('%', :keyword, '%')", "u.status = 'ACTIVE'");
+                .contains("COUNT(*)", "LIKE CONCAT('%', :keyword, '%')", "u.status = 'ACTIVE'",
+                        "user_blocks", ":viewerId");
     }
 }

@@ -43,13 +43,13 @@ class PostRepositoryContractTest {
     void cursorQueriesUseKeysetWithoutCountQuery() throws Exception {
         // Các danh sách cuộn vô hạn phải giới hạn bằng Pageable trang 0 nhưng không được sinh COUNT/OFFSET nghiệp vụ.
         Method forYou = PostRepository.class.getMethod(
-                "findForYouFeed", int.class, LocalDateTime.class, Long.class,
+                "findForYouFeed", Long.class, int.class, LocalDateTime.class, Long.class,
                 org.springframework.data.domain.Pageable.class);
         Method following = PostRepository.class.getMethod(
                 "findFollowingFeed", Long.class, LocalDateTime.class, Long.class,
                 org.springframework.data.domain.Pageable.class);
         Method profile = PostRepository.class.getMethod(
-                "findProfilePosts", Long.class, LocalDateTime.class, Long.class,
+                "findProfilePosts", Long.class, Long.class, LocalDateTime.class, Long.class,
                 org.springframework.data.domain.Pageable.class);
         Method saved = PostRepository.class.getMethod(
                 "findSavedPosts", Long.class, LocalDateTime.class, Long.class,
@@ -63,11 +63,16 @@ class PostRepositoryContractTest {
             assertThat(method.getReturnType()).isEqualTo(java.util.List.class);
             assertThat(query.countQuery()).isBlank();
             assertThat(query.value()).doesNotContainIgnoringCase("OFFSET", "COUNT(");
-            assertThat(query.value()).contains("p.status = 'PUBLISHED'", "p.id < :cursorPostId");
+            assertThat(query.value()).contains(
+                    "p.status = 'PUBLISHED'",
+                    "p.id < :cursorPostId",
+                    "user_blocks",
+                    ":viewerId"
+            );
         }
         assertThat(forYou.getAnnotation(Query.class).value())
-                .contains("(p.like_count + p.comment_count)", "ORDER BY", "p.id DESC");
+                .contains("(p.like_count + p.comment_count)", "ORDER BY", "p.id DESC", "user_blocks");
         assertThat(following.getAnnotation(Query.class).value())
-                .contains("f.follower_id = :viewerId", "f.following_id = p.author_id");
+                .contains("f.follower_id = :viewerId", "f.following_id = p.author_id", "user_blocks");
     }
 }

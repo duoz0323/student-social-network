@@ -21,7 +21,7 @@ import org.springframework.data.repository.query.Param;
  */
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    // Lấy bình luận gốc đang hiển thị hoặc tombstone còn reply, có phân trang để tránh tải toàn bộ hội thoại.
+    // Lọc Block ngay trong data/count query để phân trang không tính bình luận mà viewer không được thấy.
     @EntityGraph(attributePaths = {"author", "authorProfile", "post"})
     @Query(
             value = """
@@ -29,6 +29,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                     FROM Comment comment
                     WHERE comment.post.id = :postId
                       AND comment.parentComment IS NULL
+                      AND NOT EXISTS (
+                          SELECT blockRelation.id.blockerId
+                          FROM UserBlock blockRelation
+                          WHERE (blockRelation.id.blockerId = :viewerId
+                                 AND blockRelation.id.blockedId = comment.author.id)
+                             OR (blockRelation.id.blockerId = comment.author.id
+                                 AND blockRelation.id.blockedId = :viewerId)
+                      )
                       AND (
                           comment.status = :publishedStatus
                           OR EXISTS (
@@ -36,6 +44,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                               FROM Comment reply
                               WHERE reply.parentComment = comment
                                 AND reply.status = :publishedStatus
+                                AND NOT EXISTS (
+                                    SELECT replyBlock.id.blockerId
+                                    FROM UserBlock replyBlock
+                                    WHERE (replyBlock.id.blockerId = :viewerId
+                                           AND replyBlock.id.blockedId = reply.author.id)
+                                       OR (replyBlock.id.blockerId = reply.author.id
+                                           AND replyBlock.id.blockedId = :viewerId)
+                                )
                           )
                       )
                     ORDER BY comment.createdAt ASC, comment.id ASC
@@ -45,6 +61,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                     FROM Comment comment
                     WHERE comment.post.id = :postId
                       AND comment.parentComment IS NULL
+                      AND NOT EXISTS (
+                          SELECT blockRelation.id.blockerId
+                          FROM UserBlock blockRelation
+                          WHERE (blockRelation.id.blockerId = :viewerId
+                                 AND blockRelation.id.blockedId = comment.author.id)
+                             OR (blockRelation.id.blockerId = comment.author.id
+                                 AND blockRelation.id.blockedId = :viewerId)
+                      )
                       AND (
                           comment.status = :publishedStatus
                           OR EXISTS (
@@ -52,45 +76,95 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                               FROM Comment reply
                               WHERE reply.parentComment = comment
                                 AND reply.status = :publishedStatus
+                                AND NOT EXISTS (
+                                    SELECT replyBlock.id.blockerId
+                                    FROM UserBlock replyBlock
+                                    WHERE (replyBlock.id.blockerId = :viewerId
+                                           AND replyBlock.id.blockedId = reply.author.id)
+                                       OR (replyBlock.id.blockerId = reply.author.id
+                                           AND replyBlock.id.blockedId = :viewerId)
+                                )
                           )
                       )
                     """
     )
     Page<Comment> findVisibleRootComments(
             @Param("postId") Long postId,
+            @Param("viewerId") Long viewerId,
             @Param("publishedStatus") CommentStatus publishedStatus,
             Pageable pageable
     );
 
-    // Lấy reply PUBLISHED của một bình luận gốc theo thứ tự thời gian tăng dần.
+    // Chỉ trả reply PUBLISHED không có Block hai chiều với viewer; countQuery dùng cùng điều kiện.
     @EntityGraph(attributePaths = {"author", "authorProfile", "post", "parentComment"})
-    Page<Comment> findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
-            Long parentCommentId,
-            CommentStatus status,
+    @Query(
+            value = """
+                    SELECT reply
+                    FROM Comment reply
+                    WHERE reply.parentComment.id = :parentCommentId
+                      AND reply.status = :publishedStatus
+                      AND NOT EXISTS (
+                          SELECT blockRelation.id.blockerId
+                          FROM UserBlock blockRelation
+                          WHERE (blockRelation.id.blockerId = :viewerId
+                                 AND blockRelation.id.blockedId = reply.author.id)
+                             OR (blockRelation.id.blockerId = reply.author.id
+                                 AND blockRelation.id.blockedId = :viewerId)
+                      )
+                    ORDER BY reply.createdAt ASC, reply.id ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(reply.id)
+                    FROM Comment reply
+                    WHERE reply.parentComment.id = :parentCommentId
+                      AND reply.status = :publishedStatus
+                      AND NOT EXISTS (
+                          SELECT blockRelation.id.blockerId
+                          FROM UserBlock blockRelation
+                          WHERE (blockRelation.id.blockerId = :viewerId
+                                 AND blockRelation.id.blockedId = reply.author.id)
+                             OR (blockRelation.id.blockerId = reply.author.id
+                                 AND blockRelation.id.blockedId = :viewerId)
+                      )
+                    """
+    )
+    Page<Comment> findVisibleReplies(
+            @Param("parentCommentId") Long parentCommentId,
+            @Param("viewerId") Long viewerId,
+            @Param("publishedStatus") CommentStatus publishedStatus,
             Pageable pageable
     );
 
     // Lấy bình luận kèm bài viết để kiểm tra trạng thái khi tạo hoặc đọc reply.
-    @EntityGraph(attributePaths = {"post", "parentComment"})
+    @EntityGraph(attributePaths = {"post", "parentComment", "author"})
     @Query("SELECT comment FROM Comment comment WHERE comment.id = :commentId")
     Optional<Comment> findWithPostAndParentById(@Param("commentId") Long commentId);
 
     // Khóa bình luận cha trong transaction tạo reply để tránh tạo reply đồng thời với thao tác xóa cha.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"post", "parentComment"})
+    @EntityGraph(attributePaths = {"post", "parentComment", "author"})
     @Query("SELECT comment FROM Comment comment WHERE comment.id = :commentId")
     Optional<Comment> findForReplyCreationById(@Param("commentId") Long commentId);
 
-    // Gom số reply theo các bình luận gốc trong một truy vấn thay vì đếm riêng từng bình luận.
+    // Đếm đúng số reply viewer nhìn thấy để replyCount không tiết lộ tài khoản đang có Block.
     @Query("""
             SELECT reply.parentComment.id AS commentId, COUNT(reply.id) AS replyCount
             FROM Comment reply
             WHERE reply.parentComment.id IN :commentIds
               AND reply.status = :status
+              AND NOT EXISTS (
+                  SELECT blockRelation.id.blockerId
+                  FROM UserBlock blockRelation
+                  WHERE (blockRelation.id.blockerId = :viewerId
+                         AND blockRelation.id.blockedId = reply.author.id)
+                     OR (blockRelation.id.blockerId = reply.author.id
+                         AND blockRelation.id.blockedId = :viewerId)
+              )
             GROUP BY reply.parentComment.id
             """)
-    List<CommentReplyCountProjection> countRepliesByParentIdsAndStatus(
+    List<CommentReplyCountProjection> countVisibleRepliesByParentIdsAndStatus(
             @Param("commentIds") List<Long> commentIds,
+            @Param("viewerId") Long viewerId,
             @Param("status") CommentStatus status
     );
 

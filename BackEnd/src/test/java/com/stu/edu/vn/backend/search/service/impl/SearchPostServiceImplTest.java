@@ -70,7 +70,7 @@ class SearchPostServiceImplTest {
         Hashtag hashtag = hashtag(50L, "java");
         PageRequest pageable = PageRequest.of(0, 20);
 
-        when(postRepository.searchPublishedPostsByContent("Học Java", pageable))
+        when(postRepository.searchPublishedPostsByContent("Học Java", 10L, pageable))
                 .thenReturn(new PageImpl<>(List.of(post), pageable, 1));
         when(userProfileRepository.findAllById(List.of(20L))).thenReturn(List.of(authorProfile));
         when(postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(100L)))
@@ -101,33 +101,33 @@ class SearchPostServiceImplTest {
     @Test
     void hashtagSearchNormalizesLeadingHashesAndLocaleRootLowercase() {
         PageRequest pageable = PageRequest.of(0, 20);
-        when(postRepository.searchPublishedPostsByHashtag("sinhvien", pageable))
+        when(postRepository.searchPublishedPostsByHashtag("sinhvien", 10L, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        when(postRepository.searchPublishedPostsByHashtag("java", pageable))
+        when(postRepository.searchPublishedPostsByHashtag("java", 10L, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        when(postRepository.searchPublishedPostsByHashtag("hoctap", pageable))
+        when(postRepository.searchPublishedPostsByHashtag("hoctap", 10L, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         searchService.searchPosts("#SinhVien", SearchPostType.HASHTAG, 0, 20);
         searchService.searchPosts(" #Java ", SearchPostType.HASHTAG, 0, 20);
         searchService.searchPosts("###HocTap", SearchPostType.HASHTAG, 0, 20);
 
-        verify(postRepository).searchPublishedPostsByHashtag("sinhvien", pageable);
-        verify(postRepository).searchPublishedPostsByHashtag("java", pageable);
-        verify(postRepository).searchPublishedPostsByHashtag("hoctap", pageable);
+        verify(postRepository).searchPublishedPostsByHashtag("sinhvien", 10L, pageable);
+        verify(postRepository).searchPublishedPostsByHashtag("java", 10L, pageable);
+        verify(postRepository).searchPublishedPostsByHashtag("hoctap", 10L, pageable);
     }
 
     @Test
     void invalidHashtagIsRejectedBeforeRepositoryQuery() {
         assertError(() -> searchService.searchPosts("###", SearchPostType.HASHTAG, 0, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
         assertError(() -> searchService.searchPosts("#java!", SearchPostType.HASHTAG, 0, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
-        verify(postRepository, never()).searchPublishedPostsByHashtag(any(), any());
+        verify(postRepository, never()).searchPublishedPostsByHashtag(any(), any(), any());
     }
 
     @Test
     void emptyPageSkipsAllBatchQueries() {
         PageRequest pageable = PageRequest.of(0, 20);
-        when(postRepository.searchPublishedPostsByContent("java", pageable))
+        when(postRepository.searchPublishedPostsByContent("java", 10L, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         var response = searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20);

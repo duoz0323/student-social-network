@@ -23,6 +23,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,8 @@ class FollowServiceImplTest {
     private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final FollowMapper followMapper = new FollowMapper();
     private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
 
     private FollowServiceImpl followService;
 
@@ -51,7 +54,8 @@ class FollowServiceImplTest {
                 userProfileRepository,
                 followRepository,
                 followMapper,
-                notificationService
+                notificationService,
+                relationshipPolicyService
         );
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));

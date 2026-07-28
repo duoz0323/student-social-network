@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
@@ -53,6 +55,8 @@ class CommentServiceImplTest {
     private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
 
     private CommentServiceImpl commentService;
 
@@ -67,7 +71,8 @@ class CommentServiceImplTest {
                 commentMapper,
                 notificationService,
                 entityManager,
-                clock
+                clock,
+                relationshipPolicyService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -96,6 +101,23 @@ class CommentServiceImplTest {
         assertThat(response.commentId()).isEqualTo(100L);
         assertThat(response.postId()).isEqualTo(1L);
         assertThat(response.userId()).isEqualTo(10L);
+    }
+
+    @Test
+    void createAndReadCommentsRejectBlockedPostAuthor() {
+        doThrow(new BusinessException(ErrorCode.USER_RELATIONSHIP_BLOCKED))
+                .when(relationshipPolicyService).assertNoBlock(10L, 20L);
+
+        assertThatThrownBy(() -> commentService.createComment(
+                1L, new CreateCommentRequest("Noi dung hop le")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        assertThatThrownBy(() -> commentService.getPublishedComments(1L, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        verify(commentRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -173,12 +195,13 @@ class CommentServiceImplTest {
         Comment first = savedComment(new Comment(post(1L), user(20L), "Binh luan 1"), 101L);
         Comment second = savedComment(new Comment(post(1L), user(21L), "Binh luan 2"), 102L);
         PageRequest pageable = PageRequest.of(0, 20);
-        when(commentRepository.findVisibleRootComments(1L, CommentStatus.PUBLISHED, pageable))
+        when(commentRepository.findVisibleRootComments(1L, 10L, CommentStatus.PUBLISHED, pageable))
                 .thenReturn(new PageImpl<>(List.of(first, second), pageable, 2));
         CommentReplyCountProjection replyCount = org.mockito.Mockito.mock(CommentReplyCountProjection.class);
         when(replyCount.getCommentId()).thenReturn(101L);
         when(replyCount.getReplyCount()).thenReturn(2L);
-        when(commentRepository.countRepliesByParentIdsAndStatus(List.of(101L, 102L), CommentStatus.PUBLISHED))
+        when(commentRepository.countVisibleRepliesByParentIdsAndStatus(
+                List.of(101L, 102L), 10L, CommentStatus.PUBLISHED))
                 .thenReturn(List.of(replyCount));
         when(commentMapper.toResponse(first, 2L))
                 .thenReturn(response(101L, 1L, null, 20L, "Binh luan 1", 2L, false));
@@ -189,7 +212,7 @@ class CommentServiceImplTest {
 
         assertThat(responses.content()).extracting(CommentResponse::commentId).containsExactly(101L, 102L);
         assertThat(responses.content().getFirst().replyCount()).isEqualTo(2L);
-        verify(commentRepository).findVisibleRootComments(1L, CommentStatus.PUBLISHED, pageable);
+        verify(commentRepository).findVisibleRootComments(1L, 10L, CommentStatus.PUBLISHED, pageable);
     }
 
     @Test
@@ -198,8 +221,8 @@ class CommentServiceImplTest {
         Comment reply = savedComment(new Comment(post(1L), user(21L), parent, "Tra loi"), 100L);
         PageRequest pageable = PageRequest.of(0, 20);
         when(commentRepository.findWithPostAndParentById(90L)).thenReturn(Optional.of(parent));
-        when(commentRepository.findByParentComment_IdAndStatusOrderByCreatedAtAscIdAsc(
-                90L, CommentStatus.PUBLISHED, pageable
+        when(commentRepository.findVisibleReplies(
+                90L, 10L, CommentStatus.PUBLISHED, pageable
         )).thenReturn(new PageImpl<>(List.of(reply), pageable, 1));
         when(commentMapper.toResponse(reply))
                 .thenReturn(response(100L, 1L, 90L, 21L, "Tra loi", 0L, false));
@@ -208,6 +231,22 @@ class CommentServiceImplTest {
 
         assertThat(responses.content()).extracting(CommentResponse::commentId).containsExactly(100L);
         assertThat(responses.content().getFirst().parentCommentId()).isEqualTo(90L);
+    }
+
+    @Test
+    void getPublishedRepliesRejectsBlockedParentAndDoesNotExposeItsBranch() {
+        Comment parent = savedComment(new Comment(post(1L), user(30L), "Binh luan bi an"), 90L);
+        when(commentRepository.findWithPostAndParentById(90L)).thenReturn(Optional.of(parent));
+        doThrow(new BusinessException(ErrorCode.USER_RELATIONSHIP_BLOCKED))
+                .when(relationshipPolicyService).assertNoBlock(10L, 30L);
+
+        assertThatThrownBy(() -> commentService.getPublishedReplies(90L, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+
+        // Không truy vấn reply khi comment cha đã bị ẩn để tránh lộ nhánh hội thoại mồ côi.
+        verify(commentRepository, never()).findVisibleReplies(any(), any(), any(), any());
     }
 
     @Test

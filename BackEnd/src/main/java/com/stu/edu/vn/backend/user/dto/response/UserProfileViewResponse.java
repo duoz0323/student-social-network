@@ -13,6 +13,8 @@ public record UserProfileViewResponse(
         String bio,
         long followerCount,
         long followingCount,
-        boolean followedByCurrentUser
+        boolean followedByCurrentUser,
+        boolean blockedByMe,
+        boolean restrictedByMe
 ) {
 }

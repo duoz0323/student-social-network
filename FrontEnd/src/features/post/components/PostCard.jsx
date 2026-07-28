@@ -7,6 +7,7 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 import { shortTime, formatNumber } from '../../../utils/formatters.js';
 import PostMediaGrid from './PostMediaGrid.jsx';
 import ReportPostFlow from './ReportPostFlow.jsx';
+import UserRestrictionAction from '../../profile/components/UserRestrictionAction.jsx';
 import { copyPostLink } from '../utils/postViewModel.js';
 
 function SuccessIcon() {
@@ -247,6 +248,12 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
                       <span>Báo cáo</span>
                       <FlagIcon />
                     </button>
+                    <UserRestrictionAction
+                      userId={author.id}
+                      displayName={author.displayName}
+                      initialRestricted={Boolean(author.restrictedByMe)}
+                      blocked={Boolean(author.blockedByMe)}
+                    />
                   </>
                 )}
                 <button onClick={() => menuAction(() => copyPostLink(post.id))}>

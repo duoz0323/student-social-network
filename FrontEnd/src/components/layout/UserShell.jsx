@@ -126,6 +126,8 @@ export default function UserShell() {
             onClose={() => setMoreMenuOpen(false)}
             onLogout={logout}
             onSettings={() => navigate('/settings/auth-providers')}
+            onBlockedUsers={() => navigate('/settings/blocked-users')}
+            onRestrictedUsers={() => navigate('/settings/restricted-users')}
             onLikedPosts={() => navigate('/liked')}
           />
           <button

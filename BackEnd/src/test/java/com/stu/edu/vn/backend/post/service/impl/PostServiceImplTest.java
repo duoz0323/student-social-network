@@ -38,6 +38,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
@@ -72,6 +73,8 @@ class PostServiceImplTest {
     private final TransactionTemplate transactionTemplate = org.mockito.Mockito.mock(TransactionTemplate.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
 
     private final AtomicLong postIds = new AtomicLong(100);
     private final AtomicLong mediaIds = new AtomicLong(200);
@@ -95,7 +98,8 @@ class PostServiceImplTest {
                 Mappers.getMapper(PostMapper.class),
                 transactionTemplate,
                 entityManager,
-                clock
+                clock,
+                relationshipPolicyService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);

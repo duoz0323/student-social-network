@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 25/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 28/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -22,6 +22,7 @@
 | Password Recovery bằng OTP | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có decoy challenge, verify/resend/complete và thu hồi Refresh Token. |
 | Onboarding, hồ sơ và avatar | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Bắt buộc displayName, dateOfBirth và đủ 18 tuổi. |
 | Follow/Unfollow và danh sách follow | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách vẫn dùng `PageResponse`. |
+| Restrict/Unrestrict và danh sách đã hạn chế | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Restrict một chiều; suppress Like/Comment/Reply trước khi lưu Notification, không ảnh hưởng tương tác. |
 | CRUD bài viết, ảnh và một hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Schema bảng nối chưa tự enforce tối đa một hashtag; Service đang enforce. |
 | Like/Unlike và danh sách bài đã thích | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách `/liked` dùng Cursor Pagination. |
 | Bình luận và reply một cấp | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Reply một cấp đã có endpoint dù README xếp ưu tiên P2. |
@@ -41,19 +42,17 @@
 - SQL bổ sung index phục vụ danh sách bài đã thích và thêm dữ liệu demo.
 - README, API contract, PRD, Architecture, Project Rules, Data Flow và tài liệu UI đã được đối
   chiếu lại với thay đổi trên.
+- README, SQL tổng và DBML đã bổ sung `user_restrictions`; Backend/Frontend đã tích hợp API Restrict,
+  danh sách cài đặt và quan hệ `restrictedByMe`.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
-1. Không tìm thấy file DBML trong repository, nên chưa thể đối chiếu SQL với DBML như quy trình
-   dự án yêu cầu.
-2. `post_hashtags` vẫn là bảng nối nhiều-nhiều ở mức schema; giới hạn một hashtag hiện do Service
+1. `post_hashtags` vẫn là bảng nối nhiều-nhiều ở mức schema; giới hạn một hashtag hiện do Service
    kiểm soát, chưa có constraint database bảo đảm tuyệt đối.
-3. SQL demo có media `VIDEO`, trong khi README MVP chỉ quy định tối đa bốn ảnh và xếp video ngoài
+2. SQL demo có media `VIDEO`, trong khi README MVP chỉ quy định tối đa bốn ảnh và xếp video ngoài
    phạm vi. Cần quyết định bỏ demo video hoặc chính thức thay đổi phạm vi trước khi phát triển tiếp.
-4. Nhóm 35 test trực tiếp cho Cursor/Feed/liked/saved đã pass. Full Backend test suite chưa có kết
-   luận cuối trong lần audit này vì thời gian chạy vượt giới hạn lệnh; các test chạy trước timeout
-   đều pass.
-5. Frontend chưa có test runner trong `package.json`; hiện chỉ có build và lint làm quality gate.
+3. Frontend hiện chỉ có Node test cho utility, chưa có component test runner để tự động hóa đầy đủ
+   modal/menu Restrict; lint và production build đã pass.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo
 

@@ -94,6 +94,8 @@ Người dùng đã đăng nhập và có tài khoản đang hoạt động có 
 - Hoàn tất và quản lý hồ sơ cá nhân.
 - Quản lý các phương thức đăng nhập đã liên kết.
 - Theo dõi người dùng khác.
+- Chặn, bỏ chặn, hạn chế và bỏ hạn chế người dùng khác.
+- Xem danh sách tài khoản đã chặn và đã hạn chế.
 - Đăng và quản lý bài viết.
 - Like, bình luận và lưu bài viết.
 - Xem Feed.
@@ -273,6 +275,42 @@ Quy tắc:
 - Quan hệ theo dõi có hiệu lực ngay.
 - MVP chưa triển khai hồ sơ riêng tư và Follow Request.
 
+### 🚫 3.1. Chặn người dùng
+
+Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Quy tắc hiển thị bình luận lịch sử đã được triển khai thống nhất ở Backend/Frontend; toàn bộ 599 backend test trên MySQL 8.0.36, frontend test, ESLint và production build đều đã chạy thành công. Manual E2E tiếp tục thực hiện theo checklist trước khi phát hành.
+
+- User Block là quan hệ có hướng: A chặn B được lưu khác với B chặn A.
+- Hiệu lực về khả năng nhìn thấy và tương tác là hai chiều: chỉ cần tồn tại Block theo một trong hai hướng thì cả A và B không được xem hồ sơ, bài viết hoặc nội dung do đối phương tạo trong các luồng dành cho người dùng.
+- User Block khác hoàn toàn với `users.status = BLOCKED`; trạng thái này do Admin khóa tài khoản ở cấp hệ thống.
+- Không cho phép người dùng chặn chính mình; Block và Unblock phải có tính idempotent.
+- Block xóa cả Follow A → B và Follow B → A trong cùng transaction.
+- Trong thời gian tồn tại Block, hai bên không thể tạo Follow, Like/Unlike, Comment/Reply, Save/Unsave hoặc Notification mới liên quan đến nhau.
+- Block không xóa Like hoặc Comment đã tồn tại trước thời điểm chặn khỏi cơ sở dữ liệu và không làm giảm `like_count` hoặc `comment_count`; các bản ghi này được giữ để bảo toàn lịch sử tương tác.
+- Trong thời gian tồn tại Block, các bình luận và câu trả lời bình luận do một bên tạo phải bị ẩn khỏi bên còn lại, kể cả khi bình luận được viết trên bài do bên còn lại sở hữu.
+- Việc ẩn bình luận do Block là kiểm soát hiển thị động tại query hoặc policy truy cập; không chuyển bình luận sang trạng thái `DELETED`, không xóa mềm và không tạo trạng thái ẩn vĩnh viễn cho bình luận.
+- Nếu bình luận cha bị ẩn do Block thì các câu trả lời thuộc nhánh bình luận đó cũng phải bị ẩn để không xuất hiện câu trả lời mồ côi trên giao diện.
+- Người thực hiện Block và người bị Block không còn nhìn thấy bài viết, Post Detail, Feed, Search, Liked, Saved, bình luận hoặc Notification của nhau trong các luồng dành cho người dùng.
+- Khi Unblock, các Like và Comment lịch sử vẫn được giữ nguyên; bình luận được hiển thị trở lại nếu vẫn còn ở trạng thái hợp lệ và người xem có quyền truy cập bài viết.
+- Unblock không tự khôi phục Follow, không tạo Notification và không tự tạo lại bất kỳ quan hệ xã hội nào đã bị xóa khi Block.
+- Feed, hồ sơ, Post Detail, Search User/Post, follower/following, Liked, Saved, comment và notification phải áp dụng chính sách Block hai chiều ngay tại Backend; các danh sách phân trang phải lọc tại database thay vì lấy dữ liệu rồi lọc bằng Java.
+- Private Account và Follow Request chưa được triển khai.
+
+### 🔕 3.2. Hạn chế người dùng
+
+Trạng thái nghiệp vụ: `DESIGNED`. Restrict là quan hệ một chiều; A hạn chế B không đồng nghĩa B hạn chế A.
+
+- A và B vẫn tìm kiếm, xem hồ sơ, bài viết, Feed và tương tác với nhau theo quyền truy cập bình thường. Restrict không được dùng để lọc Feed hoặc Search.
+- Restrict không hủy Follow, không thay đổi số follower/following và không suppress thông báo Follow.
+- Restrict không xóa Like, Save, Comment, Reply, Follow hoặc Notification đã tồn tại trước thời điểm hạn chế.
+- Like/Unlike, Save/Unsave, Comment và Reply vẫn hoạt động bình thường; Comment và Reply tiếp tục có trạng thái `PUBLISHED` và vẫn được tính vào bộ đếm.
+- Khi A đã hạn chế B, Backend không tạo Notification `POST_LIKE`, `POST_COMMENT` hoặc `COMMENT_REPLY` do B gửi tới A. Vì không tạo bản ghi nên unread count, badge và WebSocket/event tương ứng cũng không tăng hoặc phát.
+- Các thông báo quản trị, báo cáo, bảo mật, hệ thống và Follow không bị suppress bởi Restrict.
+- B không được thông báo và API công khai không được trả bất kỳ trường nào cho phép B biết A đã hạn chế mình. Response quan hệ chỉ được phép trả `restrictedByMe` cho chính người đang xem.
+- Block có độ ưu tiên cao hơn Restrict. Không được tạo Restrict khi có Block ở một trong hai chiều.
+- Khi A Block B, quan hệ Restrict A → B bị xóa nhưng không tự ý xóa Restrict B → A. Unblock không tự khôi phục Restrict A → B.
+- Unrestrict chỉ xóa quan hệ do chính current user tạo, không tạo Notification và không tạo bù các Notification đã bị bỏ qua.
+- Restrict trong MVP không thay đổi nghiệp vụ nhắn tin và không triển khai Hidden Message Request hoặc cơ chế duyệt bình luận.
+
 ### 📝 4. Quản lý bài viết
 
 - Tạo bài viết.
@@ -442,6 +480,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Phân quyền `USER` và `ADMIN`.
 - Quản lý hồ sơ.
 - Follow và Unfollow.
+- Block, Unblock, Restrict, Unrestrict và danh sách quan hệ do người dùng thiết lập.
 - CRUD bài viết.
 - Upload hình ảnh.
 - Like, Unlike và xem danh sách bài viết đã thích.
@@ -505,6 +544,8 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 - MySQL 8.
 - MySQL Workbench.
+- Bảng `user_blocks` dùng khóa chính kép `(blocker_id, blocked_id)`, khóa ngoại tới `users`, CHECK chống tự Block và index đảo chiều `(blocked_id, blocker_id)`.
+- Bảng `user_restrictions` dùng khóa chính kép `(restrictor_id, restricted_id)`, khóa ngoại tới `users`, CHECK chống tự Restrict và index `(restricted_id, restrictor_id)` phục vụ kiểm tra suppress Notification.
 
 ### Lưu trữ media
 
@@ -815,6 +856,24 @@ POST   /api/v1/users/me/auth-providers/facebook
 DELETE /api/v1/users/me/auth-providers/{provider}
 ```
 
+### User Block
+
+```http
+PUT    /api/v1/users/{targetUserId}/block
+DELETE /api/v1/users/{targetUserId}/block
+GET    /api/v1/users/me/blocked-users
+```
+
+### User Restriction
+
+```http
+POST   /api/v1/users/{targetUserId}/restriction
+DELETE /api/v1/users/{targetUserId}/restriction
+GET    /api/v1/users/me/restricted-users
+```
+
+Các API trên yêu cầu JWT, luôn lấy người thực hiện từ Security Context và có tính idempotent. Không có endpoint công khai để xem ai đã hạn chế current user.
+
 ### Các nhóm API khác
 
 ```text
@@ -1022,6 +1081,16 @@ npm run preview
 16. Người dùng hoàn tất onboarding hợp lệ trước khi truy cập chức năng chính.
 17. Người dùng cập nhật và xem hồ sơ thành công.
 18. Follow và Unfollow hoạt động đúng, không tạo quan hệ trùng.
+18a. Block hoạt động idempotent, xóa Follow hai chiều; Unblock không khôi phục Follow.
+18b. Các query dành cho người dùng lọc Block hai chiều trực tiếp tại database mà không làm sai phân trang/cursor.
+18c. Block không xóa Like hoặc Comment lịch sử và không làm giảm `like_count` hoặc `comment_count`.
+18d. Trong thời gian Block, hai bên không nhìn thấy bình luận hoặc câu trả lời bình luận do đối phương tạo; sau Unblock, nội dung lịch sử hiển thị trở lại nếu vẫn hợp lệ và còn quyền truy cập.
+18e. Bình luận cha bị ẩn do Block không được để lộ các câu trả lời con dưới dạng nội dung mồ côi.
+18f. Restrict/Unrestrict hoạt động một chiều và idempotent; không tạo quan hệ trùng, không cho tự Restrict hoặc Restrict khi có Block hai chiều.
+18g. Restrict không thay đổi Follow, Feed, Search, Like, Save, Comment, Reply hoặc các bộ đếm; Comment/Reply vẫn `PUBLISHED`.
+18h. Notification Like, Comment và Reply từ người bị hạn chế tới người hạn chế bị chặn trước khi lưu, không tăng unread count và không phát WebSocket/event; Notification Follow vẫn hoạt động.
+18i. API chỉ trả `restrictedByMe` cho current user, không tiết lộ chiều ngược lại; danh sách restricted users chỉ chứa quan hệ do current user tạo.
+18j. Block sau Restrict xóa đúng quan hệ Restrict cùng chiều; Unblock không tự khôi phục Restrict và Unrestrict không tạo bù Notification.
 19. Người dùng tạo bài có nội dung hoặc hình ảnh.
 20. Chỉ tác giả được sửa hoặc xóa bài của mình.
 21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed.
@@ -1135,7 +1204,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 
 - Hồ sơ riêng tư.
 - Follow Request.
-- Block và Restrict giữa người dùng.
 - Video và tài liệu trong bài viết.
 - Bài viết nháp.
 - Mention.
@@ -1164,7 +1232,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 ## 🔮 Định hướng phát triển
 
 - Hồ sơ riêng tư và Follow Request.
-- Block và Restrict.
 - Repost và trích dẫn bài viết.
 - Video và tài liệu học tập.
 - Bài viết nháp.
@@ -1219,4 +1286,3 @@ Không sử dụng dự án cho mục đích thương mại khi chưa có sự �
 **Khoa Công nghệ Thông tin**
 
 **Đề tài: Xây dựng hệ thống mạng xã hội tinh gọn hướng đến sinh viên**
-

@@ -18,8 +18,15 @@ import org.springframework.data.repository.query.Param;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     /** Thu hồi mọi phiên còn hoạt động trong cùng transaction hoàn tất reset mật khẩu. */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update RefreshToken token set token.revokedAt = :now where token.user.id = :userId and token.revokedAt is null")
+    // Chỉ flush trước bulk update; không clear toàn persistence context vì sẽ làm detach User đang được khóa.
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update RefreshToken token
+            set token.revokedAt = :now
+            where token.user.id = :userId
+              and token.revokedAt is null
+              and token.expiresAt > :now
+            """)
     int revokeAllActiveByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
     /**

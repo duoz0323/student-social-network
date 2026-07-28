@@ -24,9 +24,29 @@ class NotificationRepositoryContractTest {
                 .contains("LEFT JOIN user_profiles up ON up.user_id = n.actor_id")
                 .contains("n.recipient_id = :recipientId")
                 .contains("n.deleted_at IS NULL")
+                .contains("n.actor_id IS NULL", "user_blocks", "ub.blocker_id", "ub.blocked_id")
                 .contains("ORDER BY n.created_at DESC, n.id DESC")
                 .doesNotContain("SELECT *", "password_hash", "email", "phone_number");
-        assertThat(query.countQuery()).contains("COUNT(n.id)").doesNotContain("JOIN", "ORDER BY");
+        assertThat(query.countQuery())
+                .contains("COUNT(n.id)", "n.actor_id IS NULL", "user_blocks")
+                .doesNotContain("JOIN", "ORDER BY");
+    }
+
+    @Test
+    void unreadCountUsesSameBlockVisibilityRuleAsList() throws Exception {
+        // Unread count phải dùng cùng điều kiện hiển thị với list để badge không làm lộ notification cũ.
+        Method method = NotificationRepository.class.getMethod(
+                "countByRecipient_IdAndReadAtIsNullAndDeletedAtIsNull", Long.class);
+        Query query = method.getAnnotation(Query.class);
+
+        assertThat(query.nativeQuery()).isTrue();
+        assertThat(query.value()).contains(
+                "n.read_at IS NULL",
+                "n.actor_id IS NULL",
+                "user_blocks",
+                "ub.blocker_id = :recipientId",
+                "ub.blocked_id = :recipientId"
+        );
     }
 
     @Test

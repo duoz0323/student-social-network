@@ -21,6 +21,11 @@ export const socialApi = Object.freeze({
   getBlockedUsers: (params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.blockedUsers, { params: compactParams(params), signal }),
   ),
+  restrictUser: (userId, signal) => requestData(httpClient.post(USER_ENDPOINTS.restriction(userId), undefined, { signal })),
+  unrestrictUser: (userId, signal) => requestData(httpClient.delete(USER_ENDPOINTS.restriction(userId), { signal })),
+  getRestrictedUsers: (params, signal) => requestData(
+    httpClient.get(USER_ENDPOINTS.restrictedUsers, { params: compactParams(params), signal }),
+  ),
   getUserPosts: (userId, params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.posts(userId), { params: compactParams(params), signal }),
   ),

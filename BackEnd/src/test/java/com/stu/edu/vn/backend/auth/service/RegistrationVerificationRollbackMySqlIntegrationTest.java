@@ -28,7 +28,7 @@ import org.springframework.test.context.DynamicPropertySource;
         "auth.registration.flow-token-hmac-secret=phase3-rollback-flow-secret",
         "jwt.access-token-secret=phase3-rollback-jwt-secret-at-least-32-bytes",
         "jwt.access-token-expiration-millis=900000",
-        "jwt.refresh-token-expiration-millis=0"
+        "jwt.refresh-token-expiration-millis=-86400000"
 })
 @EnabledIfEnvironmentVariable(named = "AUTH_TEST_DB_URL", matches = "jdbc:mysql:.*")
 class RegistrationVerificationRollbackMySqlIntegrationTest {

@@ -16,6 +16,8 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,6 +36,10 @@ class UserProfileServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-18T10:00:00Z"), ZoneOffset.UTC);
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
+    private final UserRestrictionRepository userRestrictionRepository =
+            org.mockito.Mockito.mock(UserRestrictionRepository.class);
 
     private UserProfileServiceImpl service;
 
@@ -46,7 +52,9 @@ class UserProfileServiceImplTest {
                 userProfileRepository,
                 followRepository,
                 new UserProfileValidationSupport(clock),
-                mapper
+                mapper,
+                relationshipPolicyService,
+                userRestrictionRepository
         );
     }
 

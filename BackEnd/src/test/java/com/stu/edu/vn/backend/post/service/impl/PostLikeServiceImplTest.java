@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +28,7 @@ import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +49,8 @@ class PostLikeServiceImplTest {
     private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final FeedPostBatchLoader feedPostBatchLoader = org.mockito.Mockito.mock(FeedPostBatchLoader.class);
     private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
 
     private PostLikeServiceImpl postLikeService;
 
@@ -63,7 +67,8 @@ class PostLikeServiceImplTest {
                 postMapper,
                 notificationService,
                 feedPostBatchLoader,
-                cursorCodec
+                cursorCodec,
+                relationshipPolicyService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -103,6 +108,23 @@ class PostLikeServiceImplTest {
 
         verify(postLikeRepository, never()).saveAndFlush(any());
         verify(postRepository, never()).findLikeCountById(any());
+    }
+
+    @Test
+    void likeAndUnlikeRejectBlockedAuthorBeforeChangingRelation() {
+        doThrow(new BusinessException(ErrorCode.USER_RELATIONSHIP_BLOCKED))
+                .when(relationshipPolicyService).assertNoBlock(10L, 20L);
+
+        assertThatThrownBy(() -> postLikeService.likePost(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        assertThatThrownBy(() -> postLikeService.unlikePost(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_RELATIONSHIP_BLOCKED);
+        verify(postLikeRepository, never()).saveAndFlush(any());
+        verify(postLikeRepository, never()).deleteByUserIdAndPostId(any(), any());
     }
 
     @Test

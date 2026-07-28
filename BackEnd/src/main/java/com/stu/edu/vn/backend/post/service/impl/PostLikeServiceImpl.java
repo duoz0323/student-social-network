@@ -71,8 +71,7 @@ public class PostLikeServiceImpl implements PostLikeService {
     public PostLikeResponse likePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         User currentUser = ensureCurrentUserCanInteract(userId);
-        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
-        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
+        PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
 
         if (postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_ALREADY_LIKED);
@@ -98,8 +97,7 @@ public class PostLikeServiceImpl implements PostLikeService {
     public PostLikeResponse unlikePost(Long postId) {
         Long userId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanInteract(userId);
-        PostInteractionTargetProjection target = findPublishedInteractionTarget(postId);
-        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
+        PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
 
         if (!postLikeRepository.existsByIdUserIdAndIdPostId(userId, postId)) {
             throw new BusinessException(ErrorCode.POST_NOT_LIKED);
@@ -132,9 +130,11 @@ public class PostLikeServiceImpl implements PostLikeService {
         return currentUser;
     }
 
-    private PostInteractionTargetProjection findPublishedInteractionTarget(Long postId) {
+    private PostInteractionTargetProjection findAccessibleInteractionTarget(Long userId, Long postId) {
         PostInteractionTargetProjection target = postRepository.findInteractionTargetById(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        // Kiểm tra Block trước trạng thái để không tiết lộ trạng thái nội bộ của bài không còn quyền xem.
+        relationshipPolicyService.assertNoBlock(userId, target.getAuthorId());
         if (target.getStatus() != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
         }

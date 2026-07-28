@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 class RefreshTokenRepositoryContractTest {
 
     @Test
-    void revokeUsesSingleBulkUpdateForEveryUnrevokedToken() throws Exception {
+    void revokeUsesSingleBulkUpdateForActiveUnrevokedTokensWithoutClearingContext() throws Exception {
         Method method = RefreshTokenRepository.class.getMethod(
                 "revokeAllActiveByUserId", Long.class, LocalDateTime.class);
         Modifying modifying = method.getAnnotation(Modifying.class);
@@ -19,11 +19,12 @@ class RefreshTokenRepositoryContractTest {
 
         assertThat(method.getReturnType()).isEqualTo(int.class);
         assertThat(modifying.flushAutomatically()).isTrue();
+        assertThat(modifying.clearAutomatically()).isFalse();
         assertThat(query.value())
                 .contains("update RefreshToken token")
                 .contains("token.user.id = :userId")
                 .contains("token.revokedAt is null")
-                .doesNotContain("token.expiresAt")
+                .contains("token.expiresAt > :now")
                 .doesNotContain("select");
     }
 }

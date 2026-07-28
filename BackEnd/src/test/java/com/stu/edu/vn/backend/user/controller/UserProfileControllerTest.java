@@ -53,7 +53,9 @@ class UserProfileControllerTest {
                 "Sinh viên",
                 4,
                 3,
-                followed
+                followed,
+                false,
+                false
         );
     }
 }

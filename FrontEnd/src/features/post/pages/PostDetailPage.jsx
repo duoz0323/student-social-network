@@ -12,14 +12,16 @@ import { toPostView } from '../utils/postViewModel.js';
 export default function PostDetailPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useApp();
+  const { currentUser, userRelationshipRevision } = useApp();
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [comment, setComment] = useState('');
   const [replies, setReplies] = useState({});
   const [replyDrafts, setReplyDrafts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadedRequestKey, setLoadedRequestKey] = useState(null);
   const [error, setError] = useState('');
+  const requestKey = `${postId}:${userRelationshipRevision}`;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -29,11 +31,22 @@ export default function PostDetailPage() {
     ]).then(([postResponse, commentPage]) => {
       setPost(toPostView(postResponse));
       setComments(commentPage.content ?? []);
+      setReplies({});
+      setError('');
+      setLoadedRequestKey(requestKey);
     }).catch((requestError) => {
-      if (requestError.code !== 'ERR_CANCELED') setError(requestError.message);
-    }).finally(() => setLoading(false));
+      if (requestError.code !== 'ERR_CANCELED') {
+        setPost(null);
+        setComments([]);
+        setReplies({});
+        setError(requestError.message);
+        setLoadedRequestKey(requestKey);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
     return () => controller.abort();
-  }, [postId]);
+  }, [postId, requestKey]);
 
   async function submitComment(event) {
     event.preventDefault();
@@ -85,7 +98,10 @@ export default function PostDetailPage() {
     </div>
   );
 
-  if (loading) return <ContentShell header={header}><LoadingState /></ContentShell>;
+  // Khi Block/Unblock đổi revision, che snapshot cũ cho tới khi request mới hoàn tất.
+  if (loading || loadedRequestKey !== requestKey) {
+    return <ContentShell header={header}><LoadingState /></ContentShell>;
+  }
   if (!post) return (
     <ContentShell header={header}>
       <EmptyState title="Không tìm thấy bài viết" description={error || 'Bài viết có thể đã bị ẩn hoặc xóa.'} actionLabel="Về feed" onAction={() => navigate('/feed/for-you')} />

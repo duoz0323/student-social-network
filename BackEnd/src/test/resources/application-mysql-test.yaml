@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    # Profile test chỉ nhận kết nối MySQL từ biến môi trường, không có credential mặc định.
+    url: ${AUTH_TEST_DB_URL}
+    username: ${AUTH_TEST_DB_USERNAME}
+    password: ${AUTH_TEST_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+bootstrap-admin:
+  enabled: false

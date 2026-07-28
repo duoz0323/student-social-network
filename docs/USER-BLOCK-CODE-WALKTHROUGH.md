@@ -2,7 +2,7 @@
 
 > Tài liệu này giải thích phần code User Block được bổ sung ngày 26/07/2026.
 > Đây là tài liệu kỹ thuật hỗ trợ đọc và bảo trì code, không thay thế `README.md`.
-> Trạng thái hiện tại: **đang triển khai, chưa sẵn sàng để nghiệm thu hoặc merge**.
+> Trạng thái hiện tại: **production code, 599 backend test và migration đã được xác minh trên MySQL 8.0.36; frontend utility test/lint/build đã hoàn tất, còn manual E2E theo checklist**.
 
 ---
 
@@ -38,7 +38,13 @@ Giả sử User A chặn User B:
 - A và B không được xem hồ sơ, bài viết hoặc tương tác với nhau.
 - Follow `A -> B` và `B -> A` bị xóa khi Block.
 - Không xóa Like, Comment và Save cũ.
+- `like_count` và `comment_count` không giảm vì Block không xóa các hàng tương tác lịch sử.
+- Nếu A từng Comment trên bài do B sở hữu rồi một trong hai bên tạo Block, B không còn thấy Comment lịch sử của A trong thời gian Block.
+- Chủ bài không phải ngoại lệ: hiệu lực ẩn Comment/Reply luôn áp dụng hai chiều cho API người dùng.
+- Nếu Comment cha bị ẩn thì toàn bộ nhánh Reply của cha cũng bị ẩn; một Reply bị Block dưới Comment cha hợp lệ được lọc riêng.
+- A không thể đọc comment của bài B hoặc tạo Like/Unlike, Comment/Reply, Save/Unsave mới sau khi Block.
 - Unblock không phục hồi Follow.
+- Sau Unblock, Like và Comment lịch sử vẫn được giữ nguyên.
 - Block và Unblock phải idempotent.
 - Người thực hiện lấy từ JWT, không nhận `blockerId` từ request.
 - User Block khác hoàn toàn `users.status = BLOCKED`:
@@ -138,12 +144,13 @@ Không được chỉ kiểm tra `A -> B`, vì hiệu lực nghiệp vụ là ha
 
 ### 4.4. Lưu ý migration
 
-Repository hiện không có Flyway/Liquibase hoặc thư mục migration riêng. SQL canonical là một file dump đầy đủ.
+Repository không có Flyway/Liquibase. SQL canonical là một file dump đầy đủ và migration không phá hủy dành cho schema đang có dữ liệu nằm tại `database/migrations/20260728_add_user_blocks.sql`.
 
 Do đó:
 
 - Code đã cập nhật schema canonical.
-- Chưa chạy schema này trên database thật.
+- Chưa chạy schema này trên database MySQL thật ở máy hiện tại.
+- Cách chạy và các câu lệnh xác minh nằm tại `docs/database/USER-BLOCK-MIGRATION.md`.
 - Khi áp dụng lên database đang có dữ liệu, nên tách riêng câu `CREATE TABLE user_blocks`.
 - Không chạy lại toàn bộ dump nếu database chứa dữ liệu cần giữ.
 - Trước khi áp dụng production cần backup và kiểm tra MySQL version hỗ trợ `CHECK`.
@@ -277,7 +284,15 @@ sequenceDiagram
 
 Toàn bộ thao tác chạy trong `@Transactional`.
 
-`saveAndFlush()` giúp database phát hiện duplicate composite key ngay trong transaction. Nếu hai request cùng Block đồng thời, code bắt `DataIntegrityViolationException` và kiểm tra lại bản ghi để giữ tính idempotent.
+Repository dùng một native upsert nguyên tử:
+
+```sql
+INSERT INTO user_blocks (...)
+VALUES (...)
+ON DUPLICATE KEY UPDATE created_at = user_blocks.created_at
+```
+
+Composite primary key trùng trở thành no-op nên hai request đồng thời vẫn idempotent. Khác với `INSERT IGNORE`, lỗi foreign key hoặc CHECK không bị hạ thành warning mà vẫn làm transaction rollback.
 
 #### Luồng Unblock
 
@@ -289,15 +304,15 @@ Toàn bộ thao tác chạy trong `@Transactional`.
 - Không tạo Notification.
 - Trả `blocked = false`.
 
-#### Điểm cần cải thiện
+#### Kết quả xác minh concurrency
 
-Test concurrency thực tế chưa được bổ sung. Cần xác minh:
+Test MySQL gửi hai HTTP `PUT` đồng thời đã xác nhận:
 
-- `deleteById()` thật sự idempotent với phiên bản Spring Data đang dùng.
-- Race condition không làm transaction thành rollback-only.
-- Hai request Block đồng thời không trả 500.
-
-Nếu `deleteById()` phát sinh lỗi khi bản ghi không tồn tại, nên thay bằng một câu `DELETE` có `@Modifying` trả số dòng và bỏ qua kết quả `0`.
+- Cả hai response đúng contract idempotent và không trả 500.
+- Chỉ có một hàng `user_blocks`.
+- Follow hai chiều cùng bị xóa.
+- Không tạo Notification Block.
+- Unblock dùng `DELETE` có `@Modifying`; kết quả 0 hàng vẫn là thành công.
 
 ### 5.7. `UserBlockController`
 
@@ -428,7 +443,15 @@ Policy được dùng trước:
 - Đọc comment gốc.
 - Đọc reply.
 
-Việc lọc comment cũ do chính tài khoản bị Block viết trên bài của người thứ ba chưa được triển khai đầy đủ ở repository.
+Việc đọc và tạo Comment/Reply trên bài không còn quyền truy cập được chặn qua cùng `UserRelationshipPolicyService`; query bài viết là lớp lọc quyền truy cập đầu tiên.
+
+`CommentRepository` nhận `viewerId` cho query comment gốc, reply và reply count. Cả data query lẫn `countQuery`
+dùng cùng điều kiện `NOT EXISTS user_blocks` theo hai chiều, vì vậy:
+
+- `totalElements` và `totalPages` không tính Comment bị ẩn.
+- `replyCount` khớp đúng số Reply viewer có thể tải.
+- Comment cha bị Block không để lộ nhánh Reply mồ côi.
+- Không cần lọc lại Page bằng Java và không phát sinh N+1.
 
 ### 7.8. Search User
 
@@ -456,10 +479,10 @@ Khi đọc danh sách:
 - Native query loại Notification có actor đang Block với recipient.
 - Notification hệ thống có `actor_id IS NULL` vẫn được trả.
 
-Điểm còn thiếu:
+Điểm cần lưu ý:
 
-- Query unread count hiện chưa áp dụng cùng điều kiện Block.
-- Các thao tác đọc/xóa từng Notification cũ chưa xác minh policy actor.
+- Query unread count dùng cùng điều kiện Block với danh sách Notification.
+- Các thao tác đọc/xóa từng Notification cũ xác minh recipient và ẩn item có actor đang Block bằng lỗi `NOTIFICATION_NOT_FOUND`.
 
 ---
 
@@ -509,12 +532,12 @@ Luồng hiện tại:
 5. Thành công thì đóng modal và điều hướng về `/feed/for-you`.
 6. Thất bại thì dùng error state hiện có.
 
-Điểm còn thiếu:
+Điểm cần lưu ý:
 
-- Chưa có toast thành công.
-- Chưa có cache invalidation tập trung cho Feed, Search và Follow.
+- Toast thành công được đặt ở `AppContext` để không mất khi điều hướng.
+- Cache cursor liên quan được invalidation tập trung qua `userBlockState.js`; snapshot Context đồng thời loại user, post, follow, like, save và comment liên quan.
 - UI hiện dùng nút trực tiếp thay vì một menu action hoàn chỉnh.
-- Chưa có test component.
+- Dự án chưa có framework component test; đã bổ sung Node test cho cache invalidation và cập nhật snapshot, không cài thêm thư viện.
 
 ### 8.4. Trang tài khoản đã chặn
 
@@ -539,9 +562,8 @@ Màn hình hỗ trợ:
 
 Điểm còn thiếu:
 
-- Chưa thêm link điều hướng rõ ràng từ menu cài đặt/UserShell.
-- Nếu xóa item cuối trang, chưa tự lùi về trang trước hoặc tải lại tổng số.
-- Chưa có toast thành công.
+- Menu “Xem thêm” trong `UserShell` đã có link “Tài khoản đã chặn”.
+- Unblock đã xóa item, giảm `totalElements`, invalidation cache và hiển thị toast.
 - Chưa có test accessibility/modal.
 
 ### 8.5. Router
@@ -594,6 +616,7 @@ Trang Blocked Users được lazy-load và nằm trong `ProtectedRoute`.
 - `feed/service/impl/FeedServiceImpl.java`.
 - `follow/service/impl/FollowServiceImpl.java`.
 - `interaction/service/impl/CommentServiceImpl.java`.
+- `interaction/repository/CommentRepository.java`.
 - `notification/repository/NotificationRepository.java`.
 - `notification/service/impl/NotificationServiceImpl.java`.
 - `post/repository/PostRepository.java`.
@@ -610,6 +633,10 @@ Trang Blocked Users được lazy-load và nằm trong `ProtectedRoute`.
 - `src/api/apiEndpoints.js`.
 - `src/api/socialApi.js`.
 - `src/features/profile/pages/ProfilePage.jsx`.
+- `src/features/profile/pages/BlockedUsersPage.jsx`.
+- `src/features/profile/utils/userBlockState.js`.
+- `src/features/post/pages/PostDetailPage.jsx`.
+- `src/contexts/AppContext.jsx`.
 - `src/router/index.jsx`.
 - `src/router/lazyRoutes.jsx`.
 
@@ -642,66 +669,41 @@ cd BackEnd
 mvn test -q
 ```
 
-Kết quả:
+Kết quả suite cuối với profile `mysql-test`:
 
-- Tổng test được báo cáo: 579.
+- Tổng test: 599.
 - Failure assertion: 0.
-- Error runtime/setup: 90.
-- Skipped: 39.
-- Test suite thất bại.
-
-Nguyên nhân chính:
-
-- Test cũ gọi constructor service với danh sách dependency cũ.
-- Test cũ mock repository method có signature cũ.
-- Các class bị ảnh hưởng gồm Profile, Post, Save, Comment, Notification, Follow, Search và Feed.
-- Test Block mới chưa được bổ sung.
-
-Không được hiểu “Backend compile thành công” là “chức năng đã hoàn chỉnh”. Test suite vẫn đỏ.
+- Error runtime/setup: 0.
+- Skipped: 0.
+- Các lỗi constructor, repository signature và Mockito stubbing cũ đã được sửa tại fixture/test thay vì tạo constructor production dành riêng cho test.
+- Đã chạy test Service, Controller, repository contract, notification policy, query cursor và HTTP concurrency trên MySQL 8.0.36.
 
 ---
 
-## 12. Các phần bắt buộc còn thiếu
+## 12. Các phần còn cần xác minh thủ công
 
 ### 12.1. Backend
 
-- Lọc Block cho Search Post, bao gồm `countQuery`.
-- Lọc Block cho follower/following list.
-- Kiểm tra đầy đủ tất cả query Feed For You, Following, Profile Posts, Liked và Saved.
-- Đồng bộ unread notification count với danh sách notification.
-- Quyết định và test hành vi Unlike/Unsave khi đang Block.
-- Hoàn thiện kiểm soát comment cũ của tài khoản bị Block.
-- Bổ sung test race condition Block.
-- Bổ sung controller/security test cho ba endpoint.
-- Xác minh API yêu cầu ACTIVE và profile completed theo guard hiện tại.
+- Không còn bước MySQL tự động bắt buộc: migration, query native, cursor và HTTP concurrency đều đã chạy thành công.
+- Khi chuẩn bị release thật, vẫn phải dùng database staging riêng và không dùng credential/container test trong tài liệu này cho production.
 
 ### 12.2. Frontend
 
-- Thêm link “Tài khoản đã chặn” vào khu vực cài đặt.
-- Toast thành công cho Block và Unblock.
-- Invalidate hoặc làm mới Feed/Search/follower/following.
-- Xử lý trang rỗng sau khi Unblock item cuối.
-- Viết test UI.
+- Bổ sung framework component test trong một thay đổi dependency được phê duyệt riêng; hiện đã có Node test cho cache/state.
+- Chạy accessibility/modal và toàn bộ luồng nghiệp vụ bằng checklist manual E2E.
 
 ### 12.3. Tài liệu
 
-- Chỉ cập nhật `README.md` thành `IMPLEMENTED` sau khi test xanh.
-- Bổ sung API Block vào danh sách API chính thức.
-- Ghi rõ User Block khác Admin account status `BLOCKED`.
+- README, API Block và sự khác nhau với Admin account status `BLOCKED` đã được cập nhật.
+- Trạng thái migration đã đổi sang `VERIFIED`; checklist manual E2E vẫn để trống để người kiểm thử ghi bằng chứng.
 
 ---
 
 ## 13. Thứ tự sửa tiếp theo đề xuất
 
-1. Cập nhật constructor và mock trong test cũ để test suite chạy lại bình thường.
-2. Viết unit test riêng cho `UserBlockServiceImpl`.
-3. Viết controller/security test cho API Block.
-4. Hoàn thiện tất cả native query có phân trang.
-5. Viết repository contract test để bắt buộc có `NOT EXISTS user_blocks`.
-6. Viết integration test MySQL cho Cursor Pagination.
-7. Hoàn thiện UI cache/toast/navigation.
-8. Chạy lại compile, unit test, integration test, package, lint và build.
-9. Chỉ khi tất cả đạt mới cập nhật trạng thái trong `README.md`.
+1. Chạy `docs/testing/USER-BLOCK-E2E-CHECKLIST.md` với ba tài khoản test A, B và C.
+2. Ghi kết quả thực tế, PASS/FAIL và ảnh/bằng chứng cho từng bước.
+3. Nếu có lỗi E2E, đối chiếu query/policy theo các mục phía trên trước khi sửa.
 
 ---
 
@@ -827,16 +829,19 @@ Không gọi `httpClient` hoặc Axios trực tiếp trong JSX.
 
 | Hạng mục | Trạng thái |
 |---|---|
-| SQL/DBML | Đã thêm schema, chưa chạy database thật |
+| SQL/DBML/migration | Đã đồng bộ; migration chạy thành công trên schema sạch và schema có dữ liệu của MySQL 8.0.36 |
 | Backend compile | Thành công |
-| API Block cơ bản | Đã có code |
-| Policy dùng chung | Đã có code |
-| Tích hợp toàn bộ module | Chưa hoàn tất |
-| Backend test | Thất bại, 90 errors |
+| API Block | Đã hoàn tất |
+| Policy dùng chung | Đã áp dụng |
+| Search Post và follower/following | Đã lọc hai chiều tại database |
+| Feed/Profile/Liked/Saved | Query contract và MySQL integration test đã chạy thành công |
+| Notification | Đã lọc tạo/list/unread/thao tác item |
+| Backend test | 599 test, 0 lỗi, 0 skipped trên MySQL 8.0.36 |
 | Frontend lint | Thành công |
 | Frontend build | Thành công |
-| Frontend test Block | Chưa có |
-| README chính thức | Chưa cập nhật |
-| Sẵn sàng manual test | Chưa |
+| Frontend test Block | Có 3 Node test utility/cache; `FRONTEND COMPONENT TEST NOT AVAILABLE` do dự án chưa có DOM/component test framework |
+| README chính thức | Đã cập nhật |
+| Migration MySQL thật | `VERIFIED` trên schema sạch và schema có dữ liệu |
+| Sẵn sàng manual test | Có; dùng `docs/testing/USER-BLOCK-E2E-CHECKLIST.md` |
 
-Kết luận: code hiện tại là nền tảng triển khai User Block và tài liệu này phản ánh đúng trạng thái source, nhưng cần hoàn thiện các mục ở phần 12 và làm test suite xanh trước khi coi chức năng là hoàn chỉnh.
+Kết luận: **READY FOR MANUAL E2E TEST**. Đây chưa phải xác nhận release production; checklist E2E thủ công vẫn đang ở trạng thái chưa chạy.

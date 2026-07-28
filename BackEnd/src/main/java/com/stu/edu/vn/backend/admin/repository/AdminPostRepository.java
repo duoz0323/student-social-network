@@ -74,7 +74,7 @@ public interface AdminPostRepository extends Repository<Post, Long> {
             SELECT p.id AS postId, p.content AS content, p.status AS status,
                    a.id AS authorId, ap.display_name AS authorDisplayName,
                    ap.avatar_url AS authorAvatarUrl, a.email AS authorEmail,
-                   a.phone_number AS authorPhoneNumber, a.status AS authorAccountStatus,
+                   CAST(NULL AS CHAR) AS authorPhoneNumber, a.status AS authorAccountStatus,
                    p.like_count AS likeCount, p.comment_count AS commentCount,
                    (SELECT COUNT(*) FROM reports pr
                     WHERE pr.post_id = p.id AND pr.status = 'PENDING') AS pendingReportCount,

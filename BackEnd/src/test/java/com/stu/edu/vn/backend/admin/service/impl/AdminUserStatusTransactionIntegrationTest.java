@@ -214,9 +214,11 @@ class AdminUserStatusTransactionIntegrationTest {
         currentFixture = transactionTemplate.execute(status -> {
             String marker = UUID.randomUUID().toString().replace("-", "");
             User admin = new User("status-admin-" + marker + "@example.com", "hash");
+            admin.setEmailVerifiedAt(LocalDateTime.now());
             admin.setRole(UserRole.ADMIN);
             admin = userRepository.saveAndFlush(admin);
             User target = new User("status-user-" + marker + "@example.com", "hash");
+            target.setEmailVerifiedAt(LocalDateTime.now());
             target = userRepository.saveAndFlush(target);
 
             String activeHash = tokenHash(marker, "a");

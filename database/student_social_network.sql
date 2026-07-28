@@ -150,6 +150,25 @@ CREATE TABLE `user_blocks` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `user_restrictions`
+--
+
+DROP TABLE IF EXISTS `user_restrictions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_restrictions` (
+  `restrictor_id` bigint unsigned NOT NULL,
+  `restricted_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`restrictor_id`,`restricted_id`),
+  KEY `idx_user_restrictions_restricted_restrictor` (`restricted_id`,`restrictor_id`),
+  CONSTRAINT `fk_user_restrictions_restrictor` FOREIGN KEY (`restrictor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_user_restrictions_restricted` FOREIGN KEY (`restricted_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_user_restrictions_not_self` CHECK ((`restrictor_id` <> `restricted_id`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `follows`
 --
 

@@ -13,6 +13,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
@@ -68,14 +69,14 @@ class AdminActionRepositoryIntegrationTest {
                 .containsExactly(third.getId(), second.getId(), first.getId());
         assertThat(page.content().getFirst().target().targetAvailable()).isFalse();
         assertThat(page.content().get(1).target().targetAvailable()).isTrue();
-        // Page query, count query và đúng một batch USER query; số action không làm tăng số statement.
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
+        // Trang cuối được Spring Data tối ưu bỏ COUNT: còn một page query và một batch USER query cố định.
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
 
         statistics.clear();
         var filtered = adminActionService.getActions(AdminActionType.BLOCK_USER, AdminTargetType.USER,
                 admin.getId(), createdAt, createdAt, 0, 20);
         assertThat(filtered.content()).extracting("actionId").containsExactly(third.getId(), first.getId());
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
 
         statistics.clear();
         var detail = adminActionService.getActionDetail(third.getId());
@@ -88,6 +89,7 @@ class AdminActionRepositoryIntegrationTest {
 
     private User saveUser(String email, UserRole role) {
         User user = new User(email, "hash");
+        user.setEmailVerifiedAt(LocalDateTime.now());
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         return userRepository.saveAndFlush(user);
@@ -96,6 +98,8 @@ class AdminActionRepositoryIntegrationTest {
     private void saveProfile(User user, String displayName) {
         UserProfile profile = new UserProfile(user);
         profile.setDisplayName(displayName);
+        // Hồ sơ hoàn tất phải có ngày sinh để phản ánh đúng contract database.
+        profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(LocalDateTime.of(2026, 7, 16, 7, 0));
         userProfileRepository.saveAndFlush(profile);
     }

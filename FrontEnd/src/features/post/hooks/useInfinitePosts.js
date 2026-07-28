@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const listCache = new Map();
+import { postListCache } from './postListCache.js';
 
 function uniquePosts(posts) {
   const seen = new Set();
@@ -16,7 +15,7 @@ function uniquePosts(posts) {
  * Quản lý cursor pagination, cache theo danh sách và chỉ cho một request tải tiếp chạy cùng lúc.
  */
 export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10, enabled = true }) {
-  const cached = listCache.get(cacheKey);
+  const cached = postListCache.get(cacheKey);
   const [posts, setPosts] = useState(cached?.posts ?? []);
   const [nextCursor, setNextCursor] = useState(cached?.nextCursor ?? null);
   const [hasNext, setHasNext] = useState(cached?.hasNext ?? true);
@@ -50,7 +49,7 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
       const incoming = (response.content ?? []).map(normalizeRef.current);
       setPosts((current) => {
         const merged = uniquePosts(replace ? incoming : [...current, ...incoming]);
-        listCache.set(cacheKey, {
+        postListCache.set(cacheKey, {
           posts: merged,
           nextCursor: response.nextCursor ?? null,
           hasNext: Boolean(response.hasNext),
@@ -71,7 +70,7 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const saved = listCache.get(cacheKey);
+    const saved = postListCache.get(cacheKey);
     let stateTimer;
     if (saved) {
       stateTimer = setTimeout(() => {
@@ -112,7 +111,7 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
   }, [hasNext, loadMore, nextCursor]);
 
   const reload = useCallback(() => {
-    listCache.delete(cacheKey);
+    postListCache.delete(cacheKey);
     setPosts([]);
     setNextCursor(null);
     setHasNext(true);
@@ -122,8 +121,8 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
   const removePost = useCallback((postId) => {
     setPosts((current) => {
       const next = current.filter((post) => String(post.id) !== String(postId));
-      const cachedValue = listCache.get(cacheKey);
-      if (cachedValue) listCache.set(cacheKey, { ...cachedValue, posts: next });
+      const cachedValue = postListCache.get(cacheKey);
+      if (cachedValue) postListCache.set(cacheKey, { ...cachedValue, posts: next });
       return next;
     });
   }, [cacheKey]);

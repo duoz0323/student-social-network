@@ -162,6 +162,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
                       AND p.content IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
                     ORDER BY MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) DESC,
                              p.published_at DESC,
@@ -176,11 +181,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
                       AND p.content IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
                     """,
             nativeQuery = true
     )
-    Page<Post> searchPublishedPostsByContent(@Param("keyword") String keyword, Pageable pageable);
+    Page<Post> searchPublishedPostsByContent(
+            @Param("keyword") String keyword,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable
+    );
 
     /**
      * Tìm bài theo exact normalized hashtag, không join collection hiển thị để pagination và totalElements luôn chính xác.
@@ -196,6 +210,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                     WHERE p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND h.normalized_name = :normalizedName
                     ORDER BY p.published_at DESC, p.id DESC
                     """,
@@ -209,11 +228,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                     WHERE p.status = 'PUBLISHED'
                       AND u.status = 'ACTIVE'
                       AND up.profile_completed_at IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_blocks ub
+                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
+                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
+                      )
                       AND h.normalized_name = :normalizedName
                     """,
             nativeQuery = true
     )
-    Page<Post> searchPublishedPostsByHashtag(@Param("normalizedName") String normalizedName, Pageable pageable);
+    Page<Post> searchPublishedPostsByHashtag(
+            @Param("normalizedName") String normalizedName,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable
+    );
 
     // Tìm bài theo id và trạng thái để loại bài HIDDEN/DELETED khỏi truy vấn thông thường.
     Optional<Post> findByIdAndStatus(Long id, PostStatus status);

@@ -121,7 +121,7 @@ class FeedServiceImplCursorTest {
         assertBusinessError(() -> service.getForYou("missing", 10), ErrorCode.INVALID_CURSOR);
         assertBusinessError(() -> service.getForYou(null, 0), ErrorCode.VALIDATION_ERROR);
         assertBusinessError(() -> service.getForYou(null, 21), ErrorCode.VALIDATION_ERROR);
-        verify(postRepository, never()).findForYouFeed(any(Integer.class), any(), any(), any());
+        verify(postRepository, never()).findForYouFeed(any(), any(Integer.class), any(), any(), any());
     }
 
     private List<Post> posts(int count) {

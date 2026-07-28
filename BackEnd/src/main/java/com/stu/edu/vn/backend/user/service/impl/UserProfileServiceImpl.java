@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
 import com.stu.edu.vn.backend.user.service.UserProfileService;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final UserProfileValidationSupport validationSupport;
     private final UserProfileMapper userProfileMapper;
     private final UserRelationshipPolicyService relationshipPolicyService;
+    private final UserRestrictionRepository userRestrictionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -98,7 +100,12 @@ public class UserProfileServiceImpl implements UserProfileService {
                 followRepository.countByIdFollowingId(profileUserId),
                 followRepository.countByIdFollowerId(profileUserId),
                 !profileUserId.equals(currentUserId)
-                        && followRepository.existsByIdFollowerIdAndIdFollowingId(currentUserId, profileUserId)
+                        && followRepository.existsByIdFollowerIdAndIdFollowingId(currentUserId, profileUserId),
+                !profileUserId.equals(currentUserId)
+                        && relationshipPolicyService.hasBlocked(currentUserId, profileUserId),
+                !profileUserId.equals(currentUserId)
+                        && userRestrictionRepository.existsByIdRestrictorIdAndIdRestrictedId(
+                        currentUserId, profileUserId)
         );
     }
 }

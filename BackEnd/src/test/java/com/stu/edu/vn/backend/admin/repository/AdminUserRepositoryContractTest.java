@@ -23,7 +23,7 @@ class AdminUserRepositoryContractTest {
     }
 
     @Test
-    void listQueryJoinsOnceSearchesAllFieldsExcludesAdminAndUsesStableOrdering() throws Exception {
+    void listQuerySearchesCanonicalFieldsExcludesAdminAndUsesStableOrdering() throws Exception {
         Method method = AdminUserRepository.class.getMethod(
                 "findManagedUsers", String.class, String.class, Pageable.class);
         Query query = method.getAnnotation(Query.class);
@@ -35,11 +35,11 @@ class AdminUserRepositoryContractTest {
                 .contains("u.role = 'USER'")
                 .contains(":status IS NULL OR u.status = :status")
                 .contains("LOWER(u.email) LIKE")
-                .contains("u.phone_number LIKE")
                 .contains("LOWER(up.display_name) LIKE")
+                .contains("CAST(NULL AS CHAR) AS phoneNumber")
                 .contains("ESCAPE '='")
                 .contains("ORDER BY u.created_at DESC, u.id DESC")
-                .doesNotContain("password_hash", "avatar_public_id", "SELECT u.*", "SELECT up.*");
+                .doesNotContain("phone_number", "password_hash", "avatar_public_id", "SELECT u.*", "SELECT up.*");
         assertThat(query.countQuery())
                 .contains("COUNT(u.id)", "u.role = 'USER'", "LEFT JOIN user_profiles")
                 .doesNotContain("ORDER BY");

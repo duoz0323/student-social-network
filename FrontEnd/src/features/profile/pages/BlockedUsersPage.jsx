@@ -7,9 +7,11 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { socialApi } from '../../../api/index.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
+import { useApp } from '../../../contexts/AppContext.jsx';
 
 /** Trang cài đặt chỉ hiển thị danh sách Block của tài khoản đang đăng nhập. */
 export default function BlockedUsersPage() {
+  const { invalidateUserRelationshipData, showToast } = useApp();
   const [page, setPage] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -34,7 +36,14 @@ export default function BlockedUsersPage() {
     setSubmitting(true);
     try {
       await socialApi.unblockUser(target.userId);
-      setResult((current) => ({ ...current, content: current.content.filter((item) => item.userId !== target.userId) }));
+      // Unblock không khôi phục Follow; chỉ làm mới các danh sách có thể nhìn thấy lại dữ liệu.
+      invalidateUserRelationshipData();
+      setResult((current) => ({
+        ...current,
+        content: current.content.filter((item) => item.userId !== target.userId),
+        totalElements: Math.max(0, current.totalElements - 1),
+      }));
+      showToast(`Đã bỏ chặn ${target.displayName}.`);
       setTarget(null);
     } catch (requestError) {
       setError(requestError.message);

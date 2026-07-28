@@ -27,6 +27,7 @@ import {
   PostDetailPage,
   ProfilePage,
   BlockedUsersPage,
+  RestrictedUsersPage,
   SavedPostsPage,
   SearchPage,
 } from './lazyRoutes.jsx';
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: '/notifications', element: <NotificationsPage /> },
       { path: '/settings/auth-providers', element: <AuthProvidersPage /> },
       { path: '/settings/blocked-users', element: <BlockedUsersPage /> },
+      { path: '/settings/restricted-users', element: <RestrictedUsersPage /> },
     ],
   },
   {

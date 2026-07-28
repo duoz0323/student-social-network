@@ -4,6 +4,7 @@ import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
+import UserRestrictionAction from '../components/UserRestrictionAction.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import InfinitePostList from '../../post/components/InfinitePostList.jsx';
@@ -83,7 +84,9 @@ function ProfilePageSkeleton({ self, onBack }) {
 export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { currentUserId, data, toggleFollow, updateProfile } = useApp();
+  const {
+    currentUserId, data, toggleFollow, applyUserBlock, showToast, updateProfile,
+  } = useApp();
   const [editing, setEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [followModal, setFollowModal] = useState(null);
@@ -252,6 +255,8 @@ export default function ProfilePage({ self = false }) {
     try {
       // Backend tự lấy blocker từ JWT; Frontend chỉ truyền tài khoản đích.
       await socialApi.blockUser(profile.id);
+      applyUserBlock(profile.id);
+      showToast(`Đã chặn ${profile.displayName}.`);
       setBlockConfirmOpen(false);
       navigate('/feed/for-you', { replace: true });
     } catch (requestError) {
@@ -327,6 +332,17 @@ export default function ProfilePage({ self = false }) {
                 >
                   Chặn
                 </button>
+                {!profile.blockedByMe ? (
+                  <div className="rounded-full border border-[var(--app-border)] px-4 py-2 text-sm font-semibold">
+                    <UserRestrictionAction
+                      userId={profile.id}
+                      displayName={profile.displayName}
+                      initialRestricted={profile.restrictedByMe}
+                      blocked={profile.blockedByMe}
+                      onChanged={(restrictedByMe) => setProfile((current) => ({ ...current, restrictedByMe }))}
+                    />
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

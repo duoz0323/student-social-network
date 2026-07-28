@@ -18,6 +18,8 @@ import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
+import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
@@ -39,6 +41,10 @@ class NotificationServiceImplTest {
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
     private final Clock clock = Clock.fixed(
             Instant.parse("2026-07-18T03:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
+    private final UserRelationshipPolicyService relationshipPolicyService =
+            org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
+    private final UserRestrictionRepository userRestrictionRepository =
+            org.mockito.Mockito.mock(UserRestrictionRepository.class);
 
     private NotificationServiceImpl service;
 
@@ -51,7 +57,9 @@ class NotificationServiceImplTest {
                 notificationRepository,
                 notificationMapper,
                 entityManager,
-                clock
+                clock,
+                relationshipPolicyService,
+                userRestrictionRepository
         );
         when(currentUserProvider.getCurrentUserId()).thenReturn(20L);
         when(userRepository.findById(20L)).thenReturn(Optional.of(user(20L)));
@@ -80,6 +88,30 @@ class NotificationServiceImplTest {
         assertThat(captor.getValue().getType()).isEqualTo(NotificationType.FOLLOW);
         assertThat(captor.getValue().getActor().getId()).isEqualTo(10L);
         assertThat(captor.getValue().getRecipient().getId()).isEqualTo(20L);
+    }
+
+    @Test
+    void restrictedLikeIsSuppressedBeforeNotificationIsSaved() {
+        when(userRestrictionRepository
+                .existsByIdRestrictorIdAndIdRestrictedId(20L, 10L)).thenReturn(true);
+
+        service.createPostLikeNotification(10L, 20L, 100L);
+
+        verify(notificationRepository, never()).save(any());
+        verify(entityManager, never()).getReference(any(), any());
+    }
+
+    @Test
+    void blockInEitherDirectionPreventsActorNotification() {
+        when(relationshipPolicyService.existsBlockEitherDirection(10L, 20L)).thenReturn(true);
+
+        service.createFollowNotification(10L, 20L);
+        service.createPostLikeNotification(10L, 20L, 100L);
+        service.createPostCommentNotification(10L, 20L, 100L, 200L);
+        service.createCommentReplyNotification(10L, 20L, 100L, 200L);
+
+        verify(notificationRepository, never()).save(any());
+        verify(entityManager, never()).getReference(any(), any());
     }
 
     @Test
@@ -114,6 +146,21 @@ class NotificationServiceImplTest {
     void markAsReadHidesExistenceOfAnotherUsersNotification() {
         when(notificationRepository.findByIdAndRecipient_IdAndDeletedAtIsNull(30L, 20L))
                 .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.markAsRead(30L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOTIFICATION_NOT_FOUND);
+    }
+
+    @Test
+    void markAsReadTreatsBlockedActorNotificationAsNotFound() {
+        Notification notification = new Notification(
+                user(20L), user(10L), NotificationType.FOLLOW, null, null, null);
+        ReflectionTestUtils.setField(notification, "id", 30L);
+        when(notificationRepository.findByIdAndRecipient_IdAndDeletedAtIsNull(30L, 20L))
+                .thenReturn(Optional.of(notification));
+        when(relationshipPolicyService.existsBlockEitherDirection(20L, 10L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.markAsRead(30L))
                 .isInstanceOf(BusinessException.class)

@@ -148,6 +148,16 @@ Hoàn tất hồ sơ ban đầu:
 - Có thể Unfollow.
 - Có thể xem follower/following.
 
+#### User Block
+
+- User Block được lưu có hướng nhưng ngăn truy cập và tương tác mới giữa hai tài khoản theo cả hai chiều.
+- Block xóa Follow hai chiều; Unblock không tự khôi phục Follow.
+- Block không xóa Like hoặc Comment lịch sử và không làm giảm bộ đếm tương tác của bài.
+- Trong thời gian còn Block, hai bên không nhìn thấy Comment/Reply lịch sử của nhau, kể cả khi người xem là chủ bài viết; dữ liệu chỉ bị lọc động và không bị xóa.
+- Nếu Comment cha bị ẩn do Block thì toàn bộ nhánh Reply của cha đó cũng bị ẩn; Reply bị Block dưới một Comment cha vẫn hợp lệ được lọc riêng.
+- Sau Unblock, Comment/Reply lịch sử hiển thị trở lại nếu vẫn hợp lệ và người xem còn quyền truy cập bài viết.
+- Sau Block không phát sinh Follow, Like/Unlike, Comment/Reply, Save/Unsave hoặc Notification mới giữa hai tài khoản.
+
 ### 4.4 Bài viết
 
 Bài viết gồm:
@@ -305,6 +315,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Report.
 - Admin khóa tài khoản.
 - Admin ẩn/khôi phục bài.
+- User Block hai chiều về hiển thị/tương tác; Block xóa Follow hai chiều và Unblock không khôi phục Follow.
 
 ### P2
 
@@ -315,7 +326,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 ## 6. Ngoài phạm vi
 - Hồ sơ riêng tư.
 - Follow Request.
-- Block/Restrict.
+- Restrict.
 - Video/tài liệu.
 - Bản nháp.
 - Mention.

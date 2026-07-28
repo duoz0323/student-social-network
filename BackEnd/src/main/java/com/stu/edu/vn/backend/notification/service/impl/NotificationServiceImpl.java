@@ -22,6 +22,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -44,6 +45,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final EntityManager entityManager;
     private final Clock clock;
     private final UserRelationshipPolicyService relationshipPolicyService;
+    private final UserRestrictionRepository userRestrictionRepository;
 
     public NotificationServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -53,7 +55,8 @@ public class NotificationServiceImpl implements NotificationService {
             NotificationMapper notificationMapper,
             EntityManager entityManager,
             Clock clock,
-            UserRelationshipPolicyService relationshipPolicyService
+            UserRelationshipPolicyService relationshipPolicyService,
+            UserRestrictionRepository userRestrictionRepository
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -63,6 +66,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.entityManager = entityManager;
         this.clock = clock;
         this.relationshipPolicyService = relationshipPolicyService;
+        this.userRestrictionRepository = userRestrictionRepository;
     }
 
     @Override
@@ -205,12 +209,23 @@ public class NotificationServiceImpl implements NotificationService {
             // Block không phát sinh thông báo mới và không tiết lộ hành động chặn cho đối phương.
             return;
         }
+        if (actorId != null && isRestrictedInteractionNotification(type)
+                && userRestrictionRepository.existsByIdRestrictorIdAndIdRestrictedId(recipientId, actorId)) {
+            // Suppress trước khi lưu để unread count, badge và event không bao giờ được phát sinh.
+            return;
+        }
         User actor = actorId == null ? null : entityManager.getReference(User.class, actorId);
         User recipient = entityManager.getReference(User.class, recipientId);
         Post post = postId == null ? null : entityManager.getReference(Post.class, postId);
         Comment comment = commentId == null ? null : entityManager.getReference(Comment.class, commentId);
         Report report = reportId == null ? null : entityManager.getReference(Report.class, reportId);
         notificationRepository.save(new Notification(recipient, actor, type, post, comment, report));
+    }
+
+    private boolean isRestrictedInteractionNotification(NotificationType type) {
+        return type == NotificationType.POST_LIKE
+                || type == NotificationType.POST_COMMENT
+                || type == NotificationType.COMMENT_REPLY;
     }
 
     private Long getEligibleCurrentUserId() {
@@ -229,7 +244,15 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private Notification findOwnedVisibleNotification(Long notificationId, Long currentUserId) {
-        return notificationRepository.findByIdAndRecipient_IdAndDeletedAtIsNull(notificationId, currentUserId)
+        Notification notification = notificationRepository
+                .findByIdAndRecipient_IdAndDeletedAtIsNull(notificationId, currentUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        if (notification.getActor() != null
+                && relationshipPolicyService.existsBlockEitherDirection(
+                currentUserId, notification.getActor().getId())) {
+            // Notification đã bị ẩn bởi Block cũng không được thao tác qua endpoint trực tiếp.
+            throw new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND);
+        }
+        return notification;
     }
 }

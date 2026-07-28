@@ -100,8 +100,8 @@ public class SearchServiceImpl implements SearchService {
 
         PageRequest pageable = PageRequest.of(page, size);
         Page<Post> posts = type == SearchPostType.CONTENT
-                ? postRepository.searchPublishedPostsByContent(normalizedKeyword, pageable)
-                : postRepository.searchPublishedPostsByHashtag(normalizedKeyword, pageable);
+                ? postRepository.searchPublishedPostsByContent(normalizedKeyword, currentUserId, pageable)
+                : postRepository.searchPublishedPostsByHashtag(normalizedKeyword, currentUserId, pageable);
         if (posts.isEmpty()) {
             // Không chạy các batch query khi trang rỗng vì không có dữ liệu cần enrichment.
             return new PageResponse<>(List.of(), posts.getNumber(), posts.getSize(), posts.getTotalElements(),
