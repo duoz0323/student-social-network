@@ -109,13 +109,14 @@ Hiển thị empty state
 ```text
 FEED-01 hoặc sidebar Tạo bài viết
 → POST-02 Modal tạo bài viết
-→ Nhập nội dung tối đa 500 ký tự hoặc chọn ảnh
+→ Nhập nội dung tối đa 500 ký tự hoặc chọn ảnh/video
 → Có thể gắn hashtag
+→ Có thể chọn tối đa một Location từ dữ liệu Google Places phía Frontend
 → Đăng bài
 → Bài xuất hiện trên Feed/Profile nếu PUBLISHED
 ```
 
-Quy tắc: bài phải có nội dung hoặc ít nhất một ảnh; tối đa 4 ảnh; chỉ hỗ trợ JPG, JPEG, PNG, WEBP theo MVP.
+Quy tắc: bài phải có nội dung hoặc ít nhất một media; tổng tối đa 4 media và tối đa một video. Ảnh hỗ trợ JPG/JPEG/PNG/WEBP; video hỗ trợ MP4/WebM, tối đa 100 MB và 3 phút. Location là tùy chọn và không được tính là nội dung bài viết. Frontend gửi `placeId`, `displayName`, `formattedAddress`, `latitude`, `longitude`; Backend dùng lại Location theo Place ID nếu đã tồn tại.
 
 ### 1.5 Xem chi tiết bài viết
 
@@ -134,10 +135,16 @@ Chỉnh sửa:
 ```text
 PostCard của chính mình
 → POST-04 Menu thao tác bài viết
+→ Hiển thị Chỉnh sửa bài viết kèm countdown từ 15:00; tự ẩn hành động khi về 00:00
 → Chỉnh sửa bài viết
+→ Frontend gọi GET /api/v1/posts/{postId} và hiển thị trạng thái tải/lỗi
+→ Dùng Post Detail mới nhất để khởi tạo nội dung, hashtag, media và Location
 → POST-03 Modal chỉnh sửa bài viết
-→ Sửa nội dung/hashtag
-→ Lưu thay đổi
+→ Sửa nội dung; tìm/chọn hashtag bằng cùng bộ gợi ý của form tạo bài
+→ Giữ/gỡ media cũ hoặc thêm ảnh/video mới
+→ Chọn KEEP, REPLACE hoặc REMOVE cho Location
+→ Lưu thay đổi bằng PUT /api/v1/posts/{postId}; khóa form trong lúc gửi
+→ Cập nhật PostCard từ response PUT
 → Quay lại bài viết/feed/profile
 ```
 
@@ -153,7 +160,7 @@ PostCard của chính mình
 → Bài không còn hiển thị trong Feed/Profile/Search thông thường
 ```
 
-Quy tắc: chỉ tác giả được sửa/xóa; sau khi đăng không chỉnh sửa ảnh.
+Quy tắc: chỉ tác giả được sửa/xóa trong giới hạn chỉnh sửa 15 phút. Có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới nhưng tổng tối đa 4 media và tối đa một video. `KEEP` giữ nguyên Location, `REPLACE` chọn Location khác, `REMOVE` gỡ Location; xóa Post không xóa Location dùng chung.
 
 ### 1.7 Like, bình luận và lưu bài
 
@@ -336,7 +343,7 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 ### 2.3 Các chức năng tương lai khác
 
 - Nhắn tin.
-- Discovery Map.
+- Discovery Map, tìm bài theo bán kính, Feed theo Location và trang Location riêng.
 - Feed tùy chỉnh.
 - Follow Request.
 - Repost.

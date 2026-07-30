@@ -69,6 +69,7 @@ export const DISCOVERY_ENDPOINTS = Object.freeze({
 export const ADMIN_ENDPOINTS = Object.freeze({
   users: '/api/v1/admin/users',
   user: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}`,
+  userProfile: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/profile`,
   blockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/block`,
   unblockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/unblock`,
   posts: '/api/v1/admin/posts',

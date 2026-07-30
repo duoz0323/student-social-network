@@ -7,24 +7,47 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
+import com.stu.edu.vn.backend.admin.entity.AdminAction;
+import com.stu.edu.vn.backend.admin.enums.AdminActionType;
 import com.stu.edu.vn.backend.admin.mapper.AdminUserMapper;
+import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
 import com.stu.edu.vn.backend.admin.repository.AdminUserDetailProjection;
 import com.stu.edu.vn.backend.admin.repository.AdminUserListProjection;
 import com.stu.edu.vn.backend.admin.repository.AdminUserRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.security.CurrentUserProvider;
+import com.stu.edu.vn.backend.security.CustomUserPrincipal;
+import com.stu.edu.vn.backend.user.entity.User;
+import com.stu.edu.vn.backend.user.entity.UserProfile;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport;
+import jakarta.persistence.EntityManager;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class AdminUserServiceImplTest {
 
     private final AdminUserRepository adminUserRepository = org.mockito.Mockito.mock(AdminUserRepository.class);
+    private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
+    private final AdminActionRepository adminActionRepository = org.mockito.Mockito.mock(AdminActionRepository.class);
+    private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
+    private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-30T01:00:00Z"), ZoneOffset.UTC);
     private AdminUserServiceImpl adminUserService;
 
     @BeforeEach
@@ -32,13 +55,15 @@ class AdminUserServiceImplTest {
         adminUserService = new AdminUserServiceImpl(
                 adminUserRepository,
                 new AdminUserMapper(),
-                org.mockito.Mockito.mock(com.stu.edu.vn.backend.security.CurrentUserProvider.class),
+                currentUserProvider,
                 org.mockito.Mockito.mock(com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository.class),
                 org.mockito.Mockito.mock(com.stu.edu.vn.backend.admin.repository.AccountStatusHistoryRepository.class),
-                org.mockito.Mockito.mock(com.stu.edu.vn.backend.admin.repository.AdminActionRepository.class),
-                java.time.Clock.systemUTC(),
-                org.mockito.Mockito.mock(jakarta.persistence.EntityManager.class),
-                org.mockito.Mockito.mock(com.stu.edu.vn.backend.notification.service.NotificationService.class)
+                adminActionRepository,
+                clock,
+                entityManager,
+                org.mockito.Mockito.mock(com.stu.edu.vn.backend.notification.service.NotificationService.class),
+                userProfileRepository,
+                new UserProfileValidationSupport(clock)
         );
     }
 
@@ -132,6 +157,34 @@ class AdminUserServiceImplTest {
         assertError(() -> adminUserService.getUserDetail(1L), ErrorCode.ADMIN_USER_MANAGEMENT_FORBIDDEN);
     }
 
+    @Test
+    void updateProfileValidatesUpdatesAndAuditsManagedUser() {
+        User admin = user(1L, UserRole.ADMIN, UserStatus.ACTIVE);
+        User target = user(10L, UserRole.USER, UserStatus.ACTIVE);
+        UserProfile profile = new UserProfile(target);
+        AdminUserDetailProjection updatedProjection = detailProjection("USER", "ACTIVE", true);
+        when(currentUserProvider.getCurrentUser())
+                .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
+        when(adminUserRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(target));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(profile));
+        when(entityManager.getReference(User.class, 1L)).thenReturn(admin);
+        when(adminUserRepository.findManagedUserDetail(10L)).thenReturn(Optional.of(updatedProjection));
+
+        var response = adminUserService.updateUserProfile(10L,
+                new AdminUpdateUserProfileRequest("  Tên mới  ", LocalDate.of(2001, 6, 15), "  Bio mới  "));
+
+        assertThat(profile)
+                .extracting(UserProfile::getDisplayName, UserProfile::getDateOfBirth, UserProfile::getBio)
+                .containsExactly("Tên mới", LocalDate.of(2001, 6, 15), "Bio mới");
+        assertThat(response.userId()).isEqualTo(10L);
+        ArgumentCaptor<AdminAction> actionCaptor = ArgumentCaptor.forClass(AdminAction.class);
+        verify(adminActionRepository).save(actionCaptor.capture());
+        assertThat(actionCaptor.getValue())
+                .extracting(AdminAction::getActionType, AdminAction::getTargetId, AdminAction::getNote)
+                .containsExactly(AdminActionType.UPDATE_USER_PROFILE, 10L, "ADMIN_UPDATE_PROFILE");
+        verify(entityManager).flush();
+    }
+
     private void assertError(Runnable action, ErrorCode errorCode) {
         assertThatThrownBy(action::run)
                 .isInstanceOf(BusinessException.class)
@@ -162,6 +215,7 @@ class AdminUserServiceImplTest {
         when(projection.getRole()).thenReturn(role);
         when(projection.getStatus()).thenReturn(status);
         when(projection.getDisplayName()).thenReturn("Minh");
+        when(projection.getDateOfBirth()).thenReturn(LocalDate.of(2001, 6, 15));
         when(projection.getEmail()).thenReturn("minh@example.com");
         when(projection.getProfileCompletedAt()).thenReturn(completed ? timestamp : null);
         when(projection.getBlockedAt()).thenReturn("BLOCKED".equals(status) ? timestamp : null);
@@ -169,5 +223,13 @@ class AdminUserServiceImplTest {
         when(projection.getCreatedAt()).thenReturn(timestamp);
         when(projection.getUpdatedAt()).thenReturn(timestamp);
         return projection;
+    }
+
+    private User user(Long id, UserRole role, UserStatus status) {
+        User user = new User("user" + id + "@example.com", "hash");
+        ReflectionTestUtils.setField(user, "id", id);
+        user.setRole(role);
+        user.setStatus(status);
+        return user;
     }
 }

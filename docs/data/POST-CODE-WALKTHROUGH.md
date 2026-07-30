@@ -1,6 +1,6 @@
 # Code walkthrough toàn bộ module Post
 
-> Ngày rà soát: 2026-07-24  
+> Ngày rà soát: 2026-07-29
 > Phạm vi chính: toàn bộ production code và test trong package Backend `post`, toàn bộ feature Frontend `post`, cùng các điểm tích hợp trực tiếp.  
 > Mục tiêu: giúp người đọc mở code theo đúng thứ tự và hiểu trách nhiệm của từng file.
 
@@ -444,7 +444,7 @@ Giá trị:
 - `IMAGE`.
 - `VIDEO`.
 
-Code hiện hỗ trợ video, kể cả khi README hiện chỉ mô tả ảnh.
+Code và README hiện cùng hỗ trợ ảnh/video trong tổng giới hạn media của Post.
 
 ## 9. Repository layer
 
@@ -1096,10 +1096,12 @@ Tên `imageUrls` không còn chính xác khi media có video.
 
 #### `updatePost`
 
-- Tìm Post hiện tại trong local state.
-- Lấy media IDs đang có làm `keepMediaIds`.
+- Ưu tiên `keepMediaIds` do form sửa tạo từ Post Detail; chỉ fallback local state cho caller cũ.
+- Truyền `newMediaFiles` để cho phép thêm ảnh/video mới.
 - Gọi API.
 - Thay item trong local state.
+- Deadline sửa Post được tính bằng `Clock` UTC để khớp timestamp UTC do MySQL/API trả về.
+- `PostCard` hiển thị countdown 15 phút cạnh hành động sửa và tự ẩn hành động ở `00:00`.
 
 #### `deletePost`
 
@@ -1146,9 +1148,9 @@ Dùng `<video>` browser đọc metadata cho UX validation trước upload.
 
 #### Hashtag effect
 
-- Debounce 250 ms.
-- Abort request cũ.
-- Gọi suggestion API.
+- `PostHashtagPicker` dùng chung cho tạo/sửa Post.
+- Debounce 250 ms, hủy request cũ và gọi suggestion API.
+- Hiển thị hashtag có sẵn bên dưới ô nhập để người dùng chọn.
 
 #### `handleMediaChange`
 
@@ -1195,7 +1197,7 @@ Trách nhiệm:
 Điểm cần chú ý:
 
 - Component đang chứa khá nhiều orchestration và modal state.
-- Edit chuyển `hashtags` array về chuỗi rồi AppContext lấy hashtag đầu.
+- Edit gọi Post Detail trước khi dựng form, dùng `PostHashtagPicker` chung và gửi `keepMediaIds`/`newMediaFiles` từ `EditPostMedia`.
 - Phụ thuộc dữ liệu mock cho một số author/viewer relations.
 
 ### 19.3. `ReportPostFlow.jsx`
@@ -1573,7 +1575,7 @@ Phủ MIME, signature, extension, size, media count và composition.
 - Frontend `PostCard` và `PostComposer` đều hơn 340 dòng.
 - AppContext trộn mock state và API mutation thật.
 - Viewer response chưa đủ liked/saved.
-- Không có GET Saved/Profile/Feed.
+- Location P1 đã có SQL/DBML/migration, Entity/Repository, resolver, validation, create/update API, batch enrichment response và Frontend Google Places picker.
 - Hashtag “một Post một hashtag” mới enforce ở Service, chưa enforce tuyệt đối ở DB.
 - External cleanup thất bại chưa có retry/outbox/job.
 
@@ -1603,4 +1605,4 @@ Phủ MIME, signature, extension, size, media count và composition.
 
 Module Post hiện có một write-side Backend khá trưởng thành, với validation, transaction, Cloudinary lifecycle, interaction và moderation. Code phức tạp nhất tập trung ở `PostServiceImpl`, `PostCard`, `PostComposer` và lớp tích hợp `AppContext`.
 
-Các repository batch và DTO hiện tại đã tạo nền cho read-side, nhưng Feed, Profile Post list và Saved Post list vẫn là khoảng trống. Khi refactor, nên bảo toàn các cơ chế đang làm tốt—đặc biệt upload ngoài transaction, cleanup theo transaction outcome, conditional update và database uniqueness—đồng thời tách nhỏ orchestration và loại bỏ state mock khỏi luồng production.
+Các read-side Feed, Profile, Saved, Liked và Search batch-load Location cùng dữ liệu PostCard, không đổi cursor pagination. Location P1 đã tích hợp quan hệ `Location 1 — N Post`, unique `google_place_id`, khóa ngoại nullable `ON DELETE SET NULL`, resolver upsert an toàn cạnh tranh và không cascade remove. Khi refactor, nên bảo toàn upload ngoài transaction, cleanup theo transaction outcome, conditional update và database uniqueness.

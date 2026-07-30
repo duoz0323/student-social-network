@@ -21,7 +21,7 @@ export default function AdminActionsPage() {
   }, [actionType, page, pageSize]);
   return <section><div className="mb-6 flex items-center gap-3"><h1 className="mr-auto text-2xl font-bold">Lịch sử quản trị</h1>
     <select value={actionType} onChange={(event) => { setActionType(event.target.value); setPage(1); }} className="rounded-lg border p-2">
-      <option value="">Tất cả thao tác</option>{['BLOCK_USER','UNBLOCK_USER','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT'].map((item) => <option key={item}>{item}</option>)}
+      <option value="">Tất cả thao tác</option>{['BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT'].map((item) => <option key={item}>{item}</option>)}
     </select></div>
     {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
     {loading ? <LoadingState /> : <DataTable rows={result.content} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,

@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-
 import logo from '../../assets/brand/logo.png';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
+import AdminToastProvider from '../../features/admin/components/AdminToastProvider.jsx';
 
 export default function AdminShell() {
   const { currentUser } = useApp();
@@ -71,9 +72,11 @@ export default function AdminShell() {
 
       {/* Main Content */}
       <main className="ml-72 flex-1 min-h-screen bg-white p-8 lg:p-12">
-        <div className="mx-auto max-w-5xl">
-          <Outlet />
-        </div>
+        <AdminToastProvider>
+          <div className="mx-auto max-w-5xl">
+            <Outlet />
+          </div>
+        </AdminToastProvider>
       </main>
     </div>
   );

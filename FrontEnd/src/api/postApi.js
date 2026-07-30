@@ -1,27 +1,7 @@
 import { POST_ENDPOINTS } from './apiEndpoints.js';
 import { httpClient } from './httpClient.js';
 import { compactParams, requestData } from './requestData.js';
-
-function appendValue(formData, key, value) {
-  if (value !== undefined && value !== null && value !== '') formData.append(key, value);
-}
-
-function createPostForm(payload) {
-  const formData = new FormData();
-  appendValue(formData, 'content', payload.content?.trim());
-  appendValue(formData, 'hashtag', payload.hashtag?.trim());
-  for (const file of payload.mediaFiles ?? []) formData.append('mediaFiles', file);
-  return formData;
-}
-
-function updatePostForm(payload) {
-  const formData = new FormData();
-  appendValue(formData, 'content', payload.content?.trim());
-  appendValue(formData, 'hashtag', payload.hashtag?.trim());
-  for (const id of payload.keepMediaIds ?? []) formData.append('keepMediaIds', id);
-  for (const file of payload.newMediaFiles ?? []) formData.append('newMediaFiles', file);
-  return formData;
-}
+import { createPostForm, updatePostForm } from '../features/post/locations/locationMultipart.js';
 
 export const postApi = Object.freeze({
   create: (payload, signal) => requestData(httpClient.post(POST_ENDPOINTS.root, createPostForm(payload), { signal })),

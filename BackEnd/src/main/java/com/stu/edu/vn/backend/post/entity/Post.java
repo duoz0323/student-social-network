@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.post.entity;
 
 import com.stu.edu.vn.backend.common.entity.BaseAuditEntity;
+import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -10,6 +11,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -43,6 +45,15 @@ public class Post extends BaseAuditEntity {
     @JoinColumn(name = "author_id", referencedColumnName = "user_id", insertable = false, updatable = false)
     // Hồ sơ công khai của tác giả, ánh xạ read-only để API chi tiết tránh N+1 khi cần tên và avatar.
     private UserProfile authorProfile;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "location_id",
+            nullable = true,
+            foreignKey = @ForeignKey(name = "fk_posts_location")
+    )
+    // Địa điểm tùy chọn dùng chung giữa nhiều bài; không cascade để bảo toàn Location khi xóa Post.
+    private Location location;
 
     @Column(name = "content", length = 500)
     // Nội dung văn bản của bài viết, giới hạn 500 ký tự theo nghiệp vụ MVP.
@@ -118,6 +129,14 @@ public class Post extends BaseAuditEntity {
 
     public UserProfile getAuthorProfile() {
         return authorProfile;
+    }
+
+    public Location getLocation() {
+        return location;
+    }
+
+    public void setLocation(Location location) {
+        this.location = location;
     }
 
     public String getContent() {

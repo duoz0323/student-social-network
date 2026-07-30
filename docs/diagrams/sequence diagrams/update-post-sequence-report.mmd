@@ -7,14 +7,21 @@ sequenceDiagram
     participant DB as MySQL
 
     U->>FE: Chỉnh sửa bài viết
-    FE->>PC: PUT /api/v1/posts/{postId}
+    FE->>PC: PUT multipart /api/v1/posts/{postId}<br/>locationAction + JSON location tùy chọn
     PC->>PS: updatePost(postId, request)
     PS->>DB: Kiểm tra tác giả, trạng thái và thời hạn
     alt Không có quyền hoặc quá 15 phút
         PS-->>FE: Trả lỗi chỉnh sửa
     else Hợp lệ
-        PS->>DB: Cập nhật Post và Hashtag
+        alt KEEP
+            PS->>DB: Giữ nguyên posts.location_id
+        else REPLACE
+            PS->>DB: Upsert Location theo google_place_id<br/>và gán posts.location_id
+        else REMOVE
+            PS->>DB: Đặt posts.location_id = NULL
+        end
+        PS->>DB: Cập nhật Post, media và Hashtag
         DB-->>PS: Commit transaction
-        PS-->>FE: PostDetailResponse
+        PS-->>FE: PostDetailResponse có location object hoặc null
         FE-->>U: Hiển thị bài viết đã sửa
     end

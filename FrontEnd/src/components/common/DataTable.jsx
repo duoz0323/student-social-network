@@ -6,11 +6,17 @@ export default function DataTable({
   rows, 
   emptyText = 'Không có dữ liệu',
   pagination, // { currentPage, totalPages, onPageChange, totalItems, pageSize, onPageSizeChange }
-  onRowKeyDown
+  onRowKeyDown,
+  onRowClick,
+  onRowDoubleClick,
 }) {
   if (!rows.length) return <EmptyState title={emptyText} description="Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm." />;
 
+  const hasRowAction = Boolean(onRowClick || onRowDoubleClick);
+
   const handleKeyDown = (e, index, row) => {
+    // Không biến thao tác bàn phím trên button/link bên trong thành click của cả hàng.
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const nextRow = document.getElementById(`dt-row-${index + 1}`);
@@ -19,6 +25,10 @@ export default function DataTable({
       e.preventDefault();
       const prevRow = document.getElementById(`dt-row-${index - 1}`);
       if (prevRow) prevRow.focus();
+    } else if ((e.key === 'Enter' || e.key === ' ') && hasRowAction) {
+      e.preventDefault();
+      // Enter hoặc Space thay thế thao tác chuột để hàng double-click vẫn truy cập được bằng bàn phím.
+      (onRowClick || onRowDoubleClick)(row);
     } else if (onRowKeyDown) {
       onRowKeyDown(e, row);
     }
@@ -47,7 +57,9 @@ export default function DataTable({
                 id={`dt-row-${index}`}
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, index, row)}
-                className="hover:bg-blue-50/40 focus:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-400 transition-colors duration-150 group cursor-default"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row) : undefined}
+                className={`hover:bg-blue-50/40 focus:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-400 transition-colors duration-150 group ${hasRowAction ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 {columns.map((column) => (
                   <td 

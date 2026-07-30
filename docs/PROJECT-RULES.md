@@ -50,11 +50,11 @@
 ## 4. Bài viết
 
 - Tối đa 500 ký tự.
-- Tối đa 4 ảnh.
-- Phải có nội dung hoặc ảnh.
-- Ảnh: JPG, JPEG, PNG, WEBP.
+- Tối đa 4 media, trong đó tối đa một video.
+- Phải có nội dung hoặc media.
+- Ảnh: JPG, JPEG, PNG, WEBP; video: MP4, WebM.
 - Chỉ tác giả sửa/xóa.
-- Không sửa ảnh sau khi đăng.
+- Trong 15 phút, tác giả có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới.
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 
 ## 5. Like

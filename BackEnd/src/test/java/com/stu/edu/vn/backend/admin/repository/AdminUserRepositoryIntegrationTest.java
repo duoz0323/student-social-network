@@ -47,10 +47,9 @@ class AdminUserRepositoryIntegrationTest {
     @Test
     void queriesSearchFilterOrderExcludeAdminAndDoNotCauseNPlusOne() {
         String marker = "adm" + UUID.randomUUID().toString().replace("-", "");
-        String phonePrefix = marker.substring(0, 16);
-        User activeUser = saveUser(marker + "ALPHA@example.com", phonePrefix + "01", UserRole.USER, UserStatus.ACTIVE);
-        User blockedUser = saveUser(marker + "blocked@example.com", phonePrefix + "02", UserRole.USER, UserStatus.BLOCKED);
-        User admin = saveUser(marker + "admin@example.com", phonePrefix + "03", UserRole.ADMIN, UserStatus.ACTIVE);
+        User activeUser = saveUser(marker + "ALPHA@example.com", UserRole.USER, UserStatus.ACTIVE);
+        User blockedUser = saveUser(marker + "blocked@example.com", UserRole.USER, UserStatus.BLOCKED);
+        User admin = saveUser(marker + "admin@example.com", UserRole.ADMIN, UserStatus.ACTIVE);
         saveProfile(activeUser, marker + " Name 50%_off=now", true);
         saveProfile(blockedUser, marker + " Blocked", false);
         saveProfile(admin, marker + " Admin", true);
@@ -61,10 +60,6 @@ class AdminUserRepositoryIntegrationTest {
                 marker.toLowerCase() + "alpha@example.com", null, PageRequest.of(0, 20)).getContent())
                 .extracting(AdminUserListProjection::getUserId)
                 .containsExactly(activeUser.getId());
-        assertThat(adminUserRepository.findManagedUsers(
-                phonePrefix + "02", null, PageRequest.of(0, 20)).getContent())
-                .extracting(AdminUserListProjection::getUserId)
-                .containsExactly(blockedUser.getId());
         assertThat(adminUserRepository.findManagedUsers(
                 marker.toUpperCase() + " NAME", null, PageRequest.of(0, 20)).getContent())
                 .extracting(AdminUserListProjection::getUserId)
@@ -109,7 +104,7 @@ class AdminUserRepositoryIntegrationTest {
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
     }
 
-    private User saveUser(String email, String phoneNumber, UserRole role, UserStatus status) {
+    private User saveUser(String email, UserRole role, UserStatus status) {
         User user = new User(email, "hash");
         user.setRole(role);
         user.setStatus(status);

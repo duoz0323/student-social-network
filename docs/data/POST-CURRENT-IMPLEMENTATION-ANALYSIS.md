@@ -1,7 +1,7 @@
 # Phân tích code hiện tại của module Post
 
 > Mục tiêu: mô tả chính xác code hiện tại đã triển khai được gì.  
-> Ngày rà soát: 2026-07-24.  
+> Ngày rà soát gần nhất: 2026-07-29.
 > Đây là báo cáo implementation, không phải bản thiết kế nghiệp vụ đích.
 
 ## 1. Kết luận nhanh
@@ -22,13 +22,11 @@ Module Post hiện tại không còn ở mức CRUD cơ bản. Backend đã tri�
 - Admin xem, ẩn/khôi phục bài và xử lý report.
 - Trigger MySQL tự đồng bộ số Like, Comment và số bài của hashtag.
 
-Tuy nhiên module chưa hoàn chỉnh end-to-end:
+Feed For You/Following, Profile Posts, Saved/Liked và Search hiện đã có read-side tương ứng. Location P1 cũng đã được tích hợp end-to-end:
 
-- Chưa có Backend Feed For You/Following.
-- Chưa có API Backend lấy danh sách Post theo Profile.
-- Frontend Profile vẫn đọc mock data.
-- Frontend Post Detail đã gọi API thật nhưng PostCard trong các danh sách vẫn dựa trên state mock/hỗn hợp.
-- Chưa tìm thấy DBML.
+- Nghiệp vụ và API contract Location đã được đồng bộ trong tài liệu.
+- SQL baseline, DBML, migration thủ công, Entity/Repository và mapping `Post.location` đã hoàn tất.
+- Resolver, create/update API, mọi Post response, Admin Post Detail và Frontend Google Places picker đã được triển khai và kiểm thử.
 
 ## 2. Phạm vi code đã rà soát
 
@@ -233,7 +231,7 @@ Ràng buộc database:
 - Video duration từ 1 đến 180 giây.
 - File size phải lớn hơn 0.
 
-Điểm cần lưu ý: đây là chức năng code hiện tại đã có, dù README hiện chỉ mô tả ảnh.
+Điểm cần lưu ý: chức năng ảnh/video này hiện đã được đồng bộ vào README và contract Post.
 
 ## 7. Hashtag hiện tại
 
@@ -306,7 +304,7 @@ Implementation hiện cho phép:
 - Upload media mới.
 - Đánh lại `display_order`.
 
-Đây là implementation thực tế, dù tài liệu UI hiện nói không sửa ảnh sau khi đăng.
+Đây là implementation đã được tài liệu nghiệp vụ và UI công nhận: tác giả có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới trong giới hạn chỉnh sửa Post.
 
 ### 9.3. Cleanup Cloudinary
 
@@ -555,7 +553,7 @@ Hai view chỉ lọc Post/tác giả hợp lệ; chưa chứa logic Following ho
 
 ### Thiếu
 
-- Không tìm thấy file DBML để đối chiếu SQL.
+- SQL và DBML đã đồng bộ `locations`, `posts.location_id`, unique Google Place ID, index và khóa ngoại `ON DELETE SET NULL`. Migration thủ công `V001__add_post_locations.sql` dành cho database hiện hữu và không tự chạy lúc Backend khởi động.
 
 ## 19. Frontend hiện đã tích hợp API thật đến đâu
 
@@ -573,22 +571,13 @@ Hai view chỉ lọc Post/tác giả hợp lệ; chưa chứa logic Following ho
 | Tạo/xóa comment | Gọi API thật |
 | Search Post | Gọi API thật |
 | Admin Post/Report | Gọi API thật |
-| Feed For You/Following | Dùng mock/AppContext |
-| Profile Post list | Dùng mock/AppContext |
+| Feed For You/Following | Gọi API thật, Cursor Pagination |
+| Profile Post list | Gọi API thật, Cursor Pagination |
 | Saved Post list | Gọi API thật |
+| Liked Post list | Gọi API thật |
+| Location trên Post | Đã tích hợp create/edit/PostCard bằng Google Places |
 
-`AppContext` đang là lớp trung gian hỗn hợp:
-
-- Khởi tạo bằng `initialData`.
-- Các mutation gọi Backend thật.
-- Sau mutation, cập nhật lại state mock tại Client.
-- Các màn hình chưa có GET endpoint tiếp tục đọc state này.
-
-Hệ quả:
-
-- Refresh trang có thể làm mất thay đổi chỉ tồn tại trong state Client ở các list mock.
-- Post vừa tạo có thể xuất hiện trong local state, nhưng dữ liệu Feed thật chưa được tải lại từ Backend.
-- Viewer liked/saved có thể lệch nếu state mock ban đầu khác database.
+Các danh sách Post chính đều trả `location` object hoặc `null`; Frontend giữ shape này qua view mapper và PostCard dùng Place ID để mở Google Maps.
 
 ## 20. Chi tiết Frontend Post UI
 
@@ -667,8 +656,8 @@ Cần tiếp tục kiểm tra/tích hợp sâu hơn viewer state, reply paginati
 Nhận xét:
 
 - Coverage unit/controller/repository của các luồng đã làm khá rộng.
-- Chưa thấy test Feed vì chưa có module Feed.
-- Đã có controller test cho API Saved list; Profile Post list vẫn chưa có endpoint/test tương ứng.
+- Đã có test cho Feed Cursor, Profile Posts, Saved và Liked list.
+- Đã có test metadata JPA, repository contract và source contract SQL/DBML/migration. MySQL integration test có điều kiện và chỉ chạy khi cấu hình database test riêng.
 - Có MySQL integration test ở một số repository, nhưng không phải toàn bộ luồng Post end-to-end.
 
 ## 22. Những phần đã hoàn thành tương đối tốt
@@ -695,33 +684,30 @@ Nhận xét:
 | PostCard data model | Mapper ở Client, nhiều response gần nhau | Một contract thống nhất cho Feed/Profile/Search/Saved/Detail |
 | Viewer state | Owner, Like/Save response | Detail/list response đồng bộ liked/saved |
 | Saved Posts | Save/Unsave, GET list Backend và tích hợp Frontend | Bổ sung kiểm thử tích hợp MySQL end-to-end nếu cần |
-| Profile Posts | UI list | GET list Backend và pagination |
-| Feed | UI và SQL view nền | Backend service/controller/ranking/pagination |
+| Profile Posts | Backend/Frontend dùng Cursor Pagination và trả Location | Bổ sung kiểm thử MySQL end-to-end nếu cần |
+| Feed | Backend/Frontend dùng Cursor Pagination và batch-load Location | Bổ sung đo query trên dữ liệu production-like nếu cần |
 | Comment Reply | Backend endpoint | UI flow đầy đủ và xác nhận phạm vi P2 |
 | Media cleanup | Cleanup theo request/transaction | Retry/job cho cleanup thất bại và Post deleted |
 | Hashtag counter | Trigger | Semantics với Post hidden/deleted |
 
 ## 24. Những phần chưa làm
 
-1. Backend Feed For You.
-2. Backend Feed Following.
-3. Backend Profile Posts list.
-4. Load Feed từ API thật trên Frontend.
-5. Load Profile posts từ API thật.
-6. DBML.
-7. Chính sách xóa vật lý Post/media.
-8. Reconciliation job cho counter hoặc file Cloudinary mồ côi.
+1. Áp dụng và xác minh migration Location trên MySQL test/local/Aiven phù hợp; migration không tự chạy.
+2. Kiểm thử Google Places thật sau khi cấu hình API key giới hạn referrer cho từng môi trường.
+3. Chính sách xóa vật lý Post/media.
+4. Reconciliation job cho counter hoặc file Cloudinary mồ côi.
 
 ## 25. Các chênh lệch quan trọng giữa code hiện tại và README
 
 | Nội dung | Code hiện tại | README hiện tại |
 |---|---|---|
-| Media | Ảnh và video | Tối đa 4 ảnh |
-| Edit media | Cho thêm, xóa, giữ và sắp lại | Không mô tả; UI docs nói không sửa ảnh |
+| Media | Ảnh và video | Tối đa 4 media, tối đa một video |
+| Edit media | Cho thêm, xóa và giữ media trong giới hạn | Đã mô tả cùng contract update Post |
 | Reply comment | Đã có Backend | P2 |
-| Feed | Chưa có Backend | P0 |
+| Feed | Đã có Backend và Frontend dùng Cursor Pagination, có Location | P0 và Location P1 đã triển khai |
 | Saved list | Đã có Backend và tích hợp Frontend | P1 |
 | Hashtag | Service một hashtag | README một hashtag; một số docs cũ nhiều hashtag |
+| Location | Database/JPA/API/Frontend đã tích hợp và test | P1; Location 1–N Post, optional, update KEEP/REPLACE/REMOVE |
 
 Báo cáo này chỉ ghi nhận code đã làm. Khi sửa production code vẫn phải ưu tiên quyết định trong README hoặc quyết định mới của người dùng.
 
@@ -729,13 +715,14 @@ Báo cáo này chỉ ghi nhận code đã làm. Khi sửa production code vẫn 
 
 ### Cao
 
-- Feed/Profile chưa tích hợp đầy đủ API nên demo có thể hiển thị dữ liệu khác database.
-- Frontend dùng state mock kết hợp mutation thật, dễ lệch sau refresh hoặc đăng nhập user khác.
-- Video và edit-media đang vượt contract README, có thể phải rollback/refactor.
+- Migration Location chưa được chạy tự động trên database thật; cần áp dụng thủ công có kiểm soát trước deploy.
+- Google Maps API key phía Frontend cần được giới hạn referrer và chỉ bật API cần thiết.
+- Frontend chưa có framework component test để tự động hóa tương tác DOM của bộ chọn hashtag và trình sửa media.
 
 ### Trung bình
 
 - Post response chưa thống nhất viewer state.
+- MySQL integration test Location/concurrency bị skip khi không có cấu hình database test riêng.
 - `post_count` hashtag vẫn tính Post hidden/deleted.
 - Cleanup Cloudinary thất bại chỉ warning, chưa có retry.
 - Schema `post_hashtags` không tự enforce tối đa một hashtag/Post.
@@ -746,19 +733,11 @@ Báo cáo này chỉ ghi nhận code đã làm. Khi sửa production code vẫn 
 - Một số UI option ngoài MVP vẫn xuất hiện nhưng chưa có hành vi Backend.
 - API tài liệu cũ dùng path/method khác source hiện tại.
 
-## 27. Thứ tự phát triển tiếp theo hợp lý
+## 27. Bước vận hành tiếp theo
 
-Nếu mục tiêu là hoàn thiện module Post hiện tại:
-
-1. Chốt lại ảnh-only hay giữ video.
-2. Chốt có được sửa media hay không.
-3. Thống nhất PostCard response và viewer state.
-4. Tạo API Profile Posts.
-5. Tạo Feed Following.
-6. Tạo Feed For You.
-7. Thay mock data ở Feed/Profile bằng API thật.
-8. Bổ sung integration test và pagination test.
-9. Đồng bộ README, API contract, SQL và DBML theo quyết định đã chốt.
+1. Áp dụng migration và chạy MySQL integration test trên database test riêng để xác minh constraint thật.
+2. Cấu hình API key Google Maps theo môi trường và kiểm thử Places thật trên localhost.
+3. Chạy smoke test create/update/feed/search/admin trước khi deploy.
 
 ## 28. Trạng thái tổng hợp
 
@@ -771,21 +750,22 @@ Nếu mục tiêu là hoàn thiện module Post hiện tại:
 | Post Detail | Cao |
 | Search Post | Cao |
 | Report/Admin moderation | Cao |
-| Feed | Thấp |
-| Profile Post list | Thấp |
+| Feed | Cao |
+| Profile Post list | Cao |
 | Saved Post list | Cao |
 | Frontend end-to-end consistency | Trung bình |
-| Database documentation | Thiếu DBML |
+| Database documentation | SQL, DBML và migration thủ công Location đã đồng bộ |
+| Location trên Post | IMPLEMENTED, TESTED và INTEGRATED; integration Google/MySQL thật phụ thuộc cấu hình môi trường |
 
 ## 29. Kết luận
 
-Code hiện tại đã hoàn thành phần lớn write-side của module Post và các luồng phụ như interaction, report, moderation. Saved Posts đã có read-side phân trang và tích hợp Frontend; phần còn thiếu chủ yếu nằm ở các read-side tổng hợp khác như Feed và Profile Posts.
+Code hiện tại đã có write-side, các read-side chính và Location P1 tích hợp từ database tới Frontend.
 
 Nói ngắn gọn:
 
 ```text
 Tạo/sửa/xóa/tương tác/report/admin: đã có Backend và phần lớn đã nối Frontend.
 
-Saved list: đã đọc dữ liệu thật từ Backend.
-Feed/Profile list: UI đã có nhưng dữ liệu vẫn chưa đồng bộ hoàn chỉnh.
+Feed/Profile/Saved/Liked/Search: đã có read-side Backend tương ứng.
+Location: Database/JPA/API/Frontend đã triển khai; Discovery Map vẫn FUTURE.
 ```

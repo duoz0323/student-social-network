@@ -1,8 +1,11 @@
 import Modal from './Modal.jsx';
 import Avatar from './Avatar.jsx';
+import { getUnfollowTargetLabel } from '../../utils/followUtils.js';
 
-export default function UnfollowConfirmModal({ open, user, onClose, onConfirm }) {
+export default function UnfollowConfirmModal({ open, user, onClose, onConfirm, submitting = false }) {
   if (!user) return null;
+
+  const targetLabel = getUnfollowTargetLabel(user);
 
   return (
     <Modal
@@ -17,14 +20,16 @@ export default function UnfollowConfirmModal({ open, user, onClose, onConfirm })
           <button
             className="flex-1 py-3.5 text-[15px] text-[var(--app-text)] font-normal border-r border-[var(--app-border)] hover:bg-[var(--app-surface-soft)] transition rounded-bl-[16px]"
             onClick={onClose}
+            disabled={submitting}
           >
             Hủy
           </button>
           <button
             className="flex-1 py-3.5 text-[15px] font-bold text-red-500 hover:bg-red-500/10 transition rounded-br-[16px]"
             onClick={onConfirm}
+            disabled={submitting}
           >
-            Bỏ theo dõi
+            {submitting ? 'Đang xử lý...' : 'Bỏ theo dõi'}
           </button>
         </div>
       }
@@ -39,7 +44,7 @@ export default function UnfollowConfirmModal({ open, user, onClose, onConfirm })
           className="!w-20 !h-20 mb-5"
         />
         <h3 className="text-[15px] text-[var(--app-text)] px-2 leading-relaxed font-normal">
-          Bỏ theo dõi {user.email ? user.email.split('@')[0] : `user${user.id.slice(-4)}`}?
+          Bỏ theo dõi {targetLabel}?
         </h3>
       </div>
     </Modal>

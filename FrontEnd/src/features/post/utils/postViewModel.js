@@ -16,6 +16,21 @@ export function toPostView(post = {}) {
   };
 }
 
+/**
+ * Tạo snapshot chỉnh sửa từ Post Detail để form không dùng dữ liệu rút gọn hoặc đã cũ của danh sách.
+ * Danh sách ID media là trạng thái ban đầu để form có thể giữ hoặc gỡ từng media khi cập nhật.
+ */
+export function toPostEditDraft(postDetail = {}) {
+  const post = toPostView(postDetail);
+  return {
+    post,
+    content: post.content ?? '',
+    hashtag: post.hashtag ?? post.hashtags?.[0] ?? '',
+    location: post.location ?? null,
+    keepMediaIds: (post.media ?? []).map((item) => item.id),
+  };
+}
+
 /** Tạo và sao chép permalink của bài viết tại một điểm duy nhất. */
 export function copyPostLink(postId) {
   const url = new URL(`/posts/${encodeURIComponent(postId)}`, window.location.origin).toString();

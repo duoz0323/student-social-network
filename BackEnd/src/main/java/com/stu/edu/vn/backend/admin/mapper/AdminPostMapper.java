@@ -12,6 +12,7 @@ import com.stu.edu.vn.backend.admin.repository.projection.AdminPostMediaProjecti
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.post.dto.response.PostLocationResponse;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -40,7 +41,7 @@ public class AdminPostMapper {
             List<AdminPostMediaProjection> media, String hashtag) {
         AdminPostAuthorResponse author = new AdminPostAuthorResponse(source.getAuthorId(),
                 source.getAuthorDisplayName(), source.getAuthorAvatarUrl(), source.getAuthorEmail(),
-                source.getAuthorPhoneNumber(), UserStatus.valueOf(source.getAuthorAccountStatus()));
+                UserStatus.valueOf(source.getAuthorAccountStatus()));
         AdminPostHiddenByResponse hiddenBy = source.getHiddenByAdminId() == null ? null
                 : new AdminPostHiddenByResponse(source.getHiddenByAdminId(), source.getHiddenByDisplayName());
 
@@ -52,10 +53,13 @@ public class AdminPostMapper {
                         item.getMimeType(), item.getDurationSeconds(),
                         item.getThumbnailUrl(), item.getSortOrder()))
                 .toList();
+        PostLocationResponse location = source.getLocationId() == null ? null : new PostLocationResponse(
+                source.getLocationId(), source.getPlaceId(), source.getLocationDisplayName(),
+                source.getLocationFormattedAddress(), source.getLocationLatitude(), source.getLocationLongitude());
         return new AdminPostDetailResponse(source.getPostId(), source.getContent(),
                 PostStatus.valueOf(source.getStatus()), author, mediaResponses, hashtag,
                 source.getLikeCount(), source.getCommentCount(), source.getPendingReportCount(),
                 source.getTotalReportCount(), source.getHiddenAt(), source.getHiddenReason(), hiddenBy,
-                source.getDeletedAt(), source.getCreatedAt(), source.getUpdatedAt());
+                source.getDeletedAt(), source.getCreatedAt(), source.getUpdatedAt(), location);
     }
 }

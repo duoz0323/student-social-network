@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 public class TimeConfig {
     @Bean
     public Clock clock() {
-        return Clock.systemDefaultZone();
+        // Timestamp MySQL/API của dự án dùng UTC; không phụ thuộc múi giờ máy chạy Backend.
+        return Clock.systemUTC();
     }
 }

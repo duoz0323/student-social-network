@@ -4,8 +4,10 @@ import { adminApi } from '../../../api/index.js';
 import Button from '../../../components/common/Button.jsx';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
+import { useAdminToast } from '../hooks/useAdminToast.js';
 
 export default function AdminPostsPage() {
+  const { showToast } = useAdminToast();
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -35,10 +37,15 @@ export default function AdminPostsPage() {
 
   async function changeStatus(post) {
     try {
-      if (post.status === 'HIDDEN') await adminApi.restorePost(post.postId);
+      const restoring = post.status === 'HIDDEN';
+      if (restoring) await adminApi.restorePost(post.postId);
       else await adminApi.hidePost(post.postId, 'OTHER');
       await load();
-    } catch (requestError) { setError(requestError.message); }
+      showToast(restoring ? 'Khôi phục bài viết thành công!' : 'Ẩn bài viết thành công!');
+    } catch (requestError) {
+      setError(requestError.message);
+      showToast(requestError.message || 'Không thể cập nhật trạng thái bài viết.', { type: 'error' });
+    }
   }
 
   return (

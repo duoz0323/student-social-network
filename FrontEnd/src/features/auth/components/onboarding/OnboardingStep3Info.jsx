@@ -25,7 +25,7 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
         <h3 className="text-xl font-bold text-gray-900 mb-2">
           Thêm thông tin cá nhân
         </h3>
-        <p className="text-base text-gray-500">
+        <p className="text-base !text-black">
           Ngày sinh bắt buộc — bạn phải đủ 18 tuổi để tham gia UniShare.
         </p>
       </div>
@@ -45,14 +45,10 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
             value={displayDate}
             maxLength={10}
             onChange={handleDateChange}
-            className={inputCls + ' h-12 text-base'}
+            className={inputCls + ' h-12 text-base !text-black'}
             aria-label="Ngày sinh theo định dạng ngày tháng năm"
           />
-          {dateOfBirth && (
-            <p className="mt-2 text-sm text-gray-400">
-              Ngày sinh sẽ không hiển thị công khai.
-            </p>
-          )}
+          
         </div>
 
         {/* Bio – tùy chọn */}
@@ -69,7 +65,7 @@ export default function OnboardingStep3Info({ dateOfBirth, bio, onDateChange, on
             placeholder="Bạn học ngành gì? Sở thích? Câu lạc bộ?..."
             rows={2}
             maxLength={300}
-            className={inputCls + ' py-3 text-base resize-none custom-scrollbar-with-arrows'}
+            className={inputCls + ' py-3 text-base resize-none custom-scrollbar-with-arrows !text-black'}
           />
           <p className={`text-right text-xs mt-2 ${bio.length > 260 ? 'text-amber-500' : 'text-gray-400'}`}>
             {bio.length}/300

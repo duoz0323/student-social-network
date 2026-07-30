@@ -74,19 +74,24 @@ public interface AdminPostRepository extends Repository<Post, Long> {
             SELECT p.id AS postId, p.content AS content, p.status AS status,
                    a.id AS authorId, ap.display_name AS authorDisplayName,
                    ap.avatar_url AS authorAvatarUrl, a.email AS authorEmail,
-                   a.phone_number AS authorPhoneNumber, a.status AS authorAccountStatus,
+                   a.status AS authorAccountStatus,
                    p.like_count AS likeCount, p.comment_count AS commentCount,
                    (SELECT COUNT(*) FROM reports pr
                     WHERE pr.post_id = p.id AND pr.status = 'PENDING') AS pendingReportCount,
                    (SELECT COUNT(*) FROM reports tr WHERE tr.post_id = p.id) AS totalReportCount,
                    p.hidden_at AS hiddenAt, p.hidden_reason AS hiddenReason,
                    p.hidden_by AS hiddenByAdminId, hp.display_name AS hiddenByDisplayName,
-                   p.deleted_at AS deletedAt, p.created_at AS createdAt, p.updated_at AS updatedAt
+                   p.deleted_at AS deletedAt, p.created_at AS createdAt, p.updated_at AS updatedAt,
+                   l.id AS locationId, l.google_place_id AS placeId,
+                   l.display_name AS locationDisplayName,
+                   l.formatted_address AS locationFormattedAddress,
+                   l.latitude AS locationLatitude, l.longitude AS locationLongitude
             FROM posts p
             JOIN users a ON a.id = p.author_id
             LEFT JOIN user_profiles ap ON ap.user_id = a.id
             LEFT JOIN users ha ON ha.id = p.hidden_by
             LEFT JOIN user_profiles hp ON hp.user_id = ha.id
+            LEFT JOIN locations l ON l.id = p.location_id
             WHERE p.id = :postId
             """, nativeQuery = true)
     Optional<AdminPostDetailProjection> findAdminPostDetail(@Param("postId") Long postId);

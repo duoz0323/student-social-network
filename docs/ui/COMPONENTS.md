@@ -55,13 +55,15 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `PostCard` | Hiển thị bài viết trong feed, profile, saved, liked và search. | FEED-01, PROFILE-01/02, POST-07, LIKED-01, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
+| `PostCard` | Hiển thị bài viết và Location tùy chọn trong feed, profile, saved, liked và search. | FEED-01, PROFILE-01/02, POST-07, LIKED-01, SEARCH-01 nếu có kết quả bài. | `post` gồm `location` object hoặc `null`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
 | `InfinitePostList` | Tải nối tiếp PostCard bằng cursor và quản lý loading/empty/end state. | Feed, profile, saved, liked. | `loadPage(cursor)`, `initialItems`, `hasNext`, `onItemsChange`. | Dùng chung cho năm danh sách bài Cursor Pagination. |
 | `PostAuthor` | Hiển thị tác giả bài viết bằng displayName và avatar. | FEED-01, POST-01, PROFILE-01/02, POST-07. | `authorId` hoặc `user`, `onOpenProfile`. Điều hướng bằng `/profile/:userId`. | Dùng chung module post/profile. |
 | `PostDetail` | Hiển thị bài viết đầy đủ và khu vực bình luận. | POST-01. | `post`, `comments`, `currentUser`, action callbacks. | Module post. |
-| `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxImages`, `submitting`, `onSubmit`. | Module post. |
-| `EditPostForm` | Sửa nội dung và hashtag của bài đã đăng. | POST-03. | `post`, `maxLength`, `submitting`, `onSave`, `onCancel`. | Module post. |
-| `PostActionMenu` | Menu hành động theo quyền với bài viết. | POST-04, PostCard. | `post`, `isOwner`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Module post. |
+| `PostComposer` | Tạo bài viết mới với media, hashtag gợi ý và một Location tùy chọn. | FEED-01, POST-02. | `currentUser`, `draft`, `media`, `hashtag`, `location`, `submitting`, `onSubmit`. | Dùng chung `PostHashtagPicker`; đã tích hợp Location picker. |
+| Form edit trong `PostCard` | Gọi Post Detail trước khi hiển thị; quản lý loading/error/submitting; sửa nội dung, media, hashtag và Location. | POST-03. | Post Detail snapshot, draft, `keepMediaIds`, `newMediaFiles`, Location, `onSave`, `onCancel`, `onRetry`. | Dùng chung `PostHashtagPicker`; cho giữ/gỡ/thêm media hợp lệ; Backend quyết định quyền và thời hạn. |
+| `PostHashtagPicker` | Tìm hashtag có sẵn, hiển thị gợi ý bên dưới và cho chọn hoặc tạo hashtag mới. | POST-02, POST-03. | `value`, `disabled`, `onChange`. | Dùng chung cho tạo và sửa Post; debounce API gợi ý 250 ms. |
+| `EditPostMedia` | Hiển thị media hiện tại và cho giữ/gỡ/thêm ảnh hoặc video khi sửa Post. | POST-03. | `media`, `disabled`, `onChange`, `onBusyChange`. | Gửi `keepMediaIds` và `newMediaFiles`; validation Frontend chỉ hỗ trợ UX. |
+| `PostActionMenu` | Menu hành động theo quyền; hành động sửa hiển thị countdown 15 phút và tự ẩn khi hết hạn. | POST-04, PostCard. | `post`, `isOwner`, `editRemainingSeconds`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Frontend hỗ trợ UX; Backend vẫn kiểm tra deadline bằng UTC. |
 | `DeletePostDialog` | Xác nhận xóa mềm bài viết. | POST-05. | `post`, `submitting`, `onConfirm`, `onCancel`. | Module post. |
 | `ReportPostFlow` | Gom các bước chọn lý do, nhập mô tả và gửi báo cáo. | POST-08, POST-09, POST-10. | `post`, `reasons`, `selectedReason`, `description`, `submitting`, `onSubmit`. | Module report/post. |
 | `CommentList` | Hiển thị danh sách bình luận và thao tác xóa của chủ bình luận. | POST-01. | `comments`, `currentUser`, `onDeleteComment`. | Module post. |

@@ -14,6 +14,9 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.post.dto.request.CreatePostRequest;
 import com.stu.edu.vn.backend.post.dto.request.UpdatePostRequest;
+import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
+import com.stu.edu.vn.backend.post.enums.LocationAction;
+import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.post.dto.response.DeletePostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostResponse;
 import com.stu.edu.vn.backend.post.entity.Hashtag;
@@ -30,6 +33,8 @@ import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.post.validation.PostImageFileValidator;
 import com.stu.edu.vn.backend.post.validation.PostValidationSupport;
+import com.stu.edu.vn.backend.post.validation.PostLocationValidator;
+import com.stu.edu.vn.backend.location.service.LocationResolver;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.storage.CloudinaryStorageService;
 import com.stu.edu.vn.backend.storage.CloudinaryUploadResult;
@@ -43,6 +48,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -71,6 +77,7 @@ class PostServiceImplTest {
     private final CloudinaryStorageService cloudinaryStorageService = org.mockito.Mockito.mock(CloudinaryStorageService.class);
     private final TransactionTemplate transactionTemplate = org.mockito.Mockito.mock(TransactionTemplate.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final LocationResolver locationResolver = org.mockito.Mockito.mock(LocationResolver.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
 
     private final AtomicLong postIds = new AtomicLong(100);
@@ -91,6 +98,8 @@ class PostServiceImplTest {
                 new PostValidationSupport(),
                 new PostImageFileValidator(),
                 new HashtagNormalizer(),
+                new PostLocationValidator(),
+                locationResolver,
                 cloudinaryStorageService,
                 Mappers.getMapper(PostMapper.class),
                 transactionTemplate,
@@ -127,6 +136,21 @@ class PostServiceImplTest {
         assertThat(response.author().id()).isEqualTo(10L);
         assertThat(response.media()).isEmpty();
         assertThat(response.hashtag()).isNull();
+    }
+
+    @Test
+    void createPostResolvesLocationInsideDatabaseTransactionAndReturnsIt() {
+        PostLocationRequest requestLocation = locationRequest("ChIJ-id");
+        Location location = location("ChIJ-id", "Đại học STU", 501L);
+        when(locationResolver.resolve(any(PostLocationRequest.class))).thenReturn(location);
+
+        PostResponse response = postService.createPost(
+                new CreatePostRequest("Nội dung", null, null, requestLocation));
+
+        ArgumentCaptor<Post> postCaptor = ArgumentCaptor.forClass(Post.class);
+        verify(postRepository).saveAndFlush(postCaptor.capture());
+        assertThat(postCaptor.getValue().getLocation()).isSameAs(location);
+        assertThat(response.location().placeId()).isEqualTo("ChIJ-id");
     }
 
     @Test
@@ -491,6 +515,36 @@ class PostServiceImplTest {
     }
 
     @Test
+    void updatePostDefaultsLocationActionToKeep() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        Location current = location("ChIJ-old", "Địa điểm cũ", 501L);
+        post.setLocation(current);
+        prepareSimpleUpdate(post, List.of());
+
+        postService.updatePost(1L, new UpdatePostRequest("Nội dung mới", null, null, null));
+
+        assertThat(post.getLocation()).isSameAs(current);
+        verify(locationResolver, never()).resolve(any());
+    }
+
+    @Test
+    void updatePostReplacesAndRemovesLocationWithoutDeletingSharedRow() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        post.setLocation(location("ChIJ-old", "Địa điểm cũ", 501L));
+        Location replacement = location("ChIJ-new", "Địa điểm mới", 502L);
+        when(locationResolver.resolve(any(PostLocationRequest.class))).thenReturn(replacement);
+        prepareSimpleUpdate(post, List.of());
+
+        postService.updatePost(1L, new UpdatePostRequest("Nội dung mới", null, null, null,
+                LocationAction.REPLACE, locationRequest("ChIJ-new")));
+        assertThat(post.getLocation()).isSameAs(replacement);
+
+        postService.updatePost(1L, new UpdatePostRequest("Nội dung mới lần hai", null, null, null,
+                LocationAction.REMOVE, null));
+        assertThat(post.getLocation()).isNull();
+    }
+
+    @Test
     void getPostDetailFailsWhenLegacyDataHasMultipleHashtags() {
         User author = user(10L);
         Post post = existingPost(1L, author, completedProfile(10L));
@@ -524,6 +578,29 @@ class PostServiceImplTest {
         when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.updatePost(1L, new UpdatePostRequest("Moi", null, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_EDIT_TIME_EXPIRED);
+    }
+
+    @Test
+    void updatePostAllowsEditThreeMinutesAfterPublished() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        ReflectionTestUtils.setField(post, "publishedAt", LocalDateTime.of(2026, 7, 3, 1, 7));
+        prepareSimpleUpdate(post, List.of());
+
+        var response = postService.updatePost(1L, new UpdatePostRequest("Nội dung sau ba phút", null, null, null));
+
+        assertThat(response.content()).isEqualTo("Nội dung sau ba phút");
+    }
+
+    @Test
+    void updatePostRejectsAtExactFifteenMinuteDeadline() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        ReflectionTestUtils.setField(post, "publishedAt", LocalDateTime.of(2026, 7, 3, 0, 55));
+        when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.updatePost(1L, new UpdatePostRequest("Mới", null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.POST_EDIT_TIME_EXPIRED);
@@ -633,6 +710,18 @@ class PostServiceImplTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.of(2026, 7, 3, 1, 0));
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.of(2026, 7, 3, 1, 0));
         return post;
+    }
+
+    private PostLocationRequest locationRequest(String placeId) {
+        return new PostLocationRequest(placeId, "Đại học STU", null,
+                BigDecimal.valueOf(10.7382456), BigDecimal.valueOf(106.6778123));
+    }
+
+    private Location location(String placeId, String displayName, Long id) {
+        Location location = new Location(placeId, displayName, null,
+                BigDecimal.valueOf(10.7382456), BigDecimal.valueOf(106.6778123));
+        ReflectionTestUtils.setField(location, "id", id);
+        return location;
     }
 
     private void prepareSimpleUpdate(Post post, List<PostHashtag> currentHashtags) {

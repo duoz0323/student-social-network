@@ -15,6 +15,7 @@ Project student_social_network {
 Enum admin_actions_action_type_enum {
   BLOCK_USER
   UNBLOCK_USER
+  UPDATE_USER_PROFILE
   HIDE_POST
   RESTORE_POST
   RESOLVE_REPORT
@@ -379,9 +380,27 @@ Table post_media {
   Note: "chk_post_media_display_order: CHECK ((`display_order` <= 3)) | chk_post_media_duration: CHECK ((((`media_type` = _utf8mb4'IMAGE') and (`duration_seconds` is null)) or ((`media_type` = _utf8mb4'VIDEO') and (`duration_seconds` between 1 and 180)))) | chk_post_media_file_size: CHECK ((`file_size_bytes` > 0))"
 }
 
+Table locations {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  google_place_id varchar(255) [not null]
+  display_name varchar(255) [not null]
+  formatted_address varchar(500)
+  latitude decimal(10,7) [not null]
+  longitude decimal(10,7) [not null]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (google_place_id) [unique, name: "uk_locations_google_place_id"]
+  }
+
+  Note: "chk_locations_latitude: CHECK ((`latitude` between -(90) and 90)) | chk_locations_longitude: CHECK ((`longitude` between -(180) and 180))"
+}
+
 Table posts {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   author_id bigint [not null, note: "UNSIGNED"]
+  location_id bigint [note: "UNSIGNED"]
   content varchar(500)
   status posts_status_enum [not null, default: 'PUBLISHED']
   is_edited tinyint(1) [not null, default: '0']
@@ -397,6 +416,7 @@ Table posts {
 
   Indexes {
     (hidden_by) [name: "fk_posts_hidden_by"]
+    (location_id) [name: "idx_posts_location_id"]
     (author_id, status, published_at, id) [name: "idx_posts_author_status_published"]
     (status, published_at, id) [name: "idx_posts_status_published"]
     (status, like_count, comment_count, published_at, id) [name: "idx_posts_status_engagement"]
@@ -568,6 +588,7 @@ Ref fk_post_likes_user: post_likes.user_id > users.id [delete: cascade, update: 
 Ref fk_post_media_post: post_media.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_posts_author: posts.author_id > users.id [delete: restrict, update: restrict]
 Ref fk_posts_hidden_by: posts.hidden_by > users.id [delete: restrict, update: restrict]
+Ref fk_posts_location: posts.location_id > locations.id [delete: set null, update: restrict]
 Ref fk_refresh_tokens_user: refresh_tokens.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_reports_post: reports.post_id > posts.id [delete: restrict, update: restrict]
 Ref fk_reports_reporter: reports.reporter_id > users.id [delete: restrict, update: restrict]

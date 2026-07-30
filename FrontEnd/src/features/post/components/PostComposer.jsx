@@ -4,7 +4,9 @@ import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
-import { postApi } from '../../../api/index.js';
+import PostHashtagPicker from './PostHashtagPicker.jsx';
+import LocationPicker from '../locations/LocationPicker.jsx';
+import SelectedLocation from '../locations/SelectedLocation.jsx';
 
 function MediaToolIcon() {
   return (
@@ -31,12 +33,9 @@ export default function PostComposer({ mode, onClose }) {
   const { createPost, currentUser } = useApp();
   const [content, setContent] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
-  const [topicQuery, setTopicQuery] = useState('');
-  const [topicPickerOpen, setTopicPickerOpen] = useState(false);
-  const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
-  const [topicSearchResult, setTopicSearchResult] = useState(null);
-  const [topicSearching, setTopicSearching] = useState(false);
   const [mediaPreviews, setMediaPreviews] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -56,38 +55,15 @@ export default function PostComposer({ mode, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showOptions]);
 
-  useEffect(() => {
-    const keyword = topicQuery.trim();
-    if (!keyword) return undefined;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      setTopicSearching(true);
-      postApi.suggestHashtags(keyword, controller.signal)
-        .then((response) => {
-          setTopicSearchResult(response);
-          setHashtagSuggestions(response.suggestions ?? []);
-        })
-        .catch(() => {
-          setTopicSearchResult(null);
-          setHashtagSuggestions([]);
-        })
-        .finally(() => setTopicSearching(false));
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [topicQuery]);
-
   function resetForm(revokePreview = true) {
     setContent('');
     setSelectedTopic(null);
-    setTopicQuery('');
-    setTopicPickerOpen(false);
-    setHashtagSuggestions([]);
-    setTopicSearchResult(null);
-    setTopicSearching(false);
     if (revokePreview) {
       mediaPreviews.forEach((item) => URL.revokeObjectURL(item.url));
     }
     setMediaPreviews([]);
+    setSelectedLocation(null);
+    setLocationPickerOpen(false);
     setError('');
     setShowOptions(false);
   }
@@ -104,6 +80,7 @@ export default function PostComposer({ mode, onClose }) {
         content,
         hashtag: selectedTopic?.name ?? null,
         mediaFiles: mediaPreviews.map((item) => item.file),
+        location: selectedLocation,
       });
       if (!result.ok) {
         setError(result.message);
@@ -188,35 +165,6 @@ export default function PostComposer({ mode, onClose }) {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }
-
-  function openTopicPicker() {
-    setTopicQuery(selectedTopic?.name ?? '');
-    setTopicSearchResult(null);
-    setHashtagSuggestions([]);
-    setTopicPickerOpen(true);
-  }
-
-  function changeTopicQuery(event) {
-    setTopicQuery(event.target.value);
-    setTopicSearchResult(null);
-    setHashtagSuggestions([]);
-  }
-
-  function selectTopic(name, isNew = false) {
-    // Backend vẫn chuẩn hóa và quyết định tạo mới trong transaction của bài viết.
-    setSelectedTopic({ name, isNew });
-    setTopicQuery('');
-    setTopicPickerOpen(false);
-    setTopicSearchResult(null);
-    setHashtagSuggestions([]);
-  }
-
-  function removeSelectedTopic() {
-    setSelectedTopic(null);
-    setTopicQuery('');
-    setTopicSearchResult(null);
-    setHashtagSuggestions([]);
   }
 
   if (!mode) return null;
@@ -305,6 +253,9 @@ export default function PostComposer({ mode, onClose }) {
           ref={fileInputRef} 
           onChange={handleMediaChange}
         />
+        <button type="button" onClick={() => setLocationPickerOpen((open) => !open)}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
+          title="Gắn địa điểm" aria-label="Gắn địa điểm">📍</button>
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-[var(--app-muted)]">{content.length}/500</span>
@@ -333,84 +284,11 @@ export default function PostComposer({ mode, onClose }) {
       <div className="relative flex-1 pb-1">
         <div className="flex items-center gap-1">
           <p className="text-[15px] font-bold text-[var(--app-text)]">{currentUser?.displayName}</p>
-          <span className="mx-0.5 text-xs text-[var(--app-muted)]">›</span>
-          <div className="relative min-w-0">
-            {topicPickerOpen ? (
-              <input
-                value={topicQuery}
-                onChange={changeTopicQuery}
-                maxLength={100}
-                placeholder="Cộng đồng hoặc chủ đề"
-                className="w-[180px] max-w-[38vw] border-none bg-transparent p-0 text-[15px] font-semibold text-[var(--app-brand)] outline-none placeholder:font-normal placeholder:text-[var(--app-muted)]"
-                autoFocus
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={openTopicPicker}
-                className={`block max-w-[220px] truncate text-left text-[15px] transition hover:underline ${
-                  selectedTopic ? 'font-semibold text-[var(--app-brand)]' : 'text-[var(--app-muted)]'
-                }`}
-              >
-                {selectedTopic ? selectedTopic.name : 'Cộng đồng hoặc chủ đề'}
-              </button>
-            )}
-
-            {topicPickerOpen && (
-              <div className="absolute left-0 top-7 z-50 w-[330px] max-w-[calc(100vw-88px)] overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
-                <div className="max-h-[350px] overflow-y-auto">
-                  {!topicQuery.trim() && (
-                    <p className="px-4 py-5 text-sm text-[var(--app-muted)]">
-                      Nhập tên để tìm hoặc gắn một chủ đề mới.
-                    </p>
-                  )}
-
-                  {topicSearching && topicQuery.trim() && (
-                    <p className="px-4 py-5 text-sm text-[var(--app-muted)]">Đang tìm chủ đề...</p>
-                  )}
-
-                  {!topicSearching && topicSearchResult?.canUseAsNewHashtag && topicSearchResult.normalizedKeyword && (
-                    <button
-                      type="button"
-                      onClick={() => selectTopic(topicSearchResult.normalizedKeyword, true)}
-                      className="block w-full border-b border-[var(--app-border)] px-4 py-3.5 text-left transition hover:bg-[var(--app-surface-soft)]"
-                    >
-                      <span className="block truncate text-[15px] font-semibold text-[var(--app-text)]">
-                        {topicSearchResult.normalizedKeyword}
-                      </span>
-                      <span className="mt-0.5 block text-[13px] text-[var(--app-muted)]">+ Gắn thẻ chủ đề mới</span>
-                    </button>
-                  )}
-
-                  {!topicSearching && hashtagSuggestions.map((item) => (
-                    <button
-                      type="button"
-                      key={item.hashtagId}
-                      onClick={() => selectTopic(item.name)}
-                      className="block w-full border-b border-[var(--app-border)] px-4 py-3.5 text-left transition last:border-b-0 hover:bg-[var(--app-surface-soft)]"
-                    >
-                      <span className="flex items-center gap-2 text-[15px] font-semibold text-[var(--app-brand)]">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-                          <circle cx="2" cy="5" r="2" />
-                          <circle cx="6.5" cy="2" r="1.5" />
-                          <circle cx="7.5" cy="7" r="1.5" />
-                        </svg>
-                        <span className="truncate">{item.name}</span>
-                      </span>
-                      <span className="mt-1 block text-[13px] text-[var(--app-muted)]">{item.postCount} bài viết</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          {selectedTopic && (
-            <button type="button" onClick={removeSelectedTopic} className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--app-muted)] hover:bg-[var(--app-surface-soft)]" aria-label="Bỏ chủ đề đã chọn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+          <PostHashtagPicker
+            value={selectedTopic?.name ?? null}
+            onChange={(name) => setSelectedTopic(name ? { name } : null)}
+            disabled={isSubmitting}
+          />
         </div>
         
         <textarea
@@ -440,6 +318,10 @@ export default function PostComposer({ mode, onClose }) {
               </div>
             ))}
           </div>
+        )}
+        <SelectedLocation location={selectedLocation} onRemove={() => setSelectedLocation(null)} />
+        {locationPickerOpen && (
+          <LocationPicker onSelect={setSelectedLocation} onClose={() => setLocationPickerOpen(false)} />
         )}
       </div>
     </div>

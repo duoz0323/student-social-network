@@ -161,7 +161,9 @@ Quy tắc enum trong Backend:
 
 MySQL là nguồn dữ liệu chuẩn.
 
-Ảnh:
+Timestamp do MySQL/API quản lý được quy ước theo UTC. `Clock` của Backend phải dùng UTC để deadline nghiệp vụ, gồm giới hạn sửa Post 15 phút, không phụ thuộc múi giờ máy chạy; Frontend chuyển UTC sang múi giờ hiển thị của người dùng.
+
+Media:
 
 - Lưu trên Cloud Storage.
 - Database lưu URL và metadata.

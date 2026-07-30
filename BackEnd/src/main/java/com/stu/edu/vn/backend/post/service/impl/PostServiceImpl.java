@@ -4,6 +4,9 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.post.dto.request.CreatePostRequest;
 import com.stu.edu.vn.backend.post.dto.request.UpdatePostRequest;
+import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
+import com.stu.edu.vn.backend.post.enums.LocationAction;
+import com.stu.edu.vn.backend.location.service.LocationResolver;
 import com.stu.edu.vn.backend.post.dto.response.DeletePostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostDetailResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostResponse;
@@ -22,6 +25,7 @@ import com.stu.edu.vn.backend.post.service.PostService;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.post.validation.PostImageFileValidator;
 import com.stu.edu.vn.backend.post.validation.PostValidationSupport;
+import com.stu.edu.vn.backend.post.validation.PostLocationValidator;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.storage.CloudinaryStorageService;
 import com.stu.edu.vn.backend.storage.CloudinaryUploadResult;
@@ -68,6 +72,8 @@ public class PostServiceImpl implements PostService {
     private final PostValidationSupport postValidationSupport;
     private final PostImageFileValidator postImageFileValidator;
     private final HashtagNormalizer hashtagNormalizer;
+    private final PostLocationValidator postLocationValidator;
+    private final LocationResolver locationResolver;
     private final CloudinaryStorageService cloudinaryStorageService;
     private final PostMapper postMapper;
     private final TransactionTemplate transactionTemplate;
@@ -166,7 +172,9 @@ public class PostServiceImpl implements PostService {
         int mediaCount = postImageFileValidator.countValidImageSlots(mediaFiles);
         String content = postValidationSupport.validateForCreate(request == null ? null : request.content(), mediaCount);
         String hashtag = hashtagNormalizer.normalizeOptional(request == null ? null : request.hashtag());
-        return new CreatePostCommand(content, hashtag, mediaFiles == null ? List.of() : mediaFiles);
+        PostLocationRequest location = postLocationValidator.validateAndNormalizeLocation(
+                request == null ? null : request.location());
+        return new CreatePostCommand(content, hashtag, mediaFiles == null ? List.of() : mediaFiles, location);
     }
 
     private AuthorContext ensureAuthorCanCreatePost(Long authorId) {
@@ -209,7 +217,8 @@ public class PostServiceImpl implements PostService {
 
         LocalDateTime postedAt = post.getPublishedAt() == null ? post.getCreatedAt() : post.getPublishedAt();
         LocalDateTime editDeadline = postedAt.plusMinutes(15);
-        if (LocalDateTime.now(clock).isAfter(editDeadline)) {
+        // Mốc 00:00 nghĩa là cửa sổ đã đóng; Clock và timestamp database đều dùng UTC.
+        if (!LocalDateTime.now(clock).isBefore(editDeadline)) {
             throw new BusinessException(ErrorCode.POST_EDIT_TIME_EXPIRED);
         }
     }
@@ -254,7 +263,14 @@ public class PostServiceImpl implements PostService {
         if ((content == null || content.isBlank()) && finalMediaCount == 0) {
             throw new BusinessException(ErrorCode.POST_CONTENT_REQUIRED);
         }
-        return new UpdatePostCommand(content, hashtagProvided, hashtag, keptMedia, removedMedia, newMediaFiles);
+        LocationAction locationAction = postLocationValidator.validateLocationUpdateAction(
+                request == null ? null : request.locationAction(),
+                request == null ? null : request.location());
+        PostLocationRequest location = locationAction == LocationAction.REPLACE
+                ? postLocationValidator.validateAndNormalizeLocation(request.location())
+                : null;
+        return new UpdatePostCommand(content, hashtagProvided, hashtag, keptMedia, removedMedia,
+                newMediaFiles, locationAction, location);
     }
 
     private List<PostMedia> resolveKeptMedia(Long postId, List<PostMedia> currentMedia, List<Long> keepMediaIds) {
@@ -284,6 +300,7 @@ public class PostServiceImpl implements PostService {
     ) {
         post.setContent(command.content());
         post.setEdited(true);
+        applyLocationUpdate(post, command.locationAction(), command.location());
 
         // Xóa media cũ không còn được giữ, sau đó flush để tránh va chạm unique (post_id, display_order) khi đánh số lại.
         if (!command.removedMedia().isEmpty()) {
@@ -303,6 +320,14 @@ public class PostServiceImpl implements PostService {
                 postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId()),
                 hashtag
         );
+    }
+
+    private void applyLocationUpdate(Post post, LocationAction action, PostLocationRequest location) {
+        switch (action) {
+            case KEEP -> { }
+            case REPLACE -> post.setLocation(locationResolver.resolve(location));
+            case REMOVE -> post.setLocation(null);
+        }
     }
 
     private List<PostMedia> reorderKeptMedia(List<PostMedia> keptMedia) {
@@ -378,7 +403,9 @@ public class PostServiceImpl implements PostService {
             CreatePostCommand command,
             List<UploadedPostMedia> uploadedMedia
     ) {
-        Post post = postRepository.saveAndFlush(new Post(authorContext.author(), command.content()));
+        Post post = new Post(authorContext.author(), command.content());
+        post.setLocation(locationResolver.resolve(command.location()));
+        post = postRepository.saveAndFlush(post);
         List<PostMedia> media = savePostMedia(post, uploadedMedia);
         savePostHashtag(post, command.hashtag());
 
@@ -502,7 +529,8 @@ public class PostServiceImpl implements PostService {
     private record CreatePostCommand(
             String content,
             String hashtag,
-            List<MultipartFile> mediaFiles
+            List<MultipartFile> mediaFiles,
+            PostLocationRequest location
     ) {
     }
 
@@ -512,7 +540,9 @@ public class PostServiceImpl implements PostService {
             String hashtag,
             List<PostMedia> keptMedia,
             List<PostMedia> removedMedia,
-            List<MultipartFile> newMediaFiles
+            List<MultipartFile> newMediaFiles,
+            LocationAction locationAction,
+            PostLocationRequest location
     ) {
     }
 

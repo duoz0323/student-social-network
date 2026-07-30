@@ -56,6 +56,7 @@ Không được sử dụng chức năng mạng xã hội.
 - Xem hồ sơ người khác.
 - Follow/Unfollow.
 - Tạo, xem, sửa và xóa bài.
+- Tùy chọn gắn, thay đổi hoặc gỡ một địa điểm trên bài viết.
 - Like/Unlike.
 - Xem danh sách bài viết đã thích của chính mình.
 - Bình luận và xóa bình luận của mình.
@@ -72,6 +73,7 @@ Có role `ADMIN`.
 Ngoài quyền người dùng, Admin được phép:
 
 - Xem và tìm kiếm người dùng.
+- Xem và chỉnh sửa tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
 - Khóa/Mở khóa tài khoản.
 - Xem danh sách bài viết.
 - Xem bài bị báo cáo.
@@ -153,18 +155,32 @@ Hoàn tất hồ sơ ban đầu:
 Bài viết gồm:
 
 - Nội dung tối đa 500 ký tự.
-- Tối đa 4 ảnh.
+- Tối đa 4 media, trong đó tối đa 4 ảnh hoặc tối đa một video.
+- Ảnh hỗ trợ JPG, JPEG, PNG, WEBP và tối đa 10 MB mỗi file.
+- Video hỗ trợ MP4, WebM, tối đa 100 MB và dài không quá 3 phút.
 - Tối đa một hashtag.
+- Tối đa một Location tùy chọn.
 
 Quy tắc:
 
-- Phải có nội dung hoặc ít nhất một ảnh.
-- Chỉ hỗ trợ JPG, JPEG, PNG, WEBP.
+- Phải có nội dung hoặc ít nhất một media.
 - Chỉ tác giả được sửa/xóa.
-- Sau khi đăng không chỉnh sửa ảnh.
-- Chỉ sửa nội dung và hashtag.
+- Trong giới hạn 15 phút, tác giả có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới; tổng media sau cập nhật vẫn phải hợp lệ.
+- Menu thao tác hiển thị countdown sửa bài từ 15 phút và tự ẩn hành động sửa khi hết hạn; Backend kiểm tra deadline theo UTC.
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 - Xóa bài là xóa mềm.
+
+Location gắn với Post thuộc P1 và có phạm vi độc lập với Discovery Map:
+
+- Quan hệ là `Location 1 — N Post`; một Post có `0..1` Location và một Location có thể được nhiều Post sử dụng.
+- Frontend gửi object tùy chọn gồm `placeId`, `displayName`, `formattedAddress`, `latitude` và `longitude`.
+- Backend validate dữ liệu, chuẩn hóa chuỗi, tìm bằng `google_place_id`, dùng lại bản ghi nếu đã tồn tại và tạo mới nếu chưa tồn tại.
+- Chỉ `google_place_id` được dùng làm natural unique key. Không dùng tên địa điểm hoặc tọa độ để xác định trùng.
+- Backend chưa xác minh dữ liệu với Google Places API trong giai đoạn này; xác minh và đồng bộ định kỳ thuộc FUTURE.
+- Khi cập nhật Post trong giới hạn 15 phút và đúng quyền tác giả, `KEEP` giữ nguyên Location, `REPLACE` thay bằng Location được resolve theo Place ID, còn `REMOVE` gỡ Location.
+- Gỡ Location chỉ đặt quan hệ về `NULL`. Xóa mềm hoặc xóa cứng Post không xóa Location; không cascade remove và không tự động dọn Location không còn tham chiếu.
+- Location hiện tại hoặc `null` phải xuất hiện trong response tạo bài, chi tiết bài, hai Feed, bài trên hồ sơ, bài đã lưu, bài đã thích, tìm kiếm Post và Admin Post Detail.
+- Location chưa được đưa vào report snapshot và chưa có API quản trị Location.
 
 ### 4.5 Tương tác
 
@@ -258,6 +274,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 - Danh sách.
 - Tìm kiếm.
+- Xem chi tiết và chỉnh sửa nội dung hồ sơ USER.
 - Khóa.
 - Mở khóa.
 
@@ -303,6 +320,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Hashtag.
 - Search.
 - Report.
+- Gắn, thay đổi và gỡ Location tùy chọn trên Post.
 - Admin khóa tài khoản.
 - Admin ẩn/khôi phục bài.
 
@@ -322,8 +340,9 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Repost.
 - Quote Post.
 - Chủ đề.
-- Địa điểm.
 - Discovery Map.
+- Tìm bài theo bán kính, Feed theo Location, trang Location riêng và địa điểm phổ biến.
+- Quản trị Location, xác minh Backend và đồng bộ định kỳ với Google Places.
 - Feed tùy chỉnh.
 - Elasticsearch.
 - Nhắn tin.
@@ -352,7 +371,10 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Cập nhật hồ sơ.
 - Follow/Unfollow không trùng.
 - CRUD bài đúng quyền.
-- Upload ảnh hợp lệ.
+- Người dùng có thể tạo Post không có Location hoặc gắn tối đa một Location; nhiều Post cùng Place ID dùng chung một bản ghi Location.
+- Update Post hỗ trợ `KEEP`, `REPLACE`, `REMOVE` Location và vẫn tuân theo quyền tác giả cùng giới hạn 15 phút.
+- Xóa hoặc gỡ Location khỏi Post không xóa Location dùng chung; các Post response đã chốt trả Location object hoặc `null` nhất quán.
+- Upload và cập nhật ảnh/video hợp lệ.
 - Like không trùng.
 - Bình luận đúng quyền.
 - Save không trùng.

@@ -20,6 +20,7 @@ import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
 import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
@@ -47,6 +48,7 @@ class SearchPostServiceImplTest {
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
+    private final PostLocationBatchLoader postLocationBatchLoader = org.mockito.Mockito.mock(PostLocationBatchLoader.class);
     private SearchServiceImpl searchService;
 
     @BeforeEach
@@ -54,7 +56,8 @@ class SearchPostServiceImplTest {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
                 postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
-                new HashtagNormalizer());
+                new HashtagNormalizer(), postLocationBatchLoader);
+        when(postLocationBatchLoader.loadByPostId(any())).thenReturn(java.util.Map.of());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));

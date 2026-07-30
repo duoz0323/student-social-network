@@ -19,6 +19,8 @@ import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
+import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -55,12 +57,14 @@ public class SearchServiceImpl implements SearchService {
     private final SavedPostRepository savedPostRepository;
     private final SearchPostMapper searchPostMapper;
     private final HashtagNormalizer hashtagNormalizer;
+    private final PostLocationBatchLoader postLocationBatchLoader;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
                              SearchUserProfileRepository userProfileRepository, PostRepository postRepository,
                              PostMediaRepository postMediaRepository, PostHashtagRepository postHashtagRepository,
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
-                             SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer) {
+                             SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer,
+                             PostLocationBatchLoader postLocationBatchLoader) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -71,6 +75,7 @@ public class SearchServiceImpl implements SearchService {
         this.savedPostRepository = savedPostRepository;
         this.searchPostMapper = searchPostMapper;
         this.hashtagNormalizer = hashtagNormalizer;
+        this.postLocationBatchLoader = postLocationBatchLoader;
     }
 
     @Override
@@ -113,6 +118,7 @@ public class SearchServiceImpl implements SearchService {
         Map<Long, String> hashtagsByPostId = loadHashtags(postIds);
         Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(currentUserId, postIds));
         Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(currentUserId, postIds));
+        Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts.getContent());
 
         Page<SearchPostResponse> result = posts.map(post -> searchPostMapper.toResponse(
                 post,
@@ -120,7 +126,8 @@ public class SearchServiceImpl implements SearchService {
                 mediaByPostId.getOrDefault(post.getId(), List.of()),
                 hashtagsByPostId.get(post.getId()),
                 likedPostIds.contains(post.getId()),
-                savedPostIds.contains(post.getId())
+                savedPostIds.contains(post.getId()),
+                locations.get(post.getId())
         ));
         return PageResponse.from(result);
     }

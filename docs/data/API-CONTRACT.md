@@ -851,39 +851,115 @@ Route UI tương ứng:
 
 ## 4. Post
 
-### POST `/api/v1/posts`
+> Location trên Post thuộc P1 và đã được tích hợp từ schema/JPA tới request/response API, resolver, Service và Frontend. Discovery Map cùng các API khám phá theo Location vẫn là FUTURE.
 
-Request:
+### Location object
+
+Frontend gửi Location tùy chọn dưới dạng object:
 
 ```json
 {
-  "content": "Nội dung bài viết",
-  "imageUrls": [
-    "https://example.com/image-1.jpg"
-  ],
-  "hashtags": [
-    "sinhvien",
-    "hoctap"
-  ]
+  "placeId": "ChIJ...",
+  "displayName": "Đại học Công nghệ Sài Gòn",
+  "formattedAddress": "180 Cao Lỗ, Quận 8, TP.HCM",
+  "latitude": 10.7382456,
+  "longitude": 106.6778123
 }
 ```
+
+Quy tắc:
+
+- `placeId`, `displayName`, `latitude` và `longitude` là bắt buộc khi có object Location; `formattedAddress` là tùy chọn.
+- Backend trim và chuẩn hóa khoảng trắng của các chuỗi; chuỗi rỗng không hợp lệ đối với trường bắt buộc và được đổi thành `null` đối với `formattedAddress`.
+- `latitude` phải nằm trong `[-90, 90]`; `longitude` phải nằm trong `[-180, 180]`.
+- Backend chỉ dùng `placeId` làm natural unique key ánh xạ tới `locations.google_place_id`. Không chuyển Place ID về chữ thường và không dùng tên hoặc tọa độ để xác định trùng.
+- Nếu Place ID đã tồn tại, Backend dùng lại Location đang lưu; nếu chưa tồn tại, Backend tạo Location mới sau validation.
+- Backend chưa gọi Google Places API để xác minh và không đồng bộ định kỳ trong P1 này.
+
+Location trong mọi Post response có dạng:
+
+```json
+{
+  "location": {
+    "id": 1,
+    "placeId": "ChIJ...",
+    "displayName": "Đại học Công nghệ Sài Gòn",
+    "formattedAddress": "180 Cao Lỗ, Quận 8, TP.HCM",
+    "latitude": 10.7382456,
+    "longitude": 106.6778123
+  }
+}
+```
+
+Nếu bài không gắn địa điểm, response phải trả rõ `"location": null`. Không trả Entity JPA trực tiếp.
+
+### POST `/api/v1/posts`
+
+Request dùng `multipart/form-data`:
+
+```text
+content: "Nội dung bài viết"                    // tùy chọn nếu có media
+hashtag: "sinhvien"                             // tùy chọn, tối đa một hashtag
+mediaFiles: <file>                               // tùy chọn, có thể lặp lại
+location: <application/json Location object>    // tùy chọn
+```
+
+- Không có part `location` thì Post được tạo với `location = null`.
+- Có Location thì Backend resolve bằng Place ID và dùng chung bản ghi `locations` nếu Place ID đã tồn tại.
+- Response `201 Created` trả `PostResponse` có trường `location`.
 
 ### GET `/api/v1/posts/{postId}`
 
-### PATCH `/api/v1/posts/{postId}`
+Response chi tiết có trường `location` là object hiện tại hoặc `null`.
 
-Request:
+### PUT `/api/v1/posts/{postId}`
 
-```json
-{
-  "content": "Nội dung đã sửa",
-  "hashtags": [
-    "doan"
-  ]
-}
+Request dùng `multipart/form-data` và giữ nguyên các quyền, trạng thái cùng giới hạn chỉnh sửa 15 phút hiện tại:
+
+```text
+content: "Nội dung đã sửa"
+hashtag: "doan"
+keepMediaIds: 10
+newMediaFiles: <file>
+locationAction: KEEP | REPLACE | REMOVE
+location: <application/json Location object>    // chỉ dùng với REPLACE
 ```
 
+Quy tắc media khi update:
+
+- `keepMediaIds` có thể lặp lại để giữ các media cũ; media cũ không nằm trong danh sách sẽ bị gỡ khỏi Post.
+- Gửi `keepMediaIds` với giá trị rỗng để gỡ toàn bộ media cũ; không gửi field thì Backend mặc định giữ toàn bộ media cũ.
+- `newMediaFiles` cho phép thêm ảnh/video mới. Sau khi kết hợp media giữ lại và media mới, tổng tối đa 4 media và tối đa một video.
+- Ảnh hỗ trợ JPG/JPEG/PNG/WEBP, tối đa 10 MB; video hỗ trợ MP4/WebM, tối đa 100 MB và 3 phút.
+- Sau cập nhật, Post vẫn phải có content hoặc ít nhất một media.
+
+Quy tắc Location khi update:
+
+- `KEEP`: giữ nguyên Location; không cần part `location`.
+- `REPLACE`: bắt buộc có Location object hợp lệ; Backend resolve theo Place ID rồi gán Location dùng chung vào Post.
+- `REMOVE`: không nhận Location object và đặt quan hệ Location của Post về `null`.
+- Thay đổi hoặc gỡ Location không vượt qua kiểm tra quyền tác giả, trạng thái `PUBLISHED` hoặc giới hạn 15 phút.
+- Response trả `PostDetailResponse` với Location sau cập nhật.
+
 ### DELETE `/api/v1/posts/{postId}`
+
+- Xóa mềm Post không xóa Location.
+- Nếu có hard delete Post trong vận hành dữ liệu, Location cũng không bị xóa.
+- Gỡ Location chỉ đặt `posts.location_id = NULL`; không cascade remove và không tự động xóa Location không còn được tham chiếu.
+
+### Phạm vi Post response có Location
+
+Trường `location` phải được trả nhất quán trong:
+
+- Create Post response.
+- Post Detail.
+- Feed For You và Feed Following.
+- Profile Posts.
+- Saved Posts và Liked Posts.
+- Search Posts.
+- Admin Post Detail.
+
+Report snapshot chưa chứa Location trong P1 này. Không có API quản trị Location, trang Location, Feed theo Location, tìm kiếm bán kính hoặc Discovery Map.
 
 ## 5. Interaction
 
@@ -967,15 +1043,43 @@ Request:
 
 ### GET `/api/v1/admin/users?page=0&size=20`
 
-### PATCH `/api/v1/admin/users/{userId}/status`
+### GET `/api/v1/admin/users/{userId}`
+
+Response chi tiết gồm dữ liệu quản trị an toàn và nội dung hồ sơ: `userId`, `displayName`,
+`avatarUrl`, `bio`, `dateOfBirth`, `email`, trạng thái tài khoản/hồ sơ và các timestamp liên quan.
+Không trả password hash, provider token hoặc refresh token.
+
+### PUT `/api/v1/admin/users/{userId}/profile`
 
 ```json
 {
-  "status": "BLOCKED"
+  "displayName": "Nguyễn Văn A",
+  "dateOfBirth": "2001-06-15",
+  "bio": "Nội dung giới thiệu đã được quản trị viên cập nhật."
 }
 ```
 
+Chỉ ADMIN đang hoạt động được sửa hồ sơ của tài khoản có role `USER`. Tên hiển thị, ngày sinh
+và bio dùng cùng quy tắc validation với cập nhật hồ sơ cá nhân; thao tác được ghi vào
+`admin_actions` với loại `UPDATE_USER_PROFILE`. Avatar không được cập nhật qua endpoint JSON này.
+
+### PATCH `/api/v1/admin/users/{userId}/block`
+
+```json
+{
+  "reasonCode": "SPAM"
+}
+```
+
+### PATCH `/api/v1/admin/users/{userId}/unblock`
+
+Request không có body.
+
 ### GET `/api/v1/admin/posts?page=0&size=20`
+
+### GET `/api/v1/admin/posts/{postId}`
+
+Admin Post Detail trả Location hiện tại theo cùng Location response object của Post hoặc `location: null`. Không mở rộng thành API quản trị Location.
 
 ### PATCH `/api/v1/admin/posts/{postId}/status`
 
@@ -986,6 +1090,8 @@ Request:
 ```
 
 ### GET `/api/v1/admin/reports?status=PENDING&page=0&size=20`
+
+Report và report snapshot chưa bổ sung Location trong P1 này.
 
 ### PATCH `/api/v1/admin/reports/{reportId}`
 

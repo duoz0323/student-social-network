@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 25/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 29/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -8,6 +8,7 @@
 - `IMPLEMENTED`: đã có source code tương ứng.
 - `TESTED`: đã có kiểm thử tự động tương ứng trong repository.
 - `INTEGRATED`: Frontend đã gọi API Backend trong luồng hiện tại.
+- `DESIGNED`: nghiệp vụ và contract đã được chốt trong tài liệu nhưng production code, database hoặc test chưa được triển khai.
 - `PARTIAL`: mới hoàn thành một phần hoặc còn phụ thuộc cấu hình/môi trường.
 - `PLANNED`: có trong phạm vi nhưng chưa thấy implementation đầy đủ.
 
@@ -22,7 +23,8 @@
 | Password Recovery bằng OTP | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có decoy challenge, verify/resend/complete và thu hồi Refresh Token. |
 | Onboarding, hồ sơ và avatar | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Bắt buộc displayName, dateOfBirth và đủ 18 tuổi. |
 | Follow/Unfollow và danh sách follow | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách vẫn dùng `PageResponse`. |
-| CRUD bài viết, ảnh và một hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Schema bảng nối chưa tự enforce tối đa một hashtag; Service đang enforce. |
+| CRUD bài viết, media và một hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tạo/sửa hỗ trợ ảnh và video; form tạo/sửa dùng chung gợi ý hashtag. Schema bảng nối chưa tự enforce tối đa một hashtag; Service đang enforce. |
+| Gắn, thay đổi và gỡ Location tùy chọn trên Post | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Create/update hỗ trợ Location tùy chọn, resolve dùng chung theo Place ID, mọi Post response và Admin detail trả Location; Frontend dùng Google Places picker. MySQL integration test cần database test riêng. |
 | Like/Unlike và danh sách bài đã thích | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách `/liked` dùng Cursor Pagination. |
 | Bình luận và reply một cấp | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Reply một cấp đã có endpoint dù README xếp ưu tiên P2. |
 | Save/Unsave và danh sách bài đã lưu | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách dùng Cursor Pagination. |
@@ -30,7 +32,7 @@
 | Bài viết trên hồ sơ | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | `GET /api/v1/users/{userId}/posts` dùng Cursor Pagination. |
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
 | Báo cáo bài viết | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Chống trùng report `PENDING`. |
-| Admin user/post/report/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có phân quyền và test security/controller/repository/service. |
+| Admin user/post/report/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Admin xem chi tiết, sửa nội dung hồ sơ USER, khóa/mở khóa; có phân quyền và test security/controller/repository/service. |
 | Thông báo đơn giản | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có danh sách, unread count, read/read-all và delete. |
 
 ## Thay đổi đang có trong worktree
@@ -41,25 +43,21 @@
 - SQL bổ sung index phục vụ danh sách bài đã thích và thêm dữ liệu demo.
 - README, API contract, PRD, Architecture, Project Rules, Data Flow và tài liệu UI đã được đối
   chiếu lại với thay đổi trên.
+- Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh và không triển khai Discovery Map.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
-1. Không tìm thấy file DBML trong repository, nên chưa thể đối chiếu SQL với DBML như quy trình
-   dự án yêu cầu.
+1. SQL baseline và DBML đã đồng bộ schema Location. Migration `database/migrations/V001__add_post_locations.sql` là file chạy thủ công vì dự án chưa dùng Flyway/Liquibase; chưa được áp dụng tự động lên local hoặc Aiven.
 2. `post_hashtags` vẫn là bảng nối nhiều-nhiều ở mức schema; giới hạn một hashtag hiện do Service
    kiểm soát, chưa có constraint database bảo đảm tuyệt đối.
-3. SQL demo có media `VIDEO`, trong khi README MVP chỉ quy định tối đa bốn ảnh và xếp video ngoài
-   phạm vi. Cần quyết định bỏ demo video hoặc chính thức thay đổi phạm vi trước khi phát triển tiếp.
-4. Nhóm 35 test trực tiếp cho Cursor/Feed/liked/saved đã pass. Full Backend test suite chưa có kết
-   luận cuối trong lần audit này vì thời gian chạy vượt giới hạn lệnh; các test chạy trước timeout
-   đều pass.
-5. Frontend chưa có test runner trong `package.json`; hiện chỉ có build và lint làm quality gate.
+3. Full Backend suite đã chạy 610 test, pass 563 và skip 47 integration test theo biến môi trường; Frontend pass 15 test cho multipart Location/media, draft edit, validation media, countdown sửa Post và Google Maps URL. MySQL/Google integration thật tiếp tục phụ thuộc cấu hình môi trường riêng.
+4. Frontend chưa có framework component test cho tương tác DOM của picker hashtag, Location và trình sửa media.
+5. Cần cấu hình `VITE_GOOGLE_MAPS_API_KEY` theo từng môi trường và giới hạn key theo HTTP referrer/API trong Google Cloud Console trước khi kiểm thử Places thật.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo
 
-1. Chốt quyết định về video trong Post và đồng bộ SQL/source/tài liệu theo một hướng duy nhất.
-2. Khôi phục hoặc tạo DBML từ SQL hiện hành, sau đó thêm kiểm tra schema contract.
-3. Hoàn tất quality gate cho đợt Cursor Pagination: Backend full test, Frontend lint/build và kiểm
+1. Kiểm tra và áp dụng migration Location trên MySQL test/local trước, sau đó chỉ chuyển sang Giai đoạn 3 khi schema và JPA mapping đã được duyệt.
+2. Hoàn tất quality gate cho đợt Cursor Pagination: Backend full test, Frontend lint/build và kiểm
    thử thủ công Infinite Scroll với dữ liệu trùng timestamp.
-4. Sau khi ba mục trên ổn định, chọn chức năng tiếp theo từ phần chưa hoàn thiện về UX hoặc ngoài
+3. Sau khi các mục trên ổn định, chọn chức năng tiếp theo từ phần chưa hoàn thiện về UX hoặc ngoài
    phạm vi MVP; không mở rộng nghiệp vụ trước khi cập nhật README.

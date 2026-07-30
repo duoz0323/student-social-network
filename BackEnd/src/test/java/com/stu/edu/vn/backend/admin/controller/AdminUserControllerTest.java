@@ -4,10 +4,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.stu.edu.vn.backend.admin.dto.request.AdminBlockUserRequest;
+import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
@@ -18,6 +20,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,7 +111,7 @@ class AdminUserControllerTest {
     void detailReturnsApprovedFieldsWithoutSensitiveData() throws Exception {
         LocalDateTime timestamp = LocalDateTime.of(2026, 7, 14, 8, 0);
         var detail = new AdminUserDetailResponse(
-                10L, "Minh", "avatar", "bio", "minh@example.com",
+                10L, "Minh", "avatar", "bio", LocalDate.of(2002, 5, 10), "minh@example.com",
                 UserStatus.ACTIVE, false, null, null, null, timestamp, timestamp);
         when(adminUserService.getUserDetail(10L)).thenReturn(detail);
 
@@ -116,9 +119,32 @@ class AdminUserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.userId").value(10))
                 .andExpect(jsonPath("$.data.profileCompleted").value(false))
+                .andExpect(jsonPath("$.data.dateOfBirth").value("2002-05-10"))
                 .andExpect(jsonPath("$.data.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.data.token").doesNotExist())
                 .andExpect(jsonPath("$.data.avatarPublicId").doesNotExist());
+    }
+
+    @Test
+    void updateProfileUsesAdminContractAndReturnsUpdatedDetail() throws Exception {
+        LocalDate dateOfBirth = LocalDate.of(2001, 6, 15);
+        LocalDateTime timestamp = LocalDateTime.of(2026, 7, 30, 8, 0);
+        var request = new AdminUpdateUserProfileRequest("Tên mới", dateOfBirth, "Giới thiệu mới");
+        var response = new AdminUserDetailResponse(
+                10L, "Tên mới", "avatar", "Giới thiệu mới", dateOfBirth, "minh@example.com",
+                UserStatus.ACTIVE, true, timestamp, null, null, timestamp, timestamp);
+        when(adminUserService.updateUserProfile(10L, request)).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/admin/users/10/profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Tên mới\",\"dateOfBirth\":\"2001-06-15\",\"bio\":\"Giới thiệu mới\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.displayName").value("Tên mới"))
+                .andExpect(jsonPath("$.data.dateOfBirth").value("2001-06-15"))
+                .andExpect(jsonPath("$.data.bio").value("Giới thiệu mới"))
+                .andExpect(jsonPath("$.data.email").value("minh@example.com"))
+                .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
+        verify(adminUserService).updateUserProfile(10L, request);
     }
 
     @Test

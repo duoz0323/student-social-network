@@ -260,14 +260,26 @@ Quy tắc:
 Người dùng có thể tạo bài viết gồm:
 
 - Nội dung văn bản tối đa 500 ký tự.
-- Tối đa 4 hình ảnh.
+- Tối đa 4 media, trong đó tối đa một video.
 - 1 hashtag.
+- Tối đa 1 địa điểm tùy chọn.
 
-Bài viết phải có ít nhất nội dung văn bản hoặc một hình ảnh.
+Bài viết phải có ít nhất nội dung văn bản hoặc một media.
+
+Địa điểm gắn với bài viết thuộc P1 và độc lập với Discovery Map:
+
+- Quan hệ là Location 1 - N Post; một Post có thể không có hoặc có tối đa một Location.
+- Frontend gửi placeId, displayName, formattedAddress, latitude và longitude.
+- Backend chỉ dùng Google Place ID làm khóa tự nhiên chống trùng, dùng lại Location đã có và tạo mới khi chưa tồn tại.
+- Backend chưa xác minh Google Places trong giai đoạn này.
+- Khi sửa bài trong giới hạn 15 phút, tác giả có thể KEEP, REPLACE hoặc REMOVE Location.
+- Gỡ Location chỉ đặt location_id về NULL; xóa Post không xóa Location và không tự động xóa Location không còn tham chiếu.
+- Location hoặc NULL được hiển thị nhất quán trong các response Post, gồm Create, Detail, Feed, Profile, Saved, Liked, Search và Admin Post Detail.
+- Report snapshot chưa lưu Location. Discovery Map và các chức năng khám phá nâng cao theo địa điểm vẫn ngoài phạm vi.
 
 4.2. Media bài viết
 
-Hệ thống chỉ hỗ trợ hình ảnh trong phiên bản MVP.
+Hệ thống hỗ trợ ảnh và video trong phiên bản MVP.
 
 Định dạng cho phép:
 
@@ -275,11 +287,13 @@ Hệ thống chỉ hỗ trợ hình ảnh trong phiên bản MVP.
 - JPEG.
 - PNG.
 - WEBP.
+- MP4.
+- WEBM.
 
 Quy tắc:
 
-- Mỗi hình ảnh không vượt quá giới hạn dung lượng do hệ thống quy định.
-- Hình ảnh được lưu trên dịch vụ lưu trữ tệp.
+- Mỗi ảnh tối đa 10 MB; mỗi video tối đa 100 MB và dài không quá 3 phút.
+- Media được lưu trên dịch vụ lưu trữ tệp.
 - Cơ sở dữ liệu chỉ lưu thông tin và đường dẫn của tệp.
 - Backend phải kiểm tra định dạng, MIME type và dung lượng tệp.
 
@@ -295,6 +309,11 @@ hoặc hồ sơ công khai.
 Chỉ tác giả được chỉnh sửa bài viết.
 
 Tác giả được phép chỉnh sửa trong 15 phút sau khi đăng bài :
+
+- Sửa nội dung và hashtag.
+- Giữ hoặc gỡ media cũ.
+- Thêm ảnh/video mới nhưng tổng sau cập nhật tối đa 4 media và tối đa một video.
+- Giữ, thay đổi hoặc gỡ Location theo KEEP, REPLACE, REMOVE.
 
 Sau khi chỉnh sửa, bài viết phải lưu thời gian cập nhật và hiển thị trạng thái
 “Đã chỉnh sửa”.
@@ -684,7 +703,7 @@ Các chức năng sau không triển khai trong phiên bản MVP:
 7. Repost.
 8. Trích dẫn bài viết.
 9. Chủ đề nội dung do Admin quản lý.
-10. Địa điểm và Discovery Map.
+10. Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
 11. Feed cá nhân hóa do người dùng tạo.
 12. Feed công khai và lưu Feed.
 13. Không quan tâm và từ khóa bị ẩn.
@@ -806,6 +825,7 @@ MỨC P1 - CẦN HOÀN THÀNH NẾU ĐỦ TIẾN ĐỘ
 - Hashtag.
 - Tìm kiếm người dùng và bài viết.
 - Báo cáo bài viết.
+- Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
 - Admin khóa tài khoản.
 - Admin ẩn bài viết.
 

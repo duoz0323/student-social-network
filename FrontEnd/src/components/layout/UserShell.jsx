@@ -3,8 +3,11 @@ import Button from '../common/Button.jsx';
 import BrandLockup from '../common/BrandLockup.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
 import MoreMenu from './MoreMenu.jsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../../contexts/AppContext.jsx';
+import { socialApi } from '../../api/index.js';
+import { isRequestCanceled } from '../../api/apiError.js';
+import { NOTIFICATION_UNREAD_COUNT_EVENT } from '../../features/notification/utils/notificationEvents.js';
 
 // SVG Icons cho Sidebar
 function HomeIcon({ active = false }) {
@@ -71,14 +74,36 @@ export default function UserShell() {
   const { logout } = useApp();
   const [composerMode, setComposerMode] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    // Badge chỉ phản ánh snapshot hiện tại; realtime notification nằm ngoài phạm vi MVP.
+    socialApi.getUnreadCount(controller.signal)
+      .then((payload) => setNotificationUnreadCount(Math.max(0, Number(payload?.unreadCount) || 0)))
+      .catch((requestError) => {
+        if (!isRequestCanceled(requestError)) setNotificationUnreadCount(0);
+      });
+
+    function handleUnreadCount(event) {
+      setNotificationUnreadCount(Math.max(0, Number(event.detail?.unreadCount) || 0));
+    }
+
+    window.addEventListener(NOTIFICATION_UNREAD_COUNT_EVENT, handleUnreadCount);
+    return () => {
+      controller.abort();
+      window.removeEventListener(NOTIFICATION_UNREAD_COUNT_EVENT, handleUnreadCount);
+    };
+  }, []);
 
   const navItems = [
     { to: '/feed/for-you', label: 'Dành cho bạn', icon: (active) => <HomeIcon active={active} />, active: location.pathname.startsWith('/feed') },
     { to: '#create', label: 'Tạo bài viết', icon: (active) => <CreateIcon active={active} />, active: false, action: () => setComposerMode('modal') },
     { to: '/search', label: 'Tìm kiếm', icon: (active) => <SearchIcon active={active} />, active: location.pathname === '/search' },
-    { to: '/notifications', label: 'Thông báo', icon: (active) => <ActivityIcon active={active} />, active: location.pathname === '/notifications' },
+    { to: '/notifications', label: 'Thông báo', icon: (active) => <ActivityIcon active={active} />, active: location.pathname === '/notifications', badge: notificationUnreadCount },
     { to: '/profile/me', label: 'Trang cá nhân', icon: (active) => <ProfileIcon active={active} />, active: location.pathname === '/profile/me' },
     { to: '/saved', label: 'Bài viết đã lưu', icon: (active) => <BookmarkIcon active={active} />, active: location.pathname === '/saved' },
   ];
@@ -112,7 +137,14 @@ export default function UserShell() {
             }
             return (
               <NavLink key={item.to} to={item.to} className={buttonClass}>
-                <span className="interactive-icon flex w-6 justify-center text-[var(--app-text)]">{item.icon(item.active)}</span>
+                <span className="interactive-icon relative flex w-6 justify-center text-[var(--app-text)]">
+                  {item.icon(item.active)}
+                  {item.badge > 0 ? (
+                    <span className="absolute -right-2 -top-2 min-w-5 rounded-full bg-red-600 px-1 text-center text-[10px] font-bold leading-5 text-white" aria-label={`${item.badge} thông báo chưa đọc`}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-[15px]">{item.label}</span>
               </NavLink>
             );
@@ -173,10 +205,17 @@ export default function UserShell() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-[10px] font-semibold lg:hidden">
         {navItems.filter(item => item.to.startsWith('/')).map((item) => (
           <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
-            <span aria-hidden="true" className="h-5 w-5">{item.icon(item.active)}</span>
+            <span className="relative h-5 w-5">
+              <span aria-hidden="true">{item.icon(item.active)}</span>
+              {item.badge > 0 ? (
+                <span className="absolute -right-3 -top-2 min-w-4 rounded-full bg-red-600 px-1 text-center text-[9px] font-bold leading-4 text-white" aria-label={`${item.badge} thông báo chưa đọc`}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              ) : null}
+            </span>
             <span>{item.label}</span>
           </NavLink>
         ))}

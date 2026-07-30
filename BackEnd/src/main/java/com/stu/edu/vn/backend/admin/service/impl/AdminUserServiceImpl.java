@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.admin.service.impl;
 
 import com.stu.edu.vn.backend.admin.dto.request.AdminBlockUserRequest;
+import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
@@ -23,13 +24,17 @@ import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.user.entity.User;
+import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -51,6 +56,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final Clock clock;
     private final EntityManager entityManager;
     private final NotificationService notificationService;
+    private final UserProfileRepository userProfileRepository;
+    private final UserProfileValidationSupport profileValidationSupport;
 
     public AdminUserServiceImpl(
             AdminUserRepository adminUserRepository,
@@ -61,7 +68,9 @@ public class AdminUserServiceImpl implements AdminUserService {
             AdminActionRepository adminActionRepository,
             Clock clock,
             EntityManager entityManager,
-            NotificationService notificationService
+            NotificationService notificationService,
+            UserProfileRepository userProfileRepository,
+            UserProfileValidationSupport profileValidationSupport
     ) {
         this.adminUserRepository = adminUserRepository;
         this.adminUserMapper = adminUserMapper;
@@ -72,6 +81,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         this.clock = clock;
         this.entityManager = entityManager;
         this.notificationService = notificationService;
+        this.userProfileRepository = userProfileRepository;
+        this.profileValidationSupport = profileValidationSupport;
     }
 
     @Override
@@ -107,6 +118,43 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
+    public AdminUserDetailResponse updateUserProfile(Long userId, AdminUpdateUserProfileRequest request) {
+        CustomUserPrincipal principal = requireActiveAdmin();
+        validateNotSelfAction(principal.getUserId(), userId);
+        if (request == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+
+        // Khóa cả tài khoản và hồ sơ để tuần tự hóa cập nhật quản trị với cập nhật từ người dùng.
+        User target = lockManagedUser(userId);
+        UserProfile profile = userProfileRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
+        String displayName = profileValidationSupport.normalizeAndValidateDisplayName(request.displayName());
+        LocalDate dateOfBirth = profileValidationSupport.validateDateOfBirth(request.dateOfBirth());
+        String bio = profileValidationSupport.normalizeAndValidateBio(request.bio());
+
+        profile.setDisplayName(displayName);
+        profile.setDateOfBirth(dateOfBirth);
+        profile.setBio(bio);
+
+        User adminReference = entityManager.getReference(User.class, principal.getUserId());
+        adminActionRepository.save(new AdminAction(
+                adminReference,
+                AdminActionType.UPDATE_USER_PROFILE,
+                AdminTargetType.USER,
+                target.getId(),
+                "ADMIN_UPDATE_PROFILE"
+        ));
+
+        // Flush trước khi đọc projection để response phản ánh dữ liệu vừa cập nhật trong cùng transaction.
+        entityManager.flush();
+        AdminUserDetailProjection updated = adminUserRepository.findManagedUserDetail(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
+        return adminUserMapper.toDetail(updated);
+    }
+
+    @Override
+    @Transactional
     public AdminUserStatusResponse blockUser(Long userId, AdminBlockUserRequest request) {
         CustomUserPrincipal principal = requireActiveAdmin();
         validateNotSelfAction(principal.getUserId(), userId);
@@ -128,7 +176,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         target.setBlockedAt(now);
         target.setBlockedReason(reason);
 
-        // Bulk update không tải từng Refresh Token và chỉ tác động token chưa revoke, còn hạn tại thời điểm khóa.
+        // Bulk update không tải từng Refresh Token. Persistence context phải được giữ để target vẫn là
+        // managed entity cho các bản ghi audit và bước refresh response ở cuối transaction.
         refreshTokenRepository.revokeAllActiveByUserId(target.getId(), now);
         accountStatusHistoryRepository.save(new AccountStatusHistory(
                 target, UserStatus.ACTIVE, UserStatus.BLOCKED, adminReference, reason));

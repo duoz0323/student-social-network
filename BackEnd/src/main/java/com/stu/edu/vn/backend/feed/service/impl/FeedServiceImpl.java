@@ -17,6 +17,8 @@ import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
+import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -54,6 +56,7 @@ public class FeedServiceImpl implements FeedService {
     private final SavedPostRepository savedPostRepository;
     private final FeedPostMapper feedPostMapper;
     private final CursorCodec cursorCodec;
+    private final PostLocationBatchLoader postLocationBatchLoader;
 
     @Override
     @Transactional(readOnly = true)
@@ -102,6 +105,7 @@ public class FeedServiceImpl implements FeedService {
         Map<Long, String> hashtags = loadHashtags(postIds);
         Set<Long> liked = new HashSet<>(postLikeRepository.findLikedPostIds(viewerId, postIds));
         Set<Long> saved = new HashSet<>(savedPostRepository.findSavedPostIds(viewerId, postIds));
+        Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
 
         List<FeedPostResponse> content = posts.stream().map(post -> feedPostMapper.toResponse(
                 post,
@@ -109,7 +113,8 @@ public class FeedServiceImpl implements FeedService {
                 media.getOrDefault(post.getId(), List.of()),
                 hashtags.get(post.getId()),
                 liked.contains(post.getId()),
-                saved.contains(post.getId())
+                saved.contains(post.getId()),
+                locations.get(post.getId())
         )).toList();
 
         Post last = posts.get(posts.size() - 1);

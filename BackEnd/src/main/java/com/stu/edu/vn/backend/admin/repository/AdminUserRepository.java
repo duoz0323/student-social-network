@@ -28,7 +28,6 @@ public interface AdminUserRepository extends Repository<User, Long> {
                            up.display_name AS displayName,
                            up.avatar_url AS avatarUrl,
                            u.email AS email,
-                           u.phone_number AS phoneNumber,
                            u.status AS status,
                            up.profile_completed_at AS profileCompletedAt,
                            u.created_at AS createdAt
@@ -39,7 +38,6 @@ public interface AdminUserRepository extends Repository<User, Long> {
                       AND (
                           :keyword IS NULL
                           OR LOWER(u.email) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
-                          OR u.phone_number LIKE CONCAT('%', :keyword, '%') ESCAPE '='
                           OR LOWER(up.display_name) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
                       )
                     ORDER BY u.created_at DESC, u.id DESC
@@ -53,7 +51,6 @@ public interface AdminUserRepository extends Repository<User, Long> {
                       AND (
                           :keyword IS NULL
                           OR LOWER(u.email) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
-                          OR u.phone_number LIKE CONCAT('%', :keyword, '%') ESCAPE '='
                           OR LOWER(up.display_name) LIKE CONCAT('%', LOWER(:keyword), '%') ESCAPE '='
                       )
                     """,
@@ -71,15 +68,15 @@ public interface AdminUserRepository extends Repository<User, Long> {
                            up.display_name AS displayName,
                            up.avatar_url AS avatarUrl,
                            up.bio AS bio,
+                           up.date_of_birth AS dateOfBirth,
                            u.email AS email,
-                           u.phone_number AS phoneNumber,
                            u.role AS role,
                            u.status AS status,
                            up.profile_completed_at AS profileCompletedAt,
                            u.blocked_at AS blockedAt,
                            u.blocked_reason AS blockedReason,
                            u.created_at AS createdAt,
-                           u.updated_at AS updatedAt
+                           GREATEST(u.updated_at, COALESCE(up.updated_at, u.updated_at)) AS updatedAt
                     FROM users u
                     LEFT JOIN user_profiles up ON up.user_id = u.id
                     WHERE u.id = :userId

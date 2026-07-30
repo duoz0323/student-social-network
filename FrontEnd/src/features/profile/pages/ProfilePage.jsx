@@ -13,6 +13,7 @@ import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModa
 import { socialApi } from '../../../api/index.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
 import { toPostView } from '../../post/utils/postViewModel.js';
+import { resolveFollowingState, sameUserId } from '../../../utils/followUtils.js';
 
 function ProfilePageSkeleton({ self, onBack }) {
   // Skeleton giữ nguyên khung trang thật để chuyển route không bị co giãn hoặc nhảy bố cục.
@@ -90,6 +91,7 @@ export default function ProfilePage({ self = false }) {
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
   const [activeTab, setActiveTab] = useState('threads');
   const [unfollowTarget, setUnfollowTarget] = useState(null);
+  const [followSubmitting, setFollowSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState(null);
   const [loadedProfileKey, setLoadedProfileKey] = useState(null);
@@ -215,32 +217,59 @@ export default function ProfilePage({ self = false }) {
     }
   }
 
+  function updateModalUserFollowState(userIdToUpdate, followedByCurrentUser) {
+    // Giữ trạng thái của hai tab Follow đồng bộ ngay sau request, không chờ tải lại danh sách.
+    setModalUsers((current) => ({
+      followers: current.followers.map((user) => sameUserId(user.id, userIdToUpdate)
+        ? { ...user, followedByCurrentUser }
+        : user),
+      following: current.following.map((user) => sameUserId(user.id, userIdToUpdate)
+        ? { ...user, followedByCurrentUser }
+        : user),
+    }));
+  }
+
   async function handleFollowClick(userTarget, isCurrentlyFollowing) {
     if (isCurrentlyFollowing) {
       setUnfollowTarget(userTarget);
     } else {
-      const response = await toggleFollow(userTarget.id);
-      if (String(userTarget.id) === String(profile.id)) {
-        setProfile((current) => ({
-          ...current,
-          followedByCurrentUser: response.followedByCurrentUser,
-          followerCount: current.followerCount + 1,
-        }));
+      try {
+        const response = await toggleFollow(userTarget.id, false);
+        if (sameUserId(userTarget.id, profile.id)) {
+          setProfile((current) => ({
+            ...current,
+            followedByCurrentUser: response.followedByCurrentUser,
+            followerCount: current.followerCount + 1,
+          }));
+        }
+        updateModalUserFollowState(userTarget.id, response.followedByCurrentUser);
+        setError('');
+      } catch (requestError) {
+        setError(requestError.message);
       }
     }
   }
 
   async function confirmUnfollow() {
-    if (unfollowTarget) {
-      const response = await toggleFollow(unfollowTarget.id);
-      if (String(unfollowTarget.id) === String(profile.id)) {
+    if (!unfollowTarget || followSubmitting) return;
+
+    setFollowSubmitting(true);
+    try {
+      const response = await toggleFollow(unfollowTarget.id, true);
+      if (sameUserId(unfollowTarget.id, profile.id)) {
         setProfile((current) => ({
           ...current,
           followedByCurrentUser: response.followedByCurrentUser,
           followerCount: Math.max(0, current.followerCount - 1),
         }));
       }
+      updateModalUserFollowState(unfollowTarget.id, response.followedByCurrentUser);
       setUnfollowTarget(null);
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setFollowSubmitting(false);
     }
   }
 
@@ -492,7 +521,12 @@ export default function ProfilePage({ self = false }) {
       >
         <div className="flex flex-col">
           {(followModal === 'followers' ? modalUsers.followers : modalUsers.following).map((user, index) => {
-            const isUserFollowing = data.follows.some(f => f.followerId === currentUserId && f.followingId === user.id);
+            const isUserFollowing = resolveFollowingState(
+              user.followedByCurrentUser,
+              data.follows,
+              currentUserId,
+              user.id,
+            );
             // Danh sách follow dùng displayName theo contract và không phụ thuộc kiểu dữ liệu của userId.
             const userHandle = user.displayName;
             
@@ -505,7 +539,7 @@ export default function ProfilePage({ self = false }) {
                     <span className="text-[14px] text-[var(--app-muted)]">{user.displayName}</span>
                   </div>
                 </div>
-                {user.id !== currentUserId && (
+                {!sameUserId(user.id, currentUserId) && (
                   <Button 
                     variant={isUserFollowing ? "secondary" : "primary"} 
                     className={`!rounded-xl !h-[34px] px-5 font-bold text-[14px] ${isUserFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}
@@ -526,6 +560,7 @@ export default function ProfilePage({ self = false }) {
         user={unfollowTarget}
         onClose={() => setUnfollowTarget(null)}
         onConfirm={confirmUnfollow}
+        submitting={followSubmitting}
       />
 
       <PostComposer mode={composerOpen ? 'modal' : null} onClose={() => setComposerOpen(false)} />

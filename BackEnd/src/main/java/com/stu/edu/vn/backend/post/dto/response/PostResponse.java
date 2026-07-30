@@ -19,6 +19,14 @@ public record PostResponse(
         LocalDateTime updatedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
-        String hashtag
+        String hashtag,
+        PostLocationResponse location
 ) {
+    public PostResponse(Long id, String content, PostStatus status, boolean isEdited, int likeCount,
+                        int commentCount, LocalDateTime publishedAt, LocalDateTime createdAt,
+                        LocalDateTime updatedAt, PostAuthorResponse author, List<PostMediaResponse> media,
+                        String hashtag) {
+        this(id, content, status, isEdited, likeCount, commentCount, publishedAt, createdAt,
+                updatedAt, author, media, hashtag, null);
+    }
 }

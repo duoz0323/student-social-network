@@ -90,12 +90,17 @@ Axios nhận 401 do Access Token hết hạn
 ```text
 Create Post Form
 → Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra nội dung và ảnh
+→ Kiểm tra nội dung, media và Location tùy chọn
+→ Frontend gửi Location object gồm placeId, displayName, formattedAddress, latitude, longitude nếu người dùng đã chọn địa điểm
 → Upload ảnh → nhận URL
 → POST /api/v1/posts
-→ PostService lưu posts, post_media và hashtag/post_hashtags
-→ Trả PostResponse
+→ Backend chuẩn hóa Location và tìm theo google_place_id
+→ Dùng lại locations nếu Place ID đã tồn tại, hoặc tạo mới nếu chưa tồn tại
+→ PostService lưu posts, location_id nullable, post_media và hashtag/post_hashtags
+→ Trả PostResponse có location object hoặc location = null
 ```
+
+Khi cập nhật Post trong giới hạn 15 phút, `KEEP` giữ nguyên Location, `REPLACE` resolve Location theo Place ID rồi thay thế, còn `REMOVE` đặt `posts.location_id = NULL`. Xóa hoặc gỡ Location khỏi Post không xóa bản ghi `locations`. Backend chưa gọi Google Places API để xác minh trong P1 này.
 
 ## 8. Follow
 

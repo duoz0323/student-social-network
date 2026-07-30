@@ -23,7 +23,7 @@
 Không trả qua API công khai:
 
 - Password hash.
-- Email và số điện thoại trên hồ sơ công khai.
+- Email và dữ liệu xác thực trên hồ sơ công khai.
 - Refresh Token.
 - Secret.
 - Stack trace.

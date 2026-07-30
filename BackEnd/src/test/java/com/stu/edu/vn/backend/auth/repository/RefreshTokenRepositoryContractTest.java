@@ -19,6 +19,8 @@ class RefreshTokenRepositoryContractTest {
 
         assertThat(method.getReturnType()).isEqualTo(int.class);
         assertThat(modifying.flushAutomatically()).isTrue();
+        // Không clear persistence context vì Admin User còn refresh entity mục tiêu sau khi thu hồi token.
+        assertThat(modifying.clearAutomatically()).isFalse();
         assertThat(query.value())
                 .contains("update RefreshToken token")
                 .contains("token.user.id = :userId")

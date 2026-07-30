@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.admin.controller;
 
 import com.stu.edu.vn.backend.admin.dto.request.AdminBlockUserRequest;
+import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
@@ -18,13 +19,14 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * API dành cho ADMIN xem và thay đổi trạng thái tài khoản USER.
+ * API dành cho ADMIN xem, chỉnh sửa hồ sơ và thay đổi trạng thái tài khoản USER.
  */
 @Validated
 @RestController
@@ -55,6 +57,15 @@ public class AdminUserController {
     ) {
         AdminUserDetailResponse response = adminUserService.getUserDetail(userId);
         return ResponseEntity.ok(ApiResponse.success("Lấy chi tiết người dùng thành công", response));
+    }
+
+    @PutMapping("/{userId}/profile")
+    public ResponseEntity<ApiResponse<AdminUserDetailResponse>> updateUserProfile(
+            @PathVariable @Positive Long userId,
+            @RequestBody AdminUpdateUserProfileRequest request
+    ) {
+        AdminUserDetailResponse response = adminUserService.updateUserProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ người dùng thành công", response));
     }
 
     @PatchMapping("/{userId}/block")

@@ -13,7 +13,7 @@ export const socialApi = Object.freeze({
   },
   deleteAvatar: (signal) => requestData(httpClient.delete(USER_ENDPOINTS.avatar, { signal })),
   follow: (userId, signal) => requestData(httpClient.post(USER_ENDPOINTS.follow(userId), undefined, { signal })),
-  unfollow: (userId, signal) => requestData(httpClient.delete(USER_ENDPOINTS.follow(userId), { signal })),
+  unfollow: (userIFd, signal) => requestData(httpClient.delete(USER_ENDPOINTS.follow(userId), { signal })),
   getFollowers: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.followers(userId), { signal })),
   getFollowing: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.following(userId), { signal })),
   getUserPosts: (userId, params, signal) => requestData(

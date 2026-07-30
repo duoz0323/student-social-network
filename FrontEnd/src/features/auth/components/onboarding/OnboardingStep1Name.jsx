@@ -24,7 +24,7 @@ export default function OnboardingStep1Name({ displayName, onChange, onNext, err
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onNext()}
           placeholder="VD: Nguyễn Văn An"
-          className={inputCls + ' h-12 text-base'}
+          className={inputCls + ' h-12 text-base !text-black'}
           autoFocus
           maxLength={50}
         />

@@ -23,7 +23,6 @@
 Phải có unique constraint cho:
 
 - `users.email`.
-- `users.phone_number`.
 - `follows(follower_id, following_id)`.
 - `post_likes(user_id, post_id)`.
 - `saved_posts(user_id, post_id)`.
@@ -42,7 +41,6 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 ## 5. Index đề xuất
 
 - `users(email)`.
-- `users(phone_number)`.
 - `users(status)`.
 - `posts(author_id)`.
 - `posts(status, created_at)`.

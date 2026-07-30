@@ -23,7 +23,7 @@ class AdminUserRepositoryContractTest {
     }
 
     @Test
-    void listQueryJoinsOnceSearchesAllFieldsExcludesAdminAndUsesStableOrdering() throws Exception {
+    void listQuerySearchesCurrentEmailAndDisplayNameSchemaWithoutLegacyPhoneColumn() throws Exception {
         Method method = AdminUserRepository.class.getMethod(
                 "findManagedUsers", String.class, String.class, Pageable.class);
         Query query = method.getAnnotation(Query.class);
@@ -35,14 +35,13 @@ class AdminUserRepositoryContractTest {
                 .contains("u.role = 'USER'")
                 .contains(":status IS NULL OR u.status = :status")
                 .contains("LOWER(u.email) LIKE")
-                .contains("u.phone_number LIKE")
                 .contains("LOWER(up.display_name) LIKE")
                 .contains("ESCAPE '='")
                 .contains("ORDER BY u.created_at DESC, u.id DESC")
-                .doesNotContain("password_hash", "avatar_public_id", "SELECT u.*", "SELECT up.*");
+                .doesNotContain("phone_number", "password_hash", "avatar_public_id", "SELECT u.*", "SELECT up.*");
         assertThat(query.countQuery())
                 .contains("COUNT(u.id)", "u.role = 'USER'", "LEFT JOIN user_profiles")
-                .doesNotContain("ORDER BY");
+                .doesNotContain("phone_number", "ORDER BY");
     }
 
     @Test
@@ -53,9 +52,11 @@ class AdminUserRepositoryContractTest {
         assertThat(query.nativeQuery()).isTrue();
         assertThat(query.value())
                 .contains("LEFT JOIN user_profiles up ON up.user_id = u.id")
+                .contains("up.date_of_birth AS dateOfBirth")
                 .contains("u.role AS role")
+                .contains("GREATEST(u.updated_at, COALESCE(up.updated_at, u.updated_at)) AS updatedAt")
                 .contains("WHERE u.id = :userId")
-                .doesNotContain("password_hash", "avatar_public_id", "refresh_tokens", "SELECT u.*", "SELECT up.*");
+                .doesNotContain("phone_number", "password_hash", "avatar_public_id", "refresh_tokens", "SELECT u.*", "SELECT up.*");
         assertThat(countOccurrences(query.value(), "JOIN")).isEqualTo(1);
     }
 

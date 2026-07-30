@@ -2,7 +2,9 @@ package com.stu.edu.vn.backend.post.controller;
 
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import com.stu.edu.vn.backend.post.dto.request.CreatePostRequest;
+import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
 import com.stu.edu.vn.backend.post.dto.request.UpdatePostRequest;
+import com.stu.edu.vn.backend.post.enums.LocationAction;
 import com.stu.edu.vn.backend.post.dto.response.DeletePostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostDetailResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostResponse;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,10 +39,11 @@ public class PostController {
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "hashtag", required = false) String hashtag,
-            @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
+            @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles,
+            @RequestPart(value = "location", required = false) PostLocationRequest location
     ) {
         // Request không có authorId; Service lấy tác giả hiện tại từ SecurityContext.
-        PostResponse response = postService.createPost(new CreatePostRequest(content, hashtag, mediaFiles));
+        PostResponse response = postService.createPost(new CreatePostRequest(content, hashtag, mediaFiles, location));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo bài viết thành công", response));
@@ -58,12 +62,14 @@ public class PostController {
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "hashtag", required = false) String hashtag,
             @RequestParam(value = "keepMediaIds", required = false) List<Long> keepMediaIds,
-            @RequestParam(value = "newMediaFiles", required = false) List<MultipartFile> newMediaFiles
+            @RequestParam(value = "newMediaFiles", required = false) List<MultipartFile> newMediaFiles,
+            @RequestParam(value = "locationAction", required = false) LocationAction locationAction,
+            @RequestPart(value = "location", required = false) PostLocationRequest location
     ) {
         // Controller không tự kiểm tra quyền; mọi rule tác giả, trạng thái và 15 phút nằm trong Service.
         PostDetailResponse response = postService.updatePost(
                 postId,
-                new UpdatePostRequest(content, hashtag, keepMediaIds, newMediaFiles)
+                new UpdatePostRequest(content, hashtag, keepMediaIds, newMediaFiles, locationAction, location)
         );
         return ResponseEntity.ok(ApiResponse.success("Cập nhật bài viết thành công", response));
     }

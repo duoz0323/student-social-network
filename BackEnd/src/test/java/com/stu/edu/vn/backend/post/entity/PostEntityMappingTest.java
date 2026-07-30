@@ -9,9 +9,11 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.io.Serializable;
@@ -44,6 +46,25 @@ class PostEntityMappingTest {
         assertThat(mediaRelation.cascade()).containsExactlyInAnyOrder(CascadeType.PERSIST, CascadeType.MERGE);
         assertThat(hashtagRelation.cascade()).containsExactlyInAnyOrder(CascadeType.PERSIST, CascadeType.MERGE);
         assertThat(hashtagRelation.cascade()).doesNotContain(CascadeType.REMOVE);
+    }
+
+    @Test
+    void postLocationIsOptionalLazyManyToOneWithoutRemoveCascade() throws Exception {
+        // Location là quan hệ dùng chung và tùy chọn nên Post chỉ giữ khóa ngoại nullable, không sở hữu vòng đời Location.
+        java.lang.reflect.Field locationField = Post.class.getDeclaredField("location");
+        ManyToOne relation = locationField.getAnnotation(ManyToOne.class);
+        JoinColumn joinColumn = locationField.getAnnotation(JoinColumn.class);
+
+        assertThat(relation).isNotNull();
+        assertThat(relation.fetch()).isEqualTo(FetchType.LAZY);
+        assertThat(relation.optional()).isTrue();
+        assertThat(relation.cascade()).doesNotContain(CascadeType.ALL, CascadeType.REMOVE);
+        assertThat(joinColumn.name()).isEqualTo("location_id");
+        assertThat(joinColumn.nullable()).isTrue();
+        ForeignKey foreignKey = joinColumn.foreignKey();
+        assertThat(foreignKey.name()).isEqualTo("fk_posts_location");
+        assertThat(locationField.getAnnotation(OneToOne.class)).isNull();
+        assertThat(locationField.getAnnotation(OneToMany.class)).isNull();
     }
 
     @Test

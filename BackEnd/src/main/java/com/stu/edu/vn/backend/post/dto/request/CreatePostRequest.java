@@ -9,6 +9,10 @@ import org.springframework.web.multipart.MultipartFile;
 public record CreatePostRequest(
         String content,
         String hashtag,
-        List<MultipartFile> mediaFiles
+        List<MultipartFile> mediaFiles,
+        PostLocationRequest location
 ) {
+    public CreatePostRequest(String content, String hashtag, List<MultipartFile> mediaFiles) {
+        this(content, hashtag, mediaFiles, null);
+    }
 }

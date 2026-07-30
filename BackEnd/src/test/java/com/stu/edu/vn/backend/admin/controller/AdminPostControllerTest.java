@@ -95,7 +95,7 @@ class AdminPostControllerTest {
     @Test
     void detailReturnsNestedSafeDataForAnyStatus() throws Exception {
         var detail = new AdminPostDetailResponse(11L, "content", PostStatus.DELETED,
-                new AdminPostAuthorResponse(9L, "Author", "avatar", "a@example.com", null, UserStatus.BLOCKED),
+                new AdminPostAuthorResponse(9L, "Author", "avatar", "a@example.com", UserStatus.BLOCKED),
                 List.of(new AdminPostMediaResponse(21L, "url", PostMediaType.IMAGE,
                         "image/jpeg", null, null, 0)), "tag",
                 3, 4, 1, 2, null, null, null, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
@@ -105,6 +105,7 @@ class AdminPostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DELETED"))
                 .andExpect(jsonPath("$.data.author.accountStatus").value("BLOCKED"))
+                .andExpect(jsonPath("$.data.author.phoneNumber").doesNotExist())
                 .andExpect(jsonPath("$.data.media[0].sortOrder").value(0))
                 .andExpect(jsonPath("$.data.author.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.data.media[0].storagePublicId").doesNotExist());

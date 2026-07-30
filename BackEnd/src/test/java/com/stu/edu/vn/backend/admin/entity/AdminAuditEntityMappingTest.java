@@ -39,7 +39,8 @@ class AdminAuditEntityMappingTest {
                 .isEqualTo("json");
         assertThat(BaseAuditEntity.class.isAssignableFrom(AdminAction.class)).isFalse();
         assertThat(AdminActionType.values()).extracting(Enum::name).containsExactly(
-                "BLOCK_USER", "UNBLOCK_USER", "HIDE_POST", "RESTORE_POST", "RESOLVE_REPORT", "REJECT_REPORT");
+                "BLOCK_USER", "UNBLOCK_USER", "UPDATE_USER_PROFILE", "HIDE_POST", "RESTORE_POST",
+                "RESOLVE_REPORT", "REJECT_REPORT");
         assertThat(AdminTargetType.values()).extracting(Enum::name).containsExactly("USER", "POST", "REPORT");
         assertThat(AdminBlockReason.values()).extracting(Enum::name).containsExactly(
                 "SPAM", "HARASSMENT", "HARMFUL_CONTENT", "FAKE_ACCOUNT", "REPEATED_VIOLATION", "OTHER");

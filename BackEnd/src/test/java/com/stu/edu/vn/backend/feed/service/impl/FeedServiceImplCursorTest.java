@@ -23,6 +23,7 @@ import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -54,6 +55,7 @@ class FeedServiceImplCursorTest {
     @Mock private SavedPostRepository savedPostRepository;
     @Mock private FeedPostMapper feedPostMapper;
     @Mock private CursorCodec cursorCodec;
+    @Mock private PostLocationBatchLoader postLocationBatchLoader;
 
     private FeedServiceImpl service;
     private User author;
@@ -64,7 +66,8 @@ class FeedServiceImplCursorTest {
         service = new FeedServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository,
                 postMediaRepository, postHashtagRepository, postLikeRepository,
-                savedPostRepository, feedPostMapper, cursorCodec);
+                savedPostRepository, feedPostMapper, cursorCodec, postLocationBatchLoader);
+        lenient().when(postLocationBatchLoader.loadByPostId(anyList())).thenReturn(java.util.Map.of());
         author = org.mockito.Mockito.mock(User.class);
         profile = org.mockito.Mockito.mock(UserProfile.class);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7L);
@@ -149,7 +152,7 @@ class FeedServiceImplCursorTest {
         for (Post post : returnedPosts) {
             Long postId = post.getId();
             LocalDateTime publishedAt = post.getPublishedAt();
-            when(feedPostMapper.toResponse(eq(post), eq(profile), anyList(), eq(null), eq(false), eq(false)))
+            when(feedPostMapper.toResponse(eq(post), eq(profile), anyList(), eq(null), eq(false), eq(false), eq(null)))
                     .thenReturn(new FeedPostResponse(
                             postId, null, false, 0, 0, publishedAt,
                             null, List.of(), null, false, false));

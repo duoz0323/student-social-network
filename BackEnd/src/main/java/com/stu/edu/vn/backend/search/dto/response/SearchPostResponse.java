@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.search.dto.response;
 
 import com.stu.edu.vn.backend.post.dto.response.PostAuthorResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostMediaResponse;
+import com.stu.edu.vn.backend.post.dto.response.PostLocationResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,6 +20,13 @@ public record SearchPostResponse(
         List<PostMediaResponse> media,
         String hashtag,
         boolean likedByCurrentUser,
-        boolean savedByCurrentUser
+        boolean savedByCurrentUser,
+        PostLocationResponse location
 ) {
+    public SearchPostResponse(Long postId, String content, boolean isEdited, int likeCount, int commentCount,
+                              LocalDateTime publishedAt, PostAuthorResponse author, List<PostMediaResponse> media,
+                              String hashtag, boolean likedByCurrentUser, boolean savedByCurrentUser) {
+        this(postId, content, isEdited, likeCount, commentCount, publishedAt, author, media, hashtag,
+                likedByCurrentUser, savedByCurrentUser, null);
+    }
 }

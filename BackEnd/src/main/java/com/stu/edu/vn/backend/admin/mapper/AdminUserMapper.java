@@ -33,6 +33,7 @@ public class AdminUserMapper {
                 source.getDisplayName(),
                 source.getAvatarUrl(),
                 source.getBio(),
+                source.getDateOfBirth(),
                 source.getEmail(),
                 UserStatus.valueOf(source.getStatus()),
                 source.getProfileCompletedAt() != null,

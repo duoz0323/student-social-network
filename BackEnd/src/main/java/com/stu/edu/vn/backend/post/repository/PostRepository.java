@@ -221,7 +221,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     boolean existsByIdAndAuthor_Id(Long id, Long authorId);
 
     // Fetch tác giả và hồ sơ tác giả cho API chi tiết, còn media/hashtag tải bằng repository riêng.
-    @EntityGraph(attributePaths = {"author", "authorProfile"})
+    @EntityGraph(attributePaths = {"author", "authorProfile", "location"})
     @Query("select p from Post p where p.id = :postId and p.status = :status")
     Optional<Post> findDetailHeaderByIdAndStatus(
             @Param("postId") Long postId,

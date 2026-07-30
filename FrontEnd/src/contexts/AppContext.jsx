@@ -4,6 +4,7 @@ import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
 import { toPostView } from '../features/post/utils/postViewModel.js';
+import { resolveFollowingState } from '../utils/followUtils.js';
 
 const AppContext = createContext(null);
 
@@ -54,6 +55,11 @@ export function AppProvider({ children }) {
         && (includeHidden || post.status === 'PUBLISHED')) ?? null;
     }
 
+    async function getPostDetail(postId, signal) {
+      // Form sửa luôn dùng response chi tiết mới nhất, không dùng snapshot rút gọn của Feed/Search.
+      return toPostView(await postApi.getDetail(postId, signal));
+    }
+
     async function createPost(payload) {
       // Lớp phòng vệ thứ hai: không cho bất kỳ composer nào gửi thêm POST khi request trước chưa kết thúc.
       if (createPostInFlightRef.current) {
@@ -77,8 +83,10 @@ export function AppProvider({ children }) {
       const response = await postApi.update(postId, {
         content: payload.content,
         hashtag: payload.hashtag ?? payload.hashtags?.split(',')[0],
-        keepMediaIds: current?.media?.map((item) => item.id) ?? [],
+        keepMediaIds: payload.keepMediaIds ?? current?.media?.map((item) => item.id) ?? [],
         newMediaFiles: payload.newMediaFiles ?? [],
+        locationAction: payload.locationAction,
+        location: payload.location,
       });
       setData((previous) => ({
         ...previous,
@@ -143,9 +151,13 @@ export function AppProvider({ children }) {
       setData((previous) => ({ ...previous, comments: previous.comments.filter((item) => String(item.id) !== String(commentId)) }));
     }
 
-    async function toggleFollow(targetUserId) {
-      const following = data.follows.some((item) => String(item.followerId) === String(currentUserId)
-        && String(item.followingId) === String(targetUserId));
+    async function toggleFollow(targetUserId, currentFollowing) {
+      const following = resolveFollowingState(
+        currentFollowing,
+        data.follows,
+        currentUserId,
+        targetUserId,
+      );
       const response = following ? await socialApi.unfollow(targetUserId) : await socialApi.follow(targetUserId);
       setData((previous) => ({
         ...previous,
@@ -215,7 +227,7 @@ export function AppProvider({ children }) {
 
     return {
       data: { ...data, users }, currentUser, currentUserId, publicPosts, getUserById, getPostById,
-      logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
+      logout: auth.logout, createPost, getPostDetail, updatePost, deletePost, toggleLike, toggleSave, addComment,
       deleteComment, toggleFollow, updateProfile, submitReport, setUserStatus, setPostStatus, setReportStatus,
     };
   }, [auth.logout, currentUser, currentUserId, data]);

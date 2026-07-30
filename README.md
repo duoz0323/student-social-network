@@ -105,6 +105,7 @@ Người dùng đã đăng nhập và có tài khoản đang hoạt động có 
 Quản trị viên có thể:
 
 - Quản lý người dùng.
+- Xem và chỉnh sửa tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
 - Khóa và mở khóa tài khoản.
 - Quản lý bài viết.
 - Ẩn và khôi phục bài viết.
@@ -278,10 +279,15 @@ Quy tắc:
 - Tạo bài viết.
 - Xem chi tiết bài viết.
 - Chỉnh sửa bài viết trong 15 phút sau khi đăng.
+- Frontend hiển thị countdown thời gian sửa còn lại cạnh hành động chỉnh sửa và tự ẩn hành động khi hết 15 phút; Backend tính deadline bằng UTC và vẫn là nơi quyết định cuối cùng.
 - Xóa mềm bài viết.
 - Đăng nội dung văn bản tối đa 500 ký tự.
-- Tải lên tối đa 4 hình ảnh.
+- Tải lên tối đa 4 media cho một bài viết, gồm ảnh và video.
+- Mỗi bài có tối đa 4 ảnh hoặc tối đa 1 video trong tổng giới hạn 4 media.
+- Ảnh hỗ trợ JPG, JPEG, PNG, WEBP và tối đa 10 MB mỗi file.
+- Video hỗ trợ MP4, WebM, tối đa 100 MB và dài không quá 3 phút.
 - Gắn tối đa một hashtag.
+- Tùy chọn gắn tối đa một địa điểm Google Places đã được Frontend chọn.
 
 Bài viết phải có ít nhất một trong hai thành phần:
 
@@ -293,6 +299,21 @@ Trạng thái bài viết:
 - `PUBLISHED`: bài viết đang hoạt động.
 - `HIDDEN`: bài viết bị quản trị viên ẩn.
 - `DELETED`: bài viết đã được tác giả xóa mềm.
+
+#### Địa điểm gắn với bài viết – P1
+
+- Quan hệ dữ liệu là `Location 1 — N Post`: một địa điểm có thể được nhiều bài viết sử dụng; một bài viết có thể không có hoặc có tối đa một địa điểm.
+- Frontend gửi object Location tùy chọn gồm `placeId`, `displayName`, `formattedAddress`, `latitude` và `longitude`.
+- Backend validate dữ liệu, chuẩn hóa chuỗi và chỉ dùng `placeId` làm natural unique key. Backend không dùng tên hoặc tọa độ để xác định trùng và chưa gọi Google Places API để xác minh trong giai đoạn này.
+- Nếu `google_place_id` đã tồn tại, Backend dùng lại `locations`; nếu chưa tồn tại, Backend tạo một bản ghi mới. Các bài dùng cùng Google Place ID không được tạo Location riêng.
+- `posts.location_id` cho phép `NULL`, không có unique constraint và tham chiếu `locations.id` bằng khóa ngoại `ON DELETE SET NULL`.
+- Entity `Post` ánh xạ Location bằng `@ManyToOne(fetch = FetchType.LAZY)` và `@JoinColumn(name = "location_id")`; không dùng `@OneToOne`, `CascadeType.REMOVE` hoặc `orphanRemoval` cho quan hệ này. Mapping `authorProfile` hiện tại không thuộc thay đổi này.
+- Khi cập nhật bài trong giới hạn 15 phút và đúng quyền tác giả, Location hỗ trợ ba hành động: `KEEP` giữ nguyên, `REPLACE` resolve theo Place ID rồi thay thế, và `REMOVE` gỡ quan hệ bằng cách đặt `location_id = NULL`.
+- Khi cập nhật bài trong cùng giới hạn quyền và 15 phút, người dùng có thể giữ, gỡ media cũ hoặc thêm ảnh/video mới; tổng media sau cập nhật vẫn phải tuân thủ các giới hạn media của Post.
+- Soft delete hoặc hard delete Post không xóa Location. Không cascade remove, không dùng `orphanRemoval` và không tự động xóa Location không còn được tham chiếu.
+- Location hoặc `null` phải xuất hiện nhất quán trong response tạo bài, chi tiết bài, Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu, bài đã thích, kết quả tìm kiếm Post và chi tiết Post dành cho Admin.
+- Admin Post Detail hiển thị Location hiện tại. Report snapshot chưa lưu Location trong đợt này.
+- Discovery Map, tìm theo bán kính, Feed theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places không thuộc phạm vi P1 này.
 
 ### ❤️ 5. Tương tác bài viết
 
@@ -457,6 +478,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Tìm kiếm người dùng.
 - Tìm kiếm bài viết.
 - Báo cáo bài viết.
+- Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
 - Hiển thị hoạt động quản trị cơ bản.
@@ -705,9 +727,17 @@ Nguyên tắc:
 ### Bài viết
 
 - `posts`.
+- `locations`: địa điểm Google Places dùng chung giữa nhiều bài viết, duy nhất theo `google_place_id`.
 - `post_media`.
 - `hashtags`.
 - `post_hashtags`.
+
+Quan hệ Location–Post:
+
+- `locations.id` là khóa chính nội bộ.
+- `locations.google_place_id` là natural unique key, `NOT NULL` và duy nhất.
+- `locations.display_name`, `locations.latitude` và `locations.longitude` là `NOT NULL`; `locations.formatted_address` cho phép `NULL`; bảng có `created_at` và `updated_at`.
+- `posts.location_id` cho phép `NULL`, có index, không duy nhất và tham chiếu `locations.id` bằng `ON DELETE SET NULL`.
 
 ### Tương tác
 
@@ -1022,14 +1052,14 @@ npm run preview
 16. Người dùng hoàn tất onboarding hợp lệ trước khi truy cập chức năng chính.
 17. Người dùng cập nhật và xem hồ sơ thành công.
 18. Follow và Unfollow hoạt động đúng, không tạo quan hệ trùng.
-19. Người dùng tạo bài có nội dung hoặc hình ảnh.
-20. Chỉ tác giả được sửa hoặc xóa bài của mình.
-21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed.
+19. Người dùng tạo bài có nội dung hoặc hình ảnh và có thể tùy chọn gắn tối đa một Location; các bài dùng cùng Google Place ID phải dùng chung một bản ghi `locations`.
+20. Chỉ tác giả được sửa hoặc xóa bài của mình; trong giới hạn chỉnh sửa 15 phút, tác giả có thể cập nhật nội dung/hashtag, giữ/gỡ/thêm ảnh hoặc video và giữ/thay đổi/gỡ Location bằng `KEEP`, `REPLACE`, `REMOVE`.
+21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed; xóa Post không xóa Location dùng chung.
 22. Like, Unlike, danh sách bài viết đã thích, bình luận và Save hoạt động đúng.
-23. Feed Following và Feed For You trả đúng dữ liệu hợp lệ.
-24. Tìm kiếm người dùng và bài viết hoạt động đúng.
+23. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
+24. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
 25. Người dùng gửi được báo cáo.
-26. Admin quản lý được người dùng, bài viết và báo cáo.
+26. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER, quản lý bài viết và báo cáo.
 27. Backend từ chối thao tác không có quyền.
 28. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
 29. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
@@ -1142,7 +1172,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Repost.
 - Trích dẫn bài viết.
 - Chủ đề nội dung do Admin quản lý.
-- Địa điểm và Discovery Map.
+- Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
 - Feed cá nhân hóa do người dùng tạo.
 - Feed công khai và lưu Feed.
 - Elasticsearch.
@@ -1173,6 +1203,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Khám phá nội dung theo địa điểm.
 - Discovery Map.
+- Backend xác minh và đồng bộ định kỳ dữ liệu với Google Places.
 - Nhắn tin trực tiếp bằng WebSocket.
 - Message Request.
 - Thông báo thời gian thực.
