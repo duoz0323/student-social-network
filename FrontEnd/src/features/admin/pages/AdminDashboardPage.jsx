@@ -12,11 +12,11 @@ export default function AdminDashboardPage() {
       adminApi.getUsers({ page: 0, size: 1 }, controller.signal),
       adminApi.getUsers({ status: 'BLOCKED', page: 0, size: 1 }, controller.signal),
       adminApi.getPosts({ page: 0, size: 1 }, controller.signal),
-      adminApi.getReports({ status: 'PENDING', page: 0, size: 1 }, controller.signal),
+      adminApi.getModerationCases({ status: 'OPEN', page: 0, size: 1 }, controller.signal),
     ]).then(([users, blocked, posts, reports]) => setStats([
       { label: 'Người dùng', value: users.totalElements, icon: Users },
       { label: 'Bài viết', value: posts.totalElements, icon: FileText },
-      { label: 'Báo cáo chờ', value: reports.totalElements, icon: AlertTriangle },
+      { label: 'Hồ sơ chờ', value: reports.totalElements, icon: AlertTriangle },
       { label: 'Tài khoản khóa', value: blocked.totalElements, icon: Ban },
     ])).catch((requestError) => setError(requestError.message));
     return () => controller.abort();

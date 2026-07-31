@@ -94,6 +94,8 @@ Có dữ liệu:
 - `follows.followingId -> users.id`.
 - `reports.reporterId -> users.id`.
 - `reports.postId -> posts.id`.
+- `reports.moderationCaseId -> moderationCases.id`.
+- `moderationCases.postId -> posts.id`; mỗi post chỉ có tối đa một case `OPEN`.
 - `postMentions.mentionedUserId -> users.id`.
 - `commentMentions.mentionedUserId -> users.id`.
 

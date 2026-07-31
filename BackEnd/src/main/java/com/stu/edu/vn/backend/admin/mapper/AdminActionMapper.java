@@ -69,6 +69,8 @@ public class AdminActionMapper {
             case RESTORE_POST -> "Khôi phục bài viết";
             case RESOLVE_REPORT -> "Xác nhận báo cáo";
             case REJECT_REPORT -> "Từ chối báo cáo";
+            case RESOLVE_MODERATION_CASE -> "Xử lý hồ sơ kiểm duyệt có vi phạm";
+            case REJECT_MODERATION_CASE -> "Kết luận hồ sơ kiểm duyệt không vi phạm";
         };
     }
 

@@ -44,13 +44,15 @@ export function toAdminReportPostView(postDetail) {
 export function toReportPostFallback(report) {
   const reportedPost = report?.reportedPost;
   if (!reportedPost) return null;
+  const latestReport = report?.reports?.[0];
+  const evidence = report.evidence ?? latestReport?.evidence;
 
   return {
     id: reportedPost.postId,
-    content: reportedPost.currentContent ?? report.evidence?.contentSnapshot ?? '',
+    content: reportedPost.currentContent ?? evidence?.contentSnapshot ?? '',
     status: reportedPost.currentStatus,
-    createdAt: report.createdAt,
-    publishedAt: report.createdAt,
+    createdAt: report.createdAt ?? latestReport?.createdAt,
+    publishedAt: report.createdAt ?? latestReport?.createdAt,
     authorId: reportedPost.author?.userId,
     author: reportedPost.author
       ? {
@@ -61,7 +63,7 @@ export function toReportPostFallback(report) {
       : null,
     hashtags: [],
     media: normalizeMedia(
-      report.evidence?.mediaSnapshot?.map((mediaUrl, index) => ({ mediaUrl, sortOrder: index })),
+      evidence?.mediaSnapshot?.map((mediaUrl, index) => ({ mediaUrl, sortOrder: index })),
       reportedPost.postId,
     ),
     location: null,

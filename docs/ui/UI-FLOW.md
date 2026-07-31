@@ -263,7 +263,8 @@ PostCard của người khác hoặc POST-01
 → POST-10 Gửi báo cáo thành công
 ```
 
-Quy tắc: chỉ báo cáo bài viết; một người không có nhiều report PENDING cho cùng một bài; gửi report không tự động ẩn bài.
+Quy tắc: chỉ báo cáo bài viết; mỗi lần gửi giữ một Report độc lập và gắn vào Moderation Case `OPEN`
+của bài. Một người không có nhiều Report trong cùng case `OPEN`; gửi Report không tự động ẩn bài.
 
 ### 1.12 Admin quản lý người dùng
 
@@ -271,9 +272,10 @@ Quy tắc: chỉ báo cáo bài viết; một người không có nhiều report
 Admin đăng nhập
 → ADMIN-02 Quản lý người dùng
 → Tìm kiếm/lọc người dùng
-→ ADMIN-03 Menu thao tác người dùng
-→ Khóa hoặc mở khóa tài khoản
+→ Click một dòng để mở ADMIN-03 Chi tiết người dùng
+→ Khóa hoặc mở khóa tài khoản trong chi tiết
 → Danh sách cập nhật trạng thái ACTIVE/BLOCKED
+→ Biểu đồ trạng thái tài khoản tự làm mới
 ```
 
 Tài khoản BLOCKED không được đăng nhập hoặc dùng chức năng hệ thống.
@@ -285,7 +287,8 @@ Admin đăng nhập
 → ADMIN-04 Quản lý bài viết
 → Tìm kiếm/lọc bài viết
 → Xem trạng thái bài
-→ Ẩn hoặc khôi phục bài viết khi cần
+→ Double-click một dòng để mở chi tiết bài viết
+→ Ẩn bài PUBLISHED sau khi chọn lý do hoặc khôi phục bài HIDDEN tại trang chi tiết
 ```
 
 Chỉ xử lý trạng thái phục vụ MVP: PUBLISHED, HIDDEN, DELETED.
@@ -295,13 +298,16 @@ Chỉ xử lý trạng thái phục vụ MVP: PUBLISHED, HIDDEN, DELETED.
 ```text
 Admin đăng nhập
 → ADMIN-05 Quản lý báo cáo
-→ Mở ADMIN-06 Chi tiết báo cáo
-→ Xem bài bị báo cáo và thông tin báo cáo
-→ Từ chối báo cáo hoặc xác nhận vi phạm
-→ Nếu vi phạm, admin có thể ẩn bài
+→ Danh sách một dòng mỗi Moderation Case
+→ Mở ADMIN-06 Chi tiết hồ sơ kiểm duyệt
+→ Xem bài, thống kê lý do và danh sách Report rút gọn theo người gửi, lý do, mô tả, thời gian
+→ Chọn trực tiếp Không vi phạm hoặc Có vi phạm / Ẩn bài
+→ Nếu có vi phạm, chọn một lý do ẩn bài thuộc enum Backend trong modal
+→ Backend cập nhật case, toàn bộ Report, Admin Action và Notification trong một transaction
 ```
 
-Lịch sử xử lý trong ảnh chỉ nên là lịch sử đơn giản; audit log chi tiết ngoài MVP.
+Không có bước tiếp nhận, trạng thái đang xử lý hoặc trạng thái đóng riêng. Case đã giải quyết chỉ hiển
+thị kết luận và không còn nút xử lý.
 
 ### 1.15 Trạng thái hệ thống
 

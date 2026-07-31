@@ -214,21 +214,10 @@ export function AppProvider({ children }) {
       return response;
     }
 
-    async function setReportStatus(reportId, status) {
-      const response = status === 'REJECTED'
-        ? await adminApi.rejectReport(reportId, 'Báo cáo không đủ căn cứ.')
-        : await adminApi.resolveReport(reportId, { resolutionNote: 'Báo cáo hợp lệ.', hidePost: false });
-      setData((previous) => ({
-        ...previous,
-        reports: previous.reports.map((report) => String(report.id) === String(reportId) ? { ...report, status: response.status } : report),
-      }));
-      return response;
-    }
-
     return {
       data: { ...data, users }, currentUser, currentUserId, publicPosts, getUserById, getPostById,
       logout: auth.logout, createPost, getPostDetail, updatePost, deletePost, toggleLike, toggleSave, addComment,
-      deleteComment, toggleFollow, updateProfile, submitReport, setUserStatus, setPostStatus, setReportStatus,
+      deleteComment, toggleFollow, updateProfile, submitReport, setUserStatus, setPostStatus,
     };
   }, [auth.logout, currentUser, currentUserId, data]);
 

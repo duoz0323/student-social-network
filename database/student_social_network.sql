@@ -69,8 +69,8 @@ DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `admin_id` bigint unsigned NOT NULL,
-  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT') NOT NULL,
-  `target_type` enum('USER','POST','REPORT') NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE') NOT NULL,
+  `target_type` enum('USER','POST','REPORT','MODERATION_CASE') NOT NULL,
   `target_id` bigint unsigned NOT NULL,
   `note` varchar(1000) DEFAULT NULL,
   `old_data` json DEFAULT NULL,
@@ -648,6 +648,44 @@ LOCK TABLES `posts` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `moderation_cases`
+--
+
+DROP TABLE IF EXISTS `moderation_cases`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderation_cases` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `post_id` bigint unsigned NOT NULL,
+  `status` enum('OPEN','RESOLVED_NO_VIOLATION','RESOLVED_ACTION_TAKEN') NOT NULL DEFAULT 'OPEN',
+  `report_count` int unsigned NOT NULL DEFAULT '0',
+  `resolved_by` bigint unsigned DEFAULT NULL,
+  `resolution_note` varchar(1000) DEFAULT NULL,
+  `first_reported_at` datetime(6) NOT NULL,
+  `latest_reported_at` datetime(6) NOT NULL,
+  `resolved_at` datetime(6) DEFAULT NULL,
+  `open_post_key` bigint unsigned GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'OPEN') then `post_id` else NULL end)) STORED,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_moderation_cases_open_post` (`open_post_key`),
+  KEY `idx_moderation_cases_post` (`post_id`),
+  KEY `idx_moderation_cases_status_latest` (`status`,`latest_reported_at` DESC,`id` DESC),
+  KEY `idx_moderation_cases_resolved_by` (`resolved_by`),
+  CONSTRAINT `fk_moderation_cases_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_moderation_cases_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_moderation_cases_report_count` CHECK ((`report_count` >= 0)),
+  CONSTRAINT `chk_moderation_cases_reported_time` CHECK ((`latest_reported_at` >= `first_reported_at`)),
+  CONSTRAINT `chk_moderation_cases_resolution_state` CHECK (((`status` = _utf8mb4'OPEN' and `resolved_by` is null and `resolved_at` is null) or (`status` in (_utf8mb4'RESOLVED_NO_VIOLATION',_utf8mb4'RESOLVED_ACTION_TAKEN') and `resolved_by` is not null and `resolved_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `moderation_cases` WRITE;
+/*!40000 ALTER TABLE `moderation_cases` DISABLE KEYS */;
+/*!40000 ALTER TABLE `moderation_cases` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `refresh_tokens`
 --
 
@@ -693,6 +731,7 @@ CREATE TABLE `reports` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `reporter_id` bigint unsigned NOT NULL,
   `post_id` bigint unsigned NOT NULL,
+  `moderation_case_id` bigint unsigned DEFAULT NULL,
   `reason` enum('SPAM','HARASSMENT','HARMFUL_CONTENT','VIOLENCE','MISINFORMATION','INAPPROPRIATE','OTHER') NOT NULL,
   `description` varchar(1000) DEFAULT NULL,
   `status` enum('PENDING','RESOLVED','REJECTED') NOT NULL DEFAULT 'PENDING',
@@ -710,9 +749,12 @@ CREATE TABLE `reports` (
   KEY `idx_reports_status_created` (`status`,`created_at`,`id`),
   KEY `idx_reports_post_status` (`post_id`,`status`,`created_at` DESC,`id` DESC),
   KEY `idx_reports_reporter_created` (`reporter_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_reports_moderation_case_created` (`moderation_case_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_reports_reporter_post` (`reporter_id`,`post_id`),
   CONSTRAINT `fk_reports_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_reports_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_reports_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_reports_moderation_case` FOREIGN KEY (`moderation_case_id`) REFERENCES `moderation_cases` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_reports_resolution_state` CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

@@ -31,8 +31,8 @@
 | Feed For You/Following | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Cursor Pagination và Infinite Scroll. |
 | Bài viết trên hồ sơ | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | `GET /api/v1/users/{userId}/posts` dùng Cursor Pagination. |
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
-| Báo cáo bài viết | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Chống trùng report `PENDING`. |
-| Admin user/post/report/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Admin xem chi tiết, sửa nội dung hồ sơ USER, khóa/mở khóa; có phân quyền và test security/controller/repository/service. |
+| Báo cáo bài viết và Moderation Case | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Report độc lập; một case OPEN mỗi Post; chống trùng theo reporter/Post/case OPEN. |
+| Admin user/post/moderation/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Admin xem một dòng mỗi case, chi tiết mọi Report và giải quyết trực tiếp có phân quyền/locking. |
 | Thông báo đơn giản | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có danh sách, unread count, read/read-all và delete. |
 
 ## Thay đổi đang có trong worktree

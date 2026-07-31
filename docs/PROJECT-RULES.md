@@ -94,7 +94,9 @@
 
 - Chỉ report post.
 - Trạng thái PENDING, RESOLVED, REJECTED.
-- Không có nhiều report PENDING cùng user và post.
+- Mỗi Report giữ riêng reporter, reason, description và snapshot; không gộp chuỗi/JSON thay quan hệ.
+- Report phải thuộc Moderation Case; không có nhiều report đang hiệu lực cùng user và post.
+- Một post chỉ có một Moderation Case `OPEN`; case dùng `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`.
 - Report không tự động ẩn post.
 
 ## 11. Admin
@@ -102,7 +104,7 @@
 - Chỉ ADMIN truy cập API quản trị.
 - Có thể khóa/mở user.
 - Có thể ẩn/khôi phục post.
-- Có thể xử lý report.
+- Xử lý trực tiếp Moderation Case từ `OPEN` sang một kết quả cuối; không có bước tiếp nhận.
 
 ## 12. API
 

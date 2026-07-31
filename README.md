@@ -408,10 +408,10 @@ không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 
 ### 🚩 9. Báo cáo vi phạm
 
-- Báo cáo bài viết.
-- Chọn lý do báo cáo.
-- Nhập mô tả bổ sung.
-- Theo dõi trạng thái xử lý.
+- Mỗi lần báo cáo bài viết tạo một dòng `reports` độc lập, giữ riêng reporter, reason, description và snapshot bằng chứng.
+- Mỗi Report thuộc một `Moderation Case`; nhiều Report cùng bài được gắn vào case `OPEN` hiện tại.
+- Một bài chỉ có tối đa một case `OPEN` tại một thời điểm. Case mới chỉ được tạo khi không còn case mở.
+- Cùng một người không được báo cáo lại bài đang có Report thuộc case `OPEN`; sau khi case cũ được giải quyết có thể báo cáo lại nếu bài vẫn đủ điều kiện.
 
 Trạng thái báo cáo:
 
@@ -419,7 +419,20 @@ Trạng thái báo cáo:
 - `RESOLVED`.
 - `REJECTED`.
 
+Trạng thái Moderation Case:
+
+- `OPEN`: đang chờ Admin đưa ra quyết định và tiếp tục nhận Report hợp lệ mới.
+- `RESOLVED_NO_VIOLATION`: Admin kết luận bài không vi phạm; các Report trong case chuyển `REJECTED`.
+- `RESOLVED_ACTION_TAKEN`: Admin kết luận có vi phạm và đã áp dụng hành động; các Report chuyển `RESOLVED`.
+
+Admin xử lý trực tiếp từ `OPEN` sang một trong hai kết quả cuối. Không có bước tiếp nhận, trạng thái
+`IN_REVIEW`, trạng thái `CLOSED`, `assigned_admin_id` hoặc `closed_at`. Case đã giải quyết không nhận
+Report mới và không được xử lý lại.
+
 Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên là người đưa ra quyết định xử lý cuối cùng.
+Luồng tạo Report khóa bản ghi Post bằng `PESSIMISTIC_WRITE`, sau đó tìm/tạo case, tạo Report và cập
+nhật `report_count` trong cùng transaction. Unique generated key trên case là lớp bảo vệ database để
+không tồn tại hai case `OPEN` cho cùng bài.
 
 ### 🛡️ 10. Quản trị hệ thống
 
@@ -439,9 +452,10 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 #### Quản lý báo cáo
 
-- Xem danh sách và chi tiết báo cáo.
-- Xác nhận hoặc từ chối báo cáo.
-- Ẩn bài viết vi phạm.
+- Xem danh sách Moderation Case, mỗi case đúng một dòng và phân trang tại database.
+- Xem chi tiết toàn bộ Report theo dạng rút gọn gồm reporter, reason, description và thời gian; snapshot vẫn được lưu độc lập làm bằng chứng nhưng không render trong từng Report trên giao diện Admin.
+- Kết luận trực tiếp không vi phạm hoặc có vi phạm và ẩn bài.
+- Chỉ một Admin được phép giải quyết case `OPEN` khi có thao tác đồng thời.
 
 #### Hoạt động quản trị
 
@@ -478,6 +492,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Tìm kiếm người dùng.
 - Tìm kiếm bài viết.
 - Báo cáo bài viết.
+- Moderation Case và xử lý báo cáo theo nhóm bài viết.
 - Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
@@ -748,6 +763,7 @@ Quan hệ Location–Post:
 ### Báo cáo và quản trị
 
 - `reports`.
+- `moderation_cases`: hồ sơ xử lý chung theo bài viết; duy nhất một case `OPEN` cho mỗi Post.
 - `account_status_histories`.
 - `admin_actions`.
 
@@ -856,6 +872,18 @@ DELETE /api/v1/users/me/auth-providers/{provider}
 /api/v1/reports
 /api/v1/admin
 ```
+
+API Moderation Case dành cho Admin:
+
+```http
+GET   /api/v1/admin/moderation-cases
+GET   /api/v1/admin/moderation-cases/{caseId}
+PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-no-violation
+PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-action
+```
+
+Frontend chỉ gửi hành động nghiệp vụ và kết luận; `status` cùng `resolved_by` do Backend xác định từ
+state machine và JWT Principal.
 
 Ví dụ bắt đầu đăng ký:
 
@@ -1025,6 +1053,11 @@ npm run preview
 - Liên kết và gỡ phương thức đăng nhập.
 - Từ chối gỡ phương thức cuối cùng.
 - Tài khoản `BLOCKED` bị từ chối ở mọi phương thức.
+- Report đầu tiên tạo case `OPEN`; các Report hợp lệ tiếp theo cùng bài dùng lại đúng case đó.
+- Hai request báo cáo đồng thời không tạo hai case `OPEN`, không mất Report và không làm sai `report_count`.
+- Admin giải quyết case `OPEN` đúng một lần; thao tác cạnh tranh còn lại nhận lỗi conflict.
+- Kết luận không vi phạm không ẩn bài và chuyển Report sang `REJECTED`; kết luận có vi phạm ẩn bài và chuyển Report sang `RESOLVED`.
+- Danh sách Admin hiển thị một dòng mỗi case; chi tiết giữ riêng reporter, reason, description và snapshot của từng Report.
 
 ---
 
@@ -1181,7 +1214,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Thông báo thời gian thực.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê nâng cao.
-- Moderation Case.
 - Machine Learning cho hệ thống gợi ý.
 - Ứng dụng mobile native.
 - Group Chat.
@@ -1210,7 +1242,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê.
 - Audit Log chi tiết.
-- Moderation Case.
 - Thuật toán gợi ý nâng cao.
 - Ứng dụng di động.
 

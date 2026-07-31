@@ -3,9 +3,9 @@ import { useAdminReportStatistics } from '../hooks/useAdminReportStatistics.js';
 import { formatWeekRange } from '../utils/adminReportStatistics.js';
 
 const STATUS_SEGMENTS = [
-  { key: 'PENDING', label: 'Chờ xử lý', color: '#a84b00' },
-  { key: 'RESOLVED', label: 'Xác nhận vi phạm', color: '#0868c7' },
-  { key: 'REJECTED', label: 'Đã từ chối', color: '#d62828' },
+  { key: 'OPEN', label: 'Chờ xử lý', color: '#a84b00' },
+  { key: 'RESOLVED_ACTION_TAKEN', label: 'Đã xử lý vi phạm', color: '#0868c7' },
+  { key: 'RESOLVED_NO_VIOLATION', label: 'Không vi phạm', color: '#d62828' },
 ];
 
 export default function AdminReportAnalytics() {

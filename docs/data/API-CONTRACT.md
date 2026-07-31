@@ -1059,6 +1059,10 @@ Không trả password hash, provider token hoặc refresh token.
 }
 ```
 
+Backend lấy reporter từ JWT, khóa Post, tìm hoặc tạo Moderation Case `OPEN`, lưu snapshot riêng trên
+Report và cập nhật `report_count` trong cùng transaction. Request/response USER không nhận
+`moderationCaseId`, trạng thái case hoặc dữ liệu xử lý nội bộ.
+
 Chỉ ADMIN đang hoạt động được sửa hồ sơ của tài khoản có role `USER`. Tên hiển thị, ngày sinh
 và bio dùng cùng quy tắc validation với cập nhật hồ sơ cá nhân; thao tác được ghi vào
 `admin_actions` với loại `UPDATE_USER_PROFILE`. Avatar không được cập nhật qua endpoint JSON này.
@@ -1089,16 +1093,33 @@ Admin Post Detail trả Location hiện tại theo cùng Location response objec
 }
 ```
 
-### GET `/api/v1/admin/reports?status=PENDING&page=0&size=20`
+### GET `/api/v1/admin/moderation-cases?status=OPEN&reason=SPAM&page=0&size=20`
 
-Report và report snapshot chưa bổ sung Location trong P1 này.
+Danh sách phân trang trên `moderation_cases`, mỗi case đúng một dòng. Hỗ trợ `status`, `reason`,
+`keyword`, `postId`, `fromDate`, `toDate`; mặc định sắp xếp `latestReportedAt DESC, caseId DESC`.
+`reasons` là danh sách `{ reason, count }`, không phải chuỗi gộp.
 
-### PATCH `/api/v1/admin/reports/{reportId}`
+### GET `/api/v1/admin/moderation-cases/{caseId}`
+
+Trả thông tin case, bài hiện tại, tổng Report/reporter khác nhau, thống kê lý do, toàn bộ Report theo
+`createdAt DESC, reportId DESC`, snapshot riêng của từng Report, kết luận và Admin Action.
+
+### PATCH `/api/v1/admin/moderation-cases/{caseId}/resolve-no-violation`
+
+```json
+{}
+```
+
+### PATCH `/api/v1/admin/moderation-cases/{caseId}/resolve-action`
 
 ```json
 {
-  "status": "RESOLVED",
-  "hidePost": true
+  "action": "HIDE_POST",
+  "reasonCode": "SPAM"
 }
 ```
+
+Frontend không gửi `status`, `resolvedBy` hoặc `adminId`. Backend lấy Admin từ JWT và chỉ cho phép
+case `OPEN` chuyển thẳng sang `RESOLVED_NO_VIOLATION` hoặc `RESOLVED_ACTION_TAKEN`. Giao diện hiện
+không yêu cầu kết luận tự do; `resolutionNote` được Backend giữ tương thích ở dạng tùy chọn.
 

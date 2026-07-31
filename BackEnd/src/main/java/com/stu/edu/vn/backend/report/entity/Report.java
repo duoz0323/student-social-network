@@ -38,6 +38,11 @@ public class Report extends BaseAuditEntity {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderation_case_id")
+    // Cho phép NULL để migration có thể kiểm tra và backfill dữ liệu legacy an toàn trước khi siết contract.
+    private ModerationCase moderationCase;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reason", nullable = false)
     private ReportReason reason;
@@ -77,6 +82,7 @@ public class Report extends BaseAuditEntity {
     public Report(
             User reporter,
             Post post,
+            ModerationCase moderationCase,
             ReportReason reason,
             String description,
             String postContentSnapshot,
@@ -84,11 +90,24 @@ public class Report extends BaseAuditEntity {
     ) {
         this.reporter = reporter;
         this.post = post;
+        this.moderationCase = moderationCase;
         this.reason = reason;
         this.description = description;
         this.postContentSnapshot = postContentSnapshot;
         this.postMediaSnapshot = postMediaSnapshot;
         this.status = ReportStatus.PENDING;
+    }
+
+    public Report(
+            User reporter,
+            Post post,
+            ReportReason reason,
+            String description,
+            String postContentSnapshot,
+            String postMediaSnapshot
+    ) {
+        // Constructor tương thích dữ liệu/test legacy; production flow mới luôn truyền Moderation Case.
+        this(reporter, post, null, reason, description, postContentSnapshot, postMediaSnapshot);
     }
 
     public Long getId() {
@@ -101,6 +120,10 @@ public class Report extends BaseAuditEntity {
 
     public Post getPost() {
         return post;
+    }
+
+    public ModerationCase getModerationCase() {
+        return moderationCase;
     }
 
     public ReportReason getReason() {

@@ -20,12 +20,15 @@ Enum admin_actions_action_type_enum {
   RESTORE_POST
   RESOLVE_REPORT
   REJECT_REPORT
+  RESOLVE_MODERATION_CASE
+  REJECT_MODERATION_CASE
 }
 
 Enum admin_actions_target_type_enum {
   USER
   POST
   REPORT
+  MODERATION_CASE
 }
 
 Enum comments_status_enum {
@@ -380,6 +383,12 @@ Table post_media {
   Note: "chk_post_media_display_order: CHECK ((`display_order` <= 3)) | chk_post_media_duration: CHECK ((((`media_type` = _utf8mb4'IMAGE') and (`duration_seconds` is null)) or ((`media_type` = _utf8mb4'VIDEO') and (`duration_seconds` between 1 and 180)))) | chk_post_media_file_size: CHECK ((`file_size_bytes` > 0))"
 }
 
+Enum moderation_cases_status_enum {
+  OPEN
+  RESOLVED_NO_VIOLATION
+  RESOLVED_ACTION_TAKEN
+}
+
 Table locations {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   google_place_id varchar(255) [not null]
@@ -426,6 +435,29 @@ Table posts {
   Note: "chk_posts_deleted_state: CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or (`status` <> _utf8mb4'DELETED'))) | chk_posts_hidden_state: CHECK ((((`status` = _utf8mb4'HIDDEN') and (`hidden_at` is not null) and (`hidden_by` is not null)) or (`status` <> _utf8mb4'HIDDEN')))"
 }
 
+Table moderation_cases {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  status moderation_cases_status_enum [not null, default: 'OPEN']
+  report_count int [not null, default: 0, note: "UNSIGNED"]
+  resolved_by bigint [note: "UNSIGNED"]
+  resolution_note varchar(1000)
+  first_reported_at datetime(6) [not null]
+  latest_reported_at datetime(6) [not null]
+  resolved_at datetime(6)
+  open_post_key bigint [unique, note: "UNSIGNED; generated khi status = OPEN"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (post_id) [name: "idx_moderation_cases_post"]
+    (status, latest_reported_at, id) [name: "idx_moderation_cases_status_latest"]
+    (resolved_by) [name: "idx_moderation_cases_resolved_by"]
+  }
+
+  Note: "Chỉ một case OPEN mỗi post nhờ open_post_key; resolution fields bắt buộc khi case đã giải quyết."
+}
+
 Table refresh_tokens {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   user_id bigint [not null, note: "UNSIGNED"]
@@ -448,6 +480,7 @@ Table reports {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   reporter_id bigint [not null, note: "UNSIGNED"]
   post_id bigint [not null, note: "UNSIGNED"]
+  moderation_case_id bigint [note: "UNSIGNED; nullable trong migration nhưng mọi Report production mới phải có case"]
   reason reports_reason_enum [not null]
   description varchar(1000)
   status reports_status_enum [not null, default: 'PENDING']
@@ -465,6 +498,8 @@ Table reports {
     (status, created_at, id) [name: "idx_reports_status_created"]
     (post_id, status, created_at, id) [name: "idx_reports_post_status"]
     (reporter_id, created_at, id) [name: "idx_reports_reporter_created"]
+    (moderation_case_id, created_at, id) [name: "idx_reports_moderation_case_created"]
+    (reporter_id, post_id) [name: "idx_reports_reporter_post"]
   }
 
   Note: "chk_reports_resolution_state: CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))"
@@ -589,8 +624,11 @@ Ref fk_post_media_post: post_media.post_id > posts.id [delete: cascade, update: 
 Ref fk_posts_author: posts.author_id > users.id [delete: restrict, update: restrict]
 Ref fk_posts_hidden_by: posts.hidden_by > users.id [delete: restrict, update: restrict]
 Ref fk_posts_location: posts.location_id > locations.id [delete: set null, update: restrict]
+Ref fk_moderation_cases_post: moderation_cases.post_id > posts.id [delete: restrict, update: restrict]
+Ref fk_moderation_cases_resolved_by: moderation_cases.resolved_by > users.id [delete: restrict, update: restrict]
 Ref fk_refresh_tokens_user: refresh_tokens.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_reports_post: reports.post_id > posts.id [delete: restrict, update: restrict]
+Ref fk_reports_moderation_case: reports.moderation_case_id > moderation_cases.id [delete: restrict, update: restrict]
 Ref fk_reports_reporter: reports.reporter_id > users.id [delete: restrict, update: restrict]
 Ref fk_reports_resolved_by: reports.resolved_by > users.id [delete: restrict, update: restrict]
 Ref fk_notifications_actor: notifications.actor_id > users.id [delete: set null, update: restrict]

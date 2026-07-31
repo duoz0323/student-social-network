@@ -149,11 +149,14 @@ GET /api/v1/search/users?q= hoặc /api/v1/search/posts?q=
 
 ```text
 Report Modal → POST /api/v1/posts/{postId}/reports
-→ Kiểm tra profile hoàn tất và report PENDING trùng
-→ Tạo report
+→ Kiểm tra profile hoàn tất và khóa Post
+→ Kiểm tra reporter chưa có Report trong case OPEN
+→ Tìm hoặc tạo Moderation Case OPEN
+→ Tạo Report độc lập, cập nhật report_count và commit cùng transaction
 
-Admin Report Detail → PATCH /api/v1/admin/reports/{reportId}
+Admin Case Detail → PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-*
 → Kiểm tra ADMIN
-→ Chuyển RESOLVED/REJECTED, có thể ẩn post theo state machine
+→ Khóa case OPEN và Post khi cần
+→ Chuyển case sang kết quả cuối, cập nhật mọi Report, audit/notification và có thể ẩn Post
 ```
 

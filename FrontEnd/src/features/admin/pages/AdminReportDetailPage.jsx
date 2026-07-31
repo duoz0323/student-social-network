@@ -7,21 +7,18 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import { formatDateTime } from '../../../utils/formatters.js';
 import HideReportedPostDialog from '../components/HideReportedPostDialog.jsx';
 import AdminReportedPostCard from '../components/AdminReportedPostCard.jsx';
-import {
-  getAdminPostHideReasonFromReportReason,
-  getAdminReportDetailStatusLabel,
-  getAdminReportReasonLabel,
-} from '../constants/adminReportLabels.js';
+import { getAdminReportDetailStatusLabel, getAdminReportReasonLabel } from '../constants/adminReportLabels.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 import { toAdminReportPostView, toReportPostFallback } from '../utils/adminReportPost.js';
 
 export default function AdminReportDetailPage() {
-  const { reportId } = useParams();
+  const { caseId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useAdminToast();
-  const [report, setReport] = useState(null);
+  const [moderationCase, setModerationCase] = useState(null);
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [postError, setPostError] = useState('');
   const [hideDialogOpen, setHideDialogOpen] = useState(false);
@@ -29,136 +26,123 @@ export default function AdminReportDetailPage() {
   const load = useCallback(async (signal) => {
     setLoading(true);
     try {
-      const reportDetail = await adminApi.getReport(reportId, signal);
-      setReport(reportDetail);
+      const detail = await adminApi.getModerationCase(caseId, signal);
+      setModerationCase(detail);
       setError('');
-
-      const postId = reportDetail.reportedPost?.postId;
-      if (!postId) {
-        setPost(toReportPostFallback(reportDetail));
-        setPostError('Báo cáo không chứa mã bài viết để tải nội dung hiện tại.');
-        return;
-      }
-
       try {
-        const postDetail = await adminApi.getPost(postId, signal);
+        const postDetail = await adminApi.getPost(detail.reportedPost?.postId, signal);
         setPost(toAdminReportPostView(postDetail));
         setPostError('');
       } catch (requestError) {
         if (requestError.code !== 'ERR_CANCELED') {
-          setPost(toReportPostFallback(reportDetail));
-          setPostError(requestError.message || 'Không thể tải chi tiết bài viết.');
+          setPost(toReportPostFallback(detail));
+          setPostError(requestError.message || 'Không thể tải bài viết hiện tại; đang hiển thị snapshot gần nhất.');
         }
       }
     } catch (requestError) {
       if (requestError.code !== 'ERR_CANCELED') {
-        setReport(null);
-        setPost(null);
-        setError(requestError.message || 'Không thể tải chi tiết báo cáo.');
+        setModerationCase(null);
+        setError(requestError.message || 'Không thể tải hồ sơ kiểm duyệt.');
       }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [reportId]);
+  }, [caseId]);
 
   useEffect(() => {
     const controller = new AbortController();
     const timer = window.setTimeout(() => load(controller.signal), 0);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
+    return () => { window.clearTimeout(timer); controller.abort(); };
   }, [load]);
 
-  async function reject() {
+  async function resolveNoViolation() {
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      await adminApi.rejectReport(reportId, 'Báo cáo không đủ căn cứ.');
-      await load();
-      showToast('Từ chối báo cáo thành công!');
+      await adminApi.resolveCaseNoViolation(caseId);
+      await Promise.all([load(), adminApi.getModerationCases({ postId: moderationCase.reportedPost.postId, page: 0, size: 1 })]);
+      showToast('Đã kết luận bài viết không vi phạm.');
     } catch (requestError) {
       setError(requestError.message);
-      showToast(requestError.message || 'Không thể từ chối báo cáo.', { type: 'error' });
+      showToast(requestError.message || 'Không thể giải quyết hồ sơ kiểm duyệt.', { type: 'error' });
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  async function hidePost() {
-    const reasonLabel = getAdminReportReasonLabel(report.reason);
-    const hideReasonCode = getAdminPostHideReasonFromReportReason(report.reason);
+  async function hidePost(reasonCode) {
+    setSubmitting(true);
     try {
-      await adminApi.resolveReport(reportId, {
-        resolutionNote: `Ẩn bài vì ${reasonLabel}.`,
-        hidePost: true,
-        hideReasonCode,
+      await adminApi.resolveCaseAction(caseId, {
+        action: 'HIDE_POST',
+        reasonCode,
       });
-      await load();
+      await Promise.all([load(), adminApi.getModerationCases({ postId: moderationCase.reportedPost.postId, page: 0, size: 1 })]);
       setHideDialogOpen(false);
-      showToast('Xử lý báo cáo và ẩn bài viết thành công!');
+      showToast('Đã ẩn bài.');
     } catch (requestError) {
       setError(requestError.message);
-      showToast(requestError.message || 'Không thể ẩn bài viết.', { type: 'error' });
+      showToast(requestError.message || 'Không thể xử lý bài viết.', { type: 'error' });
       throw requestError;
+    } finally {
+      setSubmitting(false);
     }
   }
 
   if (loading) return <LoadingState />;
-  if (!report) return <EmptyState title="Không tìm thấy báo cáo" description={error || 'Báo cáo không tồn tại.'} />;
-  const reportedPost = report.reportedPost;
+  if (!moderationCase) return <EmptyState title="Không tìm thấy hồ sơ kiểm duyệt" description={error || 'Hồ sơ không tồn tại.'} />;
+  const isOpen = moderationCase.status === 'OPEN';
 
   return (
-    <section className="mx-auto max-w-5xl pb-8 lg:flex lg:h-[calc(100vh-6rem)] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-0">
-      <Button className="shrink-0 self-start" variant="ghost" onClick={() => navigate('/admin/reports')}><ArrowLeft size={16} /> Quay lại</Button>
+    <section className="mx-auto flex h-[calc(100vh-4rem)] min-h-0 max-w-6xl flex-col overflow-hidden lg:h-[calc(100vh-6rem)]">
+      <div className="shrink-0">
+        <Button variant="ghost" onClick={() => navigate('/admin/reports')}><ArrowLeft size={16} /> Quay lại</Button>
+      </div>
       {error && <p className="my-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
-      <div className="mt-5 rounded-[22px] border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden">
-        <div className="grid gap-3 lg:grid-cols-[minmax(220px,0.78fr)_minmax(0,1.22fr)] lg:gap-8">
-          <h1 className="text-xl font-bold text-zinc-950 sm:text-2xl">Chi tiết báo cáo #{report.reportId}</h1>
-          <h2 className="self-center text-xs font-bold uppercase tracking-wide text-zinc-950 lg:text-right">
-            {getAdminReportDetailStatusLabel(report.status)}
-          </h2>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+          <div><h1 className="text-2xl font-bold">Hồ sơ kiểm duyệt #{moderationCase.caseId}</h1><p className="mt-1 text-sm text-zinc-500">{moderationCase.reportCount} báo cáo · {moderationCase.distinctReporterCount} người báo cáo</p></div>
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold">{getAdminReportDetailStatusLabel(moderationCase.status)}</span>
         </div>
 
-        <div className="mt-7 grid items-start gap-8 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(220px,0.78fr)_minmax(0,1.22fr)]">
+        <div className="mt-5 grid min-h-0 flex-1 gap-8 overflow-y-auto [scrollbar-width:none] lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,.9fr)] [&::-webkit-scrollbar]:hidden">
           <div>
-            <dl className="space-y-5">
-              <div><dt className="text-xs text-zinc-400">Người báo cáo</dt><dd className="mt-1 text-sm font-medium text-zinc-950">{report.reporter?.displayName || '—'}</dd></div>
-              <div><dt className="text-xs text-zinc-400">Thời gian</dt><dd className="mt-1 text-sm font-medium text-zinc-950">{formatDateTime(report.createdAt)}</dd></div>
-              <div><dt className="text-xs text-zinc-400">Lý do</dt><dd className="mt-1 text-sm font-medium text-zinc-950">{getAdminReportReasonLabel(report.reason)}</dd></div>
-              <div><dt className="text-xs text-zinc-400">Tác giả</dt><dd className="mt-1 text-sm font-medium text-zinc-950">{post?.author?.displayName || reportedPost?.author?.displayName || '—'}</dd></div>
-            </dl>
-
-            <h2 className="mt-7 text-sm font-bold text-zinc-950">Mô tả</h2>
-            <p className="mt-2 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-700">{report.description || 'Không có mô tả.'}</p>
-          </div>
-
-          <div className="min-w-0 lg:flex lg:min-h-0 lg:flex-col">
-            <div className="rounded-lg border border-zinc-200 p-3 sm:p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
-              {postError ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{postError}</p> : null}
-              {post ? (
-                <AdminReportedPostCard post={post} />
-              ) : (
-                <EmptyState title="Không có nội dung bài viết" description="Không thể hiển thị bài viết của báo cáo này." />
-              )}
+            {postError && <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{postError}</p>}
+            {post ? <AdminReportedPostCard post={post} /> : <EmptyState title="Không có nội dung bài viết" />}
+            <div className="mt-6">
+              <h2 className="font-bold">Thống kê lý do</h2>
+              <div className="mt-2 flex flex-wrap gap-2">{moderationCase.reasons.map((item) => <span key={item.reason} className="rounded-full bg-violet-50 px-3 py-1 text-sm text-violet-700">{getAdminReportReasonLabel(item.reason)} ({item.count})</span>)}</div>
             </div>
-
-            {report.status === 'PENDING' ? (
-              <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-zinc-200 pt-6">
-                <Button className="gap-2 !h-10 !px-5" variant="secondary" onClick={reject}>
-                  <CircleX size={16} /> Từ chối
-                </Button>
-                <Button className="gap-2 !h-10 !px-5" onClick={() => setHideDialogOpen(true)}>
-                  <EyeOff size={16} /> Ẩn bài
-                </Button>
-              </div>
-            ) : null}
           </div>
+
+          <div>
+            <h2 className="font-bold">Các báo cáo trong hồ sơ</h2>
+            <div className="mt-3 space-y-2">
+              {moderationCase.reports.map((report) => (
+                <article key={report.reportId} className="rounded-xl border border-zinc-200 px-3 py-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <strong className="text-sm">{report.reporter?.displayName || `User #${report.reporter?.userId}`}</strong>
+                    <span className="text-xs text-zinc-400">{formatDateTime(report.createdAt)}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                    <span className="font-medium text-violet-700">{getAdminReportReasonLabel(report.reason)}</span>
+                    <span className="text-zinc-500">{report.description || 'Không có mô tả.'}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 shrink-0 border-t pt-4">
+          {moderationCase.resolution?.resolvedBy && <p className="text-sm text-zinc-500">Xử lý bởi {moderationCase.resolution.resolvedBy.displayName || `Admin #${moderationCase.resolution.resolvedBy.adminId}`} lúc {formatDateTime(moderationCase.resolution.resolvedAt)}</p>}
+          {isOpen && <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" disabled={submitting} onClick={resolveNoViolation}><CircleX size={16} /> Không vi phạm</Button>
+            <Button disabled={submitting} onClick={() => setHideDialogOpen(true)}><EyeOff size={16} /> Có vi phạm / Ẩn bài</Button>
+          </div>}
         </div>
       </div>
-      {hideDialogOpen ? (
-        <HideReportedPostDialog
-          reasonLabel={getAdminReportReasonLabel(report.reason)}
-          onClose={() => setHideDialogOpen(false)}
-          onConfirm={hidePost}
-        />
-      ) : null}
+      {hideDialogOpen && <HideReportedPostDialog onClose={() => setHideDialogOpen(false)} onConfirm={hidePost} />}
     </section>
   );
 }

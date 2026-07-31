@@ -435,11 +435,12 @@ User Report đã được triển khai:
 - User lấy từ JWT.
 - Backend tự đọc content và media để tạo snapshot.
 - Client không gửi snapshot.
-- Chống nhiều report `PENDING` cùng reporter và Post.
+- Chống nhiều Report đang hiệu lực cùng reporter và Post theo Moderation Case `OPEN`.
 - Report mới có status `PENDING`.
+- Report mới luôn gắn vào case `OPEN`; báo cáo đầu tiên tạo case và các reporter tiếp theo dùng lại case.
 - Gửi report không tự động ẩn Post.
 
-Database dùng generated column `pending_report_key` và unique constraint để chống race condition.
+Database dùng `pending_report_key`, unique `open_post_key` và khóa Post pessimistic để chống race condition.
 
 Frontend đã có `ReportPostFlow` và `postApi.report`.
 

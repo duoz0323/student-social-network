@@ -1,8 +1,8 @@
 // Giữ nguyên mã enum của Backend và chỉ Việt hóa nội dung hiển thị trên giao diện quản trị.
 export const ADMIN_REPORT_STATUSES = [
-  { value: 'PENDING', label: 'Đang chờ' },
-  { value: 'RESOLVED', label: 'Đã xử lý' },
-  { value: 'REJECTED', label: 'Đã từ chối' },
+  { value: 'OPEN', label: 'Đang chờ' },
+  { value: 'RESOLVED_ACTION_TAKEN', label: 'Đã xử lý vi phạm' },
+  { value: 'RESOLVED_NO_VIOLATION', label: 'Không vi phạm' },
 ];
 
 export const ADMIN_REPORT_REASONS = [
@@ -34,8 +34,8 @@ export function getAdminReportReasonLabel(value) {
 }
 
 export function getAdminReportDetailStatusLabel(value) {
-  if (value === 'RESOLVED') return 'Đã xử lý: Ẩn bài';
-  if (value === 'REJECTED') return 'Đã xử lý: Từ chối';
+  if (value === 'RESOLVED_ACTION_TAKEN') return 'Đã xử lý vi phạm';
+  if (value === 'RESOLVED_NO_VIOLATION') return 'Không vi phạm';
   return getAdminReportStatusLabel(value);
 }
 

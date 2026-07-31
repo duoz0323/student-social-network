@@ -96,11 +96,13 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `AdminSummaryCards` | Hiển thị chỉ số tổng quan đơn giản. | ADMIN-01. | `totalUsers`, `totalPosts`, `pendingReports`, `blockedUsers`. | Module admin, CẦN XÁC NHẬN vì dashboard nâng cao ngoài MVP. |
-| `AdminUserTable` | Danh sách user với trạng thái và thao tác. | ADMIN-02. | `users`, `pagination`, `loading`, `onSearch`, `onToggleStatus`. | Module admin. |
+| `AdminUserTable` | Danh sách user không chứa nút Khóa/Mở khóa trên từng dòng. | ADMIN-02. | `users`, `pagination`, `loading`, `onSearch`, `onOpenDetail`. | Click dòng mở chi tiết; thay đổi trạng thái chỉ thực hiện trong chi tiết. |
+| `AdminUserAnalytics` | Biểu đồ vòng trạng thái ACTIVE/BLOCKED và biểu đồ số người dùng mới từng ngày trong tuần hiện tại. | ADMIN-02. | Dữ liệu lấy từ `useAdminUserStatistics`; `refreshKey` làm mới sau Khóa/Mở khóa. | Cột rộng 16rem từ breakpoint 2XL và không làm co bảng dữ liệu. |
 | `AdminUserActionMenu` | Menu thao tác user. | ADMIN-03. | `user`, `onBlock`, `onUnblock`, `onView`. | Module admin. |
-| `AdminPostTable` | Danh sách bài viết và trạng thái. | ADMIN-04. | `posts`, `pagination`, `loading`, `onHide`, `onRestore`. | Module admin. |
-| `AdminReportTable` | Danh sách báo cáo cần xử lý. | ADMIN-05. | `reports`, `pagination`, `loading`, `onOpenDetail`. | Module admin. |
-| `ReportDetailPanel` | Chi tiết báo cáo và bài bị báo cáo. | ADMIN-06. | `report`, `post`, `onReject`, `onResolve`, `onHidePost`. | Module admin/report. |
+| `AdminPostTable` | Danh sách bài viết và trạng thái, không chứa nút Ẩn/Khôi phục. | ADMIN-04. | `posts`, `pagination`, `loading`, `onOpenDetail`. | Double-click hoặc Enter/Space trên dòng để mở chi tiết Admin; thay đổi trạng thái chỉ thực hiện ở trang chi tiết. |
+| `AdminPostAnalytics` | Hai thẻ biểu đồ gọn theo kích thước nội dung: vòng tổng bài/số bài đã ẩn và cột số bài từng ngày trong tuần hiện tại. | ADMIN-04. | Dữ liệu lấy từ `useAdminPostStatistics`. | Cột rộng 16rem từ breakpoint 2XL; bố cục mở rộng và dịch trái để giữ nguyên chiều rộng bảng dữ liệu. |
+| `AdminReportTable` | Danh sách một dòng mỗi Moderation Case, không hiển thị lý do. | ADMIN-05. | `moderationCases`, `filters`, `pagination`, `loading`, `onOpenDetail`. | Module admin; dữ liệu đã aggregate từ Backend và vùng bảng tự cuộn trong viewport. |
+| `ReportDetailPanel` | Chi tiết case, bài và danh sách Report rút gọn không render snapshot/media. | ADMIN-06. | `moderationCase`, `post`, `onResolveNoViolation`, `onResolveAction`. | Module admin/report; không có trường kết luận hoặc bước tiếp nhận. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
 
 ## 8. System state component

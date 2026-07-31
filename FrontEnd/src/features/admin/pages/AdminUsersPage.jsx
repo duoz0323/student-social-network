@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { adminApi } from '../../../api/index.js';
-import Button from '../../../components/common/Button.jsx';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
-import { useApp } from '../../../contexts/AppContext.jsx';
 import BlockUserDialog from '../components/BlockUserDialog.jsx';
 import AdminEditUserProfileDialog from '../components/AdminEditUserProfileDialog.jsx';
 import AdminUserDetailDialog from '../components/AdminUserDetailDialog.jsx';
+import AdminUserAnalytics from '../components/AdminUserAnalytics.jsx';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 
 export default function AdminUsersPage() {
-  const { currentUserId } = useApp();
   const { showToast } = useAdminToast();
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -28,6 +26,7 @@ export default function AdminUsersPage() {
   const [editTarget, setEditTarget] = useState(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState('');
+  const [statisticsRevision, setStatisticsRevision] = useState(0);
   const detailRequestRef = useRef(null);
 
   async function load(signal) {
@@ -140,6 +139,7 @@ export default function AdminUsersPage() {
       await adminApi.blockUser(blockTarget.userId, reasonCode);
       setBlockTarget(null);
       await load();
+      setStatisticsRevision((current) => current + 1);
       showToast('Khóa tài khoản thành công!');
     } catch (requestError) {
       setError(requestError.message);
@@ -153,6 +153,7 @@ export default function AdminUsersPage() {
     try {
       await adminApi.unblockUser(user.userId);
       await load();
+      setStatisticsRevision((current) => current + 1);
       showToast('Mở khóa tài khoản thành công!');
     } catch (requestError) {
       setError(requestError.message);
@@ -163,33 +164,30 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <section>
-      <div className="mb-6 flex items-center gap-3 rounded-xl border bg-white p-3">
-        <Search size={16} />
-        <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm theo tên hiển thị hoặc email..." className="flex-1 bg-transparent outline-none" />
-        <span className="text-sm text-gray-500">Tổng: {result.totalElements}</span>
-      </div>
-      {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
-      {loading ? <LoadingState /> : (
-        <DataTable rows={result.content} onRowClick={openUserDetail} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
-          totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
-          { key: 'displayName', label: 'Người dùng', render: (row) => <div><strong>{row.displayName || 'Chưa cập nhật tên'}</strong><small className="block text-gray-500">{row.email}</small></div> },
-          { key: 'profileCompleted', label: 'Hồ sơ', render: (row) => row.profileCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất' },
-          { key: 'status', label: 'Trạng thái' },
-          { key: 'action', label: '', render: (row) => <Button
-            size="sm"
-            variant="secondary"
-            disabled={String(row.userId) === String(currentUserId) || String(actionUserId) === String(row.userId)}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (row.status === 'ACTIVE') setBlockTarget(row);
-              else unblockUser(row);
-            }}
-          >
-            {row.status === 'ACTIVE' ? <><ShieldAlert size={14} /> Khóa</> : <><ShieldCheck size={14} /> Mở khóa</>}
-          </Button> },
-        ]} />
-      )}
+    <>
+      <section className="grid h-[calc(100vh-4rem)] min-h-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:w-[calc(100%+17.5rem)] 2xl:-translate-x-[8.75rem] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+          <div className="mb-4 flex shrink-0 items-center gap-3 rounded-xl border bg-white p-3">
+            <Search size={16} />
+            <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm theo tên hiển thị hoặc email..." className="flex-1 bg-transparent outline-none" />
+            <span className="text-sm text-gray-500">Tổng: {result.totalElements}</span>
+          </div>
+          {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+          <div className="min-h-0 flex-1 [&>div]:h-full [&>div]:max-h-none">
+            {loading ? <LoadingState /> : (
+              <DataTable rows={result.content} onRowClick={openUserDetail} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
+                totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
+                { key: 'displayName', label: 'Người dùng', render: (row) => <div><strong>{row.displayName || 'Chưa cập nhật tên'}</strong><small className="block text-gray-500">{row.email}</small></div> },
+                { key: 'profileCompleted', label: 'Hồ sơ', render: (row) => row.profileCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất' },
+                { key: 'status', label: 'Trạng thái' },
+              ]} />
+            )}
+          </div>
+        </div>
+        <div className="hidden h-full min-h-0 overflow-hidden 2xl:block">
+          <AdminUserAnalytics refreshKey={statisticsRevision} />
+        </div>
+      </section>
       {blockTarget ? (
         <BlockUserDialog
           key={blockTarget.userId}
@@ -220,6 +218,6 @@ export default function AdminUsersPage() {
           onSubmit={saveEditedProfile}
         />
       ) : null}
-    </section>
+    </>
   );
 }

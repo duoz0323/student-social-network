@@ -249,7 +249,7 @@ Location gắn với Post thuộc P1 và có phạm vi độc lập với Discov
 
 ### 4.9 Báo cáo
 
-Chỉ báo cáo bài viết.
+Chỉ báo cáo bài viết. Mỗi lần gửi tạo một Report độc lập và Report thuộc một Moderation Case của bài.
 
 Thông tin:
 
@@ -267,6 +267,10 @@ Trạng thái:
 - REJECTED.
 
 Một người không được có nhiều report PENDING cho cùng một bài.
+
+Một bài chỉ có tối đa một Moderation Case `OPEN` tại một thời điểm. Case dùng ba trạng thái
+`OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`; không có bước tiếp nhận hoặc trạng thái
+đang xử lý. Case đã giải quyết không nhận Report mới và báo cáo hợp lệ tiếp theo tạo case mới.
 
 ### 4.10 Quản trị
 
@@ -287,11 +291,10 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 #### Báo cáo
 
-- Danh sách.
-- Chi tiết.
-- Xác nhận hợp lệ.
-- Từ chối.
-- Có thể ẩn bài khi vi phạm.
+- Danh sách một dòng mỗi Moderation Case.
+- Chi tiết toàn bộ Report và snapshot độc lập trong case.
+- Kết luận trực tiếp không vi phạm hoặc có vi phạm.
+- Ẩn bài khi kết luận có vi phạm.
 
 ## 5. Ưu tiên
 
@@ -320,6 +323,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Hashtag.
 - Search.
 - Report.
+- Moderation Case.
 - Gắn, thay đổi và gỡ Location tùy chọn trên Post.
 - Admin khóa tài khoản.
 - Admin ẩn/khôi phục bài.
@@ -348,7 +352,6 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Nhắn tin.
 - Thông báo realtime.
 - Dashboard nâng cao.
-- Moderation Case.
 - Audit Log chi tiết.
 
 ## 7. Tiêu chí nghiệm thu
@@ -381,6 +384,8 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Feed đúng nguồn.
 - Search có phân trang.
 - Report không trùng PENDING.
+- Một bài không có hai Moderation Case `OPEN`; tạo Report và cập nhật case nằm trong cùng transaction.
+- Admin chỉ giải quyết case `OPEN` một lần và danh sách quản trị không group dữ liệu tại Frontend.
 - Admin quản lý được user, post, report.
 - API từ chối khi không có quyền.
 - Password không lưu plain text.

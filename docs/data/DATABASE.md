@@ -142,3 +142,12 @@ Sau rebuild, chạy `database/audit_auth_after_rebuild.sql` và integration/conc
 
 Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc rebuild database thật.
 
+## 12. Moderation Case
+
+- `moderation_cases` có quan hệ N-1 với `posts`; `reports.moderation_case_id` tham chiếu case.
+- Generated key `open_post_key` cùng unique index bảo đảm tối đa một case `OPEN` mỗi Post.
+- `report_count`, `first_reported_at`, `latest_reported_at` được cập nhật trong cùng transaction tạo Report.
+- Migration `V003__add_moderation_cases.sql` dừng trước khi backfill nếu Report legacy không thể map an toàn.
+- Backfill giữ nguyên reporter, reason, description và snapshot; không gộp dữ liệu thành CSV/JSON.
+- Report `PENDING` thuộc case `OPEN`; case không vi phạm chuyển Report sang `REJECTED`, case có hành động chuyển sang `RESOLVED`.
+

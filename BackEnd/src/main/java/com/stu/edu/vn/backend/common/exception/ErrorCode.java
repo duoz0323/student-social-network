@@ -8,6 +8,10 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     HASHTAG_SUGGESTION_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa gợi ý hashtag không được vượt quá 100 ký tự"),
     ADMIN_ACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lịch sử thao tác quản trị"),
+    ADMIN_MODERATION_CASE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ kiểm duyệt"),
+    ADMIN_MODERATION_CASE_ALREADY_RESOLVED(HttpStatus.CONFLICT, "Hồ sơ kiểm duyệt đã được giải quyết"),
+    ADMIN_MODERATION_CASE_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa hồ sơ kiểm duyệt không được vượt quá 100 ký tự"),
+    ADMIN_MODERATION_CASE_RESOLUTION_NOTE_TOO_LONG(HttpStatus.BAD_REQUEST, "Kết luận xử lý hồ sơ kiểm duyệt không được vượt quá 1000 ký tự"),
     ADMIN_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo cần quản lý"),
     ADMIN_REPORT_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa báo cáo quản trị không được vượt quá 100 ký tự"),
     ADMIN_REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "Báo cáo đã được xử lý"),

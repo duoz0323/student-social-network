@@ -19,7 +19,7 @@ export function useAdminReportStatistics() {
       try {
         const [statusCounts, weeklyReports] = await Promise.all([
           loadStatusCounts(controller.signal),
-          loadCurrentWeekReports(controller.signal, now),
+          loadCurrentWeekCases(controller.signal, now),
         ]);
         setStatistics({
           statusCounts,
@@ -44,28 +44,28 @@ export function useAdminReportStatistics() {
 
 async function loadStatusCounts(signal) {
   const responses = await Promise.all(
-    ADMIN_REPORT_STATUSES.map((status) => adminApi.getReports({ status: status.value, page: 0, size: 1 }, signal)),
+    ADMIN_REPORT_STATUSES.map((status) => adminApi.getModerationCases({ status: status.value, page: 0, size: 1 }, signal)),
   );
   return Object.fromEntries(
     ADMIN_REPORT_STATUSES.map((status, index) => [status.value, responses[index].totalElements || 0]),
   );
 }
 
-async function loadCurrentWeekReports(signal, now) {
-  const reports = [];
+async function loadCurrentWeekCases(signal, now) {
+  const cases = [];
   let page = 0;
   let shouldContinue = true;
 
   while (shouldContinue) {
-    const response = await adminApi.getReports({ page, size: STATISTICS_PAGE_SIZE }, signal);
+    const response = await adminApi.getModerationCases({ page, size: STATISTICS_PAGE_SIZE }, signal);
     const content = response.content || [];
-    reports.push(...content);
+    cases.push(...content);
 
     // API sắp xếp giảm dần khi không lọc trạng thái, nên có thể dừng ngay khi đã đi qua đầu tuần.
-    const reachedPreviousWeek = content.some((report) => isBeforeCurrentWeek(report.createdAt, now));
+    const reachedPreviousWeek = content.some((moderationCase) => isBeforeCurrentWeek(moderationCase.latestReportedAt, now));
     shouldContinue = !reachedPreviousWeek && page + 1 < (response.totalPages || 0);
     page += 1;
   }
 
-  return reports;
+  return cases.map((moderationCase) => ({ createdAt: moderationCase.latestReportedAt }));
 }
