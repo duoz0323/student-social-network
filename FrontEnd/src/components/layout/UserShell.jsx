@@ -1,10 +1,13 @@
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../common/Button.jsx';
+import Badge from '../common/Badge.jsx';
 import BrandLockup from '../common/BrandLockup.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
 import MoreMenu from './MoreMenu.jsx';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext.jsx';
+import { useNotifications } from '../../contexts/NotificationContext.jsx';
+import { notificationBadgeLabel } from '../../features/notification/utils/notificationState.js';
 
 // SVG Icons cho Sidebar
 function HomeIcon({ active = false }) {
@@ -67,8 +70,29 @@ function MoreIcon() {
   );
 }
 
+function NavigationIcon({ item, unreadCount }) {
+  const badgeLabel = item.to === '/notifications'
+    ? notificationBadgeLabel(unreadCount)
+    : '';
+  return (
+    <span className="interactive-icon relative flex w-6 justify-center text-[var(--app-text)]">
+      {item.icon(item.active)}
+      {badgeLabel ? (
+        <Badge
+          tone="danger"
+          className="absolute -right-4 -top-2 min-w-5 px-1.5 py-0.5 text-center text-[10px] leading-4"
+          aria-label={`${unreadCount} thông báo chưa đọc`}
+        >
+          {badgeLabel}
+        </Badge>
+      ) : null}
+    </span>
+  );
+}
+
 export default function UserShell() {
   const { logout } = useApp();
+  const { unreadCount } = useNotifications();
   const [composerMode, setComposerMode] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
@@ -105,14 +129,14 @@ export default function UserShell() {
             if (item.action) {
               return (
                 <button key={item.label} onClick={item.action} className={buttonClass}>
-                  <span className="interactive-icon flex w-6 justify-center text-[var(--app-text)]">{item.icon(item.active)}</span>
+                  <NavigationIcon item={item} unreadCount={unreadCount} />
                   <span className="text-[15px]">{item.label}</span>
                 </button>
               );
             }
             return (
               <NavLink key={item.to} to={item.to} className={buttonClass}>
-                <span className="interactive-icon flex w-6 justify-center text-[var(--app-text)]">{item.icon(item.active)}</span>
+                <NavigationIcon item={item} unreadCount={unreadCount} />
                 <span className="text-[15px]">{item.label}</span>
               </NavLink>
             );
@@ -125,9 +149,7 @@ export default function UserShell() {
             open={moreMenuOpen}
             onClose={() => setMoreMenuOpen(false)}
             onLogout={logout}
-            onSettings={() => navigate('/settings/auth-providers')}
-            onBlockedUsers={() => navigate('/settings/blocked-users')}
-            onRestrictedUsers={() => navigate('/settings/restricted-users')}
+            onSettings={() => navigate('/settings')}
             onLikedPosts={() => navigate('/liked')}
           />
           <button
@@ -151,8 +173,8 @@ export default function UserShell() {
           <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
-            onClick={() => navigate('/settings/auth-providers')}
-            aria-label="Cài đặt phương thức đăng nhập"
+            onClick={() => navigate('/settings')}
+            aria-label="Mở cài đặt"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.04H5.3v-3h.14A1.7 1.7 0 0 0 7 9.92a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.7 4.7V4.6h3v.1a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></svg>
           </button>
@@ -175,10 +197,10 @@ export default function UserShell() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
         {navItems.filter(item => item.to.startsWith('/')).map((item) => (
           <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
-            <span aria-hidden="true" className="h-5 w-5">{item.icon(item.active)}</span>
+            <NavigationIcon item={item} unreadCount={unreadCount} />
             <span>{item.label}</span>
           </NavLink>
         ))}

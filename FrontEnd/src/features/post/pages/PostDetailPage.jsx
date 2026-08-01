@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { postApi } from '../../../api/index.js';
-import Avatar from '../../../components/common/Avatar.jsx';
 import { EmptyState, LoadingState } from '../../../components/common/StateBlock.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
-import { shortTime } from '../../../utils/formatters.js';
+import CommentSection from '../components/CommentSection.jsx';
 import PostCard from '../components/PostCard.jsx';
 import { toPostView } from '../utils/postViewModel.js';
 
@@ -48,16 +47,17 @@ export default function PostDetailPage() {
     return () => controller.abort();
   }, [postId, requestKey]);
 
-  async function submitComment(event) {
-    event.preventDefault();
-    if (!comment.trim()) return;
+  async function submitComment(content) {
     try {
-      const created = await postApi.createComment(postId, comment.trim());
+      const created = await postApi.createComment(postId, content);
       setComments((items) => [...items, created]);
       setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
       setComment('');
+      setError('');
+      return created;
     } catch (requestError) {
       setError(requestError.message);
+      return null;
     }
   }
 
@@ -67,8 +67,10 @@ export default function PostDetailPage() {
       setComments((items) => items.filter((item) => item.commentId !== commentId));
       // Backend trigger đã giảm posts.comment_count; cập nhật cùng thay đổi lên giao diện.
       setPost((item) => ({ ...item, commentCount: Math.max(0, (Number(item.commentCount) || 0) - 1) }));
+      setError('');
     } catch (requestError) {
       setError(requestError.message);
+      return false;
     }
   }
 
@@ -76,19 +78,54 @@ export default function PostDetailPage() {
     try {
       const page = await postApi.getReplies(commentId, { page: 0, size: 50 });
       setReplies((current) => ({ ...current, [commentId]: page.content ?? [] }));
-    } catch (requestError) { setError(requestError.message); }
+      setError('');
+      return page.content ?? [];
+    } catch (requestError) {
+      setError(requestError.message);
+      return null;
+    }
   }
 
-  async function submitReply(commentId) {
-    const content = replyDrafts[commentId]?.trim();
-    if (!content) return;
+  async function submitReply(commentId, content) {
     try {
       const created = await postApi.createReply(commentId, content);
       setReplies((current) => ({ ...current, [commentId]: [...(current[commentId] ?? []), created] }));
+      setComments((items) => items.map((item) => (
+        item.commentId === commentId
+          ? { ...item, replyCount: (Number(item.replyCount) || 0) + 1 }
+          : item
+      )));
       // Reply cũng là một bản ghi comments nên được tính vào bộ đếm bình luận của bài viết.
       setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
       setReplyDrafts((current) => ({ ...current, [commentId]: '' }));
-    } catch (requestError) { setError(requestError.message); }
+      setError('');
+      return created;
+    } catch (requestError) {
+      setError(requestError.message);
+      return null;
+    }
+  }
+
+  async function removeReply(parentCommentId, replyId) {
+    try {
+      await postApi.deleteComment(replyId);
+      setReplies((current) => ({
+        ...current,
+        [parentCommentId]: (current[parentCommentId] ?? [])
+          .filter((item) => item.commentId !== replyId),
+      }));
+      setComments((items) => items.map((item) => (
+        item.commentId === parentCommentId
+          ? { ...item, replyCount: Math.max(0, (Number(item.replyCount) || 0) - 1) }
+          : item
+      )));
+      // Reply đã xóa mềm cũng làm bộ đếm tổng của bài viết giảm theo trigger Backend.
+      setPost((item) => ({ ...item, commentCount: Math.max(0, (Number(item.commentCount) || 0) - 1) }));
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message);
+      return false;
+    }
   }
 
   const header = (
@@ -111,32 +148,25 @@ export default function PostDetailPage() {
   return (
     <ContentShell header={header}>
       <PostCard post={post} detail />
-      <form className="flex items-center gap-3 border-b border-[var(--app-border)] px-6 py-4" onSubmit={submitComment}>
-        <Avatar src={currentUser.avatarUrl} name={currentUser.displayName} size="sm" />
-        <input value={comment} onChange={(event) => setComment(event.target.value)} maxLength={500}
-          className="flex-1 bg-transparent px-2 py-2 outline-none" placeholder="Viết bình luận..." />
-        <button type="submit" disabled={!comment.trim()} className="font-bold text-blue-600 disabled:opacity-40">Đăng</button>
-      </form>
-      {error && <p className="app-error m-4 rounded-xl p-3 text-sm">{error}</p>}
-      {comments.length === 0 ? (
-        <EmptyState title="Chưa có bình luận" description="Hãy là người đầu tiên bình luận." />
-      ) : comments.map((item) => (
-        <article key={item.commentId} className="flex gap-3 border-b border-[var(--app-border)] px-6 py-4">
-          <Avatar src={item.avatarUrl} name={item.displayName} size="sm" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <p className="font-bold">{item.displayName} <span className="font-normal text-[var(--app-muted)]">· {shortTime(item.createdAt)}</span></p>
-              {String(item.userId) === String(currentUser.id) && (
-                <button onClick={() => removeComment(item.commentId)} className="text-xs text-red-600">Xóa</button>
-              )}
-            </div>
-            <p className="mt-1 whitespace-pre-wrap">{item.content}</p>
-            {item.replyCount > 0 && replies[item.commentId] === undefined && <button onClick={() => loadReplies(item.commentId)} className="mt-2 text-xs font-semibold text-blue-600">Xem {item.replyCount} phản hồi</button>}
-            {(replies[item.commentId] ?? []).map((reply) => <div key={reply.commentId} className="mt-3 border-l-2 pl-3"><strong>{reply.displayName}</strong><p>{reply.content}</p></div>)}
-            <div className="mt-3 flex gap-2"><input value={replyDrafts[item.commentId] ?? ''} onChange={(event) => setReplyDrafts((current) => ({ ...current, [item.commentId]: event.target.value }))} placeholder="Viết phản hồi..." className="app-field min-w-0 flex-1 rounded-lg border px-3 py-1 text-sm outline-none transition" /><button onClick={() => submitReply(item.commentId)} className="text-sm font-semibold text-[var(--app-brand)]">Trả lời</button></div>
-          </div>
-        </article>
-      ))}
+      <CommentSection
+        key={requestKey}
+        currentUser={currentUser}
+        comments={comments}
+        commentCount={post.commentCount}
+        commentValue={comment}
+        onCommentChange={setComment}
+        onSubmitComment={submitComment}
+        onDeleteComment={removeComment}
+        replies={replies}
+        replyDrafts={replyDrafts}
+        onReplyDraftChange={(commentId, value) => {
+          setReplyDrafts((current) => ({ ...current, [commentId]: value }));
+        }}
+        onLoadReplies={loadReplies}
+        onSubmitReply={submitReply}
+        onDeleteReply={removeReply}
+        error={error}
+      />
     </ContentShell>
   );
 }

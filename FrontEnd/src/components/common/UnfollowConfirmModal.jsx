@@ -1,7 +1,9 @@
 import Modal from './Modal.jsx';
 import Avatar from './Avatar.jsx';
 
-export default function UnfollowConfirmModal({ open, user, onClose, onConfirm }) {
+export default function UnfollowConfirmModal({
+  open, user, busy = false, onClose, onConfirm,
+}) {
   if (!user) return null;
 
   return (
@@ -16,15 +18,17 @@ export default function UnfollowConfirmModal({ open, user, onClose, onConfirm })
         <div className="flex w-full border-t border-[var(--app-border)]">
           <button
             className="flex-1 py-3.5 text-[15px] text-[var(--app-text)] font-normal border-r border-[var(--app-border)] hover:bg-[var(--app-surface-soft)] transition rounded-bl-[16px]"
+            disabled={busy}
             onClick={onClose}
           >
             Hủy
           </button>
           <button
             className="flex-1 py-3.5 text-[15px] font-bold text-red-500 hover:bg-red-500/10 transition rounded-br-[16px]"
+            disabled={busy}
             onClick={onConfirm}
           >
-            Bỏ theo dõi
+            {busy ? 'Đang xử lý...' : 'Bỏ theo dõi'}
           </button>
         </div>
       }
@@ -39,7 +43,7 @@ export default function UnfollowConfirmModal({ open, user, onClose, onConfirm })
           className="!w-20 !h-20 mb-5"
         />
         <h3 className="text-[15px] text-[var(--app-text)] px-2 leading-relaxed font-normal">
-          Bỏ theo dõi {user.email ? user.email.split('@')[0] : `user${user.id.slice(-4)}`}?
+          Bỏ theo dõi {user.displayName}?
         </h3>
       </div>
     </Modal>

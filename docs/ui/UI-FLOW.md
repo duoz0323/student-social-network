@@ -305,6 +305,22 @@ Lỗi server/API → SYS-03
 Phiên đăng nhập hết hạn → SYS-04
 ```
 
+### 1.16 Thông báo REST và realtime
+
+```text
+Người dùng đã đăng nhập và hoàn tất hồ sơ
+→ Frontend tải trang đầu Notification và unread count bằng REST
+→ STOMP CONNECT /ws với JWT Access Token
+→ Subscribe /user/queue/notifications
+→ Khi nhận NOTIFICATION_CREATED, merge theo notification.id và cập nhật unread count từ Backend
+→ Badge ở desktop/mobile hiển thị số chưa đọc, tối đa 99+
+→ Người dùng mở trang thông báo để tải thêm, đánh dấu đã đọc, đánh dấu tất cả hoặc xóa bằng REST
+```
+
+Khi socket mất kết nối, Frontend chỉ polling unread count mỗi 30 giây lúc tab đang visible. Sau khi
+connect/reconnect, Frontend reconcile lại bằng REST. Logout, tài khoản bị khóa hoặc hồ sơ chưa hoàn
+tất phải deactivate socket. Giai đoạn 1 không phát realtime cho read, read-all hoặc delete.
+
 ## 2. Luồng phát triển tương lai
 
 Các luồng sau có thể đã có ảnh thiết kế nhưng thuộc `FUTURE_DEVELOPMENT`, không triển khai trong bản demo và Frontend MVP hiện tại.
@@ -344,5 +360,4 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 - Video hoặc tài liệu trong bài viết.
 - Elasticsearch.
 - Dashboard nâng cao.
-- Thông báo thời gian thực.
 

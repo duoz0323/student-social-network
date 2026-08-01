@@ -4,7 +4,8 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 
 ## 1. Bố cục tổng thể
 
-- Giao diện người dùng chính theo kiểu mạng xã hội tối giản: sidebar trái cố định, vùng nội dung chính ở giữa, nền sáng.
+- Giao diện người dùng chính theo kiểu mạng xã hội tối giản: sidebar trái cố định, vùng nội dung chính ở giữa.
+- Màu giao diện tự động theo `prefers-color-scheme` của hệ điều hành/trình duyệt; light và dark dùng chung cấu trúc, token và component.
 - Vùng Feed/Profile/Post Detail có chiều rộng trung tâm vừa phải để tập trung vào nội dung bài viết.
 - Các modal xuất hiện trên nền mờ hoặc nền trung tính, ưu tiên thao tác ngắn và rõ ràng.
 - Admin dùng layout dashboard riêng: sidebar trái, vùng nội dung rộng, bảng dữ liệu và thẻ thống kê.

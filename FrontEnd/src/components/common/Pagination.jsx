@@ -2,14 +2,15 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import Button from './Button.jsx';
 
 export default function Pagination({ 
-  currentPage, 
-  totalPages, 
+  currentPage = 1,
+  totalPages = 0,
   onPageChange,
   totalItems,
-  pageSize,
+  pageSize = 10,
   onPageSizeChange // New prop for dynamic page size
 }) {
-  if (totalPages <= 1 && totalItems <= 10) return null; // Only hide if total items is small too
+  // Một trang không cần điều hướng; ẩn control giúp giảm nhiễu nhưng không thay đổi dữ liệu đang hiển thị.
+  if (totalPages <= 1) return null;
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -29,25 +30,25 @@ export default function Pagination({
   };
 
   return (
-    <div className="flex items-center justify-between border-t border-gray-100 bg-white px-4 py-3 sm:px-6">
+    <div className="flex items-center justify-between border-t border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3">
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           {totalItems !== undefined && (
-            <p className="text-sm text-gray-500">
-              Hiển thị <span className="font-semibold text-gray-900">{totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> đến{' '}
-              <span className="font-semibold text-gray-900">
+            <p className="text-sm text-[var(--app-muted)]">
+              Hiển thị <span className="font-semibold text-[var(--app-text)]">{totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> đến{' '}
+              <span className="font-semibold text-[var(--app-text)]">
                 {Math.min(currentPage * pageSize, totalItems)}
               </span>{' '}
-              trong <span className="font-semibold text-gray-900">{totalItems}</span>
+              trong <span className="font-semibold text-[var(--app-text)]">{totalItems}</span>
             </p>
           )}
           {onPageSizeChange && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Số dòng:</span>
+              <span className="text-sm text-[var(--app-muted)]">Số dòng:</span>
               <select
                 value={pageSize}
                 onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                className="text-sm border-gray-200 rounded-md py-1 pl-2 pr-6 focus:ring-gray-400 focus:border-gray-400"
+                className="rounded-[var(--radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-control-bg)] py-1.5 pl-2.5 pr-7 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-brand)] focus:ring-2 focus:ring-[var(--app-focus-ring)]"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -58,13 +59,13 @@ export default function Pagination({
           )}
         </div>
         <div>
-          <nav className="isolate inline-flex -space-x-px rounded-lg shadow-sm" aria-label="Pagination">
+          <nav className="isolate inline-flex -space-x-px overflow-hidden rounded-[var(--radius-control)]" aria-label="Phân trang">
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-l-lg px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-200 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-muted)] outline-none hover:bg-[var(--app-surface-soft)] focus:z-20 focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <span className="sr-only">Previous</span>
+              <span className="sr-only">Trang trước</span>
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
             
@@ -73,9 +74,9 @@ export default function Pagination({
                 return (
                   <span
                     key={`ellipsis-${index}`}
-                    className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-200 focus:outline-offset-0"
+                    className="relative inline-flex items-center border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-3 py-2 text-sm font-semibold text-[var(--app-muted)]"
                   >
-                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                    <MoreHorizontal className="h-4 w-4" />
                   </span>
                 );
               }
@@ -85,10 +86,10 @@ export default function Pagination({
                   key={page}
                   onClick={() => onPageChange(page)}
                   aria-current={page === currentPage ? 'page' : undefined}
-                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset ring-gray-200 ${
+                  className={`relative inline-flex items-center border border-[var(--app-border-strong)] px-3.5 py-2 text-sm font-semibold outline-none focus:z-20 focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)] ${
                     page === currentPage
-                      ? 'z-10 bg-gray-900 text-white hover:bg-gray-800'
-                      : 'text-gray-900 hover:bg-gray-50'
+                      ? 'z-10 bg-[var(--app-active)] text-white'
+                      : 'bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-surface-soft)]'
                   }`}
                 >
                   {page}
@@ -99,9 +100,9 @@ export default function Pagination({
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center rounded-r-lg px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-200 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-muted)] outline-none hover:bg-[var(--app-surface-soft)] focus:z-20 focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <span className="sr-only">Next</span>
+              <span className="sr-only">Trang sau</span>
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </nav>
@@ -114,18 +115,18 @@ export default function Pagination({
           variant="secondary"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
-          className="text-xs bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+          className="text-xs"
         >
           Trước
         </Button>
-        <span className="text-sm font-medium text-gray-700 self-center">
+        <span className="self-center text-sm font-medium text-[var(--app-muted)]">
           Trang {currentPage} / {totalPages || 1}
         </span>
         <Button
           variant="secondary"
           disabled={currentPage === totalPages || totalPages === 0}
           onClick={() => onPageChange(currentPage + 1)}
-          className="text-xs bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+          className="text-xs"
         >
           Sau
         </Button>

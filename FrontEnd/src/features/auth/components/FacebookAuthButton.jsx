@@ -1,7 +1,8 @@
 import Button from '../../../components/common/Button.jsx';
 import { useFacebookAuth } from '../facebook/useFacebookAuth.js';
 
-const buttonClass = 'flex h-[42px] w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-[13px] font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:border-violet-400 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]';
+// Nút social với viền rõ nét & hiệu ứng chuyển động mượt mà khi hover
+const buttonClass = 'flex h-12 w-full items-center justify-center gap-3 rounded-[12px] border border-zinc-300 bg-white text-sm font-medium text-zinc-800 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50/90 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-[52px]';
 
 function FacebookIcon() {
   return (

@@ -4,7 +4,7 @@ import Button from '../../../components/common/Button.jsx';
 export default function RecoveryIdentifierForm({ email, onChange, onSubmit, disabled, error, fieldError }) {
   const navigate = useNavigate();
   return (
-    <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="px-7 py-8 sm:px-10">
+    <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="px-4 py-4 sm:px-8 sm:py-6">
       <h1 className="text-2xl font-bold text-gray-900">Quên mật khẩu</h1>
       <p className="mt-2 text-sm text-gray-500">Nhập email đã xác minh để nhận mã OTP.</p>
       

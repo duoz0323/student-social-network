@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 28/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 30/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -32,7 +32,7 @@
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
 | Báo cáo bài viết | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Chống trùng report `PENDING`. |
 | Admin user/post/report/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có phân quyền và test security/controller/repository/service. |
-| Thông báo đơn giản | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có danh sách, unread count, read/read-all và delete. |
+| Thông báo REST và realtime Giai đoạn 1 | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | REST/MySQL là nguồn sự thật; STOMP native phát `NOTIFICATION_CREATED` after-commit, có reconcile và polling fallback. |
 
 ## Thay đổi đang có trong worktree
 
@@ -44,6 +44,8 @@
   chiếu lại với thay đổi trên.
 - README, SQL tổng và DBML đã bổ sung `user_restrictions`; Backend/Frontend đã tích hợp API Restrict,
   danh sách cài đặt và quan hệ `restrictedByMe`.
+- Notification đã có `/ws`, JWT STOMP `CONNECT`, user destination riêng, phát sự kiện after-commit,
+  Context dùng chung, badge desktop/mobile, reconnect/reconcile và polling fallback.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
@@ -51,8 +53,12 @@
    kiểm soát, chưa có constraint database bảo đảm tuyệt đối.
 2. SQL demo có media `VIDEO`, trong khi README MVP chỉ quy định tối đa bốn ảnh và xếp video ngoài
    phạm vi. Cần quyết định bỏ demo video hoặc chính thức thay đổi phạm vi trước khi phát triển tiếp.
-3. Frontend hiện chỉ có Node test cho utility, chưa có component test runner để tự động hóa đầy đủ
-   modal/menu Restrict; lint và production build đã pass.
+3. Frontend có Node test cho utility Notification và vòng đời STOMP client, nhưng chưa có component
+   test runner để tự động hóa đầy đủ Context, badge và modal/menu Restrict; lint và production build
+   đã pass.
+4. Test tích hợp MySQL cho `markAllRead` có điều kiện theo `AUTH_TEST_DB_URL`; môi trường hiện tại
+   không có database test nên test này được skip. Kết nối WebSocket với hai phiên người dùng thật
+   vẫn cần smoke test thủ công ở môi trường tích hợp.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo
 

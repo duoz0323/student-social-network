@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthLayout from '../components/AuthLayout.jsx';
+import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
 import SocialConflictCard from '../components/SocialConflictCard.jsx';
 import { useRegistration } from '../hooks/useRegistration.js';
 import { useSocialConflict } from '../hooks/useSocialConflict.js';
@@ -34,7 +34,7 @@ export default function SocialConflictPendingPage() {
 
   if (!socialConflict.conflict) return null;
   return (
-    <AuthLayout>
+    <AuthEntryLayout>
       <SocialConflictCard
         conflict={socialConflict.conflict}
         isResolving={socialConflict.isResolving}
@@ -43,6 +43,6 @@ export default function SocialConflictPendingPage() {
         onAction={chooseAction}
         onBeginAgain={beginAgain}
       />
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

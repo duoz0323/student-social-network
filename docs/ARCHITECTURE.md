@@ -10,6 +10,7 @@ Hệ thống gồm:
 - Cloud Storage cho ảnh.
 - JWT Access Token.
 - Refresh Token.
+- WebSocket/STOMP native cho Notification realtime.
 
 ## 2. Luồng tổng thể
 
@@ -23,6 +24,23 @@ Browser
 → Service
 → Repository
 → MySQL
+```
+
+Kênh Notification realtime chạy song song với REST:
+
+```text
+Browser
+→ NotificationContext
+→ STOMP CONNECT /ws
+→ JWT ChannelInterceptor
+→ Simple Broker
+→ /user/queue/notifications
+
+Service nghiệp vụ
+→ commit MySQL
+→ AFTER_COMMIT listener
+→ SimpMessagingTemplate
+→ user destination
 ```
 
 ## 3. Frontend
@@ -212,4 +230,28 @@ Không sử dụng Machine Learning.
 - Danh sách bài viết phục vụ Infinite Scroll dùng Cursor Pagination, mặc định 10 và tối đa 20.
 - Các danh sách cần số trang/tổng số tiếp tục dùng `PageResponse` theo contract từng endpoint.
 - Không dùng `page`, `offset` hoặc `COUNT(*)` cho các endpoint Cursor Pagination.
+
+## 10. Notification realtime
+
+- MySQL và REST API là nguồn sự thật. STOMP là kênh best-effort để giảm độ trễ hiển thị.
+- Endpoint WebSocket là `/ws`, không dùng SockJS; simple broker phục vụ prefix `/queue`, còn user
+  destination prefix là `/user`.
+- Client chỉ được subscribe `/user/queue/notifications`. Server gửi bằng
+  `convertAndSendToUser(users.id, "/queue/notifications", envelope)`.
+- JWT Access Token phải nằm trong STOMP `CONNECT` header `Authorization: Bearer ...`; không truyền
+  token qua URL. Interceptor tái sử dụng `JwtService`, dựng principal có `name = users.id`, từ chối
+  Refresh Token, tài khoản không `ACTIVE` và hồ sơ chưa hoàn tất.
+- Client không được `SEND` message nghiệp vụ lên broker và không được subscribe destination của
+  người dùng khác.
+- Service chỉ publish event nội bộ nhẹ sau khi Notification đã được lưu. Listener
+  `AFTER_COMMIT` đọc lại projection đã lọc `deleted_at`, Block hai chiều và trạng thái recipient,
+  rồi mới phát `NOTIFICATION_CREATED`.
+- Giai đoạn 1 không phát realtime cho read, read-all, delete hoặc invalidation; không có outbox và
+  không dùng broker ngoài.
+- Frontend dùng một STOMP client dùng chung trong `NotificationContext`, reconcile danh sách đầu và
+  unread count bằng REST khi connect/reconnect. Khi disconnected, tab visible polling unread count
+  mỗi 30 giây; logout hoặc user không đủ điều kiện phải deactivate client.
+- `eventId` được giữ trong bộ nhớ có giới hạn để chống xử lý trùng trong một phiên; `notification.id`
+  tiếp tục là khóa chống trùng khi merge danh sách. Badge dùng unread count authoritative từ Backend
+  và hiển thị tối đa `99+`.
 

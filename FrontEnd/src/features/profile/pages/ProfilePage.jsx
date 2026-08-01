@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Ban, MoreHorizontal } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
@@ -14,6 +15,11 @@ import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModa
 import { socialApi } from '../../../api/index.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
 import { toPostView } from '../../post/utils/postViewModel.js';
+import {
+  normalizeFollowUser,
+  sameUserId,
+  updateFollowStateInLists,
+} from '../utils/followListState.js';
 
 function ProfilePageSkeleton({ self, onBack }) {
   // Skeleton giữ nguyên khung trang thật để chuyển route không bị co giãn hoặc nhảy bố cục.
@@ -85,7 +91,7 @@ export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
   const {
-    currentUserId, data, toggleFollow, applyUserBlock, showToast, updateProfile,
+    currentUserId, toggleFollow, applyUserBlock, showToast, updateProfile,
   } = useApp();
   const [editing, setEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -93,7 +99,9 @@ export default function ProfilePage({ self = false }) {
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
   const [activeTab, setActiveTab] = useState('threads');
   const [unfollowTarget, setUnfollowTarget] = useState(null);
+  const [followPendingId, setFollowPendingId] = useState(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState(null);
@@ -107,6 +115,16 @@ export default function ProfilePage({ self = false }) {
     enabled: Boolean(profileUserId),
   });
   const [draft, setDraft] = useState({ displayName: '', bio: '', avatarUrl: '', dateOfBirth: '' });
+  const profileOptionsRef = useRef(null);
+
+  useEffect(() => {
+    if (!profileOptionsOpen) return undefined;
+    const closeOptions = (event) => {
+      if (!profileOptionsRef.current?.contains(event.target)) setProfileOptionsOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOptions);
+    return () => document.removeEventListener('pointerdown', closeOptions);
+  }, [profileOptionsOpen]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,8 +205,10 @@ export default function ProfilePage({ self = false }) {
       const [followerItems, followingItems] = await Promise.all([
         socialApi.getFollowers(profile.id), socialApi.getFollowing(profile.id),
       ]);
-      const normalize = (user) => ({ ...user, id: user.userId });
-      setModalUsers({ followers: followerItems.map(normalize), following: followingItems.map(normalize) });
+      setModalUsers({
+        followers: followerItems.map(normalizeFollowUser),
+        following: followingItems.map(normalizeFollowUser),
+      });
       setError('');
     } catch (requestError) {
       setError(requestError.message);
@@ -221,31 +241,63 @@ export default function ProfilePage({ self = false }) {
   }
 
   async function handleFollowClick(userTarget, isCurrentlyFollowing) {
+    if (followPendingId !== null) return;
     if (isCurrentlyFollowing) {
       setUnfollowTarget(userTarget);
     } else {
-      const response = await toggleFollow(userTarget.id);
-      if (String(userTarget.id) === String(profile.id)) {
-        setProfile((current) => ({
-          ...current,
-          followedByCurrentUser: response.followedByCurrentUser,
-          followerCount: current.followerCount + 1,
-        }));
+      setFollowPendingId(userTarget.id);
+      try {
+        const response = await toggleFollow(userTarget.id, false);
+        setModalUsers((current) => updateFollowStateInLists(
+          current,
+          userTarget.id,
+          response.followedByCurrentUser,
+        ));
+        if (sameUserId(userTarget.id, profile.id)) {
+          setProfile((current) => ({
+            ...current,
+            followedByCurrentUser: response.followedByCurrentUser,
+            followerCount: response.followedByCurrentUser
+              ? current.followerCount + 1
+              : current.followerCount,
+          }));
+        }
+        setError('');
+      } catch (requestError) {
+        setError(requestError.message);
+      } finally {
+        setFollowPendingId(null);
       }
     }
   }
 
   async function confirmUnfollow() {
-    if (unfollowTarget) {
-      const response = await toggleFollow(unfollowTarget.id);
-      if (String(unfollowTarget.id) === String(profile.id)) {
-        setProfile((current) => ({
-          ...current,
-          followedByCurrentUser: response.followedByCurrentUser,
-          followerCount: Math.max(0, current.followerCount - 1),
-        }));
+    if (unfollowTarget && followPendingId === null) {
+      const target = unfollowTarget;
+      setFollowPendingId(target.id);
+      try {
+        const response = await toggleFollow(target.id, true);
+        setModalUsers((current) => updateFollowStateInLists(
+          current,
+          target.id,
+          response.followedByCurrentUser,
+        ));
+        if (sameUserId(target.id, profile.id)) {
+          setProfile((current) => ({
+            ...current,
+            followedByCurrentUser: response.followedByCurrentUser,
+            followerCount: response.followedByCurrentUser
+              ? current.followerCount
+              : Math.max(0, current.followerCount - 1),
+          }));
+        }
+        setUnfollowTarget(null);
+        setError('');
+      } catch (requestError) {
+        setError(requestError.message);
+      } finally {
+        setFollowPendingId(null);
       }
-      setUnfollowTarget(null);
     }
   }
 
@@ -287,9 +339,6 @@ export default function ProfilePage({ self = false }) {
         <button aria-label="Tìm kiếm" onClick={() => navigate('/search')}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>
-        <button aria-label="Tùy chọn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-        </button>
       </div>
     </div>
   );
@@ -319,32 +368,46 @@ export default function ProfilePage({ self = false }) {
                 <span className="font-semibold text-[var(--app-text)]">{profile.followingCount}</span> đang theo dõi
               </button>
             </div>
-            
-            {!isSelf && (
-              <div className="flex items-center gap-3">
-                <button className="flex h-[36px] w-[36px] items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-surface-soft)]" aria-label="Thông báo">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                </button>
+            {!isSelf ? (
+              <div ref={profileOptionsRef} className="relative">
                 <button
-                  className="flex h-[36px] items-center justify-center rounded-full border border-[var(--app-border)] px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                  aria-label="Chặn người dùng"
-                  onClick={() => setBlockConfirmOpen(true)}
+                  type="button"
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                    profileOptionsOpen
+                      ? 'border-[var(--app-text)] bg-[var(--app-surface-soft)]'
+                      : 'border-[var(--app-border-strong)] hover:bg-[var(--app-surface-soft)]'
+                  }`}
+                  aria-label="Tùy chọn tài khoản"
+                  aria-expanded={profileOptionsOpen}
+                  onClick={() => setProfileOptionsOpen((open) => !open)}
                 >
-                  Chặn
+                  <MoreHorizontal size={21} strokeWidth={2} />
                 </button>
-                {!profile.blockedByMe ? (
-                  <div className="rounded-full border border-[var(--app-border)] px-4 py-2 text-sm font-semibold">
+                {profileOptionsOpen ? (
+                  <div className="post-menu-dropdown !top-11 !z-50">
                     <UserRestrictionAction
                       userId={profile.id}
                       displayName={profile.displayName}
                       initialRestricted={profile.restrictedByMe}
                       blocked={profile.blockedByMe}
+                      onTrigger={() => setProfileOptionsOpen(false)}
                       onChanged={(restrictedByMe) => setProfile((current) => ({ ...current, restrictedByMe }))}
                     />
+                    <button
+                      type="button"
+                      className="danger-item"
+                      onClick={() => {
+                        setProfileOptionsOpen(false);
+                        setBlockConfirmOpen(true);
+                      }}
+                    >
+                      <span>Chặn</span>
+                      <Ban size={16} strokeWidth={2} aria-hidden="true" />
+                    </button>
                   </div>
                 ) : null}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="mt-6">
@@ -353,8 +416,14 @@ export default function ProfilePage({ self = false }) {
                 Chỉnh sửa trang cá nhân
               </Button>
             ) : (
-              <Button className="w-full !rounded-xl !font-semibold !h-[36px] text-[15px]" onClick={() => handleFollowClick(profile, isFollowing)}>
-                {isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
+              <Button
+                className="w-full !rounded-xl !font-semibold !h-[36px] text-[15px]"
+                disabled={sameUserId(followPendingId, profile.id)}
+                onClick={() => handleFollowClick(profile, isFollowing)}
+              >
+                {sameUserId(followPendingId, profile.id)
+                  ? 'Đang xử lý...'
+                  : (isFollowing ? 'Bỏ theo dõi' : 'Theo dõi')}
               </Button>
             )}
           </div>
@@ -541,7 +610,8 @@ export default function ProfilePage({ self = false }) {
       >
         <div className="flex flex-col">
           {(followModal === 'followers' ? modalUsers.followers : modalUsers.following).map((user, index) => {
-            const isUserFollowing = data.follows.some(f => f.followerId === currentUserId && f.followingId === user.id);
+            const isUserFollowing = user.followedByCurrentUser;
+            const followPending = sameUserId(followPendingId, user.id);
             // Danh sách follow dùng displayName theo contract và không phụ thuộc kiểu dữ liệu của userId.
             const userHandle = user.displayName;
             
@@ -558,9 +628,10 @@ export default function ProfilePage({ self = false }) {
                   <Button 
                     variant={isUserFollowing ? "secondary" : "primary"} 
                     className={`!rounded-xl !h-[34px] px-5 font-bold text-[14px] ${isUserFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}
+                    disabled={followPending}
                     onClick={() => handleFollowClick(user, isUserFollowing)}
                   >
-                    {isUserFollowing ? 'Đang theo dõi' : 'Theo dõi'}
+                    {followPending ? 'Đang xử lý...' : (isUserFollowing ? 'Đang theo dõi' : 'Theo dõi')}
                   </Button>
                 )}
               </div>
@@ -573,7 +644,8 @@ export default function ProfilePage({ self = false }) {
       <UnfollowConfirmModal 
         open={Boolean(unfollowTarget)}
         user={unfollowTarget}
-        onClose={() => setUnfollowTarget(null)}
+        busy={followPendingId !== null}
+        onClose={() => followPendingId === null && setUnfollowTarget(null)}
         onConfirm={confirmUnfollow}
       />
 

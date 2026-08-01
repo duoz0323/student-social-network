@@ -59,6 +59,35 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     );
 
     @Query(value = """
+            SELECT n.id AS notificationId,
+                   n.type AS type,
+                   n.actor_id AS actorId,
+                   up.display_name AS actorDisplayName,
+                   up.avatar_url AS actorAvatarUrl,
+                   n.post_id AS postId,
+                   n.comment_id AS commentId,
+                   n.report_id AS reportId,
+                   n.read_at AS readAt,
+                   n.created_at AS createdAt
+            FROM notifications n
+            JOIN users recipient ON recipient.id = n.recipient_id
+            LEFT JOIN user_profiles up ON up.user_id = n.actor_id
+            WHERE n.id = :notificationId
+              AND n.recipient_id = :recipientId
+              AND recipient.status = 'ACTIVE'
+              AND n.deleted_at IS NULL
+              AND (n.actor_id IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM user_blocks ub
+                  WHERE (ub.blocker_id = :recipientId AND ub.blocked_id = n.actor_id)
+                     OR (ub.blocker_id = n.actor_id AND ub.blocked_id = :recipientId)
+              ))
+            """, nativeQuery = true)
+    Optional<NotificationListProjection> findVisibleNotificationForRealtime(
+            @Param("notificationId") Long notificationId,
+            @Param("recipientId") Long recipientId
+    );
+
+    @Query(value = """
             SELECT COUNT(*)
             FROM notifications n
             WHERE n.recipient_id = :recipientId
@@ -75,13 +104,18 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findByIdAndRecipient_IdAndDeletedAtIsNull(Long id, Long recipientId);
 
     @Modifying
-    @Query("""
-            UPDATE Notification notification
-            SET notification.readAt = :readAt
-            WHERE notification.recipient.id = :recipientId
-              AND notification.readAt IS NULL
-              AND notification.deletedAt IS NULL
-            """)
+    @Query(value = """
+            UPDATE notifications n
+            SET n.read_at = :readAt
+            WHERE n.recipient_id = :recipientId
+              AND n.read_at IS NULL
+              AND n.deleted_at IS NULL
+              AND (n.actor_id IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM user_blocks ub
+                  WHERE (ub.blocker_id = :recipientId AND ub.blocked_id = n.actor_id)
+                     OR (ub.blocker_id = n.actor_id AND ub.blocked_id = :recipientId)
+              ))
+            """, nativeQuery = true)
     int markAllRead(
             @Param("recipientId") Long recipientId,
             @Param("readAt") LocalDateTime readAt

@@ -2,7 +2,7 @@ import Button from '../../../components/common/Button.jsx';
 
 export default function RecoveryEmailNotice({ email, disabled, onContinue, onRestart }) {
   return (
-    <div className="px-7 py-8 sm:px-10">
+    <div className="px-4 py-4 sm:px-8 sm:py-6">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 text-violet-700" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect width="20" height="16" x="2" y="4" rx="2" />

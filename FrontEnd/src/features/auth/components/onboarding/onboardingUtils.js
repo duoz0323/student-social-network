@@ -49,8 +49,11 @@ export function displayDateToIso(value) {
   return isValid ? `${year}-${month}-${day}` : '';
 }
 
-// Class input dùng chung cho tất cả các trường trong onboarding
 export const inputCls =
-  'w-full rounded-xl border border-gray-300 bg-white px-4 text-base text-gray-900 ' +
-  'placeholder-gray-400 outline-none transition ' +
-  'focus:border-violet-600 focus:ring-1 focus:ring-violet-600';
+  'w-full rounded-xl border px-4 text-base placeholder-zinc-400 outline-none transition focus:border-[var(--auth-input-focus-border)] focus:ring-1 focus:ring-[var(--auth-input-focus-ring)]';
+
+export const inputStyle = {
+  background: 'var(--auth-input-bg)',
+  borderColor: 'var(--auth-input-border)',
+  color: 'var(--app-text)',
+};

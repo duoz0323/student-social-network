@@ -12,7 +12,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
 | `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-06. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
 | `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-06. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
-| `AuthLayout` | Canh giữa form auth trên nền pattern giáo dục. | AUTH-01 đến AUTH-06. | `title`, `children`, `statusIllustration` nếu có. | Dùng chung auth. |
+| `AuthEntryLayout` | Bố trí hero UniShare và vùng form Auth trên nền sáng, ưu tiên form trên mobile. | AUTH-01 đến AUTH-06. | `children`. | Layout Auth duy nhất; không dùng dữ liệu thật cho phần minh họa. |
 
 ## 2. Common component
 
@@ -64,8 +64,9 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `PostActionMenu` | Menu hành động theo quyền với bài viết. | POST-04, PostCard. | `post`, `isOwner`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Module post. |
 | `DeletePostDialog` | Xác nhận xóa mềm bài viết. | POST-05. | `post`, `submitting`, `onConfirm`, `onCancel`. | Module post. |
 | `ReportPostFlow` | Gom các bước chọn lý do, nhập mô tả và gửi báo cáo. | POST-08, POST-09, POST-10. | `post`, `reasons`, `selectedReason`, `description`, `submitting`, `onSubmit`. | Module report/post. |
-| `CommentList` | Hiển thị danh sách bình luận và thao tác xóa của chủ bình luận. | POST-01. | `comments`, `currentUser`, `onDeleteComment`. | Module post. |
-| `CommentComposer` | Nhập và gửi bình luận mới. | POST-01. | `value`, `submitting`, `onSubmit`. | Module post. |
+| `CommentSection` | Hiển thị toàn bộ khu vực bình luận, reply một cấp và các trạng thái tải/gửi/xóa cục bộ. | POST-01. | `comments`, `replies`, `currentUser`, `commentCount`, các draft và action callbacks. | Module post. |
+| `CommentComposer` | Nhập và gửi bình luận mới; vô hiệu hóa submit khi rỗng hoặc đang gửi. | POST-01. | `value`, `submitting`, `onSubmit`. | Component nội bộ của `CommentSection`. |
+| `ReplyComposer` | Chỉ mở sau khi người dùng chọn Trả lời, hiển thị ngữ cảnh người được trả lời và giới hạn một cấp. | POST-01. | `displayName`, `value`, `submitting`, `onSubmit`, `onCancel`. | Component nội bộ của `CommentSection`, P2. |
 
 ## 5. Profile component
 

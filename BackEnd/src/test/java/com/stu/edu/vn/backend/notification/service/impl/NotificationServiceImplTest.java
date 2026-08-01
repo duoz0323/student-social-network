@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.notification.entity.Notification;
 import com.stu.edu.vn.backend.notification.enums.NotificationType;
+import com.stu.edu.vn.backend.notification.event.NotificationCreatedEvent;
 import com.stu.edu.vn.backend.notification.mapper.NotificationMapper;
 import com.stu.edu.vn.backend.notification.repository.NotificationRepository;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class NotificationServiceImplTest {
@@ -45,6 +47,8 @@ class NotificationServiceImplTest {
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
     private final UserRestrictionRepository userRestrictionRepository =
             org.mockito.Mockito.mock(UserRestrictionRepository.class);
+    private final ApplicationEventPublisher eventPublisher =
+            org.mockito.Mockito.mock(ApplicationEventPublisher.class);
 
     private NotificationServiceImpl service;
 
@@ -59,8 +63,14 @@ class NotificationServiceImplTest {
                 entityManager,
                 clock,
                 relationshipPolicyService,
-                userRestrictionRepository
+                userRestrictionRepository,
+                eventPublisher
         );
+        when(notificationRepository.saveAndFlush(any(Notification.class))).thenAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 99L);
+            return notification;
+        });
         when(currentUserProvider.getCurrentUserId()).thenReturn(20L);
         when(userRepository.findById(20L)).thenReturn(Optional.of(user(20L)));
         when(userProfileRepository.findById(20L)).thenReturn(Optional.of(completedProfile(20L)));
@@ -70,7 +80,8 @@ class NotificationServiceImplTest {
     void selfInteractionDoesNotCreateNotification() {
         service.createPostLikeNotification(20L, 20L, 100L);
 
-        verify(notificationRepository, never()).save(any());
+        verify(notificationRepository, never()).saveAndFlush(any());
+        verify(eventPublisher, never()).publishEvent(any());
         verify(entityManager, never()).getReference(any(), any());
     }
 
@@ -84,10 +95,11 @@ class NotificationServiceImplTest {
         service.createFollowNotification(10L, 20L);
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
-        verify(notificationRepository).save(captor.capture());
+        verify(notificationRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getType()).isEqualTo(NotificationType.FOLLOW);
         assertThat(captor.getValue().getActor().getId()).isEqualTo(10L);
         assertThat(captor.getValue().getRecipient().getId()).isEqualTo(20L);
+        verify(eventPublisher).publishEvent(new NotificationCreatedEvent(99L, 20L));
     }
 
     @Test
@@ -97,7 +109,8 @@ class NotificationServiceImplTest {
 
         service.createPostLikeNotification(10L, 20L, 100L);
 
-        verify(notificationRepository, never()).save(any());
+        verify(notificationRepository, never()).saveAndFlush(any());
+        verify(eventPublisher, never()).publishEvent(any());
         verify(entityManager, never()).getReference(any(), any());
     }
 
@@ -110,7 +123,8 @@ class NotificationServiceImplTest {
         service.createPostCommentNotification(10L, 20L, 100L, 200L);
         service.createCommentReplyNotification(10L, 20L, 100L, 200L);
 
-        verify(notificationRepository, never()).save(any());
+        verify(notificationRepository, never()).saveAndFlush(any());
+        verify(eventPublisher, never()).publishEvent(any());
         verify(entityManager, never()).getReference(any(), any());
     }
 
@@ -122,10 +136,11 @@ class NotificationServiceImplTest {
         service.createAccountBlockedNotification(20L);
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
-        verify(notificationRepository).save(captor.capture());
+        verify(notificationRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getType()).isEqualTo(NotificationType.ACCOUNT_BLOCKED);
         assertThat(captor.getValue().getActor()).isNull();
         assertThat(captor.getValue().getRecipient().getId()).isEqualTo(20L);
+        verify(eventPublisher).publishEvent(new NotificationCreatedEvent(99L, 20L));
     }
 
     @Test

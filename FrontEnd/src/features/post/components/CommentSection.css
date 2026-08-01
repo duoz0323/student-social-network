@@ -1,0 +1,444 @@
+/* Khu vực bình luận dùng bề mặt phẳng và nhịp dọc rõ để giữ cảm giác tự nhiên của một mạng xã hội. */
+.comment-section {
+  border-top: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.comment-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 14px;
+}
+
+.comment-section__header h2 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.comment-section__header p {
+  margin: 4px 0 0;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.comment-section__count {
+  min-width: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.comment-composer {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 0 24px 20px;
+}
+
+.comment-composer__field,
+.reply-composer__field {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: flex-end;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--app-surface-soft);
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.comment-composer__field {
+  min-height: 42px;
+  padding: 8px 10px 8px 14px;
+}
+
+.comment-composer__field:focus-within,
+.reply-composer__field:focus-within {
+  border-color: var(--app-border-strong);
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.comment-composer textarea,
+.reply-composer textarea {
+  min-width: 0;
+  flex: 1;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--app-text);
+  line-height: 1.45;
+}
+
+.comment-composer textarea {
+  max-height: 112px;
+  padding: 2px 0;
+  font-size: 14px;
+}
+
+.comment-composer textarea::placeholder,
+.reply-composer textarea::placeholder {
+  color: var(--app-muted);
+}
+
+.comment-composer__field > button,
+.reply-composer__field > button {
+  border: 0;
+  background: transparent;
+  color: var(--app-brand);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.comment-composer__field > button {
+  padding: 3px 2px 3px 6px;
+}
+
+.comment-composer__field > button:disabled,
+.reply-composer__field > button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.comment-section__error {
+  margin: 0 24px 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--status-blocked) 25%, transparent);
+  border-radius: 10px;
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.comment-list {
+  border-top: 1px solid var(--app-border);
+}
+
+.comment-thread {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 18px 24px;
+}
+
+.comment-thread + .comment-thread {
+  border-top: 1px solid var(--app-border);
+}
+
+.comment-thread__body,
+.comment-reply__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.comment-author-row {
+  display: flex;
+  min-height: 22px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comment-author {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.comment-author strong {
+  overflow: hidden;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-author span {
+  flex: 0 0 auto;
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.comment-content {
+  margin: 3px 0 0;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.comment-delete {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  margin: -5px -5px 0 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-muted);
+  opacity: 0.55;
+  transition: background var(--motion-fast) ease, color var(--motion-fast) ease, opacity var(--motion-fast) ease;
+}
+
+.comment-delete:hover,
+.comment-delete:focus-visible {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked);
+  opacity: 1;
+}
+
+.comment-delete:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.comment-trash-icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+  margin-top: 8px;
+}
+
+.comment-actions > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+.comment-actions > button:hover,
+.comment-actions > button:focus-visible {
+  color: var(--app-text);
+}
+
+.comment-actions > button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.comment-reply-toggle::before {
+  width: 22px;
+  height: 1px;
+  margin-right: 2px;
+  background: var(--app-border-strong);
+  content: '';
+}
+
+.comment-chevron {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+/* Reply chỉ thụt nhẹ và dùng một đường dẫn mảnh để thể hiện đúng cấu trúc một cấp. */
+.comment-replies {
+  margin-top: 10px;
+  padding: 1px 0 1px 14px;
+  border-left: 1px solid var(--app-border);
+}
+
+.comment-reply {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 0;
+}
+
+.reply-avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+
+.comment-reply .comment-content {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.comment-reply .comment-delete {
+  width: 26px;
+  height: 26px;
+  flex-basis: 26px;
+}
+
+.reply-composer {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px 0 2px;
+  border-top: 1px solid var(--app-border);
+}
+
+.reply-composer__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.reply-composer__context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 6px;
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
+.reply-composer__context span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-composer__context button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-muted);
+  font-weight: 600;
+}
+
+.reply-composer__context button:hover,
+.reply-composer__context button:focus-visible {
+  color: var(--app-text);
+}
+
+.reply-composer__field {
+  min-height: 36px;
+  padding: 6px 9px 6px 11px;
+  border-radius: 11px;
+}
+
+.reply-composer textarea {
+  max-height: 92px;
+  padding: 1px 0;
+  font-size: 12px;
+}
+
+.reply-composer__field > button {
+  padding: 2px;
+  font-size: 11px;
+}
+
+.comment-empty {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  align-content: center;
+  padding: 34px 24px 42px;
+  border-top: 1px solid var(--app-border);
+  text-align: center;
+}
+
+.comment-empty-icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 10px;
+  fill: none;
+  stroke: var(--app-muted);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.comment-empty h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.comment-empty p {
+  max-width: 310px;
+  margin: 5px 0 0;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .comment-section__header {
+    padding: 18px 16px 12px;
+  }
+
+  .comment-section__header p {
+    display: none;
+  }
+
+  .comment-composer {
+    gap: 9px;
+    padding: 0 16px 16px;
+  }
+
+  .comment-thread {
+    gap: 9px;
+    padding: 15px 16px;
+  }
+
+  .comment-section__error {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .comment-composer__field {
+    padding-left: 11px;
+  }
+
+  .comment-author {
+    flex-wrap: wrap;
+    gap: 2px 7px;
+  }
+
+  .comment-replies {
+    padding-left: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-composer__field,
+  .reply-composer__field,
+  .comment-delete {
+    transition: none;
+  }
+}

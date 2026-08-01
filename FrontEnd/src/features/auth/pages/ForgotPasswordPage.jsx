@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthLayout from '../components/AuthLayout.jsx';
+import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
 import RecoveryIdentifierForm from '../components/RecoveryIdentifierForm.jsx';
 import RecoveryEmailNotice from '../components/RecoveryEmailNotice.jsx';
 import RecoveryOtpForm from '../components/RecoveryOtpForm.jsx';
@@ -43,5 +43,5 @@ export default function ForgotPasswordPage() {
         fieldError={localError || recovery.fieldErrors.email} />;
   }
 
-  return <AuthLayout>{content}</AuthLayout>;
+  return <AuthEntryLayout>{content}</AuthEntryLayout>;
 }

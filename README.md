@@ -311,6 +311,21 @@ Trạng thái nghiệp vụ: `DESIGNED`. Restrict là quan hệ một chiều; A
 - Unrestrict chỉ xóa quan hệ do chính current user tạo, không tạo Notification và không tạo bù các Notification đã bị bỏ qua.
 - Restrict trong MVP không thay đổi nghiệp vụ nhắn tin và không triển khai Hidden Message Request hoặc cơ chế duyệt bình luận.
 
+### 💬 3.3. Nhắn tin trực tiếp một-một
+
+Trạng thái nghiệp vụ: `DESIGNED`, chưa `IMPLEMENTED` hoặc `TESTED`.
+
+- Giai đoạn đầu chỉ hỗ trợ conversation một-một và tin nhắn văn bản tối đa 2.000 ký tự.
+- Một cặp người dùng chỉ có một conversation logic.
+- Client gửi message bằng REST API; WebSocket/STOMP chỉ dùng để nhận event realtime theo mô hình best-effort.
+- REST API và MySQL là nguồn dữ liệu chuẩn; khi mất kết nối realtime, Frontend phải reconciliation lại bằng REST.
+- Notification và Messaging dùng chung đúng một native WebSocket/STOMP connection trên mỗi tab tại endpoint `/ws`.
+- Frontend subscribe Notification tại `/user/queue/notifications` và được chuẩn bị để subscribe Messaging tại `/user/queue/messaging`.
+- JWT tiếp tục được xác thực tại STOMP `CONNECT`; principal name là chuỗi `users.id` và mọi client `SEND` qua STOMP đều bị từ chối.
+- User Block theo một trong hai chiều phải chặn xem, gửi và nhận realtime giữa hai tài khoản; Restrict không ảnh hưởng nghiệp vụ nhắn tin.
+- Giai đoạn này chưa triển khai database, REST API, Entity, giao diện hoặc event nghiệp vụ Messaging.
+- Ảnh, tài liệu, Message Request, Hidden Message Request, typing, online status, recall và report message chưa thuộc phạm vi.
+
 ### 📝 4. Quản lý bài viết
 
 - Tạo bài viết.
@@ -503,7 +518,8 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 ### P2 – Thực hiện nếu đủ tiến độ
 
 - Trả lời bình luận một cấp.
-- Thông báo đơn giản.
+- Thông báo REST và realtime bằng WebSocket/STOMP.
+- Nhắn tin trực tiếp một-một text-only; gửi bằng REST và nhận realtime bằng WebSocket/STOMP dùng chung.
 
 ---
 
@@ -516,6 +532,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Vite.
 - React Router DOM.
 - Axios.
+- STOMP client trên native WebSocket.
 - Tailwind CSS.
 - Google Identity Services.
 - Facebook SDK for JavaScript.
@@ -527,6 +544,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Java.
 - Spring Boot.
 - Spring Web.
+- Spring WebSocket và STOMP.
 - Spring Security.
 - Spring Data JPA.
 - Hibernate.
@@ -795,6 +813,21 @@ Authorization: Bearer <access_token>
 - Google ID Token và Facebook Access Token chỉ dùng cho endpoint Auth.
 - Backend phải xác minh token trước khi xử lý.
 - Provider Token không thay thế JWT của hệ thống.
+
+### Hạ tầng realtime dùng chung
+
+- REST API và MySQL tiếp tục là nguồn dữ liệu chuẩn của Notification.
+- WebSocket/STOMP chỉ là kênh phân phối realtime theo mô hình best-effort.
+- Handshake endpoint là `/ws`, không bật SockJS và chưa dùng Outbox.
+- Mỗi tab chỉ tạo một STOMP client và một WebSocket connection dùng chung cho các module realtime.
+- Frontend subscribe Notification tại `/user/queue/notifications`; hạ tầng cho phép Messaging dùng `/user/queue/messaging` mà không tạo client thứ hai.
+- Access Token chỉ được gửi trong native header `Authorization: Bearer <access_token>` của STOMP `CONNECT`, không truyền token trong URL.
+- Principal của kết nối được Backend xác định từ JWT và có tên bằng chuỗi `users.id`; Backend không tin `userId` do Frontend gửi.
+- Event chỉ được phát sau khi transaction tạo Notification commit thành công.
+- Giai đoạn đầu chỉ phát event `NOTIFICATION_CREATED`; read, read-all, delete và invalidation vẫn đồng bộ qua REST.
+- Messaging vẫn ở trạng thái `DESIGNED`; chưa có event `MESSAGE_CREATED` hoặc `MESSAGES_READ` trong giai đoạn refactor hạ tầng.
+- Client không được gửi mutation nghiệp vụ qua STOMP; mọi frame `SEND` tiếp tục bị từ chối.
+- Khi socket gián đoạn, Frontend phải reconcile bằng REST và chỉ polling unread count khi tab đang hiển thị.
 
 Quy trình tổng quát:
 
@@ -1214,9 +1247,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Feed cá nhân hóa do người dùng tạo.
 - Feed công khai và lưu Feed.
 - Elasticsearch.
-- Nhắn tin trực tiếp.
 - Message Request và Hidden Message Request.
-- Thông báo thời gian thực.
+- Ảnh, tài liệu, typing, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê nâng cao.
 - Moderation Case.
@@ -1240,9 +1272,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Khám phá nội dung theo địa điểm.
 - Discovery Map.
-- Nhắn tin trực tiếp bằng WebSocket.
 - Message Request.
-- Thông báo thời gian thực.
+- Ảnh, tài liệu, typing, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê.
 - Audit Log chi tiết.

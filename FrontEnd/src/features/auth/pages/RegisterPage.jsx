@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import AuthForm from '../components/AuthForm.jsx';
-import AuthLayout from '../components/AuthLayout.jsx';
+import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
 import { useRegistration } from '../hooks/useRegistration.js';
 import { getAuthenticatedHome } from '../utils/authNavigation.js';
 import { getRegistrationErrorMessage } from '../utils/registrationErrorMapper.js';
@@ -57,7 +57,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthEntryLayout>
       <AuthForm
         type="register"
         form={form}
@@ -75,6 +75,6 @@ export default function RegisterPage() {
         onFacebookAuthenticated={(session) => navigate(getAuthenticatedHome(session), { replace: true })}
         onFacebookConflict={() => navigate('/auth/social-conflict', { replace: true })}
       />
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

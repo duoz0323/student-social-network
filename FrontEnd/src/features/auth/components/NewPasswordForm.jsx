@@ -58,7 +58,7 @@ export default function NewPasswordForm({ onSubmit, onFieldChange, disabled, err
   }
 
   return (
-    <div className="px-7 py-6 sm:px-10">
+    <div className="px-4 py-4 sm:px-8 sm:py-6">
       <div className="mb-5 flex flex-col items-center text-center">
         <img src={logo} alt="UniShare" className="mb-3 h-16 w-16 object-contain" />
         <h2 className="mb-1 text-[1.35rem] font-bold text-gray-900">Đặt mật khẩu mới</h2>

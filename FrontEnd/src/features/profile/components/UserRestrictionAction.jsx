@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
+import { Shield } from 'lucide-react';
 import { socialApi } from '../../../api/index.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
 
 /** Hành động dùng chung cho menu hồ sơ và bài viết, chỉ cập nhật UI sau response thành công. */
 export default function UserRestrictionAction({
-  userId, displayName, initialRestricted = false, blocked = false, onChanged,
+  userId,
+  displayName,
+  initialRestricted = false,
+  blocked = false,
+  onTrigger,
+  onChanged,
 }) {
   const { showToast } = useApp();
   const [restricted, setRestricted] = useState(initialRestricted);
@@ -35,8 +41,15 @@ export default function UserRestrictionAction({
 
   return (
     <>
-      <button onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        onClick={() => {
+          onTrigger?.();
+          setOpen(true);
+        }}
+      >
         <span>{restricted ? 'Bỏ hạn chế' : 'Hạn chế'}</span>
+        <Shield size={16} strokeWidth={2} aria-hidden="true" />
       </button>
       <Modal
         open={open}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import AuthLayout from '../components/AuthLayout.jsx';
+import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
 import NewPasswordForm from '../components/NewPasswordForm.jsx';
 import { PASSWORD_POLICY, PASSWORD_RECOVERY_STEP } from '../constants/passwordRecoveryConstants.js';
 import { usePasswordRecovery } from '../hooks/usePasswordRecovery.js';
@@ -37,5 +37,5 @@ export default function ResetPasswordPage() {
     recovery.clearError();
   }
 
-  return <AuthLayout><NewPasswordForm onSubmit={complete} onFieldChange={clearFieldError} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthLayout>;
+  return <AuthEntryLayout><NewPasswordForm onSubmit={complete} onFieldChange={clearFieldError} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthEntryLayout>;
 }

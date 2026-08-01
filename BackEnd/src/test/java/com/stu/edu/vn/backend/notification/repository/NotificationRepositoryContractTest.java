@@ -50,6 +50,40 @@ class NotificationRepositoryContractTest {
     }
 
     @Test
+    void markAllReadUsesSameBlockVisibilityRuleAsListAndCount() throws Exception {
+        Method method = NotificationRepository.class.getMethod(
+                "markAllRead", Long.class, java.time.LocalDateTime.class);
+        Query query = method.getAnnotation(Query.class);
+
+        assertThat(query.nativeQuery()).isTrue();
+        assertThat(query.value()).contains(
+                "UPDATE notifications",
+                "n.read_at IS NULL",
+                "n.deleted_at IS NULL",
+                "n.actor_id IS NULL",
+                "user_blocks",
+                "ub.blocker_id = :recipientId",
+                "ub.blocked_id = :recipientId"
+        );
+    }
+
+    @Test
+    void realtimeLookupRequiresActiveRecipientAndSameVisibilityRules() throws Exception {
+        Method method = NotificationRepository.class.getMethod(
+                "findVisibleNotificationForRealtime", Long.class, Long.class);
+        Query query = method.getAnnotation(Query.class);
+
+        assertThat(query.nativeQuery()).isTrue();
+        assertThat(query.value()).contains(
+                "n.id = :notificationId",
+                "n.recipient_id = :recipientId",
+                "recipient.status = 'ACTIVE'",
+                "n.deleted_at IS NULL",
+                "user_blocks"
+        ).doesNotContain("password_hash", "email");
+    }
+
+    @Test
     void sourceDeleteQueriesAreModifyingAndReturnAffectedRows() throws Exception {
         assertDeleteContract("deleteFollowNotification", NotificationType.class, Long.class, Long.class);
         assertDeleteContract("deletePostLikeNotification", NotificationType.class, Long.class, Long.class);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/common/Button.jsx';
-import AuthLayout from '../components/AuthLayout.jsx';
+import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import OtpCountdown from '../components/OtpCountdown.jsx';
 import OtpInput from '../components/OtpInput.jsx';
@@ -93,8 +93,8 @@ export default function VerifyRegistrationOtpPage() {
   const isInformationMessage = message && message.includes('phiên đăng ký cũ');
 
   return (
-    <AuthLayout>
-      <form onSubmit={verify} className="px-7 sm:px-10 py-8">
+    <AuthEntryLayout>
+      <form onSubmit={verify} className="px-4 py-4 sm:px-8 sm:py-6">
         <div className="mb-6 text-center">
           <h1 className="text-[1.35rem] font-bold text-gray-900 mb-2">
             Nhập mã xác minh
@@ -174,6 +174,6 @@ export default function VerifyRegistrationOtpPage() {
           </button>
         </div>
       </form>
-    </AuthLayout>
+    </AuthEntryLayout>
   );
 }

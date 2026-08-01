@@ -320,8 +320,20 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 ### P2
 
 - Reply bình luận một cấp.
-- Thông báo đơn giản.
+- Thông báo REST và realtime bằng WebSocket/STOMP.
 - Lịch sử thao tác quản trị đơn giản.
+
+Phạm vi Notification realtime Giai đoạn 1:
+
+- MySQL và REST API là nguồn sự thật; WebSocket chỉ là kênh cập nhật best-effort.
+- Frontend kết nối STOMP native tại `/ws` bằng JWT Access Token trong header `Authorization` của
+  frame `CONNECT`, sau đó subscribe `/user/queue/notifications`.
+- Chỉ phát `NOTIFICATION_CREATED` sau khi transaction tạo Notification đã commit thành công.
+- Badge unread dùng giá trị authoritative từ Backend, hiển thị tối đa `99+`.
+- Khi socket mất kết nối, Frontend polling unread count mỗi 30 giây khi tab đang visible và reconcile
+  lại bằng REST sau khi kết nối hoặc tái kết nối.
+- Giai đoạn này không realtime hóa read, read-all, delete hoặc invalidation; không dùng SockJS,
+  outbox hay message broker ngoài.
 
 ## 6. Ngoài phạm vi
 - Hồ sơ riêng tư.
@@ -338,7 +350,6 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 - Feed tùy chỉnh.
 - Elasticsearch.
 - Nhắn tin.
-- Thông báo realtime.
 - Dashboard nâng cao.
 - Moderation Case.
 - Audit Log chi tiết.

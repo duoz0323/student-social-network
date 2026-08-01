@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import AdminShell from '../components/layout/AdminShell.jsx';
+import SettingsLayout from '../components/layout/SettingsLayout.jsx';
 import UserShell from '../components/layout/UserShell.jsx';
 import LoginPage from '../features/auth/pages/LoginPage.jsx';
 import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage.jsx';
@@ -65,9 +66,16 @@ export const router = createBrowserRouter([
       { path: '/liked', element: <LikedPostsPage /> },
       { path: '/search', element: <SearchPage /> },
       { path: '/notifications', element: <NotificationsPage /> },
-      { path: '/settings/auth-providers', element: <AuthProvidersPage /> },
-      { path: '/settings/blocked-users', element: <BlockedUsersPage /> },
-      { path: '/settings/restricted-users', element: <RestrictedUsersPage /> },
+      {
+        path: '/settings',
+        element: <SettingsLayout />,
+        children: [
+          { index: true, element: <Navigate to="auth-providers" replace /> },
+          { path: 'auth-providers', element: <AuthProvidersPage /> },
+          { path: 'blocked-users', element: <BlockedUsersPage /> },
+          { path: 'restricted-users', element: <RestrictedUsersPage /> },
+        ],
+      },
     ],
   },
   {

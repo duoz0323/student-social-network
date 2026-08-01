@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.notification.dto.response.NotificationResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationUnreadCountResponse;
 import com.stu.edu.vn.backend.notification.entity.Notification;
 import com.stu.edu.vn.backend.notification.enums.NotificationType;
+import com.stu.edu.vn.backend.notification.event.NotificationCreatedEvent;
 import com.stu.edu.vn.backend.notification.mapper.NotificationMapper;
 import com.stu.edu.vn.backend.notification.repository.NotificationRepository;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
@@ -27,6 +28,7 @@ import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final Clock clock;
     private final UserRelationshipPolicyService relationshipPolicyService;
     private final UserRestrictionRepository userRestrictionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public NotificationServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -56,7 +59,8 @@ public class NotificationServiceImpl implements NotificationService {
             EntityManager entityManager,
             Clock clock,
             UserRelationshipPolicyService relationshipPolicyService,
-            UserRestrictionRepository userRestrictionRepository
+            UserRestrictionRepository userRestrictionRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -67,6 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.clock = clock;
         this.relationshipPolicyService = relationshipPolicyService;
         this.userRestrictionRepository = userRestrictionRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -219,7 +224,10 @@ public class NotificationServiceImpl implements NotificationService {
         Post post = postId == null ? null : entityManager.getReference(Post.class, postId);
         Comment comment = commentId == null ? null : entityManager.getReference(Comment.class, commentId);
         Report report = reportId == null ? null : entityManager.getReference(Report.class, reportId);
-        notificationRepository.save(new Notification(recipient, actor, type, post, comment, report));
+        Notification notification = notificationRepository.saveAndFlush(
+                new Notification(recipient, actor, type, post, comment, report));
+        // Event chỉ mang định danh; listener sẽ đọc lại dữ liệu đã commit và áp dụng lại visibility.
+        eventPublisher.publishEvent(new NotificationCreatedEvent(notification.getId(), recipientId));
     }
 
     private boolean isRestrictedInteractionNotification(NotificationType type) {

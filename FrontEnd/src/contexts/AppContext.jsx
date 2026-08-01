@@ -9,6 +9,7 @@ import {
   invalidateUserBlockCaches,
   removeBlockedUserFromState,
 } from '../features/profile/utils/userBlockState.js';
+import { resolveCurrentFollowState } from '../features/profile/utils/followListState.js';
 
 const AppContext = createContext(null);
 
@@ -150,9 +151,14 @@ export function AppProvider({ children }) {
       setData((previous) => ({ ...previous, comments: previous.comments.filter((item) => String(item.id) !== String(commentId)) }));
     }
 
-    async function toggleFollow(targetUserId) {
-      const following = data.follows.some((item) => String(item.followerId) === String(currentUserId)
-        && String(item.followingId) === String(targetUserId));
+    async function toggleFollow(targetUserId, followedByCurrentUser) {
+      // Danh sách Follow API truyền trạng thái authoritative; snapshot dùng chung chỉ là fallback.
+      const following = resolveCurrentFollowState(
+        followedByCurrentUser,
+        data.follows,
+        currentUserId,
+        targetUserId,
+      );
       const response = following ? await socialApi.unfollow(targetUserId) : await socialApi.follow(targetUserId);
       setData((previous) => ({
         ...previous,

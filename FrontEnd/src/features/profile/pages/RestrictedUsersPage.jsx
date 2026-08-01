@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import Pagination from '../../../components/common/Pagination.jsx';
 import { EmptyState, LoadingState } from '../../../components/common/StateBlock.jsx';
-import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { socialApi } from '../../../api/index.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
@@ -52,28 +52,50 @@ export default function RestrictedUsersPage() {
 
   return (
     <>
-      <ContentShell header={<div className="flex h-[var(--header-height)] items-center px-6"><h1 className="text-lg font-bold">Tài khoản đã hạn chế</h1></div>}>
-        <div className="p-6">
+      <section className="px-5 pb-8 pt-6 sm:px-7 sm:pt-7">
+        <header className="border-b border-[var(--app-border)] pb-5">
+          <h1 className="text-xl font-extrabold tracking-[-0.015em] text-[var(--app-text)]">Tài khoản đã hạn chế</h1>
+          <p className="mt-1.5 max-w-xl text-sm leading-6 text-[var(--app-muted)]">
+            Bạn sẽ không nhận thông báo khi các tài khoản này tương tác.
+          </p>
+        </header>
+        <div>
           {!result && !error ? <LoadingState message="Đang tải danh sách..." /> : null}
           {error ? <EmptyState title="Không thể tải danh sách" description={error} /> : null}
           {result && result.content.length === 0 ? <EmptyState title="Chưa hạn chế tài khoản nào" description="Các tài khoản bạn hạn chế sẽ xuất hiện tại đây." /> : null}
-          <div className="space-y-2">
+          <div>
             {result?.content.map((user) => (
-              <div key={user.userId} className="flex items-center gap-3 rounded-xl border border-[var(--app-border)] p-3">
-                <Avatar src={user.avatarUrl} name={user.displayName} size="sm" />
-                <span className="min-w-0 flex-1 truncate font-semibold">{user.displayName}</span>
-                <Button variant="secondary" disabled={submitting} onClick={() => setTarget(user)}>Bỏ hạn chế</Button>
+              <div key={user.userId} className="flex items-center gap-3.5 border-b border-[var(--app-border)] py-4 last:border-b-0">
+                <Avatar src={user.avatarUrl} name={user.displayName} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-bold text-[var(--app-text)]">{user.displayName}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--app-muted)]">
+                    <Shield size={13} strokeWidth={2} aria-hidden="true" />
+                    Đang bị hạn chế
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={submitting}
+                  onClick={() => setTarget(user)}
+                >
+                  Bỏ hạn chế
+                </Button>
               </div>
             ))}
           </div>
           {result?.totalPages > 1 ? <Pagination currentPage={result.page + 1} totalPages={result.totalPages}
             totalItems={result.totalElements} pageSize={result.size} onPageChange={(next) => setPage(next - 1)} /> : null}
         </div>
-      </ContentShell>
+      </section>
       <Modal open={Boolean(target)} title="Bỏ hạn chế tài khoản này?"
         onClose={() => !submitting && setTarget(null)}
         footer={<><Button variant="secondary" onClick={() => setTarget(null)}>Hủy</Button>
-          <Button disabled={submitting} onClick={confirmUnrestrict}>{submitting ? 'Đang xử lý...' : 'Bỏ hạn chế'}</Button></>}>
+          <Button className="gap-2" disabled={submitting} onClick={confirmUnrestrict}>
+            {submitting ? 'Đang xử lý...' : 'Bỏ hạn chế'}
+            {!submitting ? <Shield size={16} strokeWidth={2} aria-hidden="true" /> : null}
+          </Button></>}>
         Bạn sẽ tiếp tục nhận các thông báo tương tác mới từ tài khoản này.
       </Modal>
     </>

@@ -12,7 +12,7 @@ export default function RecoveryOtpForm({ challenge, onVerify, onResend, onResta
   const [cooldown, setCooldown] = useState(() => secondsUntil(challenge.resendAvailableAt));
 
   return (
-    <form onSubmit={(event) => { event.preventDefault(); if (code.length === 6) onVerify(code); }} className="px-7 sm:px-10 py-8">
+    <form onSubmit={(event) => { event.preventDefault(); if (code.length === 6) onVerify(code); }} className="px-4 py-4 sm:px-8 sm:py-6">
       <div className="mb-6 text-center">
         <h2 className="text-[1.35rem] font-bold text-gray-900 mb-2">Nhập mã xác minh</h2>
         <p className="text-[13px] text-gray-500 font-medium px-2">

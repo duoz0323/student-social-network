@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import logo from '../../../assets/brand/logo.png';
+import { CheckCircle2, CircleAlert, LockKeyhole, Mail } from 'lucide-react';
 import Button from '../../../components/common/Button.jsx';
 import SocialAuthButtons from './SocialAuthButtons.jsx';
 import PasswordVisibilityIcon from './PasswordVisibilityIcon.jsx';
@@ -25,6 +25,7 @@ export default function AuthForm({
   onSubmit,
   submitting,
   message,
+  successMessage = '',
   form,
   setForm,
   showFutureMessage,
@@ -46,16 +47,19 @@ export default function AuthForm({
 
   // Lỗi hiển thị duy nhất – gộp tất cả nguồn lỗi, chỉ hiện 1
   const displayError = getDisplayError(message, fieldErrors, retrySeconds);
+  // Lỗi luôn được ưu tiên; thông báo thành công chỉ xuất hiện khi form không có lỗi hiện hành.
+  const noticeMessage = displayError || successMessage;
+  const isSuccessNotice = !displayError && Boolean(successMessage);
 
-  // Style chung cho input – thêm viền đỏ khi field có lỗi (không chiếm thêm chỗ)
+  // Style chung cho input, giữ trạng thái focus và lỗi dễ nhận biết.
   function inputClass(fieldName) {
     const hasError = Boolean(fieldErrors[fieldName]);
     return (
-      'h-[42px] w-full rounded-lg border bg-white px-3 text-sm text-gray-900 ' +
-      'placeholder-gray-400 outline-none transition-all duration-200 ' +
+      'h-12 w-full rounded-[10px] border px-11 text-sm font-normal text-zinc-950 sm:h-[52px] sm:px-12 sm:text-[15px] ' +
+      'placeholder-zinc-400 outline-none transition-[border-color,box-shadow,background-color] duration-200 disabled:cursor-not-allowed disabled:opacity-60 ' +
       (hasError
-        ? 'border-red-400 ring-2 ring-red-100 '
-        : 'border-gray-300 focus:border-violet-600 focus:ring-2 focus:ring-violet-100 ')
+        ? 'border-red-400 bg-red-50/40 ring-2 ring-red-100 '
+        : 'border-zinc-200 focus:border-violet-600 focus:ring-4 focus:ring-zinc-200/70 ')
     );
   }
 
@@ -65,124 +69,129 @@ export default function AuthForm({
   }
 
   return (
-    <div className="px-7 sm:px-10 py-6">
-      {/* Header form: logo + tiêu đề */}
-      <div className="mb-5 flex flex-col items-center text-center">
-        <img
-          src={logo}
-          alt="UniShare"
-          className="h-16 w-16 object-contain mb-3"
-        />
-        <h2 className="text-[1.35rem] font-bold text-gray-900 mb-1">
-          {isLogin ? 'Đăng nhập UniShare' : 'Tạo tài khoản UniShare'}
+    <div>
+      <div className="mb-4 sm:mb-5">
+        <h2 className="mb-1.5 text-[1.6rem] font-medium leading-tight tracking-[-0.01em] text-zinc-950 sm:text-[1.85rem]">
+          {isLogin ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}
         </h2>
-        <p className="text-[13px] text-gray-500">
+        <p className="text-[13px] leading-5 text-zinc-500 sm:text-sm">
           {isLogin
-            ? 'Đăng nhập để kết nối với bạn bè và chia sẻ.'
-            : 'Tạo tài khoản để kết nối với bạn bè và chia sẻ.'}
+            ? 'Đăng nhập để kết nối với bạn bè và tiếp tục hành trình học tập.'
+            : 'Bắt đầu hành trình học hỏi, chia sẻ và kết nối cùng sinh viên.'}
         </p>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
 
-        {/* ═══ Vùng hiển thị lỗi duy nhất – chiều cao cố định, không đẩy layout ═══ */}
+        {/* Vùng phản hồi dùng đúng ngữ nghĩa và màu sắc cho trạng thái lỗi hoặc thành công. */}
         <div
           className="overflow-hidden transition-all duration-300 ease-out"
           style={{
-            maxHeight: displayError ? '80px' : '0px',
-            opacity: displayError ? 1 : 0,
-            marginBottom: displayError ? '12px' : '0px',
+            maxHeight: noticeMessage ? '80px' : '0px',
+            opacity: noticeMessage ? 1 : 0,
+            marginBottom: noticeMessage ? '12px' : '0px',
           }}
         >
           <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] font-semibold leading-relaxed text-red-700 flex items-start gap-2"
+            role={isSuccessNotice ? 'status' : 'alert'}
+            className={`flex items-start gap-2 rounded-[10px] border px-3.5 py-3 text-xs font-medium leading-relaxed ${isSuccessNotice ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}
           >
-            {/* Icon cảnh báo */}
-            <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <span>{displayError}</span>
+            {isSuccessNotice
+              ? <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+              : <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" aria-hidden="true" />}
+            <span>{noticeMessage}</span>
           </div>
         </div>
 
         {/* Trường email cho xác thực local. */}
-        <div className="mb-4">
-          <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
+        <div className="mb-3">
+          <label htmlFor={`${type}-email`} className="mb-1.5 block text-[13px] font-medium text-zinc-800 sm:text-sm">
             Email
           </label>
-          <input
-            value={form.email}
-            onChange={(e) => updateField('email', e.target.value)}
-            placeholder="student@example.com"
-            className={inputClass('email')}
-            disabled={submitting}
-            autoComplete="username"
-          />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={19} aria-hidden="true" />
+            <input
+              id={`${type}-email`}
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={(e) => updateField('email', e.target.value)}
+              placeholder="Nhập email của bạn"
+              className={inputClass('email')}
+              style={{ background: 'var(--auth-input-bg)', color: 'var(--app-text)' }}
+              disabled={submitting}
+              autoComplete="username"
+              aria-invalid={Boolean(fieldErrors.email)}
+            />
+          </div>
         </div>
 
         {/* Field mật khẩu – đăng nhập: 1 cột / đăng ký: 2 cột song song */}
         {isLogin ? (
-          <div className="mb-2">
-            <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
+          <div className="mb-3">
+            <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium text-zinc-800 sm:text-sm">
               Mật khẩu
             </label>
             <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={19} aria-hidden="true" />
               <input
+                id="login-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={(e) => updateField('password', e.target.value)}
                 placeholder="Nhập mật khẩu"
-                className={inputClass('password') + ' pr-10'}
+                className={inputClass('password') + ' pr-12'}
+                style={{ background: 'var(--auth-input-bg)', color: 'var(--app-text)' }}
                 disabled={submitting}
                 autoComplete="current-password"
+                aria-invalid={Boolean(fieldErrors.password)}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                tabIndex={-1}
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
                 aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
                 <PasswordVisibilityIcon visible={showPassword} />
               </button>
             </div>
-            <div className="mt-2.5 text-right">
+            <div className="mt-2 text-right">
               <Link
                 to="/forgot-password"
-                className="text-sm font-bold transition-all duration-200"
-                style={{ color: '#1e293b', textUnderlineOffset: '3px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#7c3aed'; e.currentTarget.style.textDecoration = 'underline'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#1e293b'; e.currentTarget.style.textDecoration = 'none'; }}
+                className="inline-block text-[13px] font-medium text-zinc-500 transition-all duration-200 hover:text-zinc-950 hover:font-bold hover:underline hover:underline-offset-4 sm:text-sm"
               >
                 Quên mật khẩu?
               </Link>
             </div>
           </div>
         ) : (
-          /* Đăng ký: 2 ô mật khẩu nằm ngang */
-          <div className="mb-2">
-            <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="mb-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {/* Mật khẩu */}
               <div className="flex-1">
-                <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
+                <label htmlFor="register-password" className="mb-1.5 block text-[13px] font-medium text-zinc-800 sm:text-sm">
                   Mật khẩu
                 </label>
                 <div className="relative">
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={19} aria-hidden="true" />
                   <input
+                    id="register-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(e) => updateField('password', e.target.value)}
                     placeholder="Tạo mật khẩu"
-                    className={inputClass('password') + ' pr-10'}
+                    className={inputClass('password') + ' pr-12'}
+                    style={{ background: 'var(--auth-input-bg)', color: 'var(--app-text)' }}
                     disabled={submitting}
                     autoComplete="new-password"
+                    aria-invalid={Boolean(fieldErrors.password)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
                     aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   >
                     <PasswordVisibilityIcon visible={showPassword} />
@@ -192,24 +201,28 @@ export default function AuthForm({
 
               {/* Xác nhận mật khẩu */}
               <div className="flex-1">
-                <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">
+                <label htmlFor="register-confirm-password" className="mb-1.5 block text-[13px] font-medium text-zinc-800 sm:text-sm">
                   Xác nhận mật khẩu
                 </label>
                 <div className="relative">
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={19} aria-hidden="true" />
                   <input
+                    id="register-confirm-password"
+                    name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
                     onChange={(e) => updateField('confirmPassword', e.target.value)}
                     placeholder="Nhập lại mật khẩu"
-                    className={inputClass('confirmPassword') + ' pr-10'}
+                    className={inputClass('confirmPassword') + ' pr-12'}
+                    style={{ background: 'var(--auth-input-bg)', color: 'var(--app-text)' }}
                     disabled={submitting}
                     autoComplete="new-password"
+                    aria-invalid={Boolean(fieldErrors.confirmPassword)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
                     aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   >
                     <PasswordVisibilityIcon visible={showConfirmPassword} />
@@ -223,20 +236,20 @@ export default function AuthForm({
         {/* Hint mật khẩu + checkbox điều khoản (chỉ ở trang đăng ký) */}
         {isLogin ? null : (
           <>
-            <p className="mt-2 mb-3 text-[12px] text-gray-500 font-medium text-left leading-relaxed">
+            <p className="mb-2 mt-1.5 text-[11px] font-medium leading-4 text-zinc-500 sm:text-xs">
               Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
             </p>
-            <label className="flex items-start gap-2 text-[13px] font-medium text-gray-700 mb-4 cursor-pointer select-none">
+            <label className="mb-3 flex cursor-pointer select-none items-start gap-2 text-[13px] font-medium leading-5 text-zinc-700 sm:text-sm">
               <input
                 type="checkbox"
                 checked={form.acceptTerms}
                 onChange={(e) => updateField('acceptTerms', e.target.checked)}
-                className={`mt-0.5 h-4 w-4 rounded flex-shrink-0 ${fieldErrors.acceptTerms ? 'border-red-400 accent-red-500' : 'border-gray-300 accent-violet-700'}`}
+                className={`mt-0.5 h-4 w-4 flex-shrink-0 rounded ${fieldErrors.acceptTerms ? 'border-red-400 accent-red-500' : 'border-zinc-300 accent-zinc-950'}`}
                 disabled={submitting}
               />
               <span>
                 Tôi đồng ý với{' '}
-                <span className="text-violet-700 font-semibold hover:underline cursor-pointer">
+                <span className="cursor-pointer font-medium text-zinc-950 hover:underline">
                   điều khoản sử dụng
                 </span>
                 .
@@ -246,11 +259,12 @@ export default function AuthForm({
         )}
 
         {/* Nút submit */}
-        <div className="mb-4">
+        <div className="mb-3">
           <Button 
             type="submit" 
             disabled={submitting}
-            className="w-full"
+            className="!h-12 w-full !rounded-[12px] !text-sm !font-medium transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] sm:!h-[52px] sm:!text-[15px]"
+            style={{ background: 'var(--auth-btn-bg)', color: 'var(--auth-btn-text)' }}
           >
             {submitting ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
           </Button>
@@ -261,17 +275,16 @@ export default function AuthForm({
             type="button"
             onClick={onContinueRegistration}
             disabled={submitting}
-            className="mb-4 w-full text-[13px] font-bold text-violet-700 hover:underline disabled:opacity-60"
+            className="mb-3 w-full text-sm font-medium text-zinc-950 hover:underline disabled:opacity-60"
           >
             Tiếp tục xác minh đăng ký đang chờ
           </button>
         ) : null}
 
-        {/* Divider "Hoặc" */}
-        <div className="flex items-center gap-3 mb-4">
-          <span className="h-px flex-1 bg-gray-200" />
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hoặc</span>
-          <span className="h-px flex-1 bg-gray-200" />
+        <div className="mb-3 flex items-center gap-3">
+          <span className="h-px flex-1 bg-zinc-200" />
+          <span className="text-xs font-medium text-zinc-400">Hoặc tiếp tục với</span>
+          <span className="h-px flex-1 bg-zinc-200" />
         </div>
 
         {/* Nút mạng xã hội */}
@@ -286,11 +299,27 @@ export default function AuthForm({
         />
 
         {/* Link chuyển trang */}
-        <p className="mt-5 mb-1 text-center text-[13px] font-medium text-gray-600">
+        <p className="mb-1 mt-3 text-center text-[13px] font-medium text-zinc-600 sm:text-sm">
           {isLogin ? (
-            <>Chưa có tài khoản? <Link to="/register" className="text-violet-700 font-bold hover:underline">Đăng ký ngay</Link></>
+            <>
+              Chưa có tài khoản?{' '}
+              <Link
+                to="/register"
+                className="font-semibold text-zinc-900 transition-all duration-200 hover:text-zinc-950 hover:font-bold hover:underline hover:decoration-2 hover:underline-offset-4"
+              >
+                Đăng ký ngay
+              </Link>
+            </>
           ) : (
-            <>Đã có tài khoản? <Link to="/login" className="text-violet-700 font-bold hover:underline">Đăng nhập ngay</Link></>
+            <>
+              Đã có tài khoản?{' '}
+              <Link
+                to="/login"
+                className="font-semibold text-zinc-900 transition-all duration-200 hover:text-zinc-950 hover:font-bold hover:underline hover:decoration-2 hover:underline-offset-4"
+              >
+                Đăng nhập ngay
+              </Link>
+            </>
           )}
         </p>
       </form>

@@ -1,21 +1,64 @@
 sequenceDiagram
     autonumber
-    actor U as Người dùng
-    participant FE as Frontend
+    actor U as Người nhận
+    actor A as Người thực hiện tương tác
+    participant FE as NotificationContext
     participant NC as NotificationController
+    participant WS as STOMP /ws
+    participant SI as JWT ChannelInterceptor
+    participant AS as Service nghiệp vụ
     participant NS as NotificationService
     participant DB as MySQL
+    participant EL as AFTER_COMMIT Listener
+    participant SB as Simple Broker
 
-    U->>FE: Mở danh sách thông báo
-    FE->>NC: GET /api/v1/notifications
-    NC->>NS: getNotifications(page, size)
-    NS->>DB: Truy vấn thông báo của người dùng
-    DB-->>NS: Kết quả phân trang
-    NS-->>FE: PageResponse
-    FE-->>U: Hiển thị thông báo
-    opt Đánh dấu đã đọc
-        FE->>NC: PATCH /notifications/{id}/read
-        NC->>NS: markAsRead(notificationId)
-        NS->>DB: Cập nhật read_at
-        NS-->>FE: NotificationReadResponse
+    U->>FE: Đăng nhập và hoàn tất hồ sơ
+    par REST reconciliation
+        FE->>NC: GET /api/v1/notifications?page=0
+        NC->>DB: Query danh sách có lọc quyền truy cập
+        DB-->>FE: PageResponse
+        FE->>NC: GET /api/v1/notifications/unread-count
+        NC->>DB: Count có lọc quyền truy cập
+        DB-->>FE: unreadCount authoritative
+    and Kết nối realtime
+        FE->>WS: CONNECT Authorization: Bearer access-token
+        WS->>SI: Xác thực JWT, ACTIVE và profile hoàn tất
+        SI->>DB: Tải user và profile
+        DB-->>SI: User hợp lệ
+        SI-->>FE: CONNECTED với principal name = users.id
+        FE->>WS: SUBSCRIBE /user/queue/notifications
+    end
+
+    A->>AS: Follow, Like, Comment hoặc Reply
+    AS->>NS: createNotification(...)
+    NS->>DB: Lưu Notification trong transaction nghiệp vụ
+    alt Transaction rollback
+        DB-->>NS: Rollback
+        Note over NS,EL: Không phát sự kiện realtime
+    else Transaction commit
+        DB-->>NS: Commit
+        NS-->>EL: NotificationCreatedEvent sau commit
+        EL->>DB: Query projection và unread count có lọc deleted, Block, ACTIVE
+        alt Notification còn hiển thị hợp lệ
+            EL->>SB: convertAndSendToUser(users.id, /queue/notifications)
+            SB-->>FE: NOTIFICATION_CREATED envelope
+            FE-->>U: Merge danh sách và cập nhật badge
+        else Không còn quyền hiển thị
+            Note over EL,SB: Không phát message
+        end
+    end
+
+    opt Đánh dấu đã đọc, tất cả đã đọc hoặc xóa
+        U->>FE: Thao tác Notification
+        FE->>NC: PATCH/DELETE REST API
+        NC->>DB: Cập nhật có kiểm tra quyền
+        DB-->>FE: Response và unreadCount mới
+        Note over FE,SB: Giai đoạn 1 không phát realtime cho mutation này
+    end
+
+    opt Socket disconnected
+        FE->>NC: Poll unread count mỗi 30 giây khi tab visible
+        NC->>DB: Count có lọc quyền truy cập
+        DB-->>FE: unreadCount authoritative
+        Note over FE,WS: Connect/reconnect thành công thì reconcile lại bằng REST
     end

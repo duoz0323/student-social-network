@@ -66,6 +66,8 @@ public class SecurityConfig {
                                 SecurityPaths.PUBLIC_GET_AUTH_ENDPOINTS.toArray(String[]::new)
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Browser không gửi Bearer header ở WebSocket handshake; STOMP CONNECT xác thực riêng.
+                        .requestMatchers("/ws").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

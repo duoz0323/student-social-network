@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test src/features/post/hooks/postListCache.test.js src/features/profile/utils/userBlockState.test.js",
+    "test": "node --test src/features/post/hooks/postListCache.test.js src/features/profile/utils/userBlockState.test.js src/features/profile/utils/followListState.test.js src/features/notification/utils/notificationState.test.js src/config/realtimeSocketCore.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.2.1",
     "@tailwindcss/vite": "^4.3.1",
     "axios": "^1.18.1",
     "lucide-react": "^1.24.0",

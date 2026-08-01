@@ -10,7 +10,7 @@ export default function SocialAuthButtons({
   actionLabel = 'Tiếp tục với',
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <GoogleAuthButton
         includeRegistrationFlow={includeRegistrationFlow}
         onAuthenticated={onGoogleAuthenticated}
