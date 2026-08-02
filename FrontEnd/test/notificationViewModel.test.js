@@ -29,6 +29,16 @@ test('thông báo hệ thống không gắn tên actor và không điều hướ
   assert.equal(getNotificationTarget(notification), null);
 });
 
+test('hiển thị POST_REPOST và điều hướng về bài gốc', () => {
+  const notification = {
+    type: 'POST_REPOST',
+    postId: 100,
+    actor: { userId: 20, displayName: 'Minh', avatarUrl: null },
+  };
+  assert.equal(getNotificationPresentation(notification).message, 'Minh đã đăng lại bài viết của bạn');
+  assert.equal(getNotificationTarget(notification), '/posts/100');
+});
+
 test('chuẩn hóa page an toàn khi backend không trả đủ trường tùy chọn', () => {
   assert.deepEqual(normalizeNotificationPage({ content: null, page: 2, last: false }), {
     content: [],

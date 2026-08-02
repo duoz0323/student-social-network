@@ -204,12 +204,20 @@ Location gắn với Post thuộc P1 và có phạm vi độc lập với Discov
 - Một người Save một bài tối đa một lần.
 - Danh sách Save chỉ chủ tài khoản xem.
 
+#### Repost
+
+- Repost/Unrepost idempotent; một user chỉ có một quan hệ với mỗi Post.
+- Chỉ Repost bài `PUBLISHED` của người khác mà user có quyền xem.
+- Chỉ lưu tham chiếu `user_id`, `post_id`, `created_at`; không sao chép dữ liệu bài gốc.
+- Tab Repost trên Profile và activity Repost trong Following Feed dùng Cursor Pagination.
+- Bài gốc `HIDDEN` hoặc `DELETED` không xuất hiện qua Repost.
+
 ### 4.6 Feed
 
 #### Following
 
-- Chỉ bài của tài khoản đang Follow.
-- Sắp xếp thời gian giảm dần.
+- Gồm activity bài gốc và Repost của tài khoản đang Follow.
+- Sắp xếp theo khóa ổn định `activityAt`, `itemRank`, `actorId`, `postId` giảm dần.
 - Không gồm bài HIDDEN hoặc DELETED.
 - Dùng Cursor Pagination, sắp xếp ổn định theo `published_at DESC, id DESC`.
 
@@ -341,7 +349,6 @@ Một bài chỉ có tối đa một Moderation Case `OPEN` tại một thời �
 - Video/tài liệu.
 - Bản nháp.
 - Mention.
-- Repost.
 - Quote Post.
 - Chủ đề.
 - Discovery Map.

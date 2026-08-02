@@ -76,6 +76,13 @@
 
 ## 8. Feed
 
+### Repost
+
+- Một user Repost một Post tối đa một lần; PUT và DELETE đều idempotent.
+- Không Repost bài của chính mình hoặc bài không còn `PUBLISHED`.
+- `post_reposts` chỉ lưu quan hệ; `posts.repost_count` được cập nhật atomic bằng trigger.
+- Profile Repost và Following Feed không dùng OFFSET hoặc COUNT tổng.
+
 - Following: bài của người đang Follow, mới nhất trước.
 - For You: bài hợp lệ, điểm cơ bản.
 - Không hiển thị HIDDEN/DELETED.

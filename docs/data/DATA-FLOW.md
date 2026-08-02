@@ -133,8 +133,20 @@ GET /api/v1/feeds/following hoặc /api/v1/feeds/for-you
 → Trả content, nextCursor và hasNext
 ```
 
-Cùng cơ chế Cursor Pagination được dùng cho bài trên hồ sơ, bài đã lưu và bài đã thích.
+Cùng cơ chế Cursor Pagination được dùng cho bài trên hồ sơ, tab Repost, bài đã lưu và bài đã thích.
 Search, bình luận, Follow và Admin vẫn dùng `PageResponse`.
+
+Following Feed hợp nhất bài gốc và `post_reposts` theo activity bằng `UNION ALL`; Backend batch-load
+projection Post cùng trạng thái Like/Save/Repost và phát cursor opaque chứa toàn bộ khóa `ORDER BY`.
+
+```text
+PUT /api/v1/posts/{postId}/repost
+→ khóa pessimistic Post gốc
+→ kiểm tra user/Post và quan hệ hiện có
+→ INSERT post_reposts + trigger tăng repost_count
+→ tạo POST_REPOST trong cùng transaction
+→ AFTER_COMMIT đẩy WebSocket best-effort
+```
 
 ## 11. Search
 

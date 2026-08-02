@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
@@ -44,6 +45,7 @@ class SearchServiceImplTest {
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
+    private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
     private final PostLocationBatchLoader postLocationBatchLoader = org.mockito.Mockito.mock(PostLocationBatchLoader.class);
     private SearchServiceImpl searchService;
 
@@ -51,7 +53,8 @@ class SearchServiceImplTest {
     void setUp() {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
-                postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
+                postHashtagRepository, postLikeRepository, savedPostRepository, postRepostRepository,
+                new SearchPostMapper(),
                 new HashtagNormalizer(), postLocationBatchLoader);
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));

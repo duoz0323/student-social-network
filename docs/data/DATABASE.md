@@ -1,6 +1,13 @@
 # Tài liệu Database MVP
 
-`README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả chi tiết tại `database/student_social_network_db.sql`; DBML tương ứng nằm tại `database/student_social_network_db.dbml`. SQL và DBML phải được cập nhật đồng thời.
+`README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả chi tiết tại `database/student_social_network.sql`; DBML tương ứng nằm tại `database/student_social_network.dbml`. SQL và DBML phải được cập nhật đồng thời.
+
+## Repost
+
+- `post_reposts` có composite primary key `(user_id, post_id)` để chống trùng tại database.
+- Quan hệ chỉ lưu bài gốc và `created_at`, không sao chép content, media, hashtag hoặc Location.
+- Trigger insert/delete cập nhật atomic `posts.repost_count`; trigger delete dùng `GREATEST(..., 0)`.
+- Index `(user_id, created_at DESC, post_id DESC)` phục vụ Profile Repost keyset.
 
 ## 1. Trạng thái thiết kế Auth 0E
 

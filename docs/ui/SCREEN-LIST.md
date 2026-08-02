@@ -64,7 +64,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, lưu, menu bài viết. | Tạo bài mở POST-02; tab Following dùng cùng màn hình; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ cá nhân `/profile/me`; hồ sơ tác giả `/profile/:userId`; saved POST-07. | Phạm vi triển khai: MVP_CURRENT. Mục "Hoạt động", repost/share nâng cao và dữ liệu dạng @ trong ảnh là tham chiếu visual, không triển khai như nghiệp vụ MVP. |
+| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, Repost, lưu, menu bài viết. | Tạo bài mở POST-02; tab Following hiển thị ORIGINAL/REPOST; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ cá nhân `/profile/me`; hồ sơ tác giả `/profile/:userId`; saved POST-07. | Phạm vi triển khai: MVP_CURRENT. Quote Post, share nâng cao và dữ liệu dạng @ trong ảnh chỉ là tham chiếu visual. |
 
 ## Post
 

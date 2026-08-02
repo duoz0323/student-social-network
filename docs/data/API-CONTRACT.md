@@ -947,6 +947,16 @@ Quy tắc Location khi update:
 - Nếu có hard delete Post trong vận hành dữ liệu, Location cũng không bị xóa.
 - Gỡ Location chỉ đặt `posts.location_id = NULL`; không cascade remove và không tự động xóa Location không còn được tham chiếu.
 
+### PUT `/api/v1/posts/{postId}/repost`
+
+- Tạo quan hệ Repost idempotent cho user hiện tại.
+- Response: `{ "postId": 1, "repostedByCurrentUser": true, "repostCount": 1 }`.
+
+### DELETE `/api/v1/posts/{postId}/repost`
+
+- Xóa quan hệ Repost idempotent; gọi lặp vẫn trả thành công.
+- Response: `{ "postId": 1, "repostedByCurrentUser": false, "repostCount": 0 }`.
+
 ### Phạm vi Post response có Location
 
 Trường `location` phải được trả nhất quán trong:
@@ -981,9 +991,9 @@ Request:
 
 ### DELETE `/api/v1/comments/{commentId}`
 
-### POST `/api/v1/posts/{postId}/save`
+### POST `/api/v1/posts/{postId}/saves`
 
-### DELETE `/api/v1/posts/{postId}/save`
+### DELETE `/api/v1/posts/{postId}/saves`
 
 ### GET `/api/v1/posts/saved?limit=10&cursor=<opaque-cursor>`
 
@@ -997,7 +1007,15 @@ Request:
 
 ### GET `/api/v1/feeds/following?limit=10&cursor=<opaque-cursor>`
 
+- Trả activity `ORIGINAL` hoặc `REPOST`; Repost có `activityAt`, `repostedAt`, `repostedBy` và `post`.
+- Cursor giữ khóa tổng `activityAt`, `itemRank`, `actorId`, `postId` để tải nhiều trang ổn định.
+
 ### GET `/api/v1/users/{userId}/posts?limit=10&cursor=<opaque-cursor>`
+
+### GET `/api/v1/users/{userId}/reposts?limit=10&cursor=<opaque-cursor>`
+
+- Trả tab Repost bằng `CursorPageResponse<FeedItemResponse>` và không truy vấn COUNT tổng.
+- Client chỉ gửi lại nguyên `nextCursor`, không tự tạo hoặc sửa cursor.
 
 Các endpoint danh sách bài viết ở trên dùng cùng response:
 

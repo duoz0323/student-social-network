@@ -7,8 +7,11 @@ import com.stu.edu.vn.backend.common.cursor.TimeCursor;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
+import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
+import com.stu.edu.vn.backend.feed.cursor.FollowingActivityCursor;
 import com.stu.edu.vn.backend.feed.mapper.FeedPostMapper;
 import com.stu.edu.vn.backend.feed.service.FeedService;
+import com.stu.edu.vn.backend.feed.service.FeedActivityAssembler;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostHashtag;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
@@ -16,6 +19,8 @@ import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.FeedActivityProjection;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.location.entity.Location;
@@ -50,6 +55,7 @@ public class FeedServiceImpl implements FeedService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final PostRepostRepository postRepostRepository;
     private final PostMediaRepository postMediaRepository;
     private final PostHashtagRepository postHashtagRepository;
     private final PostLikeRepository postLikeRepository;
@@ -57,6 +63,7 @@ public class FeedServiceImpl implements FeedService {
     private final FeedPostMapper feedPostMapper;
     private final CursorCodec cursorCodec;
     private final PostLocationBatchLoader postLocationBatchLoader;
+    private final FeedActivityAssembler feedActivityAssembler;
 
     @Override
     @Transactional(readOnly = true)
@@ -76,17 +83,31 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     @Transactional(readOnly = true)
-    public CursorPageResponse<FeedPostResponse> getFollowing(String encodedCursor, int limit) {
+    public CursorPageResponse<FeedItemResponse> getFollowing(String encodedCursor, int limit) {
         Long viewerId = requireEligibleViewer(limit);
-        TimeCursor cursor = cursorCodec.decode(encodedCursor, TimeCursor.class);
+        FollowingActivityCursor cursor = cursorCodec.decode(encodedCursor, FollowingActivityCursor.class);
         if (cursor != null && !cursor.isValid()) {
             throw new BusinessException(ErrorCode.INVALID_CURSOR);
         }
-        LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.createdAt();
+        LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.activityAt();
+        int itemRank = cursor == null ? 1 : cursor.itemRank();
+        long actorId = cursor == null ? Long.MAX_VALUE : cursor.actorId();
         long postId = cursor == null ? Long.MAX_VALUE : cursor.postId();
-        List<Post> posts = postRepository.findFollowingFeed(
-                viewerId, time, postId, PageRequest.of(0, limit + 1));
-        return loadFeed(posts, viewerId, limit, false);
+        List<FeedActivityProjection> fetched = postRepostRepository.findFollowingActivities(
+                viewerId, time, itemRank, actorId, postId, PageRequest.of(0, limit + 1));
+        boolean hasNext = fetched.size() > limit;
+        List<FeedActivityProjection> activities = fetched.stream().limit(limit).toList();
+        List<FeedItemResponse> content = feedActivityAssembler.assemble(activities, viewerId);
+        String nextCursor = hasNext && !activities.isEmpty()
+                ? cursorCodec.encode(toFollowingCursor(activities.get(activities.size() - 1)))
+                : null;
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
+    }
+
+    private FollowingActivityCursor toFollowingCursor(FeedActivityProjection activity) {
+        // Cursor chứa nguyên khóa ORDER BY nên các activity trùng thời điểm vẫn phân trang ổn định.
+        return new FollowingActivityCursor(activity.getActivityAt(), activity.getItemRank(),
+                activity.getActorId(), activity.getPostId());
     }
 
     private CursorPageResponse<FeedPostResponse> loadFeed(
@@ -105,6 +126,7 @@ public class FeedServiceImpl implements FeedService {
         Map<Long, String> hashtags = loadHashtags(postIds);
         Set<Long> liked = new HashSet<>(postLikeRepository.findLikedPostIds(viewerId, postIds));
         Set<Long> saved = new HashSet<>(savedPostRepository.findSavedPostIds(viewerId, postIds));
+        Set<Long> reposted = new HashSet<>(postRepostRepository.findRepostedPostIds(viewerId, postIds));
         Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
 
         List<FeedPostResponse> content = posts.stream().map(post -> feedPostMapper.toResponse(
@@ -114,6 +136,7 @@ public class FeedServiceImpl implements FeedService {
                 hashtags.get(post.getId()),
                 liked.contains(post.getId()),
                 saved.contains(post.getId()),
+                reposted.contains(post.getId()),
                 locations.get(post.getId())
         )).toList();
 

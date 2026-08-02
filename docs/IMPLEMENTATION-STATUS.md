@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 29/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 01/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -28,6 +28,7 @@
 | Like/Unlike và danh sách bài đã thích | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách `/liked` dùng Cursor Pagination. |
 | Bình luận và reply một cấp | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Reply một cấp đã có endpoint dù README xếp ưu tiên P2. |
 | Save/Unsave và danh sách bài đã lưu | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách dùng Cursor Pagination. |
+| Repost/Unrepost, Profile Repost và Following activity | IMPLEMENTED | IMPLEMENTED | TESTED | PARTIAL | Luồng chính đã tích hợp; MySQL concurrency test cần `REPOST_TEST_DB_URL`, còn Block/Restrict phụ thuộc nhánh riêng chưa có trong worktree này. |
 | Feed For You/Following | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Cursor Pagination và Infinite Scroll. |
 | Bài viết trên hồ sơ | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | `GET /api/v1/users/{userId}/posts` dùng Cursor Pagination. |
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
@@ -37,8 +38,8 @@
 
 ## Thay đổi đang có trong worktree
 
-- Năm danh sách bài viết đã chuyển sang Cursor Pagination: Feed For You, Feed Following, bài trên
-  hồ sơ, bài đã lưu và bài đã thích.
+- Sáu danh sách bài viết/activity dùng Cursor Pagination: Feed For You, Feed Following, bài trên
+  hồ sơ, tab Repost, bài đã lưu và bài đã thích.
 - Frontend có component dùng chung cho Infinite Scroll, lazy route và trang `/liked`.
 - SQL bổ sung index phục vụ danh sách bài đã thích và thêm dữ liệu demo.
 - README, API contract, PRD, Architecture, Project Rules, Data Flow và tài liệu UI đã được đối

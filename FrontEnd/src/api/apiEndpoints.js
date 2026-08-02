@@ -38,6 +38,7 @@ export const USER_ENDPOINTS = Object.freeze({
   followers: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/followers`,
   following: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/following`,
   posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
+  reposts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/reposts`,
 });
 
 export const POST_ENDPOINTS = Object.freeze({
@@ -47,6 +48,7 @@ export const POST_ENDPOINTS = Object.freeze({
   detail: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}`,
   likes: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/likes`,
   saves: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/saves`,
+  repost: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/repost`,
   reports: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/reports`,
   comments: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/comments`,
   replies: (commentId) => `/api/v1/comments/${encodeURIComponent(commentId)}/replies`,

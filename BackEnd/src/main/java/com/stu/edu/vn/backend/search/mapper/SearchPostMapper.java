@@ -18,19 +18,26 @@ import org.springframework.stereotype.Component;
 public class SearchPostMapper {
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
-                                         String hashtag, boolean liked, boolean saved, Location location) {
+                                         String hashtag, boolean liked, boolean saved, boolean reposted,
+                                         Location location) {
         PostAuthorResponse author = new PostAuthorResponse(
                 authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl());
         List<PostMediaResponse> mediaResponses = media.stream().map(this::toMediaResponse).toList();
         return new SearchPostResponse(
                 post.getId(), post.getContent(), post.isEdited(), post.getLikeCount(), post.getCommentCount(),
-                post.getPublishedAt(), author, mediaResponses, hashtag, liked, saved, toLocation(location)
+                post.getRepostCount(), post.getPublishedAt(), author, mediaResponses, hashtag,
+                liked, saved, reposted, toLocation(location)
         );
     }
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                          String hashtag, boolean liked, boolean saved) {
-        return toResponse(post, authorProfile, media, hashtag, liked, saved, null);
+        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, null);
+    }
+
+    public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
+                                         String hashtag, boolean liked, boolean saved, Location location) {
+        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, location);
     }
 
     private PostLocationResponse toLocation(Location location) {

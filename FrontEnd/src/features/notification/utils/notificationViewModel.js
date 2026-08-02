@@ -1,6 +1,7 @@
 export const NOTIFICATION_TYPE_LABELS = Object.freeze({
   FOLLOW: 'đã theo dõi bạn',
   POST_LIKE: 'đã thích bài viết của bạn',
+  POST_REPOST: 'đã đăng lại bài viết của bạn',
   POST_COMMENT: 'đã bình luận bài viết của bạn',
   COMMENT_REPLY: 'đã trả lời bình luận của bạn',
   REPORT_RESOLVED: 'Báo cáo của bạn đã được chấp nhận',

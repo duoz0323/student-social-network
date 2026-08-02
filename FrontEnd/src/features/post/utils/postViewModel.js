@@ -13,6 +13,22 @@ export function toPostView(post = {}) {
     createdAt: post.createdAt ?? post.publishedAt,
     likedByCurrentUser: post.likedByCurrentUser ?? post.viewer?.likedByCurrentUser ?? false,
     savedByCurrentUser: post.savedByCurrentUser ?? post.viewer?.savedByCurrentUser ?? false,
+    repostedByCurrentUser: post.repostedByCurrentUser ?? false,
+    repostCount: Number(post.repostCount) || 0,
+  };
+}
+
+/** Chuẩn hóa activity Following/Profile Repost nhưng không làm mất metadata người đăng lại. */
+export function toFeedItemView(item = {}) {
+  const post = toPostView(item.post ?? item);
+  const itemType = item.itemType ?? 'ORIGINAL';
+  return {
+    ...post,
+    itemType,
+    activityAt: item.activityAt ?? post.publishedAt,
+    repostedAt: item.repostedAt ?? null,
+    repostedBy: item.repostedBy ?? null,
+    feedItemKey: `${itemType}:${item.repostedBy?.id ?? post.authorId}:${post.id}:${item.activityAt ?? post.publishedAt ?? ''}`,
   };
 }
 

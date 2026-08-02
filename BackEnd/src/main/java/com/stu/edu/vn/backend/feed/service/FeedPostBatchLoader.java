@@ -10,6 +10,7 @@ import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.location.entity.Location;
@@ -35,6 +36,7 @@ public class FeedPostBatchLoader {
     private final PostHashtagRepository postHashtagRepository;
     private final PostLikeRepository postLikeRepository;
     private final SavedPostRepository savedPostRepository;
+    private final PostRepostRepository postRepostRepository;
     private final FeedPostMapper feedPostMapper;
     private final PostLocationBatchLoader postLocationBatchLoader;
 
@@ -58,11 +60,13 @@ public class FeedPostBatchLoader {
         }
         Set<Long> liked = new HashSet<>(postLikeRepository.findLikedPostIds(viewerId, postIds));
         Set<Long> saved = new HashSet<>(savedPostRepository.findSavedPostIds(viewerId, postIds));
+        Set<Long> reposted = new HashSet<>(postRepostRepository.findRepostedPostIds(viewerId, postIds));
         Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
         return posts.stream().map(post -> feedPostMapper.toResponse(
                 post, profiles.get(post.getAuthor().getId()),
                 media.getOrDefault(post.getId(), List.of()), hashtags.get(post.getId()),
-                liked.contains(post.getId()), saved.contains(post.getId()), locations.get(post.getId())
+                liked.contains(post.getId()), saved.contains(post.getId()), reposted.contains(post.getId()),
+                locations.get(post.getId())
         )).toList();
     }
 }

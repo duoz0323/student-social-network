@@ -27,6 +27,7 @@ public interface PostMapper {
     @Mapping(target = "isEdited", source = "post.edited")
     @Mapping(target = "likeCount", source = "post.likeCount")
     @Mapping(target = "commentCount", source = "post.commentCount")
+    @Mapping(target = "repostCount", source = "post.repostCount")
     @Mapping(target = "publishedAt", source = "post.publishedAt")
     @Mapping(target = "createdAt", source = "post.createdAt")
     @Mapping(target = "updatedAt", source = "post.updatedAt")
@@ -34,6 +35,7 @@ public interface PostMapper {
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "location", source = "post.location")
+    @Mapping(target = "repostedByCurrentUser", constant = "false")
     PostResponse toResponse(
             Post post,
             UserProfile authorProfile,
@@ -46,6 +48,7 @@ public interface PostMapper {
     @Mapping(target = "isEdited", source = "post.edited")
     @Mapping(target = "likeCount", source = "post.likeCount")
     @Mapping(target = "commentCount", source = "post.commentCount")
+    @Mapping(target = "repostCount", source = "post.repostCount")
     @Mapping(target = "publishedAt", source = "post.publishedAt")
     @Mapping(target = "createdAt", source = "post.createdAt")
     @Mapping(target = "updatedAt", source = "post.updatedAt")
@@ -54,13 +57,20 @@ public interface PostMapper {
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "viewer", source = "owner")
     @Mapping(target = "location", source = "post.location")
+    @Mapping(target = "repostedByCurrentUser", source = "reposted")
     PostDetailResponse toDetailResponse(
             Post post,
             UserProfile authorProfile,
             List<PostMedia> media,
             String hashtag,
-            boolean owner
+            boolean owner,
+            boolean reposted
     );
+
+    default PostDetailResponse toDetailResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
+                                                String hashtag, boolean owner) {
+        return toDetailResponse(post, authorProfile, media, hashtag, owner, false);
+    }
 
     @Mapping(target = "id", source = "userId")
     PostAuthorResponse toAuthorResponse(UserProfile authorProfile);

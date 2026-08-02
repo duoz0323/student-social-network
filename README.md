@@ -324,11 +324,17 @@ Trạng thái bài viết:
 - Xóa bình luận của chính mình.
 - Lưu và bỏ lưu bài viết.
 - Xem danh sách bài viết đã lưu.
+- Repost và Unrepost bài viết của người khác.
+- Xem tab bài đã đăng lại trên hồ sơ.
 
 Quy tắc:
 
 - Mỗi người chỉ được Like một bài tối đa một lần.
 - Mỗi người chỉ được lưu một bài tối đa một lần.
+- Mỗi người chỉ được Repost một bài tối đa một lần; Repost và Unrepost là idempotent.
+- Chỉ được Repost bài `PUBLISHED` có quyền xem và không được Repost bài của chính mình.
+- Repost chỉ lưu quan hệ tham chiếu đến bài gốc, không sao chép content, media, hashtag hoặc Location.
+- Bài gốc `HIDDEN` hoặc `DELETED` không được hiển thị qua Repost.
 - Không được tương tác với bài viết đã bị ẩn hoặc xóa.
 - Danh sách bài viết đã lưu chỉ hiển thị với chủ tài khoản.
 - Danh sách bài viết đã thích chỉ hiển thị với chủ tài khoản.
@@ -337,10 +343,11 @@ Quy tắc:
 
 #### Feed Following
 
-- Hiển thị bài viết của những người dùng đang được theo dõi.
-- Sắp xếp theo thời gian đăng giảm dần.
+- Hiển thị activity bài gốc và Repost của những người dùng đang được theo dõi.
+- Item `ORIGINAL` chứa bài gốc; item `REPOST` chứa `activityAt`, `repostedAt`, `repostedBy` và projection `post` của bài gốc.
+- Sắp xếp giảm dần theo thời điểm activity với khóa tổng ổn định `activityAt`, `itemRank`, `actorId`, `postId`.
 - Không hiển thị bài viết bị ẩn hoặc bị xóa.
-- Dùng Cursor Pagination để cuộn vô hạn, sắp xếp ổn định theo `published_at DESC, id DESC`.
+- Dùng Cursor Pagination để cuộn vô hạn; Frontend chỉ gửi lại nguyên cursor opaque do Backend phát hành.
 
 #### Feed For You
 
@@ -360,7 +367,7 @@ Công thức xếp hạng tham khảo:
 ```
 
 Các danh sách bài viết dùng Infinite Scroll gồm Feed For You, Feed Following, bài trên hồ sơ,
-bài đã lưu và bài đã thích. Các API này dùng Cursor Pagination:
+tab Repost trên hồ sơ, bài đã lưu và bài đã thích. Các API này dùng Cursor Pagination:
 
 - Request đầu: `?limit=10`.
 - Request tiếp theo: `?limit=10&cursor=<opaque-cursor>`.
@@ -369,6 +376,7 @@ bài đã lưu và bài đã thích. Các API này dùng Cursor Pagination:
 - Cursor do Backend tạo dưới dạng Base64URL opaque; Client không tự tạo hoặc sửa cursor.
 - Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; các danh sách theo thời gian
   giữ `createdAt`, `postId`.
+- Feed Following giữ đủ khóa activity `activityAt`, `itemRank`, `actorId`, `postId`.
 - Backend dùng keyset và lấy `limit + 1`, không dùng `page`, `offset` hoặc truy vấn tổng `COUNT(*)`.
 - Cursor không hợp lệ trả mã nghiệp vụ `INVALID_CURSOR`.
 
@@ -377,6 +385,7 @@ Các endpoint đã chuyển:
 - `GET /api/v1/feeds/for-you`.
 - `GET /api/v1/feeds/following`.
 - `GET /api/v1/users/{userId}/posts`.
+- `GET /api/v1/users/{userId}/reposts`.
 - `GET /api/v1/posts/saved`.
 - `GET /api/v1/posts/liked`.
 
@@ -488,6 +497,7 @@ không tồn tại hai case `OPEN` cho cùng bài.
 
 - Liên kết và quản lý nhiều phương thức đăng nhập.
 - Save và Unsave.
+- Repost, Unrepost, tab Repost trên Profile và activity Repost trong Following Feed.
 - Hashtag và gợi ý hashtag.
 - Tìm kiếm người dùng.
 - Tìm kiếm bài viết.
@@ -873,6 +883,17 @@ DELETE /api/v1/users/me/auth-providers/{provider}
 /api/v1/admin
 ```
 
+API Repost đã triển khai:
+
+```http
+PUT    /api/v1/posts/{postId}/repost
+DELETE /api/v1/posts/{postId}/repost
+GET    /api/v1/users/{userId}/reposts?limit=10&cursor=<opaque-cursor>
+```
+
+Post response công khai có thêm `repostCount` và `repostedByCurrentUser`. Realtime `POST_REPOST` được đẩy
+best-effort tới `/user/queue/notifications` sau transaction commit; REST/MySQL vẫn là nguồn sự thật.
+
 API Moderation Case dành cho Admin:
 
 ```http
@@ -1089,13 +1110,14 @@ npm run preview
 20. Chỉ tác giả được sửa hoặc xóa bài của mình; trong giới hạn chỉnh sửa 15 phút, tác giả có thể cập nhật nội dung/hashtag, giữ/gỡ/thêm ảnh hoặc video và giữ/thay đổi/gỡ Location bằng `KEEP`, `REPLACE`, `REMOVE`.
 21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed; xóa Post không xóa Location dùng chung.
 22. Like, Unlike, danh sách bài viết đã thích, bình luận và Save hoạt động đúng.
-23. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
-24. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
-25. Người dùng gửi được báo cáo.
-26. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER, quản lý bài viết và báo cáo.
-27. Backend từ chối thao tác không có quyền.
-28. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
-29. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
+23. Repost và Unrepost idempotent; tab Repost và Following Feed chỉ hiển thị quan hệ có bài gốc còn `PUBLISHED`.
+24. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
+25. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
+26. Người dùng gửi được báo cáo.
+27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER, quản lý bài viết và báo cáo.
+28. Backend từ chối thao tác không có quyền.
+29. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
+30. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
 
 ---
 
@@ -1202,7 +1224,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Video và tài liệu trong bài viết.
 - Bài viết nháp.
 - Mention.
-- Repost.
 - Trích dẫn bài viết.
 - Chủ đề nội dung do Admin quản lý.
 - Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
@@ -1211,7 +1232,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Nhắn tin trực tiếp.
 - Message Request và Hidden Message Request.
-- Thông báo thời gian thực.
+- Realtime ngoài sự kiện `POST_REPOST` best-effort.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê nâng cao.
 - Machine Learning cho hệ thống gợi ý.
@@ -1227,7 +1248,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 
 - Hồ sơ riêng tư và Follow Request.
 - Block và Restrict.
-- Repost và trích dẫn bài viết.
+- Trích dẫn bài viết và Quote Post.
 - Video và tài liệu học tập.
 - Bài viết nháp.
 - Mention người dùng.

@@ -30,6 +30,10 @@ public interface NotificationService {
 
     void deletePostLikeNotification(Long actorId, Long postId);
 
+    void createPostRepostNotification(Long actorId, Long recipientId, Long postId);
+
+    void deletePostRepostNotification(Long actorId, Long postId);
+
     void createPostCommentNotification(Long actorId, Long recipientId, Long postId, Long commentId);
 
     void createCommentReplyNotification(Long actorId, Long recipientId, Long postId, Long commentId);

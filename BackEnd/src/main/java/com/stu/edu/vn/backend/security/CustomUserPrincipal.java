@@ -4,6 +4,7 @@ import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import java.util.Collection;
 import java.util.List;
+import java.security.Principal;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,7 +15,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  */
 @Getter
 @RequiredArgsConstructor
-public class CustomUserPrincipal {
+public class CustomUserPrincipal implements Principal {
 
     private final Long userId;
     private final UserRole role;
@@ -22,5 +23,11 @@ public class CustomUserPrincipal {
 
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getName() {
+        // WebSocket user destination dùng đúng userId, không phụ thuộc Object.toString không ổn định.
+        return userId.toString();
     }
 }

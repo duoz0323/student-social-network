@@ -16,6 +16,7 @@ import LocationPicker from '../locations/LocationPicker.jsx';
 import SelectedLocation from '../locations/SelectedLocation.jsx';
 import { googleMapsLocationUrl } from '../locations/locationUtils.js';
 import { resolveLocationUpdate } from '../locations/locationMultipart.js';
+import { postApi } from '../../../api/index.js';
 
 function SuccessIcon() {
   return (
@@ -49,7 +50,7 @@ function CommentIcon() {
   );
 }
 
-// Icon repost — chỉ ghi nhận visual, MVP không triển khai nghiệp vụ repost
+// Icon Repost dùng cho thao tác idempotent với bài gốc.
 function RepostIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -117,7 +118,14 @@ function LinkIcon() {
   );
 }
 
-export default function PostCard({ post: initialPost, detail = false, onSaveChange, onLikeChange }) {
+export default function PostCard({
+  post: initialPost,
+  detail = false,
+  onSaveChange,
+  onLikeChange,
+  onRepostChange,
+  showRepostAttribution = true,
+}) {
   const navigate = useNavigate();
   const { currentUserId, getUserById, data, toggleLike, toggleSave, getPostDetail, updatePost, deletePost } = useApp();
   const [updatedPost, setUpdatedPost] = useState(null);
@@ -148,6 +156,9 @@ export default function PostCard({ post: initialPost, detail = false, onSaveChan
     ?? data.savedPosts.some((item) => String(item.postId) === String(post.id) && String(item.userId) === String(currentUserId));
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
+  const [reposted, setReposted] = useState(Boolean(post.repostedByCurrentUser));
+  const [repostCount, setRepostCount] = useState(Number(post.repostCount) || 0);
+  const [repostSubmitting, setRepostSubmitting] = useState(false);
   const [likeCountFromInteraction, setLikeCountFromInteraction] = useState(null);
   const [editClockMs, setEditClockMs] = useState(() => Date.now());
   // Ưu tiên số mới nhất do API Like/Unlike trả về; trước tương tác dùng dữ liệu Feed/Post Detail.
@@ -276,6 +287,20 @@ export default function PostCard({ post: initialPost, detail = false, onSaveChan
     onSaveChange?.(post.id, response.saved);
   }
 
+  async function handleRepost() {
+    if (isOwner || repostSubmitting) return;
+    setRepostSubmitting(true);
+    try {
+      // PUT/DELETE đều idempotent; UI luôn lấy lại trạng thái và counter do Backend trả về.
+      const response = reposted ? await postApi.unrepost(post.id) : await postApi.repost(post.id);
+      setReposted(Boolean(response.repostedByCurrentUser));
+      setRepostCount(Number(response.repostCount) || 0);
+      onRepostChange?.(post.id, Boolean(response.repostedByCurrentUser));
+    } finally {
+      setRepostSubmitting(false);
+    }
+  }
+
   // Đóng menu sau khi chọn hành động
   function menuAction(action) {
     setMenuOpen(false);
@@ -290,6 +315,14 @@ export default function PostCard({ post: initialPost, detail = false, onSaveChan
       </Link>
 
       <div className="min-w-0">
+        {showRepostAttribution && post.itemType === 'REPOST' && post.repostedBy && (
+          <Link
+            to={String(post.repostedBy.id) === String(currentUserId) ? '/profile/me' : `/profile/${post.repostedBy.id}`}
+            className="mb-2 block text-[13px] font-semibold text-[var(--app-muted)] hover:text-[var(--app-text)]"
+          >
+            {post.repostedBy.displayName} đã đăng lại
+          </Link>
+        )}
         {/* Header: tên tác giả + thời gian + nút menu */}
         <header className="flex items-start justify-between gap-3">
           <Link to={author.id === currentUserId ? '/profile/me' : `/profile/${author.id}`} className="min-w-0">
@@ -388,7 +421,7 @@ export default function PostCard({ post: initialPost, detail = false, onSaveChan
         {/* Media nằm ngoài nút điều hướng để controls của video có thể tương tác độc lập. */}
         <PostMediaGrid post={post} />
 
-        {/* Thanh hành động: like, comment, repost (visual), share */}
+        {/* Thanh hành động: like, comment, repost và chia sẻ liên kết. */}
         <footer className="mt-3 flex items-center gap-6">
           <button className={`post-action ${liked ? 'post-action--active text-red-500' : ''}`} onClick={handleLike}>
             <HeartIcon filled={liked} />
@@ -398,9 +431,15 @@ export default function PostCard({ post: initialPost, detail = false, onSaveChan
             <CommentIcon />
             <span className="font-normal">{formatNumber(Number(post.commentCount) || 0)}</span>
           </button>
-          {/* Repost — chỉ ghi nhận visual, MVP không có nghiệp vụ repost */}
-          <button className={`post-action ${saved ? 'post-action--active text-[var(--app-text)]' : ''}`} onClick={handleSave} title={saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}>
+          {/* Repost gọi API idempotent; bài của chính mình được vô hiệu hóa theo rule Backend. */}
+          <button
+            className={`post-action ${reposted ? 'post-action--active text-emerald-600' : ''}`}
+            onClick={handleRepost}
+            disabled={isOwner || repostSubmitting}
+            title={isOwner ? 'Không thể đăng lại bài viết của chính mình' : (reposted ? 'Bỏ đăng lại' : 'Đăng lại')}
+          >
             <RepostIcon />
+            <span className="font-normal">{formatNumber(repostCount)}</span>
           </button>
           <button className="post-action" onClick={() => copyPostLink(post.id)} title="Chia sẻ liên kết">
             <ShareIcon />

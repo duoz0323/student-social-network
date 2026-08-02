@@ -30,6 +30,7 @@ import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.post.validation.PostImageFileValidator;
 import com.stu.edu.vn.backend.post.validation.PostValidationSupport;
@@ -71,6 +72,7 @@ class PostServiceImplTest {
     private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
+    private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
     private final PostMediaRepository postMediaRepository = org.mockito.Mockito.mock(PostMediaRepository.class);
     private final HashtagRepository hashtagRepository = org.mockito.Mockito.mock(HashtagRepository.class);
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
@@ -92,6 +94,7 @@ class PostServiceImplTest {
                 userRepository,
                 userProfileRepository,
                 postRepository,
+                postRepostRepository,
                 postMediaRepository,
                 hashtagRepository,
                 postHashtagRepository,

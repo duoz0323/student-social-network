@@ -76,6 +76,7 @@ Enum notifications_type_enum {
   POST_LIKE
   POST_COMMENT
   COMMENT_REPLY
+  POST_REPOST
   REPORT_RESOLVED
   REPORT_REJECTED
   POST_HIDDEN_BY_ADMIN
@@ -383,6 +384,18 @@ Table post_media {
   Note: "chk_post_media_display_order: CHECK ((`display_order` <= 3)) | chk_post_media_duration: CHECK ((((`media_type` = _utf8mb4'IMAGE') and (`duration_seconds` is null)) or ((`media_type` = _utf8mb4'VIDEO') and (`duration_seconds` between 1 and 180)))) | chk_post_media_file_size: CHECK ((`file_size_bytes` > 0))"
 }
 
+Table post_reposts {
+  user_id bigint [not null, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (user_id, post_id) [pk, name: "pk_post_reposts"]
+    (user_id, created_at, post_id) [name: "idx_post_reposts_user_created"]
+    (post_id, user_id) [name: "idx_post_reposts_post_user"]
+  }
+}
+
 Enum moderation_cases_status_enum {
   OPEN
   RESOLVED_NO_VIOLATION
@@ -415,6 +428,7 @@ Table posts {
   is_edited tinyint(1) [not null, default: '0']
   like_count int [not null, default: '0', note: "UNSIGNED"]
   comment_count int [not null, default: '0', note: "UNSIGNED"]
+  repost_count int [not null, default: '0', note: "UNSIGNED"]
   published_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   hidden_by bigint [note: "UNSIGNED"]
   hidden_at datetime(6)
@@ -620,6 +634,8 @@ Ref fk_post_hashtags_hashtag: post_hashtags.hashtag_id > hashtags.id [delete: re
 Ref fk_post_hashtags_post: post_hashtags.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_post_likes_post: post_likes.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_post_likes_user: post_likes.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_post_reposts_post: post_reposts.post_id > posts.id [delete: cascade, update: restrict]
+Ref fk_post_reposts_user: post_reposts.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_post_media_post: post_media.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_posts_author: posts.author_id > users.id [delete: restrict, update: restrict]
 Ref fk_posts_hidden_by: posts.hidden_by > users.id [delete: restrict, update: restrict]

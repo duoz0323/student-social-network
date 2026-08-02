@@ -171,6 +171,7 @@ public enum ErrorCode {
     POST_ALREADY_LIKED(HttpStatus.CONFLICT, "Bạn đã Like bài viết này"),
     POST_NOT_LIKED(HttpStatus.BAD_REQUEST, "Bạn chưa Like bài viết này"),
     POST_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền chỉnh sửa bài viết này"),
+    POST_REPOST_SELF_FORBIDDEN(HttpStatus.BAD_REQUEST, "Bạn không thể đăng lại bài viết của chính mình"),
     POST_EDIT_TIME_EXPIRED(HttpStatus.BAD_REQUEST, "Bài viết chỉ được chỉnh sửa trong vòng 15 phút sau khi đăng"),
     POST_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "Bài viết sau khi chỉnh sửa phải có nội dung hoặc ít nhất một media"),
     POST_MEDIA_NOT_FOUND(HttpStatus.BAD_REQUEST, "Media cần giữ lại không thuộc bài viết đang chỉnh sửa"),

@@ -376,17 +376,25 @@ Quy tắc:
 - Danh sách bài đã lưu chỉ hiển thị với chủ tài khoản.
 - Bài viết bị xóa hoặc bị ẩn không còn khả dụng trong danh sách đã lưu.
 
+5.4. Repost
+
+- Người dùng có thể Repost hoặc Unrepost idempotent bài PUBLISHED của người khác.
+- Mỗi người chỉ có tối đa một quan hệ Repost với một bài.
+- Repost chỉ lưu tham chiếu đến bài gốc, không sao chép content, media, hashtag hoặc Location.
+- Bài gốc HIDDEN hoặc DELETED không xuất hiện trong tab Repost hoặc Following Feed.
+- Tab Repost trên Profile dùng Cursor Pagination.
+
 6. Feed
 
 6.1. Feed Following
 
-Feed Following hiển thị bài viết của các tài khoản mà người dùng đang theo dõi.
+Feed Following hiển thị activity bài gốc và Repost của các tài khoản mà người dùng đang theo dõi.
 
 Quy tắc:
 
-- Sắp xếp theo thời gian đăng giảm dần.
+- Sắp xếp theo activityAt, itemRank, actorId và postId giảm dần.
 - Không hiển thị bài bị xóa hoặc bị ẩn.
-- Sử dụng Cursor Pagination, sắp xếp ổn định theo published_at DESC, id DESC.
+- Item ORIGINAL chứa bài gốc; item REPOST chứa repostedAt, repostedBy và projection bài gốc.
 - Khi người dùng Unfollow, bài viết của tài khoản đó không còn thuộc nguồn của
   Feed Following.
 
@@ -423,6 +431,7 @@ Các danh sách bài viết sau dùng Cursor Pagination:
 - Feed For You.
 - Feed Following.
 - Bài viết trên hồ sơ.
+- Bài viết trong tab Repost trên hồ sơ.
 - Bài viết đã lưu.
 - Bài viết đã thích.
 
@@ -433,6 +442,7 @@ Quy tắc:
 - Response gồm content, nextCursor và hasNext.
 - Cursor là chuỗi Base64URL opaque; Frontend không tự tạo hoặc sửa cursor.
 - Feed For You dùng cursor chứa score, publishedAt và postId.
+- Feed Following dùng cursor chứa activityAt, itemRank, actorId và postId.
 - Các danh sách theo thời gian dùng cursor chứa createdAt và postId.
 - Backend dùng keyset query và lấy limit + 1, không dùng page, offset hoặc COUNT tổng.
 - Cursor không hợp lệ trả lỗi INVALID_CURSOR.
@@ -538,7 +548,7 @@ Admin có thể:
 
 11. Thông báo đơn giản
 
-Hệ thống tạo thông báo cho các sự kiện Follow, Like bài, bình luận, trả lời bình luận,
+Hệ thống tạo thông báo cho các sự kiện Follow, Like bài, Repost bài, bình luận, trả lời bình luận,
 xử lý báo cáo, ẩn/khôi phục bài và khóa/mở khóa tài khoản.
 
 Người dùng có thể:
@@ -551,7 +561,7 @@ Người dùng có thể:
 Quy tắc:
 
 - Người dùng chỉ xem và thao tác trên thông báo của chính mình.
-- Đây là thông báo trong hệ thống; thông báo realtime vẫn nằm ngoài phạm vi MVP.
+- REST/MySQL là nguồn sự thật; riêng POST_REPOST có tín hiệu WebSocket best-effort chỉ phát AFTER_COMMIT.
 
 ================================================================================
 III. DANH SÁCH MODULE CHỨC NĂNG MVP
@@ -700,24 +710,23 @@ Các chức năng sau không triển khai trong phiên bản MVP:
 4. Video và tài liệu trong bài viết.
 5. Bài viết nháp.
 6. Mention.
-7. Repost.
-8. Trích dẫn bài viết.
-9. Chủ đề nội dung do Admin quản lý.
-10. Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
-11. Feed cá nhân hóa do người dùng tạo.
-12. Feed công khai và lưu Feed.
-13. Không quan tâm và từ khóa bị ẩn.
-14. Elasticsearch.
-15. Nhắn tin trực tiếp.
-16. Message Request và Hidden Message Request.
-17. Thông báo thời gian thực.
-18. Quản lý dữ liệu trường, khoa và ngành.
-19. Dashboard thống kê nâng cao.
-20. Moderation Case.
-21. Audit Log chi tiết.
-22. Thuật toán gợi ý bằng Machine Learning.
-23. Ứng dụng di động native.
-24. Group Chat, gọi thoại, gọi video và livestream.
+7. Trích dẫn bài viết và Quote Post.
+8. Chủ đề nội dung do Admin quản lý.
+9. Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
+10. Feed cá nhân hóa do người dùng tạo.
+11. Feed công khai và lưu Feed.
+12. Không quan tâm và từ khóa bị ẩn.
+13. Elasticsearch.
+14. Nhắn tin trực tiếp.
+15. Message Request và Hidden Message Request.
+16. Realtime ngoài sự kiện POST_REPOST best-effort.
+17. Quản lý dữ liệu trường, khoa và ngành.
+18. Dashboard thống kê nâng cao.
+19. Moderation Case.
+20. Audit Log chi tiết.
+21. Thuật toán gợi ý bằng Machine Learning.
+22. Ứng dụng di động native.
+23. Group Chat, gọi thoại, gọi video và livestream.
 
 ================================================================================
 VI. CÁC BẢNG DỮ LIỆU DỰ KIẾN CHO MVP
@@ -741,10 +750,11 @@ VI. CÁC BẢNG DỮ LIỆU DỰ KIẾN CHO MVP
 16. post_likes
 17. comments
 18. saved_posts
-19. reports
-20. notifications
-21. account_status_histories
-22. admin_actions
+19. post_reposts
+20. reports
+21. notifications
+22. account_status_histories
+23. admin_actions
 
 ================================================================================
 VII. TIÊU CHÍ NGHIỆM THU MVP
@@ -781,18 +791,19 @@ Hệ thống được xem là hoàn thành MVP khi đáp ứng các tiêu chí s
 27. Người dùng xem được danh sách bài đã thích của chính mình.
 28. Người dùng bình luận, trả lời một cấp và xóa bình luận của mình.
 29. Người dùng lưu, bỏ lưu và xem danh sách bài đã lưu.
-30. Feed Following hiển thị bài của tài khoản đang theo dõi.
-31. Feed For You hiển thị các bài viết hợp lệ.
-32. Năm danh sách bài Infinite Scroll dùng cursor ổn định và không trả trùng bài khi tải tiếp.
-33. Cursor không hợp lệ bị từ chối bằng INVALID_CURSOR.
-34. Người dùng tìm được tài khoản và bài viết.
-35. Người dùng gửi được báo cáo bài viết.
-36. Admin xử lý được người dùng, bài viết, báo cáo và xem lịch sử thao tác.
-37. Người dùng xem và quản lý được thông báo đơn giản.
-38. API danh sách dùng đúng CursorPageResponse hoặc PageResponse theo contract.
-39. API từ chối thao tác khi người dùng không có quyền.
-40. Mật khẩu, OTP, flow token và Refresh Token không được lưu dạng văn bản thuần.
-41. Hình ảnh không hợp lệ phải bị Backend từ chối.
+30. Repost/Unrepost idempotent, không Repost bài của chính mình và không sao chép dữ liệu bài gốc.
+31. Feed Following hiển thị bài gốc và Repost của tài khoản đang theo dõi.
+32. Feed For You hiển thị các bài viết hợp lệ.
+33. Sáu danh sách bài/activity Infinite Scroll dùng cursor ổn định và không trả trùng activity khi tải tiếp.
+34. Cursor không hợp lệ bị từ chối bằng INVALID_CURSOR.
+35. Người dùng tìm được tài khoản và bài viết.
+36. Người dùng gửi được báo cáo bài viết.
+37. Admin xử lý được người dùng, bài viết, báo cáo và xem lịch sử thao tác.
+38. Người dùng xem và quản lý được thông báo đơn giản.
+39. API danh sách dùng đúng CursorPageResponse hoặc PageResponse theo contract.
+40. API từ chối thao tác khi người dùng không có quyền.
+41. Mật khẩu, OTP, flow token và Refresh Token không được lưu dạng văn bản thuần.
+42. Hình ảnh không hợp lệ phải bị Backend từ chối.
 
 ================================================================================
 

@@ -81,7 +81,7 @@ export default function UserShell() {
   useEffect(() => {
     const controller = new AbortController();
 
-    // Badge chỉ phản ánh snapshot hiện tại; realtime notification nằm ngoài phạm vi MVP.
+    // Badge phản ánh REST snapshot; POST_REPOST realtime chỉ là tín hiệu best-effort để đồng bộ lại.
     socialApi.getUnreadCount(controller.signal)
       .then((payload) => setNotificationUnreadCount(Math.max(0, Number(payload?.unreadCount) || 0)))
       .catch((requestError) => {

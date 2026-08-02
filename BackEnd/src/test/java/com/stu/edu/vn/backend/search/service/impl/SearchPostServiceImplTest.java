@@ -18,6 +18,7 @@ import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
@@ -48,6 +49,7 @@ class SearchPostServiceImplTest {
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
+    private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
     private final PostLocationBatchLoader postLocationBatchLoader = org.mockito.Mockito.mock(PostLocationBatchLoader.class);
     private SearchServiceImpl searchService;
 
@@ -55,7 +57,8 @@ class SearchPostServiceImplTest {
     void setUp() {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
-                postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
+                postHashtagRepository, postLikeRepository, savedPostRepository, postRepostRepository,
+                new SearchPostMapper(),
                 new HashtagNormalizer(), postLocationBatchLoader);
         when(postLocationBatchLoader.loadByPostId(any())).thenReturn(java.util.Map.of());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -82,6 +85,7 @@ class SearchPostServiceImplTest {
                 .thenReturn(List.of(new PostHashtag(post, hashtag)));
         when(postLikeRepository.findLikedPostIds(10L, List.of(100L))).thenReturn(List.of(100L));
         when(savedPostRepository.findSavedPostIds(10L, List.of(100L))).thenReturn(List.of(100L));
+        when(postRepostRepository.findRepostedPostIds(10L, List.of(100L))).thenReturn(List.of(100L));
 
         var response = searchService.searchPosts("  Học Java  ", SearchPostType.CONTENT, 0, 20);
 

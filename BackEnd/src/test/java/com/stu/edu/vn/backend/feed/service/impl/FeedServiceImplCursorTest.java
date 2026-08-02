@@ -12,16 +12,20 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.common.cursor.ForYouCursor;
-import com.stu.edu.vn.backend.common.cursor.TimeCursor;
+import com.stu.edu.vn.backend.feed.cursor.FollowingActivityCursor;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
+import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
+import com.stu.edu.vn.backend.feed.service.FeedActivityAssembler;
 import com.stu.edu.vn.backend.feed.mapper.FeedPostMapper;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
+import com.stu.edu.vn.backend.post.repository.projection.FeedActivityProjection;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -49,6 +53,7 @@ class FeedServiceImplCursorTest {
     @Mock private UserRepository userRepository;
     @Mock private UserProfileRepository userProfileRepository;
     @Mock private PostRepository postRepository;
+    @Mock private PostRepostRepository postRepostRepository;
     @Mock private PostMediaRepository postMediaRepository;
     @Mock private PostHashtagRepository postHashtagRepository;
     @Mock private PostLikeRepository postLikeRepository;
@@ -56,6 +61,7 @@ class FeedServiceImplCursorTest {
     @Mock private FeedPostMapper feedPostMapper;
     @Mock private CursorCodec cursorCodec;
     @Mock private PostLocationBatchLoader postLocationBatchLoader;
+    @Mock private FeedActivityAssembler feedActivityAssembler;
 
     private FeedServiceImpl service;
     private User author;
@@ -64,9 +70,9 @@ class FeedServiceImplCursorTest {
     @BeforeEach
     void setUp() {
         service = new FeedServiceImpl(
-                currentUserProvider, userRepository, userProfileRepository, postRepository,
+                currentUserProvider, userRepository, userProfileRepository, postRepository, postRepostRepository,
                 postMediaRepository, postHashtagRepository, postLikeRepository,
-                savedPostRepository, feedPostMapper, cursorCodec, postLocationBatchLoader);
+                savedPostRepository, feedPostMapper, cursorCodec, postLocationBatchLoader, feedActivityAssembler);
         lenient().when(postLocationBatchLoader.loadByPostId(anyList())).thenReturn(java.util.Map.of());
         author = org.mockito.Mockito.mock(User.class);
         profile = org.mockito.Mockito.mock(UserProfile.class);
@@ -79,11 +85,12 @@ class FeedServiceImplCursorTest {
 
     @Test
     void firstPageShouldFetchLimitPlusOneAndReturnCursorFromLastReturnedPost() {
-        List<Post> fetched = posts(11);
-        when(postRepository.findFollowingFeed(eq(7L), any(), eq(Long.MAX_VALUE), any()))
-                .thenReturn(fetched);
-        stubBatchMapping(fetched.subList(0, 10));
-        when(cursorCodec.encode(any(TimeCursor.class))).thenReturn("next");
+        List<FeedActivityProjection> fetched = activities(11);
+        when(postRepostRepository.findFollowingActivities(eq(7L), any(), eq(1), eq(Long.MAX_VALUE),
+                eq(Long.MAX_VALUE), any())).thenReturn(fetched);
+        when(feedActivityAssembler.assemble(anyList(), eq(7L))).thenReturn(java.util.Collections.nCopies(10,
+                org.mockito.Mockito.mock(FeedItemResponse.class)));
+        when(cursorCodec.encode(any(FollowingActivityCursor.class))).thenReturn("next");
 
         var result = service.getFollowing(null, 10);
 
@@ -91,10 +98,11 @@ class FeedServiceImplCursorTest {
         assertThat(result.hasNext()).isTrue();
         assertThat(result.nextCursor()).isEqualTo("next");
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(postRepository).findFollowingFeed(eq(7L), any(), eq(Long.MAX_VALUE), pageable.capture());
+        verify(postRepostRepository).findFollowingActivities(eq(7L), any(), eq(1), eq(Long.MAX_VALUE),
+                eq(Long.MAX_VALUE), pageable.capture());
         assertThat(pageable.getValue().getPageNumber()).isZero();
         assertThat(pageable.getValue().getPageSize()).isEqualTo(11);
-        ArgumentCaptor<TimeCursor> cursor = ArgumentCaptor.forClass(TimeCursor.class);
+        ArgumentCaptor<FollowingActivityCursor> cursor = ArgumentCaptor.forClass(FollowingActivityCursor.class);
         verify(cursorCodec).encode(cursor.capture());
         assertThat(cursor.getValue().postId()).isEqualTo(10L);
     }
@@ -102,11 +110,13 @@ class FeedServiceImplCursorTest {
     @Test
     void validCursorShouldBePassedToKeysetQueryAndLastPageHasNoNextCursor() {
         LocalDateTime cursorTime = LocalDateTime.of(2026, 7, 24, 10, 0);
-        when(cursorCodec.decode("valid", TimeCursor.class)).thenReturn(new TimeCursor(cursorTime, 50L));
-        List<Post> fetched = posts(2);
-        when(postRepository.findFollowingFeed(eq(7L), eq(cursorTime), eq(50L), any()))
-                .thenReturn(fetched);
-        stubBatchMapping(fetched);
+        when(cursorCodec.decode("valid", FollowingActivityCursor.class))
+                .thenReturn(new FollowingActivityCursor(cursorTime, 1, 20L, 50L));
+        List<FeedActivityProjection> fetched = activities(2);
+        when(postRepostRepository.findFollowingActivities(eq(7L), eq(cursorTime), eq(1), eq(20L),
+                eq(50L), any())).thenReturn(fetched);
+        when(feedActivityAssembler.assemble(fetched, 7L)).thenReturn(java.util.Collections.nCopies(2,
+                org.mockito.Mockito.mock(FeedItemResponse.class)));
 
         var result = service.getFollowing("valid", 10);
 
@@ -114,6 +124,20 @@ class FeedServiceImplCursorTest {
         assertThat(result.hasNext()).isFalse();
         assertThat(result.nextCursor()).isNull();
         verify(cursorCodec, never()).encode(any());
+    }
+
+    private List<FeedActivityProjection> activities(int count) {
+        List<FeedActivityProjection> result = new ArrayList<>();
+        for (int index = 1; index <= count; index++) {
+            FeedActivityProjection activity = org.mockito.Mockito.mock(FeedActivityProjection.class);
+            lenient().when(activity.getPostId()).thenReturn((long) index);
+            lenient().when(activity.getActorId()).thenReturn(20L);
+            lenient().when(activity.getItemRank()).thenReturn(1);
+            lenient().when(activity.getActivityAt())
+                    .thenReturn(LocalDateTime.of(2026, 7, 24, 12, 0).minusMinutes(index));
+            result.add(activity);
+        }
+        return result;
     }
 
     @Test

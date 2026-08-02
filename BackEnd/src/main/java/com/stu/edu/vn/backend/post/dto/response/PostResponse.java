@@ -14,19 +14,21 @@ public record PostResponse(
         boolean isEdited,
         int likeCount,
         int commentCount,
+        int repostCount,
         LocalDateTime publishedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
         String hashtag,
+        boolean repostedByCurrentUser,
         PostLocationResponse location
 ) {
     public PostResponse(Long id, String content, PostStatus status, boolean isEdited, int likeCount,
                         int commentCount, LocalDateTime publishedAt, LocalDateTime createdAt,
                         LocalDateTime updatedAt, PostAuthorResponse author, List<PostMediaResponse> media,
                         String hashtag) {
-        this(id, content, status, isEdited, likeCount, commentCount, publishedAt, createdAt,
-                updatedAt, author, media, hashtag, null);
+        this(id, content, status, isEdited, likeCount, commentCount, 0, publishedAt, createdAt,
+                updatedAt, author, media, hashtag, false, null);
     }
 }

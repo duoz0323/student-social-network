@@ -22,19 +22,26 @@ public interface FeedPostMapper {
     @Mapping(target = "isEdited", source = "post.edited")
     @Mapping(target = "likeCount", source = "post.likeCount")
     @Mapping(target = "commentCount", source = "post.commentCount")
+    @Mapping(target = "repostCount", source = "post.repostCount")
     @Mapping(target = "publishedAt", source = "post.publishedAt")
     @Mapping(target = "author", source = "profile")
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "likedByCurrentUser", source = "liked")
     @Mapping(target = "savedByCurrentUser", source = "saved")
+    @Mapping(target = "repostedByCurrentUser", source = "reposted")
     @Mapping(target = "location", source = "location")
     FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
-                                String hashtag, boolean liked, boolean saved, Location location);
+                                String hashtag, boolean liked, boolean saved, boolean reposted, Location location);
 
     default FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
                                         String hashtag, boolean liked, boolean saved) {
-        return toResponse(post, profile, media, hashtag, liked, saved, null);
+        return toResponse(post, profile, media, hashtag, liked, saved, false, null);
+    }
+
+    default FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
+                                        String hashtag, boolean liked, boolean saved, Location location) {
+        return toResponse(post, profile, media, hashtag, liked, saved, false, location);
     }
 
     @Mapping(target = "id", source = "userId")

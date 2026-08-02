@@ -6,6 +6,7 @@ package com.stu.edu.vn.backend.notification.enums;
 public enum NotificationType {
     FOLLOW,
     POST_LIKE,
+    POST_REPOST,
     POST_COMMENT,
     COMMENT_REPLY,
     REPORT_RESOLVED,

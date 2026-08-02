@@ -76,6 +76,10 @@ public class Post extends BaseAuditEntity {
     // Bộ đếm bình luận hợp lệ để tối ưu truy vấn Feed.
     private int commentCount = 0;
 
+    @Column(name = "repost_count", nullable = false)
+    // Bộ đếm Repost do trigger MySQL cập nhật để PostCard không phải COUNT theo từng bài.
+    private int repostCount = 0;
+
     @Column(name = "published_at", nullable = false, insertable = false, updatable = false)
     // Thời điểm xuất bản do MySQL gán mặc định khi tạo bài.
     private LocalDateTime publishedAt;
@@ -177,6 +181,14 @@ public class Post extends BaseAuditEntity {
 
     public void setCommentCount(int commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public int getRepostCount() {
+        return repostCount;
+    }
+
+    public void setRepostCount(int repostCount) {
+        this.repostCount = repostCount;
     }
 
     public LocalDateTime getPublishedAt() {

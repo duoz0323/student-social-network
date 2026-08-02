@@ -13,11 +13,14 @@ export const socialApi = Object.freeze({
   },
   deleteAvatar: (signal) => requestData(httpClient.delete(USER_ENDPOINTS.avatar, { signal })),
   follow: (userId, signal) => requestData(httpClient.post(USER_ENDPOINTS.follow(userId), undefined, { signal })),
-  unfollow: (userIFd, signal) => requestData(httpClient.delete(USER_ENDPOINTS.follow(userId), { signal })),
+  unfollow: (userId, signal) => requestData(httpClient.delete(USER_ENDPOINTS.follow(userId), { signal })),
   getFollowers: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.followers(userId), { signal })),
   getFollowing: (userId, signal) => requestData(httpClient.get(USER_ENDPOINTS.following(userId), { signal })),
   getUserPosts: (userId, params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.posts(userId), { params: compactParams(params), signal }),
+  ),
+  getUserReposts: (userId, params, signal) => requestData(
+    httpClient.get(USER_ENDPOINTS.reposts(userId), { params: compactParams(params), signal }),
   ),
   searchUsers: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchUsers, { params: compactParams(params), signal })),
   searchPosts: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchPosts, { params: compactParams(params), signal })),

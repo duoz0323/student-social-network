@@ -529,6 +529,34 @@ LOCK TABLES `post_likes` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `post_reposts`
+--
+
+DROP TABLE IF EXISTS `post_reposts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `post_reposts` (
+  `user_id` bigint unsigned NOT NULL,
+  `post_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`user_id`,`post_id`),
+  KEY `idx_post_reposts_user_created` (`user_id`,`created_at` DESC,`post_id` DESC),
+  KEY `idx_post_reposts_post_user` (`post_id`,`user_id`),
+  CONSTRAINT `fk_post_reposts_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_reposts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `post_reposts`
+--
+
+LOCK TABLES `post_reposts` WRITE;
+/*!40000 ALTER TABLE `post_reposts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `post_reposts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `post_media`
 --
 
@@ -616,6 +644,7 @@ CREATE TABLE `posts` (
   `is_edited` tinyint(1) NOT NULL DEFAULT '0',
   `like_count` int unsigned NOT NULL DEFAULT '0',
   `comment_count` int unsigned NOT NULL DEFAULT '0',
+  `repost_count` int unsigned NOT NULL DEFAULT '0',
   `published_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `hidden_by` bigint unsigned DEFAULT NULL,
   `hidden_at` datetime(6) DEFAULT NULL,
@@ -779,7 +808,7 @@ CREATE TABLE `notifications` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `recipient_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned DEFAULT NULL,
-  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
+  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
   `post_id` bigint unsigned DEFAULT NULL,
   `comment_id` bigint unsigned DEFAULT NULL,
   `report_id` bigint unsigned DEFAULT NULL,
@@ -1050,6 +1079,20 @@ AFTER DELETE ON `post_likes`
 FOR EACH ROW
 BEGIN
   UPDATE `posts` SET `like_count` = GREATEST(`like_count` - 1, 0) WHERE `id` = OLD.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_post_reposts_after_insert`
+AFTER INSERT ON `post_reposts`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `repost_count` = `repost_count` + 1 WHERE `id` = NEW.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_post_reposts_after_delete`
+AFTER DELETE ON `post_reposts`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `repost_count` = GREATEST(`repost_count` - 1, 0) WHERE `id` = OLD.`post_id`;
 END;;
 
 CREATE TRIGGER `trg_comments_after_insert`

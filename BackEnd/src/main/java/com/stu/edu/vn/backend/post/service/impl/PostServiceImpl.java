@@ -21,6 +21,7 @@ import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.service.PostService;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
 import com.stu.edu.vn.backend.post.validation.PostImageFileValidator;
@@ -66,6 +67,7 @@ public class PostServiceImpl implements PostService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final PostRepostRepository postRepostRepository;
     private final PostMediaRepository postMediaRepository;
     private final HashtagRepository hashtagRepository;
     private final PostHashtagRepository postHashtagRepository;
@@ -113,7 +115,8 @@ public class PostServiceImpl implements PostService {
         String hashtag = readSingleHashtag(post.getId());
         boolean owner = post.getAuthor().getId().equals(viewerId);
 
-        return postMapper.toDetailResponse(post, post.getAuthorProfile(), media, hashtag, owner);
+        boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
+        return postMapper.toDetailResponse(post, post.getAuthorProfile(), media, hashtag, owner, reposted);
     }
 
     @Override
