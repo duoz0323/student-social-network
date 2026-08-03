@@ -474,8 +474,8 @@ không tồn tại hai case `OPEN` cho cùng bài.
 #### Analytics hoạt động người dùng — Backend/Frontend `IMPLEMENTED`, Frontend `TESTED`, test MySQL `CONDITIONAL`
 
 Analytics là module quản trị độc lập tại `/admin/user-analytics`, không nằm trên Dashboard. Frontend gọi hai
-API monthly/summary qua service tập trung, có bộ lọc khoảng tháng và ngưỡng không hoạt động, biểu đồ phân nhóm,
-bảng chi tiết cùng các trạng thái Loading/Empty/Error. Một hoạt động hợp lệ
+API monthly/summary qua service tập trung, có bộ lọc khoảng tháng và ngưỡng không hoạt động, bốn KPI, biểu đồ
+hai trục cho số người quay lại/tỷ lệ tái kích hoạt và bảng snapshot tháng cuối cùng các trạng thái Loading/Empty/Error. Một hoạt động hợp lệ
 là request nghiệp vụ thành công đại diện cho hành vi thực của USER như mở Feed, xem chi tiết bài, tạo hoặc
 sửa bài, Like/Save, bình luận hoặc Follow. Refresh Token, Auth/OTP, health check, WebSocket heartbeat,
 request Admin và request nền không tạo activity. Ngày hoạt động dùng UTC; mỗi USER có tối đa một dòng

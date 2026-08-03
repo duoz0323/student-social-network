@@ -316,7 +316,7 @@ Admin đăng nhập
 → Chọn Thống kê người dùng trên sidebar
 → ADMIN-07 tải đồng thời thống kê monthly và summary
 → Chọn khoảng từ tháng/đến tháng tối đa 24 tháng và ngưỡng không hoạt động
-→ Xem KPI tháng kết thúc, hai mốc cao nhất, biểu đồ sáu nhóm và bảng chi tiết
+→ Xem bốn KPI, xu hướng số người quay lại/tỷ lệ tái kích hoạt và bảng snapshot tháng kết thúc
 → Khi lỗi có thể thử lại; khi không có USER đủ điều kiện hiển thị Empty State
 ```
 

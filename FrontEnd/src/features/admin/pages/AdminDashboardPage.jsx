@@ -16,14 +16,14 @@ export default function AdminDashboardPage() {
     ]).then(([users, blocked, posts, reports]) => setStats([
       { label: 'Người dùng', value: users.totalElements, icon: Users },
       { label: 'Bài viết', value: posts.totalElements, icon: FileText },
-      { label: 'Hồ sơ chờ', value: reports.totalElements, icon: AlertTriangle },
+      { label: 'Báo cáo đang chờ', value: reports.totalElements, icon: AlertTriangle },
       { label: 'Tài khoản khóa', value: blocked.totalElements, icon: Ban },
     ])).catch((requestError) => setError(requestError.message));
     return () => controller.abort();
   }, []);
   if (!stats && !error) return <LoadingState />;
   return <section><h1 className="mb-8 text-4xl font-bold">Bảng điều khiển</h1>
-    {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+    
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{(stats ?? []).map(({ label, value, icon: Icon }) => (
       <div key={label} className="rounded-xl border bg-white p-6 shadow-sm"><Icon size={20} /><p className="mt-4 text-sm text-gray-500">{label}</p><p className="text-3xl font-bold">{value}</p></div>
     ))}</div>

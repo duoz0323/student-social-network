@@ -34,7 +34,7 @@ export function AppProvider({ children }) {
       id: currentUserId,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: 'Người dùng UniShare',
+      displayName: 'Quản trị viên Khánh',
       avatarUrl: '',
       birthDate: null,
       bio: '',
