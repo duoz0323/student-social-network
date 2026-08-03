@@ -26,7 +26,7 @@
 - POST-01, POST-02, POST-03, POST-04, POST-05, POST-06, POST-07, POST-08, POST-09, POST-10.
 - PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04.
 - SEARCH-01, SAVED-01, LIKED-01.
-- ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06.
+- ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06, ADMIN-07.
 - SYS-01, SYS-02, SYS-03, SYS-04.
 
 ### DESIGN_REQUIRED
@@ -108,6 +108,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | ADMIN-04 | Quản lý bài viết | `docs/ui/screens/admin/post-admin.jpg` | Admin | Xem danh sách, thống kê và chi tiết bài viết. | Bảng post, bộ lọc, phân trang; hai biểu đồ bên phải gồm tổng bài/số bài đã ẩn và số bài tạo từng ngày trong tuần hiện tại. Danh sách không có nút Ẩn/Khôi phục; double-click mở chi tiết. | `/admin/posts/:postId`; có thể đi đến report liên quan. | Thống kê lấy dữ liệu thật từ API Admin. Trang danh sách và chi tiết cố định theo viewport; nội dung dài cuộn nội bộ. |
 | ADMIN-05 | Quản lý hồ sơ kiểm duyệt | `docs/ui/screens/admin/report-admin.jpg` | Admin | Xem danh sách Moderation Case. | Một dòng mỗi case, tổng Report/reporter, trạng thái, thời gian, filter và phân trang; không hiển thị hoặc lọc theo lý do tại màn hình danh sách. | Mở ADMIN-06. | Frontend không tự group Report; trang cố định theo viewport và vùng danh sách tự cuộn dọc. |
 | ADMIN-06 | Chi tiết hồ sơ kiểm duyệt | `docs/ui/screens/admin/detail-report-admin.jpg` | Admin | Xử lý một Moderation Case. | Bài hiện tại; từng Report rút gọn không render snapshot/media; Admin xử lý; hai hành động trực tiếp khi OPEN. | Từ ADMIN-05; khi chọn có vi phạm phải chọn lý do ẩn bài trong modal. | Không có trường kết luận tự do, bước tiếp nhận hoặc xử lý lại case đã giải quyết. Trang cố định theo viewport; nội dung dài cuộn nội bộ và không hiện thanh cuộn dọc. |
+| ADMIN-07 | Thống kê hoạt động người dùng | Chưa có ảnh riêng | Admin | Theo dõi mức độ hoạt động và quay lại của USER theo tháng. | Bộ lọc tối đa 24 tháng, ngưỡng không hoạt động, KPI tháng tổng hợp, hai mốc cao nhất, biểu đồ sáu nhóm và bảng chỉ số chi tiết. | Route `/admin/user-analytics`, mở từ sidebar Admin. | Module Analytics độc lập, không nằm trên ADMIN-01 Dashboard; dữ liệu dùng UTC và lấy từ API Admin monthly/summary. |
 
 ## System States
 

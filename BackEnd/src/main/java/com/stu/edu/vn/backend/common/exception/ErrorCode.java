@@ -6,6 +6,11 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    ANALYTICS_MONTH_INVALID(HttpStatus.BAD_REQUEST, "Tháng thống kê phải có định dạng yyyy-MM"),
+    ANALYTICS_MONTH_RANGE_INVALID(HttpStatus.BAD_REQUEST, "Tháng bắt đầu không được sau tháng kết thúc"),
+    ANALYTICS_FUTURE_MONTH(HttpStatus.BAD_REQUEST, "Tháng kết thúc không được nằm trong tương lai"),
+    ANALYTICS_MONTH_RANGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Khoảng thống kê không được vượt quá 24 tháng"),
+    ANALYTICS_INACTIVE_DAYS_INVALID(HttpStatus.BAD_REQUEST, "inactiveDays phải nằm trong khoảng từ 1 đến 365"),
     HASHTAG_SUGGESTION_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa gợi ý hashtag không được vượt quá 100 ký tự"),
     ADMIN_ACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lịch sử thao tác quản trị"),
     ADMIN_MODERATION_CASE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ kiểm duyệt"),

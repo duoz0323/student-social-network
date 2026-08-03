@@ -471,6 +471,48 @@ không tồn tại hai case `OPEN` cho cùng bài.
 - Ghi lại các hành động quản trị quan trọng.
 - Hỗ trợ hiển thị lịch sử hoạt động của quản trị viên.
 
+#### Analytics hoạt động người dùng — Backend/Frontend `IMPLEMENTED`, Frontend `TESTED`, test MySQL `CONDITIONAL`
+
+Analytics là module quản trị độc lập tại `/admin/user-analytics`, không nằm trên Dashboard. Frontend gọi hai
+API monthly/summary qua service tập trung, có bộ lọc khoảng tháng và ngưỡng không hoạt động, biểu đồ phân nhóm,
+bảng chi tiết cùng các trạng thái Loading/Empty/Error. Một hoạt động hợp lệ
+là request nghiệp vụ thành công đại diện cho hành vi thực của USER như mở Feed, xem chi tiết bài, tạo hoặc
+sửa bài, Like/Save, bình luận hoặc Follow. Refresh Token, Auth/OTP, health check, WebSocket heartbeat,
+request Admin và request nền không tạo activity. Ngày hoạt động dùng UTC; mỗi USER có tối đa một dòng
+`user_daily_activities` trong một ngày nhờ unique `(user_id, activity_date)` và MySQL UPSERT atomic.
+
+Eligible System User tại `evaluationDate` là tài khoản đã được tạo, có `role = USER`, hồ sơ đã hoàn tất và
+ở trạng thái `ACTIVE` tại ngày đánh giá. Trạng thái tháng lịch sử được dựng lại từ
+`account_status_histories`. Tại mỗi tháng, toàn bộ tài khoản USER hợp lệ được phân loại vào đúng một trong
+sáu nhóm `NEW`, `REGULAR`, `RETURNING`, `RECENTLY_INACTIVE`, `ELIGIBLE_INACTIVE_NOT_RETURNED` hoặc
+`NEVER_ACTIVE`. Ba nhóm đầu có hoạt động trong tháng; ba nhóm sau không hoạt động trong tháng. Các nhóm
+không chồng lặp và tổng sáu nhóm bằng Eligible System User.
+
+- `NEW`: có activity trong tháng và không có activity trước đầu tháng.
+- `REGULAR`: có activity trong tháng, có activity trước tháng và khoảng cách tới activity đầu tháng
+  `<= inactiveDays`.
+- `RETURNING`: có activity trong tháng, có activity trước tháng và khoảng cách đó `> inactiveDays`.
+- `RECENTLY_INACTIVE`: không activity trong tháng, đã từng activity và tại đầu tháng chưa vượt ngưỡng.
+- `ELIGIBLE_INACTIVE_NOT_RETURNED`: không activity trong tháng và đã vượt ngưỡng tại đầu tháng.
+- `NEVER_ACTIVE`: chưa từng có activity hợp lệ tính đến ngày đánh giá.
+
+Công thức:
+
+```text
+activeUserCount = NEW + REGULAR + RETURNING
+inactiveUserCount = RECENTLY_INACTIVE + ELIGIBLE_INACTIVE_NOT_RETURNED + NEVER_ACTIVE
+eligibleSystemUserCount = activeUserCount + inactiveUserCount
+eligibleInactiveUserCount = returningEligibleUserCount + eligibleInactiveNotReturnedUserCount
+Monthly Active User Rate = activeUserCount / eligibleSystemUserCount × 100
+Regular Active Rate = regularActiveUserCount / activeUserCount × 100
+Monthly Reactivation Rate = returningEligibleUserCount / eligibleInactiveUserCount × 100
+Never Active Rate = neverActiveUserCount / eligibleSystemUserCount × 100
+```
+
+Rate trả `null` khi mẫu số bằng 0. Điều kiện inactive dùng toán tử `>`: đúng 15 ngày là REGULAR/chưa đủ
+inactive, từ 16 ngày mới là RETURNING/eligible inactive khi `inactiveDays=15`. Tháng hiện tại dùng ngày UTC
+hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
+
 ---
 
 ## 📌 Mức độ ưu tiên triển khai
@@ -905,6 +947,16 @@ PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-action
 
 Frontend chỉ gửi hành động nghiệp vụ và kết luận; `status` cùng `resolved_by` do Backend xác định từ
 state machine và JWT Principal.
+
+API Analytics độc lập dành cho Admin:
+
+```http
+GET /api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15
+GET /api/v1/admin/analytics/user-engagement/summary?month=2026-06&inactiveDays=15
+```
+
+Khoảng monthly tối đa 24 tháng. `summary` mặc định lấy tháng hiện tại. Response monthly gồm từng tháng,
+hai peak (`peakReturningMonth`, `peakReturnRateMonth`) và `comparisonOperator = GREATER_THAN`.
 
 Ví dụ bắt đầu đăng ký:
 

@@ -10,8 +10,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 |---|---|---|---|---|
 | `UserShell` | Khung giao diện người dùng gồm sidebar trái và vùng nội dung chính. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeNav`, `currentUser`, `children`, `onCreatePost`. | Dùng chung. |
 | `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
-| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-06. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
-| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-06. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
+| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-07. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
+| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-07. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
 | `AuthLayout` | Canh giữa form auth trên nền pattern giáo dục. | AUTH-01 đến AUTH-06. | `title`, `children`, `statusIllustration` nếu có. | Dùng chung auth. |
 
 ## 2. Common component
@@ -104,6 +104,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `AdminReportTable` | Danh sách một dòng mỗi Moderation Case, không hiển thị lý do. | ADMIN-05. | `moderationCases`, `filters`, `pagination`, `loading`, `onOpenDetail`. | Module admin; dữ liệu đã aggregate từ Backend và vùng bảng tự cuộn trong viewport. |
 | `ReportDetailPanel` | Chi tiết case, bài và danh sách Report rút gọn không render snapshot/media. | ADMIN-06. | `moderationCase`, `post`, `onResolveNoViolation`, `onResolveAction`. | Module admin/report; không có trường kết luận hoặc bước tiếp nhận. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
+| `AdminUserAnalyticsPage` | Hiển thị Analytics hoạt động người dùng độc lập với Dashboard, gồm bộ lọc, KPI, peak, biểu đồ và bảng chi tiết. | ADMIN-07. | Dữ liệu từ `useUserEngagementAnalytics`; khoảng tháng tối đa 24, `inactiveDays` từ 1 đến 365. | Module admin; xử lý Loading/Empty/Error và retry, không gọi Axios trực tiếp trong page. |
+| `useUserEngagementAnalytics` | Điều phối đồng thời API monthly và summary, hủy request cũ và chuẩn hóa trạng thái tải/lỗi. | ADMIN-07. | `filters`, `retry`; dùng `userEngagementAnalyticsService`. | Hook chuyên biệt của module Analytics. |
 
 ## 8. System state component
 

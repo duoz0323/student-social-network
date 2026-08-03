@@ -1141,3 +1141,18 @@ Frontend không gửi `status`, `resolvedBy` hoặc `adminId`. Backend lấy Adm
 case `OPEN` chuyển thẳng sang `RESOLVED_NO_VIOLATION` hoặc `RESOLVED_ACTION_TAKEN`. Giao diện hiện
 không yêu cầu kết luận tự do; `resolutionNote` được Backend giữ tương thích ở dạng tùy chọn.
 
+### GET `/api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15`
+
+Chỉ ADMIN được gọi. `fromMonth` và `toMonth` bắt buộc theo `yyyy-MM`, không ở tương lai và khoảng lấy dữ liệu
+tối đa 24 tháng tính cả hai đầu. `inactiveDays` mặc định 15, nhận số nguyên từ 1 đến 365.
+
+`data` gồm `fromMonth`, `toMonth`, `inactiveDays`, `comparisonOperator = GREATER_THAN`, hai mốc
+`peakReturningMonth`/`peakReturningUserCount`, `peakReturnRateMonth`/`peakReturnRate` và `items`. Mỗi item
+chứa tháng, ngày đánh giá UTC, số USER đủ điều kiện, sáu nhóm loại trừ lẫn nhau và các rate tương ứng.
+
+### GET `/api/v1/admin/analytics/user-engagement/summary?month=2026-06&inactiveDays=15`
+
+Chỉ ADMIN được gọi. `month` tùy chọn và mặc định là tháng UTC hiện tại; validation `inactiveDays` giống API
+monthly. `data` là một item thống kê tháng, cùng contract với phần tử trong `monthly.items`. Các rate trả
+`null` khi mẫu số bằng 0; Frontend không được tự đổi thành `0%`.
+

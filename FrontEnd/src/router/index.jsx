@@ -20,6 +20,7 @@ import {
   AdminReportDetailPage,
   AdminReportsPage,
   AdminUsersPage,
+  AdminUserAnalyticsPage,
   AuthProvidersPage,
   FeedPage,
   LazyRouteBoundary,
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'users', element: <AdminUsersPage /> },
+      { path: 'user-analytics', element: <AdminUserAnalyticsPage /> },
       { path: 'posts', element: <AdminPostsPage /> },
       { path: 'posts/:postId', element: <AdminPostDetailPage /> },
       { path: 'reports', element: <AdminReportsPage /> },

@@ -53,6 +53,12 @@ public class User extends BaseAuditEntity {
     @Column(name = "blocked_reason", length = 500)
     private String blockedReason;
 
+    @Column(name = "first_active_at")
+    private LocalDateTime firstActiveAt;
+
+    @Column(name = "last_active_at")
+    private LocalDateTime lastActiveAt;
+
     public User(String email, String passwordHash) {
         this.email = email;
         this.passwordHash = passwordHash;

@@ -26,6 +26,7 @@ public class SecurityConfig {
     private final ProfileCompletionFilter profileCompletionFilter;
     private final SecurityErrorResponseWriter errorResponseWriter;
     private final AuthRateLimitFilter authRateLimitFilter;
+    private final com.stu.edu.vn.backend.analytics.tracking.UserActivityTrackingFilter userActivityTrackingFilter;
     private final SecurityCorsProperties securityCorsProperties;
 
     @Bean
@@ -72,6 +73,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(profileCompletionFilter, JwtAuthenticationFilter.class)
                 .addFilterAfter(authRateLimitFilter, ProfileCompletionFilter.class)
+                .addFilterAfter(userActivityTrackingFilter, AuthRateLimitFilter.class)
                 .build();
     }
 

@@ -84,4 +84,6 @@ export const ADMIN_ENDPOINTS = Object.freeze({
   resolveCaseAction: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-action`,
   actions: '/api/v1/admin/actions',
   action: (actionId) => `/api/v1/admin/actions/${encodeURIComponent(actionId)}`,
+  userEngagementMonthly: '/api/v1/admin/analytics/user-engagement/monthly',
+  userEngagementSummary: '/api/v1/admin/analytics/user-engagement/summary',
 });

@@ -18,4 +18,12 @@ export const adminApi = Object.freeze({
   resolveCaseAction: (id, payload, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.resolveCaseAction(id), payload, { signal })),
   getActions: (params, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.actions, { params: compactParams(params), signal })),
   getAction: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.action(id), { signal })),
+  getUserEngagementMonthly: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.userEngagementMonthly,
+    { params: compactParams(params), signal },
+  )),
+  getUserEngagementSummary: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.userEngagementSummary,
+    { params: compactParams(params), signal },
+  )),
 });

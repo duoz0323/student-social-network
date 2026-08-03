@@ -954,6 +954,8 @@ CREATE TABLE `users` (
   `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
   `blocked_at` datetime(6) DEFAULT NULL,
   `blocked_reason` varchar(500) DEFAULT NULL,
+  `first_active_at` datetime(6) DEFAULT NULL,
+  `last_active_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
@@ -975,6 +977,40 @@ CREATE TABLE `users` (
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `user_daily_activities`
+--
+
+DROP TABLE IF EXISTS `user_daily_activities`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_daily_activities` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `activity_date` date NOT NULL,
+  `first_active_at` datetime(6) NOT NULL,
+  `last_active_at` datetime(6) NOT NULL,
+  `activity_count` int unsigned NOT NULL DEFAULT '1',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_daily_activities_user_date` (`user_id`,`activity_date`),
+  KEY `idx_user_daily_activities_date_user` (`activity_date`,`user_id`),
+  CONSTRAINT `fk_user_daily_activities_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_user_daily_activities_count` CHECK ((`activity_count` > 0)),
+  CONSTRAINT `chk_user_daily_activities_time` CHECK ((`first_active_at` <= `last_active_at`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `user_daily_activities`
+--
+
+LOCK TABLES `user_daily_activities` WRITE;
+/*!40000 ALTER TABLE `user_daily_activities` DISABLE KEYS */;
+/*!40000 ALTER TABLE `user_daily_activities` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

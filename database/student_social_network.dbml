@@ -600,6 +600,8 @@ Table users {
   status varchar(16) [not null, default: 'ACTIVE']
   blocked_at datetime(6)
   blocked_reason varchar(500)
+  first_active_at datetime(6)
+  last_active_at datetime(6)
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
 
@@ -610,11 +612,30 @@ Table users {
   Note: "chk_users_role: CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))) | chk_users_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_users_blocked_data: CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))) | chk_users_email_not_blank: CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))) | chk_users_email_verification_consistency: CHECK (((`email` is not null) or (`email_verified_at` is null))) | chk_users_password_verified_email: CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null)))"
 }
 
+Table user_daily_activities {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  activity_date date [not null]
+  first_active_at datetime(6) [not null]
+  last_active_at datetime(6) [not null]
+  activity_count int [not null, default: 1, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (user_id, activity_date) [unique, name: "uq_user_daily_activities_user_date"]
+    (activity_date, user_id) [name: "idx_user_daily_activities_date_user"]
+  }
+
+  Note: "chk_user_daily_activities_count: CHECK (activity_count > 0) | chk_user_daily_activities_time: CHECK (first_active_at <= last_active_at)"
+}
+
 // =============================================================================
 // KHÓA NGOẠI
 // =============================================================================
 
 Ref fk_account_status_histories_changed_by: account_status_histories.changed_by > users.id [delete: restrict, update: restrict]
+Ref fk_user_daily_activities_user: user_daily_activities.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_account_status_histories_user: account_status_histories.user_id > users.id [delete: restrict, update: restrict]
 Ref fk_admin_actions_admin: admin_actions.admin_id > users.id [delete: restrict, update: restrict]
 Ref fk_comments_parent: comments.parent_comment_id > comments.id [delete: cascade, update: restrict]

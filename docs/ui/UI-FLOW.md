@@ -309,7 +309,21 @@ Admin đăng nhập
 Không có bước tiếp nhận, trạng thái đang xử lý hoặc trạng thái đóng riêng. Case đã giải quyết chỉ hiển
 thị kết luận và không còn nút xử lý.
 
-### 1.15 Trạng thái hệ thống
+### 1.15 Admin xem thống kê hoạt động người dùng
+
+```text
+Admin đăng nhập
+→ Chọn Thống kê người dùng trên sidebar
+→ ADMIN-07 tải đồng thời thống kê monthly và summary
+→ Chọn khoảng từ tháng/đến tháng tối đa 24 tháng và ngưỡng không hoạt động
+→ Xem KPI tháng kết thúc, hai mốc cao nhất, biểu đồ sáu nhóm và bảng chi tiết
+→ Khi lỗi có thể thử lại; khi không có USER đủ điều kiện hiển thị Empty State
+```
+
+Luồng dùng ngày UTC và route `/admin/user-analytics`. Đây là module Analytics riêng, không thêm widget vào
+ADMIN-01 Dashboard và không thay đổi phạm vi Dashboard nâng cao thuộc phát triển tương lai.
+
+### 1.16 Trạng thái hệ thống
 
 ```text
 Không có quyền → SYS-01
