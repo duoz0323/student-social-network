@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { CheckCircle2, CircleAlert, Info, X } from 'lucide-react';
 
-export default function Toast({ message, type = 'success', onClose, duration = 3000 }) {
+export default function Toast({ message, type = 'success', onClose, duration = 3000, positioned = true }) {
   useEffect(() => {
     if (duration && onClose) {
       const timer = setTimeout(onClose, duration);
@@ -9,26 +9,41 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
     }
   }, [duration, onClose]);
 
-  const types = {
-    success: 'border-[var(--status-active)] bg-[var(--status-active-bg)] text-[var(--status-active)]',
-    error: 'border-[var(--status-blocked)] bg-[var(--status-blocked-bg)] text-[var(--status-blocked)]',
-    info: 'border-[var(--app-border-strong)] bg-[var(--app-surface-soft)] text-[var(--app-text)]',
+  const presentations = {
+    success: {
+      icon: CheckCircle2,
+      className: 'border-blue-500 text-zinc-800',
+      iconClassName: 'fill-blue-600 text-white',
+      role: 'status',
+    },
+    error: {
+      icon: CircleAlert,
+      className: 'border-red-500 text-zinc-800',
+      iconClassName: 'text-red-600',
+      role: 'alert',
+    },
+    info: {
+      icon: Info,
+      className: 'border-slate-300 text-zinc-800',
+      iconClassName: 'text-slate-600',
+      role: 'status',
+    },
   };
-  const icons = {
-    success: CheckCircle2,
-    error: AlertCircle,
-    info: Info,
-  };
-  const StatusIcon = icons[type] ?? Info;
+  const presentation = presentations[type] || presentations.info;
+  const Icon = presentation.icon;
 
   // Toast là overlay nên được phép dùng shadow nhẹ và tự co về chiều rộng mobile.
   return (
-    <div className={`fixed bottom-4 left-4 right-4 z-50 flex items-center gap-3 rounded-[var(--radius-card)] border px-4 py-3 shadow-[var(--shadow-overlay)] sm:left-auto sm:max-w-md ${types[type] ?? types.info}`} role={type === 'error' ? 'alert' : 'status'} aria-live={type === 'error' ? 'assertive' : 'polite'}>
-      <StatusIcon size={18} strokeWidth={2} className="shrink-0" aria-hidden="true" />
-      <span className="min-w-0 flex-1 text-sm font-medium">{message}</span>
+    <div
+      className={`${positioned ? 'fixed right-4 top-4 z-[100]' : ''} flex min-h-12 w-[min(22rem,calc(100vw-2rem))] items-center gap-2.5 rounded-lg border bg-white px-3.5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.16)] ${presentation.className}`}
+      role={presentation.role}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+    >
+      <Icon className={`h-5 w-5 shrink-0 ${presentation.iconClassName}`} strokeWidth={2.4} aria-hidden="true" />
+      <span className="min-w-0 flex-1 text-sm font-semibold">{message}</span>
       {onClose && (
-        <button onClick={onClose} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] opacity-70 outline-none transition-[background-color,opacity] duration-[var(--motion-fast)] hover:bg-black/5 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]" aria-label="Đóng thông báo">
-          <X size={16} strokeWidth={2} aria-hidden="true" />
+        <button type="button" onClick={onClose} aria-label="Đóng thông báo" className="rounded-full p-1 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700">
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       )}
     </div>

@@ -6,13 +6,17 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.report.dto.request.CreateReportRequest;
 import com.stu.edu.vn.backend.report.dto.response.CreateReportResponse;
 import com.stu.edu.vn.backend.report.entity.Report;
+import com.stu.edu.vn.backend.report.entity.ModerationCase;
+import com.stu.edu.vn.backend.report.enums.ModerationCaseStatus;
 import com.stu.edu.vn.backend.report.enums.ReportReason;
 import com.stu.edu.vn.backend.report.enums.ReportStatus;
 import com.stu.edu.vn.backend.report.mapper.ReportMapper;
 import com.stu.edu.vn.backend.report.repository.ReportRepository;
+import com.stu.edu.vn.backend.report.repository.ModerationCaseRepository;
 import com.stu.edu.vn.backend.report.service.ReportService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -23,6 +27,8 @@ import com.stu.edu.vn.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import java.util.Comparator;
 import java.util.List;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,26 +45,35 @@ public class ReportServiceImpl implements ReportService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final PostMediaRepository postMediaRepository;
     private final ReportRepository reportRepository;
+    private final ModerationCaseRepository moderationCaseRepository;
     private final ReportMapper reportMapper;
     private final EntityManager entityManager;
+    private final Clock clock;
 
     public ReportServiceImpl(
             CurrentUserProvider currentUserProvider,
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
             PostRepository postRepository,
+            PostMediaRepository postMediaRepository,
             ReportRepository reportRepository,
+            ModerationCaseRepository moderationCaseRepository,
             ReportMapper reportMapper,
-            EntityManager entityManager
+            EntityManager entityManager,
+            Clock clock
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.postRepository = postRepository;
+        this.postMediaRepository = postMediaRepository;
         this.reportRepository = reportRepository;
+        this.moderationCaseRepository = moderationCaseRepository;
         this.reportMapper = reportMapper;
         this.entityManager = entityManager;
+        this.clock = clock;
     }
 
     @Override
@@ -69,8 +84,8 @@ public class ReportServiceImpl implements ReportService {
         ReportReason reason = requireReason(request);
         String description = normalizeDescription(reason, request.description());
 
-        // EntityGraph tải post, author và toàn bộ media bằng một truy vấn để snapshot không phát sinh N+1.
-        Post post = postRepository.findReportSnapshotById(postId)
+        // Khóa Post trước khi tìm/tạo case để hai báo cáo đầu tiên không thể tạo hai case OPEN.
+        Post post = postRepository.findReportTargetByIdForUpdate(postId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
         if (post.getStatus() != PostStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
@@ -78,14 +93,22 @@ public class ReportServiceImpl implements ReportService {
         if (post.getAuthor().getId().equals(reporterId)) {
             throw new BusinessException(ErrorCode.REPORT_OWN_POST_FORBIDDEN);
         }
-        if (reportRepository.existsByReporter_IdAndPost_IdAndStatus(reporterId, postId, ReportStatus.PENDING)) {
+        if (reportRepository.existsEffectiveReport(reporterId, postId, ModerationCaseStatus.OPEN)) {
             throw new BusinessException(ErrorCode.REPORT_ALREADY_PENDING);
         }
 
-        String mediaSnapshot = serializeMediaSnapshot(post.getMedia());
+        LocalDateTime now = LocalDateTime.now(clock);
+        ModerationCase moderationCase = moderationCaseRepository
+                .findByPost_IdAndStatus(postId, ModerationCaseStatus.OPEN)
+                .orElseGet(() -> moderationCaseRepository.save(new ModerationCase(post, now)));
+
+        // Media được tải riêng sau khi đã khóa Post để tránh khóa ngoài ý muốn do fetch join collection.
+        String mediaSnapshot = serializeMediaSnapshot(
+                postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(postId));
         Report report = new Report(
                 reporter,
                 post,
+                moderationCase,
                 reason,
                 description,
                 post.getContent(),
@@ -93,7 +116,8 @@ public class ReportServiceImpl implements ReportService {
         );
 
         try {
-            // Flush ngay để unique pending_report_key phát hiện cả hai request đồng thời trong transaction hiện tại.
+            moderationCase.registerReport(now);
+            // Flush cùng lúc để mọi lỗi constraint rollback cả Report và bộ đếm của case.
             reportRepository.saveAndFlush(report);
         } catch (DataIntegrityViolationException exception) {
             // Không để lộ SQL/constraint; mọi race condition báo cáo PENDING trùng đều thành lỗi nghiệp vụ ổn định.

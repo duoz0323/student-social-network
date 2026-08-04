@@ -10,8 +10,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 |---|---|---|---|---|
 | `UserShell` | Khung giao diện người dùng gồm sidebar trái và vùng nội dung chính. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeNav`, `currentUser`, `children`, `onCreatePost`. | Dùng chung. |
 | `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
-| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-06. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
-| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-06. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
+| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-07. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
+| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-07. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
 | `AuthEntryLayout` | Bố trí hero UniShare và vùng form Auth trên nền sáng, ưu tiên form trên mobile. | AUTH-01 đến AUTH-06. | `children`. | Layout Auth duy nhất; không dùng dữ liệu thật cho phần minh họa. |
 
 ## 2. Common component
@@ -55,13 +55,15 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `PostCard` | Hiển thị bài viết trong feed, profile, saved, liked và search. | FEED-01, PROFILE-01/02, POST-07, LIKED-01, SEARCH-01 nếu có kết quả bài. | `post`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
+| `PostCard` | Hiển thị bài viết và Location tùy chọn trong feed, profile, saved, liked và search. | FEED-01, PROFILE-01/02, POST-07, LIKED-01, SEARCH-01 nếu có kết quả bài. | `post` gồm `location` object hoặc `null`, `currentUser`, `onLike`, `onComment`, `onSave`, `onOpenMenu`, `onOpenDetail`. | Dùng chung module post/feed/profile. |
 | `InfinitePostList` | Tải nối tiếp PostCard bằng cursor và quản lý loading/empty/end state. | Feed, profile, saved, liked. | `loadPage(cursor)`, `initialItems`, `hasNext`, `onItemsChange`. | Dùng chung cho năm danh sách bài Cursor Pagination. |
 | `PostAuthor` | Hiển thị tác giả bài viết bằng displayName và avatar. | FEED-01, POST-01, PROFILE-01/02, POST-07. | `authorId` hoặc `user`, `onOpenProfile`. Điều hướng bằng `/profile/:userId`. | Dùng chung module post/profile. |
 | `PostDetail` | Hiển thị bài viết đầy đủ và khu vực bình luận. | POST-01. | `post`, `comments`, `currentUser`, action callbacks. | Module post. |
-| `PostComposer` | Tạo bài viết mới từ modal hoặc composer nhanh. | FEED-01, POST-02. | `currentUser`, `draft`, `maxLength`, `maxImages`, `submitting`, `onSubmit`. | Module post. |
-| `EditPostForm` | Sửa nội dung và hashtag của bài đã đăng. | POST-03. | `post`, `maxLength`, `submitting`, `onSave`, `onCancel`. | Module post. |
-| `PostActionMenu` | Menu hành động theo quyền với bài viết. | POST-04, PostCard. | `post`, `isOwner`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Module post. |
+| `PostComposer` | Tạo bài viết mới với media, hashtag gợi ý và một Location tùy chọn. | FEED-01, POST-02. | `currentUser`, `draft`, `media`, `hashtag`, `location`, `submitting`, `onSubmit`. | Dùng chung `PostHashtagPicker`; đã tích hợp Location picker. |
+| Form edit trong `PostCard` | Gọi Post Detail trước khi hiển thị; quản lý loading/error/submitting; sửa nội dung, media, hashtag và Location. | POST-03. | Post Detail snapshot, draft, `keepMediaIds`, `newMediaFiles`, Location, `onSave`, `onCancel`, `onRetry`. | Dùng chung `PostHashtagPicker`; cho giữ/gỡ/thêm media hợp lệ; Backend quyết định quyền và thời hạn. |
+| `PostHashtagPicker` | Tìm hashtag có sẵn, hiển thị gợi ý bên dưới và cho chọn hoặc tạo hashtag mới. | POST-02, POST-03. | `value`, `disabled`, `onChange`. | Dùng chung cho tạo và sửa Post; debounce API gợi ý 250 ms. |
+| `EditPostMedia` | Hiển thị media hiện tại và cho giữ/gỡ/thêm ảnh hoặc video khi sửa Post. | POST-03. | `media`, `disabled`, `onChange`, `onBusyChange`. | Gửi `keepMediaIds` và `newMediaFiles`; validation Frontend chỉ hỗ trợ UX. |
+| `PostActionMenu` | Menu hành động theo quyền; hành động sửa hiển thị countdown 15 phút và tự ẩn khi hết hạn. | POST-04, PostCard. | `post`, `isOwner`, `editRemainingSeconds`, `onEdit`, `onDelete`, `onReport`, `onSave`, `onCopyLink`. | Frontend hỗ trợ UX; Backend vẫn kiểm tra deadline bằng UTC. |
 | `DeletePostDialog` | Xác nhận xóa mềm bài viết. | POST-05. | `post`, `submitting`, `onConfirm`, `onCancel`. | Module post. |
 | `ReportPostFlow` | Gom các bước chọn lý do, nhập mô tả và gửi báo cáo. | POST-08, POST-09, POST-10. | `post`, `reasons`, `selectedReason`, `description`, `submitting`, `onSubmit`. | Module report/post. |
 | `CommentSection` | Hiển thị toàn bộ khu vực bình luận, reply một cấp và các trạng thái tải/gửi/xóa cục bộ. | POST-01. | `comments`, `replies`, `currentUser`, `commentCount`, các draft và action callbacks. | Module post. |
@@ -104,12 +106,16 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
 | `AdminSummaryCards` | Hiển thị chỉ số tổng quan đơn giản. | ADMIN-01. | `totalUsers`, `totalPosts`, `pendingReports`, `blockedUsers`. | Module admin, CẦN XÁC NHẬN vì dashboard nâng cao ngoài MVP. |
-| `AdminUserTable` | Danh sách user với trạng thái và thao tác. | ADMIN-02. | `users`, `pagination`, `loading`, `onSearch`, `onToggleStatus`. | Module admin. |
+| `AdminUserTable` | Danh sách user không chứa nút Khóa/Mở khóa trên từng dòng. | ADMIN-02. | `users`, `pagination`, `loading`, `onSearch`, `onOpenDetail`. | Click dòng mở chi tiết; thay đổi trạng thái chỉ thực hiện trong chi tiết. |
+| `AdminUserAnalytics` | Biểu đồ vòng trạng thái ACTIVE/BLOCKED và biểu đồ số người dùng mới từng ngày trong tuần hiện tại. | ADMIN-02. | Dữ liệu lấy từ `useAdminUserStatistics`; `refreshKey` làm mới sau Khóa/Mở khóa. | Cột rộng 16rem từ breakpoint 2XL và không làm co bảng dữ liệu. |
 | `AdminUserActionMenu` | Menu thao tác user. | ADMIN-03. | `user`, `onBlock`, `onUnblock`, `onView`. | Module admin. |
-| `AdminPostTable` | Danh sách bài viết và trạng thái. | ADMIN-04. | `posts`, `pagination`, `loading`, `onHide`, `onRestore`. | Module admin. |
-| `AdminReportTable` | Danh sách báo cáo cần xử lý. | ADMIN-05. | `reports`, `pagination`, `loading`, `onOpenDetail`. | Module admin. |
-| `ReportDetailPanel` | Chi tiết báo cáo và bài bị báo cáo. | ADMIN-06. | `report`, `post`, `onReject`, `onResolve`, `onHidePost`. | Module admin/report. |
+| `AdminPostTable` | Danh sách bài viết và trạng thái, không chứa nút Ẩn/Khôi phục. | ADMIN-04. | `posts`, `pagination`, `loading`, `onOpenDetail`. | Double-click hoặc Enter/Space trên dòng để mở chi tiết Admin; thay đổi trạng thái chỉ thực hiện ở trang chi tiết. |
+| `AdminPostAnalytics` | Hai thẻ biểu đồ gọn theo kích thước nội dung: vòng tổng bài/số bài đã ẩn và cột số bài từng ngày trong tuần hiện tại. | ADMIN-04. | Dữ liệu lấy từ `useAdminPostStatistics`. | Cột rộng 16rem từ breakpoint 2XL; bố cục mở rộng và dịch trái để giữ nguyên chiều rộng bảng dữ liệu. |
+| `AdminReportTable` | Danh sách một dòng mỗi Moderation Case, không hiển thị lý do. | ADMIN-05. | `moderationCases`, `filters`, `pagination`, `loading`, `onOpenDetail`. | Module admin; dữ liệu đã aggregate từ Backend và vùng bảng tự cuộn trong viewport. |
+| `ReportDetailPanel` | Chi tiết case, bài và danh sách Report rút gọn không render snapshot/media. | ADMIN-06. | `moderationCase`, `post`, `onResolveNoViolation`, `onResolveAction`. | Module admin/report; không có trường kết luận hoặc bước tiếp nhận. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
+| `AdminUserAnalyticsPage` | Hiển thị Analytics độc lập với Dashboard theo bố cục KPI, biểu đồ hai trục và bảng snapshot tháng kết thúc. | ADMIN-07. | Chỉ dùng trường từ monthly/summary: peak, `returningUserCount`, `returnRate` và các count/rate của item; khoảng tối đa 24 tháng. | Module admin; xử lý Loading/Empty/Error và retry, không gọi Axios trực tiếp trong page. |
+| `useUserEngagementAnalytics` | Điều phối đồng thời API monthly và summary, hủy request cũ và chuẩn hóa trạng thái tải/lỗi. | ADMIN-07. | `filters`, `retry`; dùng `userEngagementAnalyticsService`. | Hook chuyên biệt của module Analytics. |
 
 ## 9. System state component
 

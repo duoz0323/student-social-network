@@ -19,7 +19,8 @@ class AdminReportRepositoryContractTest {
         Query query = method.getAnnotation(Query.class);
 
         assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
-        assertThat(query.value()).isEqualTo("select r from Report r where r.id = :reportId");
+        assertThat(query.value()).isEqualTo(
+                "select r from Report r where r.id = :reportId and r.moderationCase is null");
         assertThat(query.value()).doesNotContain("join fetch", "post", "media", "snapshot");
     }
 

@@ -42,7 +42,7 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 - Tác giả bài viết được liên kết nội bộ bằng `authorId`/`userId`; khi bấm tên hoặc avatar điều hướng đến `/profile/:userId`.
 - Media ảnh thường bo góc nhẹ, chiếm gần hết chiều rộng card.
 - Action quan sát được: like, comment, repost/share-like icon, chia sẻ/lưu/menu tùy màn hình.
-- Repost không thuộc MVP; nếu icon xuất hiện trong ảnh thì chỉ ghi nhận visual, không triển khai nghiệp vụ repost.
+- Repost hiển thị trạng thái hiện tại, `repostCount` và bị vô hiệu hóa trên bài của chính người xem.
 - Bài có thể hiển thị trạng thái đã chỉnh sửa hoặc số liệu tương tác; vị trí và format CẦN XÁC NHẬN khi có API.
 
 ## 6. Modal

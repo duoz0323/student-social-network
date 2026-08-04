@@ -145,6 +145,20 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void createPostRepostNotification(Long actorId, Long recipientId, Long postId) {
+        // Dùng cùng chính sách loại tự thông báo của các tương tác bài viết hiện tại.
+        createNotification(actorId, recipientId, NotificationType.POST_REPOST, postId, null, null);
+    }
+
+    @Override
+    @Transactional
+    public void deletePostRepostNotification(Long actorId, Long postId) {
+        // Unrepost dọn đúng side effect do quan hệ Repost tương ứng đã tạo.
+        notificationRepository.deletePostInteractionNotification(NotificationType.POST_REPOST, actorId, postId);
+    }
+
+    @Override
+    @Transactional
     public void createPostCommentNotification(Long actorId, Long recipientId, Long postId, Long commentId) {
         createNotification(actorId, recipientId, NotificationType.POST_COMMENT, postId, commentId, null);
     }

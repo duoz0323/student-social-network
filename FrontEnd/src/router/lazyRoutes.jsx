@@ -14,7 +14,9 @@ export const NotificationsPage = lazy(() => import('../features/notification/pag
 export const MessagingPage = lazy(() => import('../features/messaging/pages/MessagingPage.jsx'));
 export const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage.jsx'));
 export const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage.jsx'));
+export const AdminUserAnalyticsPage = lazy(() => import('../features/admin/pages/AdminUserAnalyticsPage.jsx'));
 export const AdminPostsPage = lazy(() => import('../features/admin/pages/AdminPostsPage.jsx'));
+export const AdminPostDetailPage = lazy(() => import('../features/admin/pages/AdminPostDetailPage.jsx'));
 export const AdminReportsPage = lazy(() => import('../features/admin/pages/AdminReportsPage.jsx'));
 export const AdminReportDetailPage = lazy(() => import('../features/admin/pages/AdminReportDetailPage.jsx'));
 export const AdminActionsPage = lazy(() => import('../features/admin/pages/AdminActionsPage.jsx'));

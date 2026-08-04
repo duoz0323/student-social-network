@@ -8,7 +8,9 @@ export default function DataTable({
   loadingText = 'Đang tải dữ liệu...',
   emptyText = 'Không có dữ liệu',
   pagination, // { currentPage, totalPages, onPageChange, totalItems, pageSize, onPageSizeChange }
-  onRowKeyDown
+  onRowKeyDown,
+  onRowClick,
+  onRowDoubleClick,
 }) {
   // Loading và empty nằm trong cùng khung bảng để layout Admin không bị nhảy khi dữ liệu đổi trạng thái.
   if (!loading && !rows.length) return (
@@ -17,7 +19,11 @@ export default function DataTable({
     </div>
   );
 
+  const hasRowAction = Boolean(onRowClick || onRowDoubleClick);
+
   const handleKeyDown = (e, index, row) => {
+    // Không biến thao tác bàn phím trên button/link bên trong thành click của cả hàng.
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const nextRow = document.getElementById(`dt-row-${index + 1}`);
@@ -26,6 +32,10 @@ export default function DataTable({
       e.preventDefault();
       const prevRow = document.getElementById(`dt-row-${index - 1}`);
       if (prevRow) prevRow.focus();
+    } else if ((e.key === 'Enter' || e.key === ' ') && hasRowAction) {
+      e.preventDefault();
+      // Enter hoặc Space thay thế thao tác chuột để hàng double-click vẫn truy cập được bằng bàn phím.
+      (onRowClick || onRowDoubleClick)(row);
     } else if (onRowKeyDown) {
       onRowKeyDown(e, row);
     }
@@ -56,11 +66,13 @@ export default function DataTable({
               </tr>
             ) : rows.map((row, index) => (
               <tr 
-                key={row.id ?? row.userId ?? row.postId ?? row.reportId ?? row.actionId ?? index}
+                key={row.id ?? row.userId ?? row.caseId ?? row.postId ?? row.reportId ?? row.actionId ?? index}
                 id={`dt-row-${index}`}
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, index, row)}
-                className="group cursor-default transition-colors duration-[var(--motion-fast)] hover:bg-[var(--app-surface-soft)] focus:bg-[var(--app-surface-soft)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)]"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row) : undefined}
+                className={`group transition-colors duration-[var(--motion-fast)] hover:bg-[var(--app-surface-soft)] focus:bg-[var(--app-surface-soft)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)] ${hasRowAction ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 {columns.map((column) => (
                   <td

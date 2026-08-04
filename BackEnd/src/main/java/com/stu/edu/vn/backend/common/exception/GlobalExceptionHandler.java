@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.common.exception;
 
 import com.stu.edu.vn.backend.common.api.ErrorResponse;
 import com.stu.edu.vn.backend.common.api.FieldErrorDetail;
+import com.stu.edu.vn.backend.post.enums.LocationAction;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -38,10 +39,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request
+    ) {
         // Chuẩn hóa query parameter sai kiểu hoặc enum không hợp lệ thành validation error, không trả lỗi hệ thống.
+        ErrorCode errorCode = exception.getRequiredType() == LocationAction.class
+                ? ErrorCode.LOCATION_ACTION_INVALID
+                : ErrorCode.VALIDATION_ERROR;
         ErrorResponse response = ErrorResponse.of(
-                ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
+                errorCode.name(), errorCode.getDefaultMessage(),
                 HttpStatus.BAD_REQUEST.value(), request.getRequestURI());
         return ResponseEntity.badRequest().body(response);
     }

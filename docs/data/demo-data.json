@@ -202,9 +202,20 @@
       "post-001"
     ]
   },
+  "moderationCases": [
+    {
+      "id": "case-001",
+      "postId": "post-003",
+      "status": "OPEN",
+      "reportCount": 1,
+      "firstReportedAt": "2026-06-21T10:00:00+07:00",
+      "latestReportedAt": "2026-06-21T10:00:00+07:00"
+    }
+  ],
   "reports": [
     {
       "id": "report-001",
+      "moderationCaseId": "case-001",
       "postId": "post-003",
       "reporterId": "user-001",
       "reason": "SPAM",
@@ -216,11 +227,11 @@
   "adminState": {
     "selectedUserId": null,
     "selectedPostId": null,
-    "selectedReportId": "report-001",
+    "selectedModerationCaseId": "case-001",
     "filters": {
       "userStatus": "ALL",
       "postStatus": "ALL",
-      "reportStatus": "PENDING"
+      "moderationCaseStatus": "OPEN"
     }
   },
   "futureDevelopmentData": {

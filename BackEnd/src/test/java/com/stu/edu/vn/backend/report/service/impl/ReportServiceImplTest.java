@@ -15,13 +15,17 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.report.dto.request.CreateReportRequest;
 import com.stu.edu.vn.backend.report.dto.response.CreateReportResponse;
 import com.stu.edu.vn.backend.report.entity.Report;
+import com.stu.edu.vn.backend.report.entity.ModerationCase;
+import com.stu.edu.vn.backend.report.enums.ModerationCaseStatus;
 import com.stu.edu.vn.backend.report.enums.ReportReason;
 import com.stu.edu.vn.backend.report.enums.ReportStatus;
 import com.stu.edu.vn.backend.report.mapper.ReportMapper;
 import com.stu.edu.vn.backend.report.repository.ReportRepository;
+import com.stu.edu.vn.backend.report.repository.ModerationCaseRepository;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -29,7 +33,10 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +50,9 @@ class ReportServiceImplTest {
     private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
+    private final PostMediaRepository postMediaRepository = org.mockito.Mockito.mock(PostMediaRepository.class);
     private final ReportRepository reportRepository = org.mockito.Mockito.mock(ReportRepository.class);
+    private final ModerationCaseRepository moderationCaseRepository = org.mockito.Mockito.mock(ModerationCaseRepository.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
 
     private ReportServiceImpl reportService;
@@ -57,9 +66,12 @@ class ReportServiceImplTest {
                 userRepository,
                 userProfileRepository,
                 postRepository,
+                postMediaRepository,
                 reportRepository,
+                moderationCaseRepository,
                 new ReportMapper(),
-                entityManager
+                entityManager,
+                Clock.fixed(Instant.parse("2026-07-12T03:00:00Z"), ZoneOffset.UTC)
         );
 
         reporter = user(10L, UserStatus.ACTIVE);
@@ -70,8 +82,13 @@ class ReportServiceImplTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(reporter));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(reporter)));
-        when(postRepository.findReportSnapshotById(1L)).thenReturn(Optional.of(reportedPost));
-        when(reportRepository.existsByReporter_IdAndPost_IdAndStatus(10L, 1L, ReportStatus.PENDING))
+        when(postRepository.findReportTargetByIdForUpdate(1L)).thenReturn(Optional.of(reportedPost));
+        when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(reportedPost.getMedia());
+        ModerationCase moderationCase = new ModerationCase(reportedPost, LocalDateTime.of(2026, 7, 12, 10, 0));
+        ReflectionTestUtils.setField(moderationCase, "id", 50L);
+        when(moderationCaseRepository.findByPost_IdAndStatus(1L, ModerationCaseStatus.OPEN))
+                .thenReturn(Optional.of(moderationCase));
+        when(reportRepository.existsEffectiveReport(10L, 1L, ModerationCaseStatus.OPEN))
                 .thenReturn(false);
         when(reportRepository.saveAndFlush(any())).thenAnswer(invocation -> {
             Report report = invocation.getArgument(0);
@@ -92,9 +109,30 @@ class ReportServiceImplTest {
         verify(currentUserProvider).getCurrentUserId();
         verify(reportRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getReporter().getId()).isEqualTo(10L);
+        assertThat(captor.getValue().getModerationCase().getId()).isEqualTo(50L);
+        assertThat(captor.getValue().getModerationCase().getReportCount()).isEqualTo(1);
         assertThat(captor.getValue().getDescription()).isEqualTo("Quang cao lap lai");
         assertThat(response.reportId()).isEqualTo(100L);
         assertThat(response.status()).isEqualTo(ReportStatus.PENDING);
+    }
+
+    @Test
+    void firstReportCreatesOpenModerationCaseAndLinksReport() {
+        when(moderationCaseRepository.findByPost_IdAndStatus(1L, ModerationCaseStatus.OPEN))
+                .thenReturn(Optional.empty());
+        when(moderationCaseRepository.save(any())).thenAnswer(invocation -> {
+            ModerationCase moderationCase = invocation.getArgument(0);
+            ReflectionTestUtils.setField(moderationCase, "id", 77L);
+            return moderationCase;
+        });
+
+        reportService.createPostReport(1L, new CreateReportRequest(ReportReason.SPAM, null));
+
+        ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
+        verify(reportRepository).saveAndFlush(reportCaptor.capture());
+        assertThat(reportCaptor.getValue().getModerationCase().getId()).isEqualTo(77L);
+        assertThat(reportCaptor.getValue().getModerationCase().getStatus()).isEqualTo(ModerationCaseStatus.OPEN);
+        assertThat(reportCaptor.getValue().getModerationCase().getReportCount()).isEqualTo(1);
     }
 
     @Test
@@ -103,7 +141,7 @@ class ReportServiceImplTest {
                 () -> reportService.createPostReport(1L, new CreateReportRequest(ReportReason.OTHER, "   ")),
                 ErrorCode.REPORT_DESCRIPTION_REQUIRED
         );
-        verify(postRepository, never()).findReportSnapshotById(any());
+        verify(postRepository, never()).findReportTargetByIdForUpdate(any());
     }
 
     @Test
@@ -127,7 +165,7 @@ class ReportServiceImplTest {
                 () -> reportService.createPostReport(1L, request()),
                 ErrorCode.PROFILE_NOT_COMPLETED
         );
-        verify(postRepository, never()).findReportSnapshotById(any());
+        verify(postRepository, never()).findReportTargetByIdForUpdate(any());
     }
 
     @Test
@@ -143,7 +181,7 @@ class ReportServiceImplTest {
 
     @Test
     void missingPostReturnsPostNotFound() {
-        when(postRepository.findReportSnapshotById(1L)).thenReturn(Optional.empty());
+        when(postRepository.findReportTargetByIdForUpdate(1L)).thenReturn(Optional.empty());
 
         assertBusinessError(
                 () -> reportService.createPostReport(1L, request()),
@@ -170,7 +208,7 @@ class ReportServiceImplTest {
     @Test
     void userCannotReportOwnPost() {
         reportedPost = post(1L, reporter, "Bai cua toi", PostStatus.PUBLISHED);
-        when(postRepository.findReportSnapshotById(1L)).thenReturn(Optional.of(reportedPost));
+        when(postRepository.findReportTargetByIdForUpdate(1L)).thenReturn(Optional.of(reportedPost));
 
         assertBusinessError(
                 () -> reportService.createPostReport(1L, request()),
@@ -180,7 +218,7 @@ class ReportServiceImplTest {
 
     @Test
     void pendingDuplicateIsRejectedBeforeInsert() {
-        when(reportRepository.existsByReporter_IdAndPost_IdAndStatus(10L, 1L, ReportStatus.PENDING))
+        when(reportRepository.existsEffectiveReport(10L, 1L, ModerationCaseStatus.OPEN))
                 .thenReturn(true);
 
         assertBusinessError(
@@ -198,7 +236,7 @@ class ReportServiceImplTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(11L);
         when(userRepository.findById(11L)).thenReturn(Optional.of(secondReporter));
         when(userProfileRepository.findById(11L)).thenReturn(Optional.of(completedProfile(secondReporter)));
-        when(reportRepository.existsByReporter_IdAndPost_IdAndStatus(11L, 1L, ReportStatus.PENDING))
+        when(reportRepository.existsEffectiveReport(11L, 1L, ModerationCaseStatus.OPEN))
                 .thenReturn(false);
         reportService.createPostReport(1L, request());
 
@@ -207,6 +245,9 @@ class ReportServiceImplTest {
         assertThat(captor.getAllValues())
                 .extracting(report -> report.getReporter().getId())
                 .containsExactly(10L, 11L);
+        assertThat(captor.getAllValues().get(0).getModerationCase())
+                .isSameAs(captor.getAllValues().get(1).getModerationCase());
+        assertThat(captor.getAllValues().get(1).getModerationCase().getReportCount()).isEqualTo(2);
     }
 
     @Test

@@ -4,7 +4,8 @@ import { postListCache } from './postListCache.js';
 function uniquePosts(posts) {
   const seen = new Set();
   return posts.filter((post) => {
-    const id = String(post.id ?? post.postId);
+    // Timeline activity có thể chứa cùng một bài gốc do nhiều người Repost nên không khử trùng chỉ bằng postId.
+    const id = String(post.feedItemKey ?? post.id ?? post.postId);
     if (seen.has(id)) return false;
     seen.add(id);
     return true;

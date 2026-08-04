@@ -42,6 +42,7 @@ export const USER_ENDPOINTS = Object.freeze({
   restriction: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/restriction`,
   restrictedUsers: '/api/v1/users/me/restricted-users',
   posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
+  reposts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/reposts`,
 });
 
 export const POST_ENDPOINTS = Object.freeze({
@@ -51,6 +52,7 @@ export const POST_ENDPOINTS = Object.freeze({
   detail: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}`,
   likes: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/likes`,
   saves: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/saves`,
+  repost: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/repost`,
   reports: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/reports`,
   comments: (postId) => `/api/v1/posts/${encodeURIComponent(postId)}/comments`,
   replies: (commentId) => `/api/v1/comments/${encodeURIComponent(commentId)}/replies`,
@@ -73,16 +75,19 @@ export const DISCOVERY_ENDPOINTS = Object.freeze({
 export const ADMIN_ENDPOINTS = Object.freeze({
   users: '/api/v1/admin/users',
   user: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}`,
+  userProfile: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/profile`,
   blockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/block`,
   unblockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/unblock`,
   posts: '/api/v1/admin/posts',
   post: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}`,
   hidePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/hide`,
   restorePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/restore`,
-  reports: '/api/v1/admin/reports',
-  report: (reportId) => `/api/v1/admin/reports/${encodeURIComponent(reportId)}`,
-  rejectReport: (reportId) => `/api/v1/admin/reports/${encodeURIComponent(reportId)}/reject`,
-  resolveReport: (reportId) => `/api/v1/admin/reports/${encodeURIComponent(reportId)}/resolve`,
+  moderationCases: '/api/v1/admin/moderation-cases',
+  moderationCase: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}`,
+  resolveCaseNoViolation: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-no-violation`,
+  resolveCaseAction: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-action`,
   actions: '/api/v1/admin/actions',
   action: (actionId) => `/api/v1/admin/actions/${encodeURIComponent(actionId)}`,
+  userEngagementMonthly: '/api/v1/admin/analytics/user-engagement/monthly',
+  userEngagementSummary: '/api/v1/admin/analytics/user-engagement/summary',
 });

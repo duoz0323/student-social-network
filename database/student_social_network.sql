@@ -69,8 +69,8 @@ DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `admin_id` bigint unsigned NOT NULL,
-  `action_type` enum('BLOCK_USER','UNBLOCK_USER','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT') NOT NULL,
-  `target_type` enum('USER','POST','REPORT') NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE') NOT NULL,
+  `target_type` enum('USER','POST','REPORT','MODERATION_CASE') NOT NULL,
   `target_id` bigint unsigned NOT NULL,
   `note` varchar(1000) DEFAULT NULL,
   `old_data` json DEFAULT NULL,
@@ -567,6 +567,34 @@ LOCK TABLES `post_likes` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `post_reposts`
+--
+
+DROP TABLE IF EXISTS `post_reposts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `post_reposts` (
+  `user_id` bigint unsigned NOT NULL,
+  `post_id` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`user_id`,`post_id`),
+  KEY `idx_post_reposts_user_created` (`user_id`,`created_at` DESC,`post_id` DESC),
+  KEY `idx_post_reposts_post_user` (`post_id`,`user_id`),
+  CONSTRAINT `fk_post_reposts_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_post_reposts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `post_reposts`
+--
+
+LOCK TABLES `post_reposts` WRITE;
+/*!40000 ALTER TABLE `post_reposts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `post_reposts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `post_media`
 --
 
@@ -607,6 +635,38 @@ LOCK TABLES `post_media` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `locations`
+--
+
+DROP TABLE IF EXISTS `locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `locations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `google_place_id` varchar(255) NOT NULL,
+  `display_name` varchar(255) NOT NULL,
+  `formatted_address` varchar(500) DEFAULT NULL,
+  `latitude` decimal(10,7) NOT NULL,
+  `longitude` decimal(10,7) NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_locations_google_place_id` (`google_place_id`),
+  CONSTRAINT `chk_locations_latitude` CHECK ((`latitude` between -(90) and 90)),
+  CONSTRAINT `chk_locations_longitude` CHECK ((`longitude` between -(180) and 180))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `locations`
+--
+
+LOCK TABLES `locations` WRITE;
+/*!40000 ALTER TABLE `locations` DISABLE KEYS */;
+/*!40000 ALTER TABLE `locations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `posts`
 --
 
@@ -616,11 +676,13 @@ DROP TABLE IF EXISTS `posts`;
 CREATE TABLE `posts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `author_id` bigint unsigned NOT NULL,
+  `location_id` bigint unsigned DEFAULT NULL,
   `content` varchar(500) DEFAULT NULL,
   `status` enum('PUBLISHED','HIDDEN','DELETED') NOT NULL DEFAULT 'PUBLISHED',
   `is_edited` tinyint(1) NOT NULL DEFAULT '0',
   `like_count` int unsigned NOT NULL DEFAULT '0',
   `comment_count` int unsigned NOT NULL DEFAULT '0',
+  `repost_count` int unsigned NOT NULL DEFAULT '0',
   `published_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `hidden_by` bigint unsigned DEFAULT NULL,
   `hidden_at` datetime(6) DEFAULT NULL,
@@ -630,12 +692,14 @@ CREATE TABLE `posts` (
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `fk_posts_hidden_by` (`hidden_by`),
+  KEY `idx_posts_location_id` (`location_id`),
   KEY `idx_posts_author_status_published` (`author_id`,`status`,`published_at` DESC,`id` DESC),
   KEY `idx_posts_status_published` (`status`,`published_at` DESC,`id` DESC),
   KEY `idx_posts_status_engagement` (`status`,`like_count` DESC,`comment_count` DESC,`published_at` DESC,`id` DESC),
   FULLTEXT KEY `ftx_posts_content` (`content`),
   CONSTRAINT `fk_posts_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_posts_hidden_by` FOREIGN KEY (`hidden_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_posts_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `chk_posts_deleted_state` CHECK ((((`status` = _utf8mb4'DELETED') and (`deleted_at` is not null)) or (`status` <> _utf8mb4'DELETED'))),
   CONSTRAINT `chk_posts_hidden_state` CHECK ((((`status` = _utf8mb4'HIDDEN') and (`hidden_at` is not null) and (`hidden_by` is not null)) or (`status` <> _utf8mb4'HIDDEN')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -648,6 +712,44 @@ CREATE TABLE `posts` (
 LOCK TABLES `posts` WRITE;
 /*!40000 ALTER TABLE `posts` DISABLE KEYS */;
 /*!40000 ALTER TABLE `posts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `moderation_cases`
+--
+
+DROP TABLE IF EXISTS `moderation_cases`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderation_cases` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `post_id` bigint unsigned NOT NULL,
+  `status` enum('OPEN','RESOLVED_NO_VIOLATION','RESOLVED_ACTION_TAKEN') NOT NULL DEFAULT 'OPEN',
+  `report_count` int unsigned NOT NULL DEFAULT '0',
+  `resolved_by` bigint unsigned DEFAULT NULL,
+  `resolution_note` varchar(1000) DEFAULT NULL,
+  `first_reported_at` datetime(6) NOT NULL,
+  `latest_reported_at` datetime(6) NOT NULL,
+  `resolved_at` datetime(6) DEFAULT NULL,
+  `open_post_key` bigint unsigned GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'OPEN') then `post_id` else NULL end)) STORED,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_moderation_cases_open_post` (`open_post_key`),
+  KEY `idx_moderation_cases_post` (`post_id`),
+  KEY `idx_moderation_cases_status_latest` (`status`,`latest_reported_at` DESC,`id` DESC),
+  KEY `idx_moderation_cases_resolved_by` (`resolved_by`),
+  CONSTRAINT `fk_moderation_cases_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_moderation_cases_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_moderation_cases_report_count` CHECK ((`report_count` >= 0)),
+  CONSTRAINT `chk_moderation_cases_reported_time` CHECK ((`latest_reported_at` >= `first_reported_at`)),
+  CONSTRAINT `chk_moderation_cases_resolution_state` CHECK (((`status` = _utf8mb4'OPEN' and `resolved_by` is null and `resolved_at` is null) or (`status` in (_utf8mb4'RESOLVED_NO_VIOLATION',_utf8mb4'RESOLVED_ACTION_TAKEN') and `resolved_by` is not null and `resolved_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `moderation_cases` WRITE;
+/*!40000 ALTER TABLE `moderation_cases` DISABLE KEYS */;
+/*!40000 ALTER TABLE `moderation_cases` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -696,6 +798,7 @@ CREATE TABLE `reports` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `reporter_id` bigint unsigned NOT NULL,
   `post_id` bigint unsigned NOT NULL,
+  `moderation_case_id` bigint unsigned DEFAULT NULL,
   `reason` enum('SPAM','HARASSMENT','HARMFUL_CONTENT','VIOLENCE','MISINFORMATION','INAPPROPRIATE','OTHER') NOT NULL,
   `description` varchar(1000) DEFAULT NULL,
   `status` enum('PENDING','RESOLVED','REJECTED') NOT NULL DEFAULT 'PENDING',
@@ -713,9 +816,12 @@ CREATE TABLE `reports` (
   KEY `idx_reports_status_created` (`status`,`created_at`,`id`),
   KEY `idx_reports_post_status` (`post_id`,`status`,`created_at` DESC,`id` DESC),
   KEY `idx_reports_reporter_created` (`reporter_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_reports_moderation_case_created` (`moderation_case_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_reports_reporter_post` (`reporter_id`,`post_id`),
   CONSTRAINT `fk_reports_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_reports_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_reports_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_reports_moderation_case` FOREIGN KEY (`moderation_case_id`) REFERENCES `moderation_cases` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_reports_resolution_state` CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -740,7 +846,7 @@ CREATE TABLE `notifications` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `recipient_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned DEFAULT NULL,
-  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
+  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
   `post_id` bigint unsigned DEFAULT NULL,
   `comment_id` bigint unsigned DEFAULT NULL,
   `report_id` bigint unsigned DEFAULT NULL,
@@ -886,6 +992,8 @@ CREATE TABLE `users` (
   `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
   `blocked_at` datetime(6) DEFAULT NULL,
   `blocked_reason` varchar(500) DEFAULT NULL,
+  `first_active_at` datetime(6) DEFAULT NULL,
+  `last_active_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
@@ -1011,6 +1119,39 @@ ALTER TABLE `conversations`
 ALTER TABLE `conversation_members`
   ADD CONSTRAINT `fk_conversation_members_last_read_message` FOREIGN KEY (`last_read_message_id`) REFERENCES `messages` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
 
+-- Table structure for table `user_daily_activities`
+--
+
+DROP TABLE IF EXISTS `user_daily_activities`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_daily_activities` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `activity_date` date NOT NULL,
+  `first_active_at` datetime(6) NOT NULL,
+  `last_active_at` datetime(6) NOT NULL,
+  `activity_count` int unsigned NOT NULL DEFAULT '1',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_daily_activities_user_date` (`user_id`,`activity_date`),
+  KEY `idx_user_daily_activities_date_user` (`activity_date`,`user_id`),
+  CONSTRAINT `fk_user_daily_activities_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_user_daily_activities_count` CHECK ((`activity_count` > 0)),
+  CONSTRAINT `chk_user_daily_activities_time` CHECK ((`first_active_at` <= `last_active_at`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `user_daily_activities`
+--
+
+LOCK TABLES `user_daily_activities` WRITE;
+/*!40000 ALTER TABLE `user_daily_activities` DISABLE KEYS */;
+/*!40000 ALTER TABLE `user_daily_activities` ENABLE KEYS */;
+UNLOCK TABLES;
+
 --
 -- Temporary view structure for view `v_active_posts`
 --
@@ -1113,6 +1254,20 @@ AFTER DELETE ON `post_likes`
 FOR EACH ROW
 BEGIN
   UPDATE `posts` SET `like_count` = GREATEST(`like_count` - 1, 0) WHERE `id` = OLD.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_post_reposts_after_insert`
+AFTER INSERT ON `post_reposts`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `repost_count` = `repost_count` + 1 WHERE `id` = NEW.`post_id`;
+END;;
+
+CREATE TRIGGER `trg_post_reposts_after_delete`
+AFTER DELETE ON `post_reposts`
+FOR EACH ROW
+BEGIN
+  UPDATE `posts` SET `repost_count` = GREATEST(`repost_count` - 1, 0) WHERE `id` = OLD.`post_id`;
 END;;
 
 CREATE TRIGGER `trg_comments_after_insert`

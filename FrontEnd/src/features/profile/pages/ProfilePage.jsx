@@ -15,7 +15,7 @@ import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModa
 import { socialApi } from '../../../api/index.js';
 import { messagingApi } from '../../messaging/services/messagingApi.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
-import { toPostView } from '../../post/utils/postViewModel.js';
+import { toFeedItemView, toPostView } from '../../post/utils/postViewModel.js';
 import {
   normalizeFollowUser,
   sameUserId,
@@ -138,6 +138,12 @@ export default function ProfilePage({ self = false }) {
     cacheKey: `profile-posts:${profileUserId ?? 'unknown'}`,
     request: (params) => socialApi.getUserPosts(profileUserId, params),
     normalizePost: toPostView,
+    enabled: Boolean(profileUserId),
+  });
+  const repostState = useInfinitePosts({
+    cacheKey: `profile-reposts:${profileUserId ?? 'unknown'}`,
+    request: (params) => socialApi.getUserReposts(profileUserId, params),
+    normalizePost: toFeedItemView,
     enabled: Boolean(profileUserId),
   });
   const [draft, setDraft] = useState({ displayName: '', bio: '', avatarUrl: '', dateOfBirth: '' });
@@ -517,7 +523,16 @@ export default function ProfilePage({ self = false }) {
             <EmptyState title="Chưa có câu trả lời" description="Các bình luận của bạn sẽ xuất hiện ở đây." />
           )}
           {activeTab === 'reposts' && (
-            <EmptyState title="Chưa có bài đăng lại" description="Những bài bạn đăng lại sẽ nằm ở đây." />
+            <InfinitePostList
+              {...repostState}
+              showRepostAttribution={false}
+              onRepostChange={(postId, reposted) => {
+                if (!reposted && isSelf) repostState.removePost(postId);
+              }}
+              errorTitle="Không thể tải bài đăng lại"
+              emptyTitle="Chưa có bài đăng lại"
+              emptyDescription="Những bài đã đăng lại sẽ xuất hiện tại đây."
+            />
           )}
         </div>
       </ContentShell>
@@ -675,7 +690,7 @@ export default function ProfilePage({ self = false }) {
                     <span className="text-[14px] text-[var(--app-muted)]">{user.displayName}</span>
                   </div>
                 </div>
-                {user.id !== currentUserId && (
+                {!sameUserId(user.id, currentUserId) && (
                   <Button 
                     variant={isUserFollowing ? "secondary" : "primary"} 
                     className={`!rounded-xl !h-[34px] px-5 font-bold text-[14px] ${isUserFollowing ? '!border-[var(--app-border-strong)] text-[var(--app-text)]' : '!bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80'}`}

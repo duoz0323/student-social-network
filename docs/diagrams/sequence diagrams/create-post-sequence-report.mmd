@@ -7,17 +7,26 @@ sequenceDiagram
     participant ST as Storage Service
     participant DB as MySQL
 
-    U->>FE: Nhập nội dung và chọn ảnh
-    FE->>PC: POST /api/v1/posts
+    U->>FE: Nhập nội dung, chọn ảnh và Location tùy chọn
+    FE->>PC: POST /api/v1/posts (multipart + Location object tùy chọn)
     PC->>PS: createPost(request)
-    PS->>PS: validateCreatePost()
+    PS->>PS: validateCreatePost() và chuẩn hóa Location
     alt Dữ liệu không hợp lệ
         PS-->>FE: Trả lỗi tạo bài viết
     else Hợp lệ
         PS->>ST: upload(images)
         ST-->>PS: Danh sách URL ảnh
-        PS->>DB: Lưu Post, Media và Hashtag
+        opt Có Location
+            PS->>DB: Tìm locations bằng google_place_id
+            alt Place ID đã tồn tại
+                DB-->>PS: Location dùng chung
+            else Place ID chưa tồn tại
+                PS->>DB: Tạo Location mới
+                DB-->>PS: Location vừa tạo
+            end
+        end
+        PS->>DB: Lưu Post với location_id nullable, Media và Hashtag
         DB-->>PS: Commit transaction
-        PS-->>FE: PostResponse
+        PS-->>FE: PostResponse có Location hoặc null
         FE-->>U: Hiển thị bài viết mới
     end

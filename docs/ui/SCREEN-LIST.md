@@ -26,7 +26,7 @@
 - POST-01, POST-02, POST-03, POST-04, POST-05, POST-06, POST-07, POST-08, POST-09, POST-10.
 - PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04.
 - SEARCH-01, SAVED-01, LIKED-01.
-- ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06.
+- ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06, ADMIN-07.
 - SYS-01, SYS-02, SYS-03, SYS-04.
 
 ### DESIGN_REQUIRED
@@ -64,15 +64,15 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, lưu, menu bài viết. | Tạo bài mở POST-02; tab Following dùng cùng màn hình; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ cá nhân `/profile/me`; hồ sơ tác giả `/profile/:userId`; saved POST-07. | Phạm vi triển khai: MVP_CURRENT. Mục "Hoạt động", repost/share nâng cao và dữ liệu dạng @ trong ảnh là tham chiếu visual, không triển khai như nghiệp vụ MVP. |
+| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, Repost, lưu, menu bài viết. | Tạo bài mở POST-02; tab Following hiển thị ORIGINAL/REPOST; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ cá nhân `/profile/me`; hồ sơ tác giả `/profile/:userId`; saved POST-07. | Phạm vi triển khai: MVP_CURRENT. Quote Post, share nâng cao và dữ liệu dạng @ trong ảnh chỉ là tham chiếu visual. |
 
 ## Post
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| POST-01 | Chi tiết bài viết | `docs/ui/screens/post/detail-post.jpg` | User | Xem một bài viết cùng bình luận. | Nội dung bài, ảnh, like, bình luận, lưu/chia sẻ, danh sách bình luận, ô nhập bình luận. | Từ FEED-01, PROFILE-01/02, POST-07; menu mở POST-04/POST-05. | Một số biểu tượng cần xác nhận ý nghĩa chính xác. |
-| POST-02 | Modal tạo bài viết | `docs/ui/screens/post/model-create-post.jpg` | User | Tạo bài viết mới. | Nhập nội dung, gắn ảnh, thanh công cụ, nút đăng, giới hạn nội dung. | Mở từ sidebar/composer FEED-01. | Modal. |
-| POST-03 | Modal chỉnh sửa bài viết | `docs/ui/screens/post/model-edit-post.jpg` | Tác giả bài viết | Sửa nội dung bài của mình. | Sửa text/hashtag, xem ảnh cũ, lưu thay đổi, hủy. | Mở từ menu POST-04; sau lưu quay lại bài/feed/profile. | Ảnh không được thay đổi sau khi đăng, đúng MVP. |
+| POST-01 | Chi tiết bài viết | `docs/ui/screens/post/detail-post.jpg` | User | Xem một bài viết cùng bình luận. | Nội dung bài, Location tùy chọn, ảnh, like, bình luận, lưu/chia sẻ, danh sách bình luận, ô nhập bình luận. | Từ FEED-01, PROFILE-01/02, POST-07; menu mở POST-04/POST-05. | Location P1 hiển thị object hiện tại hoặc không hiển thị khối địa điểm khi response là `null`. |
+| POST-02 | Modal tạo bài viết | `docs/ui/screens/post/model-create-post.jpg` | User | Tạo bài viết mới. | Nhập nội dung, gắn ảnh/video, tìm/chọn hashtag, tìm/chọn/gỡ tối đa một Location, thanh công cụ và nút đăng. | Mở từ sidebar/composer FEED-01. | Modal; dùng chung bộ gợi ý hashtag và đã tích hợp Google Places picker. |
+| POST-03 | Modal chỉnh sửa bài viết | `docs/ui/screens/post/model-edit-post.jpg` | Tác giả bài viết | Sửa nội dung bài của mình. | Sửa text, tìm/chọn hashtag, giữ/gỡ/thêm ảnh hoặc video, KEEP/REPLACE/REMOVE Location, lưu thay đổi, hủy. | Mở từ menu POST-04; sau lưu quay lại bài/feed/profile. | Media sau cập nhật tối đa 4 và tối đa một video; mọi thay đổi tuân theo giới hạn 15 phút. |
 | POST-04 | Menu thao tác bài viết | `docs/ui/screens/post/model-thao-tác-post.jpg` | User, tác giả bài viết | Hiển thị hành động theo quyền trên bài viết. | Menu của chính mình có chỉnh sửa/xóa; menu bài người khác có lưu/báo cáo/sao chép liên kết. | Chỉnh sửa đến POST-03; xóa đến POST-05; báo cáo đến POST-08. | Các mục ghim, lưu trữ, ẩn like, thêm vào feed, không quan tâm, tắt thông báo, hạn chế, chặn nằm ngoài MVP/CẦN XÁC NHẬN. |
 | POST-05 | Modal xác nhận xóa bài viết | `docs/ui/screens/post/model-delete-post.jpg` | Tác giả bài viết | Xác nhận trước khi xóa mềm bài viết. | Nội dung cảnh báo, hủy, xóa bài viết. | Thành công đến POST-06. | Modal. |
 | POST-06 | Xóa bài viết thành công | `docs/ui/screens/post/model-delete-success.jpg` | Tác giả bài viết | Thông báo xóa bài thành công. | Success state, nút đi tiếp/đóng. | Quay lại Feed hoặc Profile. | Modal trạng thái. |
@@ -110,11 +110,12 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
 | ADMIN-01 | Tổng quan quản trị | `docs/ui/screens/admin/dashboard-admin.jpg` | Admin | Theo dõi nhanh trạng thái hệ thống. | Chỉ số tổng cơ bản, trạng thái user/post, báo cáo cần xử lý. | Điều hướng đến ADMIN-02/04/05. | Phạm vi triển khai: MVP_CURRENT nếu chỉ là tổng quan cơ bản. Hoạt động gần đây/dashboard nâng cao thuộc FUTURE_DEVELOPMENT. |
-| ADMIN-02 | Quản lý người dùng | `docs/ui/screens/admin/user-admin.jpg` | Admin | Xem và tìm kiếm người dùng. | Bảng user, trạng thái, bộ lọc/tìm kiếm, phân trang, thao tác. | Menu thao tác ADMIN-03. | Các cột chính xác CẦN XÁC NHẬN theo API. |
+| ADMIN-02 | Quản lý người dùng | `docs/ui/screens/admin/user-admin.jpg` | Admin | Xem, tìm kiếm và theo dõi thống kê người dùng. | Bảng user không có nút Khóa/Mở khóa trên từng dòng; click dòng mở chi tiết. Hai biểu đồ bên phải hiển thị trạng thái tài khoản và số người dùng mới từng ngày trong tuần hiện tại. | Chi tiết ADMIN-03. | Khóa/Mở khóa chỉ thực hiện trong chi tiết; thống kê lấy dữ liệu thật từ API Admin và tự làm mới sau thay đổi trạng thái. |
 | ADMIN-03 | Menu thao tác người dùng | `docs/ui/screens/admin/thao-tác-user-admin.jpg` | Admin | Thao tác trên một user. | Xem thông tin, khóa/mở khóa hoặc hành động quản trị liên quan. | Từ ADMIN-02. | Ảnh là biến thể/menu thao tác; chi tiết text nhỏ CẦN XÁC NHẬN. |
-| ADMIN-04 | Quản lý bài viết | `docs/ui/screens/admin/post-admin.jpg` | Admin | Xem danh sách bài viết và trạng thái xử lý. | Bảng post, trạng thái, bộ lọc/tìm kiếm, phân trang, thao tác ẩn/khôi phục. | Có thể đi đến bài hoặc report liên quan. | Chỉ ẩn/khôi phục post thuộc MVP. |
-| ADMIN-05 | Quản lý báo cáo | `docs/ui/screens/admin/report-admin.jpg` | Admin | Xem danh sách báo cáo. | Bảng report, trạng thái, lý do, người báo cáo, thời gian, phân trang. | Mở ADMIN-06. | Tập trung report bài viết. |
-| ADMIN-06 | Chi tiết báo cáo | `docs/ui/screens/admin/detail-report-admin.jpg` | Admin | Xử lý một báo cáo cụ thể. | Bài bị báo cáo, thông tin báo cáo, lịch sử xử lý, từ chối báo cáo, xác nhận vi phạm. | Từ ADMIN-05; có thể ẩn bài khi vi phạm. | Lịch sử xử lý đơn giản; audit log chi tiết ngoài MVP. |
+| ADMIN-04 | Quản lý bài viết | `docs/ui/screens/admin/post-admin.jpg` | Admin | Xem danh sách, thống kê và chi tiết bài viết. | Bảng post, bộ lọc, phân trang; hai biểu đồ bên phải gồm tổng bài/số bài đã ẩn và số bài tạo từng ngày trong tuần hiện tại. Danh sách không có nút Ẩn/Khôi phục; double-click mở chi tiết. | `/admin/posts/:postId`; có thể đi đến report liên quan. | Thống kê lấy dữ liệu thật từ API Admin. Trang danh sách và chi tiết cố định theo viewport; nội dung dài cuộn nội bộ. |
+| ADMIN-05 | Quản lý hồ sơ kiểm duyệt | `docs/ui/screens/admin/report-admin.jpg` | Admin | Xem danh sách Moderation Case. | Một dòng mỗi case, tổng Report/reporter, trạng thái, thời gian, filter và phân trang; không hiển thị hoặc lọc theo lý do tại màn hình danh sách. | Mở ADMIN-06. | Frontend không tự group Report; trang cố định theo viewport và vùng danh sách tự cuộn dọc. |
+| ADMIN-06 | Chi tiết hồ sơ kiểm duyệt | `docs/ui/screens/admin/detail-report-admin.jpg` | Admin | Xử lý một Moderation Case. | Bài hiện tại; từng Report rút gọn không render snapshot/media; Admin xử lý; hai hành động trực tiếp khi OPEN. | Từ ADMIN-05; khi chọn có vi phạm phải chọn lý do ẩn bài trong modal. | Không có trường kết luận tự do, bước tiếp nhận hoặc xử lý lại case đã giải quyết. Trang cố định theo viewport; nội dung dài cuộn nội bộ và không hiện thanh cuộn dọc. |
+| ADMIN-07 | Thống kê hoạt động người dùng | Ảnh tham chiếu do người dùng cung cấp | Admin | Theo dõi mức độ hoạt động và quay lại của USER theo tháng. | Bộ lọc tối đa 24 tháng, ngưỡng không hoạt động, bốn KPI, biểu đồ hai trục `returningUserCount`/`returnRate` và bảng snapshot các chỉ số tháng kết thúc. | Route `/admin/user-analytics`, mở từ sidebar Admin. | Module Analytics độc lập, không nằm trên ADMIN-01 Dashboard; chỉ hiển thị count/rate có trong API monthly/summary và dùng ngày UTC. |
 
 ## System States
 

@@ -50,11 +50,11 @@
 ## 4. Bài viết
 
 - Tối đa 500 ký tự.
-- Tối đa 4 ảnh.
-- Phải có nội dung hoặc ảnh.
-- Ảnh: JPG, JPEG, PNG, WEBP.
+- Tối đa 4 media, trong đó tối đa một video.
+- Phải có nội dung hoặc media.
+- Ảnh: JPG, JPEG, PNG, WEBP; video: MP4, WebM.
 - Chỉ tác giả sửa/xóa.
-- Không sửa ảnh sau khi đăng.
+- Trong 15 phút, tác giả có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới.
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 
 ## 5. Like
@@ -76,6 +76,13 @@
 
 ## 8. Feed
 
+### Repost
+
+- Một user Repost một Post tối đa một lần; PUT và DELETE đều idempotent.
+- Không Repost bài của chính mình hoặc bài không còn `PUBLISHED`.
+- `post_reposts` chỉ lưu quan hệ; `posts.repost_count` được cập nhật atomic bằng trigger.
+- Profile Repost và Following Feed không dùng OFFSET hoặc COUNT tổng.
+
 - Following: bài của người đang Follow, mới nhất trước.
 - For You: bài hợp lệ, điểm cơ bản.
 - Không hiển thị HIDDEN/DELETED.
@@ -94,7 +101,9 @@
 
 - Chỉ report post.
 - Trạng thái PENDING, RESOLVED, REJECTED.
-- Không có nhiều report PENDING cùng user và post.
+- Mỗi Report giữ riêng reporter, reason, description và snapshot; không gộp chuỗi/JSON thay quan hệ.
+- Report phải thuộc Moderation Case; không có nhiều report đang hiệu lực cùng user và post.
+- Một post chỉ có một Moderation Case `OPEN`; case dùng `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`.
 - Report không tự động ẩn post.
 
 ## 11. Admin
@@ -102,7 +111,7 @@
 - Chỉ ADMIN truy cập API quản trị.
 - Có thể khóa/mở user.
 - Có thể ẩn/khôi phục post.
-- Có thể xử lý report.
+- Xử lý trực tiếp Moderation Case từ `OPEN` sang một kết quả cuối; không có bước tiếp nhận.
 
 ## 12. API
 

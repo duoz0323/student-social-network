@@ -29,6 +29,9 @@ export const socialApi = Object.freeze({
   getUserPosts: (userId, params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.posts(userId), { params: compactParams(params), signal }),
   ),
+  getUserReposts: (userId, params, signal) => requestData(
+    httpClient.get(USER_ENDPOINTS.reposts(userId), { params: compactParams(params), signal }),
+  ),
   searchUsers: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchUsers, { params: compactParams(params), signal })),
   searchPosts: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.searchPosts, { params: compactParams(params), signal })),
   getNotifications: (params, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.notifications, { params: compactParams(params), signal })),

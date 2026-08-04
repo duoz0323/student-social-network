@@ -3,12 +3,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
+import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { shortTime, formatNumber } from '../../../utils/formatters.js';
 import PostMediaGrid from './PostMediaGrid.jsx';
 import ReportPostFlow from './ReportPostFlow.jsx';
 import UserRestrictionAction from '../../profile/components/UserRestrictionAction.jsx';
-import { copyPostLink } from '../utils/postViewModel.js';
+import EditPostMedia from './EditPostMedia.jsx';
+import PostHashtagPicker from './PostHashtagPicker.jsx';
+import { copyPostLink, toPostEditDraft, toPostView } from '../utils/postViewModel.js';
+import { formatPostEditCountdown, postEditRemainingSeconds } from '../utils/postEditWindow.js';
+import LocationPicker from '../locations/LocationPicker.jsx';
+import SelectedLocation from '../locations/SelectedLocation.jsx';
+import { googleMapsLocationUrl } from '../locations/locationUtils.js';
+import { resolveLocationUpdate } from '../locations/locationMultipart.js';
+import { postApi } from '../../../api/index.js';
 
 function SuccessIcon() {
   return (
@@ -42,7 +51,7 @@ function CommentIcon() {
   );
 }
 
-// Icon repost — chỉ ghi nhận visual, MVP không triển khai nghiệp vụ repost
+// Icon Repost dùng cho thao tác idempotent với bài gốc.
 function RepostIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -110,20 +119,36 @@ function LinkIcon() {
   );
 }
 
-export default function PostCard({ post, detail = false, onSaveChange, onLikeChange }) {
+export default function PostCard({
+  post: initialPost,
+  detail = false,
+  onSaveChange,
+  onLikeChange,
+  onRepostChange,
+  showRepostAttribution = true,
+}) {
   const navigate = useNavigate();
-  const { currentUserId, getUserById, data, toggleLike, toggleSave, updatePost, deletePost } = useApp();
+  const { currentUserId, getUserById, data, toggleLike, toggleSave, getPostDetail, updatePost, deletePost } = useApp();
+  const [updatedPost, setUpdatedPost] = useState(null);
+  const post = updatedPost ?? initialPost;
   const content = post.content ?? '';
   const hashtags = Array.isArray(post.hashtags) ? post.hashtags : [];
-  const imageUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
-  const hasMedia = (post.media?.length ?? imageUrls.length) > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleteStep, setDeleteStep] = useState(null); // null | 'confirm' | 'success'
   const [reporting, setReporting] = useState(false);
   const [draft, setDraft] = useState(content);
   const [tags, setTags] = useState(hashtags.join(', '));
+  const [editLocation, setEditLocation] = useState(post.location ?? null);
+  const [editSource, setEditSource] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editMediaBusy, setEditMediaBusy] = useState(false);
+  const [editMediaSelection, setEditMediaSelection] = useState({ keepMediaIds: [], newMediaFiles: [], totalCount: 0 });
+  const [editError, setEditError] = useState('');
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const menuRef = useRef(null);
+  const editRequestRef = useRef(null);
   const author = getUserById(post.authorId) ?? post.author;
   const isOwner = post.authorId === currentUserId;
   const initialLiked = post.likedByCurrentUser
@@ -132,9 +157,24 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
     ?? data.savedPosts.some((item) => String(item.postId) === String(post.id) && String(item.userId) === String(currentUserId));
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
+  const [reposted, setReposted] = useState(Boolean(post.repostedByCurrentUser));
+  const [repostCount, setRepostCount] = useState(Number(post.repostCount) || 0);
+  const [repostSubmitting, setRepostSubmitting] = useState(false);
   const [likeCountFromInteraction, setLikeCountFromInteraction] = useState(null);
+  const [editClockMs, setEditClockMs] = useState(() => Date.now());
   // Ưu tiên số mới nhất do API Like/Unlike trả về; trước tương tác dùng dữ liệu Feed/Post Detail.
   const likeCount = likeCountFromInteraction ?? (Number(post.likeCount) || 0);
+  const editRemainingSeconds = postEditRemainingSeconds(post.publishedAt ?? post.createdAt, editClockMs);
+  const canShowEdit = editRemainingSeconds === null || editRemainingSeconds > 0;
+  const shouldRunEditClock = isOwner && menuOpen && editRemainingSeconds !== null && editRemainingSeconds > 0;
+
+  useEffect(() => () => editRequestRef.current?.abort(), []);
+
+  useEffect(() => {
+    if (!shouldRunEditClock) return undefined;
+    const timer = window.setInterval(() => setEditClockMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [shouldRunEditClock]);
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
@@ -150,10 +190,77 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
 
   if (!author) return null;
 
-  function saveEdit() {
-    // Chỉ cập nhật nội dung và hashtag vì MVP không cho sửa ảnh sau khi đăng.
-    updatePost(post.id, { content: draft, hashtags: tags });
+  async function loadEditDetail() {
+    editRequestRef.current?.abort();
+    const controller = new AbortController();
+    editRequestRef.current = controller;
+    setEditLoading(true);
+    setEditError('');
+
+    try {
+      const postDetail = await getPostDetail(post.id, controller.signal);
+      if (controller.signal.aborted) return;
+      const editDraft = toPostEditDraft(postDetail);
+      setEditSource(editDraft);
+      setDraft(editDraft.content);
+      setTags(editDraft.hashtag);
+      setEditLocation(editDraft.location);
+      setEditMediaSelection({
+        keepMediaIds: editDraft.keepMediaIds,
+        newMediaFiles: [],
+        totalCount: editDraft.keepMediaIds.length,
+      });
+    } catch (requestError) {
+      if (requestError.code !== 'ERR_CANCELED') {
+        setEditError(requestError.message || 'Không thể tải chi tiết bài viết.');
+      }
+    } finally {
+      if (editRequestRef.current === controller) {
+        editRequestRef.current = null;
+        setEditLoading(false);
+      }
+    }
+  }
+
+  function openEdit() {
+    setEditSource(null);
+    setEditError('');
+    setLocationPickerOpen(false);
+    setEditing(true);
+    loadEditDetail();
+  }
+
+  function closeEdit() {
+    if (editSubmitting) return;
+    editRequestRef.current?.abort();
+    editRequestRef.current = null;
     setEditing(false);
+    setLocationPickerOpen(false);
+  }
+
+  async function saveEdit() {
+    if (!editSource || editLoading || editSubmitting || editMediaBusy) return;
+    const locationUpdate = resolveLocationUpdate(editSource.location, editLocation);
+    setEditSubmitting(true);
+    setEditError('');
+
+    try {
+      const response = await updatePost(post.id, {
+        content: draft,
+        hashtag: tags,
+        keepMediaIds: editMediaSelection.keepMediaIds,
+        newMediaFiles: editMediaSelection.newMediaFiles,
+        ...locationUpdate,
+      });
+      // Danh sách Feed/Profile/Search có cache riêng, nên PostCard cập nhật ngay từ response PUT.
+      setUpdatedPost(toPostView(response));
+      setEditing(false);
+      setLocationPickerOpen(false);
+    } catch (requestError) {
+      setEditError(requestError.message || 'Không thể cập nhật bài viết.');
+    } finally {
+      setEditSubmitting(false);
+    }
   }
 
   function confirmDelete() {
@@ -181,6 +288,20 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
     onSaveChange?.(post.id, response.saved);
   }
 
+  async function handleRepost() {
+    if (isOwner || repostSubmitting) return;
+    setRepostSubmitting(true);
+    try {
+      // PUT/DELETE đều idempotent; UI luôn lấy lại trạng thái và counter do Backend trả về.
+      const response = reposted ? await postApi.unrepost(post.id) : await postApi.repost(post.id);
+      setReposted(Boolean(response.repostedByCurrentUser));
+      setRepostCount(Number(response.repostCount) || 0);
+      onRepostChange?.(post.id, Boolean(response.repostedByCurrentUser));
+    } finally {
+      setRepostSubmitting(false);
+    }
+  }
+
   // Đóng menu sau khi chọn hành động
   function menuAction(action) {
     setMenuOpen(false);
@@ -195,6 +316,14 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
       </Link>
 
       <div className="min-w-0">
+        {showRepostAttribution && post.itemType === 'REPOST' && post.repostedBy && (
+          <Link
+            to={String(post.repostedBy.id) === String(currentUserId) ? '/profile/me' : `/profile/${post.repostedBy.id}`}
+            className="mb-2 block text-[13px] font-semibold text-[var(--app-muted)] hover:text-[var(--app-text)]"
+          >
+            {post.repostedBy.displayName} đã đăng lại
+          </Link>
+        )}
         {/* Header: tên tác giả + thời gian + nút menu */}
         <header className="flex items-start justify-between gap-3">
           <Link to={author.id === currentUserId ? '/profile/me' : `/profile/${author.id}`} className="min-w-0">
@@ -211,7 +340,11 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
           <div className="relative" ref={menuRef}>
             <button
               className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)]"
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => {
+                // Đồng bộ thời gian ngay khi mở menu; interval chỉ chạy khi countdown đang hiển thị.
+                setEditClockMs(Date.now());
+                setMenuOpen((open) => !open);
+              }}
               aria-label="Thao tác bài viết"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -229,10 +362,19 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
                       <span>{saved ? 'Bỏ lưu' : 'Lưu'}</span>
                       <BookmarkIcon />
                     </button>
-                    <button onClick={() => menuAction(() => setEditing(true))}>
-                      <span>Chỉnh sửa bài viết</span>
-                      <EditIcon />
-                    </button>
+                    {canShowEdit && (
+                      <button onClick={() => menuAction(openEdit)}>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span>Chỉnh sửa</span>
+                          {editRemainingSeconds !== null && (
+                            <span className="font-mono text-xs text-[var(--app-muted)]">
+                              {formatPostEditCountdown(editRemainingSeconds)}
+                            </span>
+                          )}
+                        </span>
+                        <EditIcon />
+                      </button>
+                    )}
                     <button onClick={() => menuAction(() => setDeleteStep('confirm'))}>
                       <span>Xóa</span>
                       <TrashIcon />
@@ -276,10 +418,17 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
             </div>
           ) : null}
         </button>
+        {post.location && (
+          <a href={googleMapsLocationUrl(post.location)} target="_blank" rel="noopener noreferrer"
+            className="mt-2 flex max-w-full items-center gap-1 text-sm text-[var(--app-muted)] hover:text-[var(--app-brand)] hover:underline">
+            <span aria-hidden="true">📍</span>
+            <span className="truncate">{post.location.displayName}</span>
+          </a>
+        )}
         {/* Media nằm ngoài nút điều hướng để controls của video có thể tương tác độc lập. */}
         <PostMediaGrid post={post} />
 
-        {/* Thanh hành động: like, comment, repost (visual), share */}
+        {/* Thanh hành động: like, comment, repost và chia sẻ liên kết. */}
         <footer className="mt-3 flex items-center gap-6">
           <button className={`post-action ${liked ? 'post-action--active text-red-500' : ''}`} onClick={handleLike}>
             <HeartIcon filled={liked} />
@@ -289,9 +438,15 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
             <CommentIcon />
             <span className="font-normal">{formatNumber(Number(post.commentCount) || 0)}</span>
           </button>
-          {/* Repost — chỉ ghi nhận visual, MVP không có nghiệp vụ repost */}
-          <button className={`post-action ${saved ? 'post-action--active text-[var(--app-text)]' : ''}`} onClick={handleSave} title={saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}>
+          {/* Repost gọi API idempotent; bài của chính mình được vô hiệu hóa theo rule Backend. */}
+          <button
+            className={`post-action ${reposted ? 'post-action--active text-emerald-600' : ''}`}
+            onClick={handleRepost}
+            disabled={isOwner || repostSubmitting}
+            title={isOwner ? 'Không thể đăng lại bài viết của chính mình' : (reposted ? 'Bỏ đăng lại' : 'Đăng lại')}
+          >
             <RepostIcon />
+            <span className="font-normal">{formatNumber(repostCount)}</span>
           </button>
           <button className="post-action" onClick={() => copyPostLink(post.id)} title="Chia sẻ liên kết">
             <ShareIcon />
@@ -303,35 +458,67 @@ export default function PostCard({ post, detail = false, onSaveChange, onLikeCha
       <Modal
         open={editing}
         title="Chỉnh sửa bài viết"
-        onClose={() => setEditing(false)}
+        onClose={closeEdit}
         footer={
           <div className="flex w-full items-center gap-3">
-            <Button variant="secondary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" onClick={() => setEditing(false)}>Hủy</Button>
-            <Button className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" disabled={(!draft.trim() && !hasMedia) || draft.length > 500} onClick={saveEdit}>Lưu thay đổi</Button>
+            <Button variant="secondary" className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" disabled={editSubmitting} onClick={closeEdit}>Hủy</Button>
+            {editError && !editSource ? (
+              <Button className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold" disabled={editLoading} onClick={loadEditDetail}>
+                {editLoading ? 'Đang tải...' : 'Thử lại'}
+              </Button>
+            ) : (
+              <Button className="flex-1 !rounded-xl !h-[44px] text-[15px] font-bold"
+                disabled={editLoading || editSubmitting || editMediaBusy || !editSource || (!draft.trim() && editMediaSelection.totalCount === 0) || draft.length > 500}
+                onClick={saveEdit}>
+                {editSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            )}
           </div>
         }
         footerClassName="!border-none !pt-2 !pb-6"
       >
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar src={author.avatarUrl} name={author.displayName} size="sm" />
-          <p className="text-sm font-bold">{author.displayName}</p>
-        </div>
-        <textarea
-          className="app-field min-h-32 w-full resize-none rounded-xl border p-3 text-[15px] outline-none transition"
-          value={draft}
-          maxLength={500}
-          onChange={(event) => setDraft(event.target.value)}
-        />
-        <div className="mt-2 flex justify-between text-xs text-[var(--app-muted)]">
-          <span>Ảnh đã đăng không được chỉnh sửa trong MVP.</span>
-          <span>{draft.length}/500</span>
-        </div>
-        <input
-          className="app-field mt-3 w-full rounded-xl border p-3 text-sm outline-none transition"
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
-          placeholder="Hashtag cách nhau bằng dấu phẩy"
-        />
+        {editLoading && !editSource ? (
+          <LoadingState message="Đang tải chi tiết bài viết..." />
+        ) : editSource ? (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar src={editSource.post.author?.avatarUrl ?? author.avatarUrl} name={editSource.post.author?.displayName ?? author.displayName} size="sm" />
+              <p className="text-sm font-bold">{editSource.post.author?.displayName ?? author.displayName}</p>
+            </div>
+            <textarea
+              className="app-field min-h-32 w-full resize-none rounded-xl border p-3 text-[15px] outline-none transition"
+              value={draft}
+              maxLength={500}
+              disabled={editSubmitting}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <div className="mt-2 flex justify-end text-xs text-[var(--app-muted)]">
+              <span>{draft.length}/500</span>
+            </div>
+            <div className="mt-3 rounded-xl border border-[var(--app-border)] px-3 py-2">
+              <PostHashtagPicker
+                value={tags || null}
+                onChange={(name) => setTags(name ?? '')}
+                disabled={editSubmitting}
+              />
+            </div>
+            <EditPostMedia
+              media={editSource.post.media ?? []}
+              disabled={editSubmitting}
+              onChange={setEditMediaSelection}
+              onBusyChange={setEditMediaBusy}
+            />
+            <SelectedLocation location={editLocation} onRemove={() => !editSubmitting && setEditLocation(null)} />
+            <button type="button" disabled={editSubmitting} onClick={() => setLocationPickerOpen((open) => !open)}
+              className="mt-2 text-sm font-semibold text-[var(--app-brand)] disabled:opacity-50">
+              {editLocation ? 'Thay đổi địa điểm' : 'Gắn địa điểm'}
+            </button>
+            {locationPickerOpen && (
+              <LocationPicker onSelect={setEditLocation} onClose={() => setLocationPickerOpen(false)} />
+            )}
+          </>
+        ) : null}
+        {editError && <p className="app-error mt-3 rounded-xl p-3 text-sm">{editError}</p>}
       </Modal>
 
       {/* Modal xác nhận xóa hoặc xóa thành công */}

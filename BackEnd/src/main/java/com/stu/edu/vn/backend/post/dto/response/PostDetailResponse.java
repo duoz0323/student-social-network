@@ -12,12 +12,22 @@ public record PostDetailResponse(
         boolean isEdited,
         int likeCount,
         int commentCount,
+        int repostCount,
         LocalDateTime publishedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
         String hashtag,
-        PostViewerResponse viewer
+        PostViewerResponse viewer,
+        boolean repostedByCurrentUser,
+        PostLocationResponse location
 ) {
+    public PostDetailResponse(Long id, String content, boolean isEdited, int likeCount, int commentCount,
+                              LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
+                              PostAuthorResponse author, List<PostMediaResponse> media, String hashtag,
+                              PostViewerResponse viewer) {
+        this(id, content, isEdited, likeCount, commentCount, 0, publishedAt, createdAt, updatedAt,
+                author, media, hashtag, viewer, false, null);
+    }
 }

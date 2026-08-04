@@ -132,6 +132,8 @@ export function SlidePanel({ children, stepKey }) {
   const [state, setState] = useState('entering');
 
   useEffect(() => {
+    // Khởi tạo animation theo step mới rồi chuyển trạng thái ở tick kế tiếp.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState('entering');
     const t = setTimeout(() => setState('visible'), 40);
     return () => clearTimeout(t);

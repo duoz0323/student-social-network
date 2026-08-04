@@ -1,4 +1,4 @@
-import { Ban, ChevronRight, KeyRound, Shield, UserCircle } from 'lucide-react';
+import { Ban, ChevronRight, KeyRound, Shield } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 const ACCOUNT_ITEMS = [

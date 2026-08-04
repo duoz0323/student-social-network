@@ -24,7 +24,7 @@ class PostRepositoryContractTest {
         assertThat(existsByAuthor).isNotNull();
         assertThat(softDeleteMethod.getAnnotation(Modifying.class)).isNotNull();
         assertThat(detailMethod.getAnnotation(EntityGraph.class).attributePaths())
-                .containsExactlyInAnyOrder("author", "authorProfile");
+                .containsExactlyInAnyOrder("author", "authorProfile", "location");
     }
 
     @Test

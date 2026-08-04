@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-class UserProfileValidationSupport {
+public class UserProfileValidationSupport {
 
     private static final int MIN_DISPLAY_NAME_LENGTH = 2;
     private static final int MAX_DISPLAY_NAME_LENGTH = 100;
@@ -21,7 +21,7 @@ class UserProfileValidationSupport {
 
     private final Clock clock;
 
-    String normalizeAndValidateDisplayName(String displayName) {
+    public String normalizeAndValidateDisplayName(String displayName) {
         String normalizedDisplayName = normalizeRequiredText(displayName);
         if (normalizedDisplayName == null
                 || normalizedDisplayName.length() < MIN_DISPLAY_NAME_LENGTH
@@ -31,7 +31,7 @@ class UserProfileValidationSupport {
         return normalizedDisplayName;
     }
 
-    LocalDate validateDateOfBirth(LocalDate dateOfBirth) {
+    public LocalDate validateDateOfBirth(LocalDate dateOfBirth) {
         if (dateOfBirth == null) {
             throw new BusinessException(ErrorCode.INVALID_DATE_OF_BIRTH);
         }
@@ -45,7 +45,7 @@ class UserProfileValidationSupport {
         return dateOfBirth;
     }
 
-    String normalizeAndValidateBio(String bio) {
+    public String normalizeAndValidateBio(String bio) {
         String normalizedBio = normalizeOptionalText(bio);
         if (normalizedBio != null && normalizedBio.length() > MAX_BIO_LENGTH) {
             throw new BusinessException(ErrorCode.BIO_TOO_LONG);

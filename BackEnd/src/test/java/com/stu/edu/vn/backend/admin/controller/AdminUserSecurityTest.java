@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.admin.controller;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -61,6 +63,18 @@ class AdminUserSecurityTest {
         authenticate("user-token", user(10L, UserRole.USER, UserStatus.ACTIVE));
 
         mockMvc.perform(get("/api/v1/admin/users").header("Authorization", "Bearer user-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void activeUserCannotUpdateAnotherUsersProfile() throws Exception {
+        authenticate("user-update-token", user(10L, UserRole.USER, UserStatus.ACTIVE));
+
+        mockMvc.perform(put("/api/v1/admin/users/20/profile")
+                        .header("Authorization", "Bearer user-update-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Tên mới\",\"dateOfBirth\":\"2001-06-15\",\"bio\":\"Bio\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }

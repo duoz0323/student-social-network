@@ -92,6 +92,7 @@ public class AdminActionServiceImpl implements AdminActionService {
         loadUserTargets(idsByType.get(AdminTargetType.USER), result);
         loadPostTargets(idsByType.get(AdminTargetType.POST), result);
         loadReportTargets(idsByType.get(AdminTargetType.REPORT), result);
+        loadModerationCaseTargets(idsByType.get(AdminTargetType.MODERATION_CASE), result);
         return result;
     }
 
@@ -141,6 +142,20 @@ public class AdminActionServiceImpl implements AdminActionService {
         result.put(AdminTargetType.REPORT, targets);
     }
 
+    private void loadModerationCaseTargets(
+            Set<Long> targetIds,
+            Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> result
+    ) {
+        if (targetIds == null || targetIds.isEmpty()) return;
+        Map<Long, AdminActionTargetResponse> targets = adminActionRepository.findModerationCaseTargets(targetIds)
+                .stream()
+                .map(AdminActionPostTargetProjection::getTargetId)
+                .map(id -> new AdminActionTargetResponse(
+                        AdminTargetType.MODERATION_CASE, id, moderationCaseFallback(id), true))
+                .collect(Collectors.toMap(AdminActionTargetResponse::targetId, Function.identity()));
+        result.put(AdminTargetType.MODERATION_CASE, targets);
+    }
+
     private AdminActionTargetResponse targetFor(
             AdminActionListProjection action,
             Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> targets
@@ -154,6 +169,7 @@ public class AdminActionServiceImpl implements AdminActionService {
             case USER -> userFallback(action.getTargetId());
             case POST -> postFallback(action.getTargetId());
             case REPORT -> reportFallback(action.getTargetId());
+            case MODERATION_CASE -> moderationCaseFallback(action.getTargetId());
         };
         return new AdminActionTargetResponse(type, action.getTargetId(), displayText, false);
     }
@@ -181,5 +197,9 @@ public class AdminActionServiceImpl implements AdminActionService {
 
     private String reportFallback(Long id) {
         return "Báo cáo #" + id;
+    }
+
+    private String moderationCaseFallback(Long id) {
+        return "Hồ sơ kiểm duyệt #" + id;
     }
 }

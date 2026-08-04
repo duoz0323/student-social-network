@@ -6,10 +6,13 @@ import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetPr
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
+import java.util.Collection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +20,17 @@ import org.springframework.data.repository.query.Param;
  * Repository truy vấn bài viết theo id, trạng thái và tác giả mà không chứa nghiệp vụ.
  */
 public interface PostRepository extends JpaRepository<Post, Long> {
+
+    /** Khóa bài gốc để tuần tự hóa Repost concurrent và thay đổi trạng thái của cùng bài. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"author", "authorProfile"})
+    @Query("select p from Post p where p.id = :postId")
+    Optional<Post> findRepostTargetByIdForUpdate(@Param("postId") Long postId);
+
+    /** Khóa đúng Post để tuần tự hóa thao tác tìm hoặc tạo Moderation Case OPEN. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Post p join fetch p.author where p.id = :postId")
+    Optional<Post> findReportTargetByIdForUpdate(@Param("postId") Long postId);
 
     @Query(value = """
                     SELECT p.*
@@ -255,11 +269,25 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     )
     Optional<Integer> findLikeCountById(@Param("postId") Long postId);
 
+    // Đọc counter mới nhất sau khi trigger post_reposts đã chạy trong transaction hiện tại.
+    @Query(value = "SELECT repost_count FROM posts WHERE id = :postId", nativeQuery = true)
+    Optional<Integer> findRepostCountById(@Param("postId") Long postId);
+
+    // Batch-load header bài gốc cho timeline hoạt động; thứ tự được khôi phục từ projection bên Service.
+    @EntityGraph(attributePaths = {"author", "location"})
+    @Query("""
+            select distinct p
+            from Post p
+            where p.id in :postIds
+              and p.status = com.stu.edu.vn.backend.post.enums.PostStatus.PUBLISHED
+            """)
+    List<Post> findFeedHeadersByIds(@Param("postIds") Collection<Long> postIds);
+
     // Kiểm tra quyền sở hữu bài viết trước khi cho phép tác giả sửa hoặc xóa mềm.
     boolean existsByIdAndAuthor_Id(Long id, Long authorId);
 
     // Fetch tác giả và hồ sơ tác giả cho API chi tiết, còn media/hashtag tải bằng repository riêng.
-    @EntityGraph(attributePaths = {"author", "authorProfile"})
+    @EntityGraph(attributePaths = {"author", "authorProfile", "location"})
     @Query("select p from Post p where p.id = :postId and p.status = :status")
     Optional<Post> findDetailHeaderByIdAndStatus(
             @Param("postId") Long postId,

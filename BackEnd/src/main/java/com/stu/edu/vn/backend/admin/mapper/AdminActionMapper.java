@@ -64,10 +64,13 @@ public class AdminActionMapper {
         return switch (actionType) {
             case BLOCK_USER -> "Khóa tài khoản";
             case UNBLOCK_USER -> "Mở khóa tài khoản";
+            case UPDATE_USER_PROFILE -> "Cập nhật hồ sơ người dùng";
             case HIDE_POST -> "Ẩn bài viết";
             case RESTORE_POST -> "Khôi phục bài viết";
             case RESOLVE_REPORT -> "Xác nhận báo cáo";
             case REJECT_REPORT -> "Từ chối báo cáo";
+            case RESOLVE_MODERATION_CASE -> "Xử lý hồ sơ kiểm duyệt có vi phạm";
+            case REJECT_MODERATION_CASE -> "Kết luận hồ sơ kiểm duyệt không vi phạm";
         };
     }
 

@@ -17,6 +17,8 @@ export default function InfinitePostList({
   errorTitle,
   onLikeChange,
   onSaveChange,
+  onRepostChange,
+  showRepostAttribution = true,
 }) {
   if (initialLoading) {
     return <LoadingState message="Đang tải bài viết..." />;
@@ -39,10 +41,12 @@ export default function InfinitePostList({
     <>
       {posts.map((post) => (
         <PostCard
-          key={post.id}
+          key={post.feedItemKey ?? post.id}
           post={post}
           onLikeChange={onLikeChange}
           onSaveChange={onSaveChange}
+          onRepostChange={onRepostChange}
+          showRepostAttribution={showRepostAttribution}
         />
       ))}
       {loadMoreError && (

@@ -90,12 +90,17 @@ Axios nhận 401 do Access Token hết hạn
 ```text
 Create Post Form
 → Kiểm tra profile_completed_at khác NULL
-→ Kiểm tra nội dung và ảnh
+→ Kiểm tra nội dung, media và Location tùy chọn
+→ Frontend gửi Location object gồm placeId, displayName, formattedAddress, latitude, longitude nếu người dùng đã chọn địa điểm
 → Upload ảnh → nhận URL
 → POST /api/v1/posts
-→ PostService lưu posts, post_media và hashtag/post_hashtags
-→ Trả PostResponse
+→ Backend chuẩn hóa Location và tìm theo google_place_id
+→ Dùng lại locations nếu Place ID đã tồn tại, hoặc tạo mới nếu chưa tồn tại
+→ PostService lưu posts, location_id nullable, post_media và hashtag/post_hashtags
+→ Trả PostResponse có location object hoặc location = null
 ```
+
+Khi cập nhật Post trong giới hạn 15 phút, `KEEP` giữ nguyên Location, `REPLACE` resolve Location theo Place ID rồi thay thế, còn `REMOVE` đặt `posts.location_id = NULL`. Xóa hoặc gỡ Location khỏi Post không xóa bản ghi `locations`. Backend chưa gọi Google Places API để xác minh trong P1 này.
 
 ## 8. Follow
 
@@ -128,8 +133,20 @@ GET /api/v1/feeds/following hoặc /api/v1/feeds/for-you
 → Trả content, nextCursor và hasNext
 ```
 
-Cùng cơ chế Cursor Pagination được dùng cho bài trên hồ sơ, bài đã lưu và bài đã thích.
+Cùng cơ chế Cursor Pagination được dùng cho bài trên hồ sơ, tab Repost, bài đã lưu và bài đã thích.
 Search, bình luận, Follow và Admin vẫn dùng `PageResponse`.
+
+Following Feed hợp nhất bài gốc và `post_reposts` theo activity bằng `UNION ALL`; Backend batch-load
+projection Post cùng trạng thái Like/Save/Repost và phát cursor opaque chứa toàn bộ khóa `ORDER BY`.
+
+```text
+PUT /api/v1/posts/{postId}/repost
+→ khóa pessimistic Post gốc
+→ kiểm tra user/Post và quan hệ hiện có
+→ INSERT post_reposts + trigger tăng repost_count
+→ tạo POST_REPOST trong cùng transaction
+→ AFTER_COMMIT đẩy WebSocket best-effort
+```
 
 ## 11. Search
 
@@ -144,11 +161,14 @@ GET /api/v1/search/users?q= hoặc /api/v1/search/posts?q=
 
 ```text
 Report Modal → POST /api/v1/posts/{postId}/reports
-→ Kiểm tra profile hoàn tất và report PENDING trùng
-→ Tạo report
+→ Kiểm tra profile hoàn tất và khóa Post
+→ Kiểm tra reporter chưa có Report trong case OPEN
+→ Tìm hoặc tạo Moderation Case OPEN
+→ Tạo Report độc lập, cập nhật report_count và commit cùng transaction
 
-Admin Report Detail → PATCH /api/v1/admin/reports/{reportId}
+Admin Case Detail → PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-*
 → Kiểm tra ADMIN
-→ Chuyển RESOLVED/REJECTED, có thể ẩn post theo state machine
+→ Khóa case OPEN và Post khi cần
+→ Chuyển case sang kết quả cuối, cập nhật mọi Report, audit/notification và có thể ẩn Post
 ```
 

@@ -80,4 +80,7 @@ public interface AdminActionRepository extends JpaRepository<AdminAction, Long> 
 
     @Query(value = "SELECT r.id AS targetId FROM reports r WHERE r.id IN (:targetIds)", nativeQuery = true)
     List<AdminActionReportTargetProjection> findReportTargets(@Param("targetIds") Collection<Long> targetIds);
+
+    @Query(value = "SELECT mc.id AS targetId FROM moderation_cases mc WHERE mc.id IN (:targetIds)", nativeQuery = true)
+    List<AdminActionPostTargetProjection> findModerationCaseTargets(@Param("targetIds") Collection<Long> targetIds);
 }

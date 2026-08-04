@@ -23,6 +23,11 @@ const TYPE_PRESENTATION = {
     icon: Heart,
     iconClass: 'bg-rose-500 text-white',
   },
+  POST_REPOST: {
+    message: 'đã đăng lại bài viết của bạn',
+    icon: RotateCcw,
+    iconClass: 'bg-emerald-500 text-white',
+  },
   POST_COMMENT: {
     message: 'đã bình luận về bài viết của bạn',
     icon: MessageCircle,

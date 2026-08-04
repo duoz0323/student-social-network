@@ -107,6 +107,7 @@ Người dùng đã đăng nhập và có tài khoản đang hoạt động có 
 Quản trị viên có thể:
 
 - Quản lý người dùng.
+- Xem và chỉnh sửa tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
 - Khóa và mở khóa tài khoản.
 - Quản lý bài viết.
 - Ẩn và khôi phục bài viết.
@@ -277,7 +278,7 @@ Quy tắc:
 
 ### 🚫 3.1. Chặn người dùng
 
-Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Quy tắc hiển thị bình luận lịch sử đã được triển khai thống nhất ở Backend/Frontend; toàn bộ 599 backend test trên MySQL 8.0.36, frontend test, ESLint và production build đều đã chạy thành công. Manual E2E tiếp tục thực hiện theo checklist trước khi phát hành.
+Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Quy tắc hiển thị bình luận lịch sử đã được triển khai thống nhất ở Backend/Frontend. Manual E2E tiếp tục thực hiện theo checklist trước khi phát hành.
 
 - User Block là quan hệ có hướng: A chặn B được lưu khác với B chặn A.
 - Hiệu lực về khả năng nhìn thấy và tương tác là hai chiều: chỉ cần tồn tại Block theo một trong hai hướng thì cả A và B không được xem hồ sơ, bài viết hoặc nội dung do đối phương tạo trong các luồng dành cho người dùng.
@@ -297,7 +298,7 @@ Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Quy tắc hiển thị b
 
 ### 🔕 3.2. Hạn chế người dùng
 
-Trạng thái nghiệp vụ: `DESIGNED`. Restrict là quan hệ một chiều; A hạn chế B không đồng nghĩa B hạn chế A.
+Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Restrict là quan hệ một chiều; A hạn chế B không đồng nghĩa B hạn chế A.
 
 - A và B vẫn tìm kiếm, xem hồ sơ, bài viết, Feed và tương tác với nhau theo quyền truy cập bình thường. Restrict không được dùng để lọc Feed hoặc Search.
 - Restrict không hủy Follow, không thay đổi số follower/following và không suppress thông báo Follow.
@@ -313,7 +314,7 @@ Trạng thái nghiệp vụ: `DESIGNED`. Restrict là quan hệ một chiều; A
 
 ### 💬 3.3. Nhắn tin trực tiếp một-một
 
-Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text và Typing Indicator Giai đoạn 1D `IMPLEMENTED`; Backend gửi ảnh `IMPLEMENTED` và `TESTED`. Migration cùng 7 concurrency test đã chạy thành công trên MySQL 8.4 tạm; Frontend gửi/hiển thị ảnh và smoke test E2E hai trình duyệt chưa triển khai.
+Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text, gửi/hiển thị ảnh và Typing Indicator Giai đoạn 1D `INTEGRATED` và `TESTED`. Migration cùng 7 concurrency test đã chạy thành công trên MySQL 8.4 tạm; smoke test E2E hai trình duyệt chưa triển khai.
 
 - Conversation một-một hỗ trợ `TEXT`, chỉ ảnh hoặc ảnh kèm chú thích. Nội dung/chú thích tối đa 2.000 Unicode code point; mỗi message có tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; video và tài liệu chưa hỗ trợ.
 - Chỉ tài khoản `USER`, `ACTIVE` và đã hoàn tất hồ sơ được dùng Messaging; `ADMIN` không dùng Messaging như tài khoản xã hội và không được nhắn chính mình.
@@ -341,10 +342,15 @@ Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diệ
 - Tạo bài viết.
 - Xem chi tiết bài viết.
 - Chỉnh sửa bài viết trong 15 phút sau khi đăng.
+- Frontend hiển thị countdown thời gian sửa còn lại cạnh hành động chỉnh sửa và tự ẩn hành động khi hết 15 phút; Backend tính deadline bằng UTC và vẫn là nơi quyết định cuối cùng.
 - Xóa mềm bài viết.
 - Đăng nội dung văn bản tối đa 500 ký tự.
-- Tải lên tối đa 4 hình ảnh.
+- Tải lên tối đa 4 media cho một bài viết, gồm ảnh và video.
+- Mỗi bài có tối đa 4 ảnh hoặc tối đa 1 video trong tổng giới hạn 4 media.
+- Ảnh hỗ trợ JPG, JPEG, PNG, WEBP và tối đa 10 MB mỗi file.
+- Video hỗ trợ MP4, WebM, tối đa 100 MB và dài không quá 3 phút.
 - Gắn tối đa một hashtag.
+- Tùy chọn gắn tối đa một địa điểm Google Places đã được Frontend chọn.
 
 Bài viết phải có ít nhất một trong hai thành phần:
 
@@ -357,6 +363,21 @@ Trạng thái bài viết:
 - `HIDDEN`: bài viết bị quản trị viên ẩn.
 - `DELETED`: bài viết đã được tác giả xóa mềm.
 
+#### Địa điểm gắn với bài viết – P1
+
+- Quan hệ dữ liệu là `Location 1 — N Post`: một địa điểm có thể được nhiều bài viết sử dụng; một bài viết có thể không có hoặc có tối đa một địa điểm.
+- Frontend gửi object Location tùy chọn gồm `placeId`, `displayName`, `formattedAddress`, `latitude` và `longitude`.
+- Backend validate dữ liệu, chuẩn hóa chuỗi và chỉ dùng `placeId` làm natural unique key. Backend không dùng tên hoặc tọa độ để xác định trùng và chưa gọi Google Places API để xác minh trong giai đoạn này.
+- Nếu `google_place_id` đã tồn tại, Backend dùng lại `locations`; nếu chưa tồn tại, Backend tạo một bản ghi mới. Các bài dùng cùng Google Place ID không được tạo Location riêng.
+- `posts.location_id` cho phép `NULL`, không có unique constraint và tham chiếu `locations.id` bằng khóa ngoại `ON DELETE SET NULL`.
+- Entity `Post` ánh xạ Location bằng `@ManyToOne(fetch = FetchType.LAZY)` và `@JoinColumn(name = "location_id")`; không dùng `@OneToOne`, `CascadeType.REMOVE` hoặc `orphanRemoval` cho quan hệ này. Mapping `authorProfile` hiện tại không thuộc thay đổi này.
+- Khi cập nhật bài trong giới hạn 15 phút và đúng quyền tác giả, Location hỗ trợ ba hành động: `KEEP` giữ nguyên, `REPLACE` resolve theo Place ID rồi thay thế, và `REMOVE` gỡ quan hệ bằng cách đặt `location_id = NULL`.
+- Khi cập nhật bài trong cùng giới hạn quyền và 15 phút, người dùng có thể giữ, gỡ media cũ hoặc thêm ảnh/video mới; tổng media sau cập nhật vẫn phải tuân thủ các giới hạn media của Post.
+- Soft delete hoặc hard delete Post không xóa Location. Không cascade remove, không dùng `orphanRemoval` và không tự động xóa Location không còn được tham chiếu.
+- Location hoặc `null` phải xuất hiện nhất quán trong response tạo bài, chi tiết bài, Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu, bài đã thích, kết quả tìm kiếm Post và chi tiết Post dành cho Admin.
+- Admin Post Detail hiển thị Location hiện tại. Report snapshot chưa lưu Location trong đợt này.
+- Discovery Map, tìm theo bán kính, Feed theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places không thuộc phạm vi P1 này.
+
 ### ❤️ 5. Tương tác bài viết
 
 - Like và Unlike bài viết.
@@ -366,11 +387,17 @@ Trạng thái bài viết:
 - Xóa bình luận của chính mình.
 - Lưu và bỏ lưu bài viết.
 - Xem danh sách bài viết đã lưu.
+- Repost và Unrepost bài viết của người khác.
+- Xem tab bài đã đăng lại trên hồ sơ.
 
 Quy tắc:
 
 - Mỗi người chỉ được Like một bài tối đa một lần.
 - Mỗi người chỉ được lưu một bài tối đa một lần.
+- Mỗi người chỉ được Repost một bài tối đa một lần; Repost và Unrepost là idempotent.
+- Chỉ được Repost bài `PUBLISHED` có quyền xem và không được Repost bài của chính mình.
+- Repost chỉ lưu quan hệ tham chiếu đến bài gốc, không sao chép content, media, hashtag hoặc Location.
+- Bài gốc `HIDDEN` hoặc `DELETED` không được hiển thị qua Repost.
 - Không được tương tác với bài viết đã bị ẩn hoặc xóa.
 - Danh sách bài viết đã lưu chỉ hiển thị với chủ tài khoản.
 - Danh sách bài viết đã thích chỉ hiển thị với chủ tài khoản.
@@ -379,10 +406,11 @@ Quy tắc:
 
 #### Feed Following
 
-- Hiển thị bài viết của những người dùng đang được theo dõi.
-- Sắp xếp theo thời gian đăng giảm dần.
+- Hiển thị activity bài gốc và Repost của những người dùng đang được theo dõi.
+- Item `ORIGINAL` chứa bài gốc; item `REPOST` chứa `activityAt`, `repostedAt`, `repostedBy` và projection `post` của bài gốc.
+- Sắp xếp giảm dần theo thời điểm activity với khóa tổng ổn định `activityAt`, `itemRank`, `actorId`, `postId`.
 - Không hiển thị bài viết bị ẩn hoặc bị xóa.
-- Dùng Cursor Pagination để cuộn vô hạn, sắp xếp ổn định theo `published_at DESC, id DESC`.
+- Dùng Cursor Pagination để cuộn vô hạn; Frontend chỉ gửi lại nguyên cursor opaque do Backend phát hành.
 
 #### Feed For You
 
@@ -409,8 +437,9 @@ bài đã lưu, bài đã thích và kết quả Search bài viết/hashtag. Cá
 - `limit` mặc định 10, từ 1 đến 20.
 - Response dữ liệu: `{ "content": [], "nextCursor": null, "hasNext": false }`.
 - Cursor do Backend tạo dưới dạng Base64URL opaque; Client không tự tạo hoặc sửa cursor.
-- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; Search nội dung giữ
-  `relevance`, `publishedAt`, `postId`; các danh sách theo thời gian giữ `createdAt`, `postId`.
+- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; các danh sách theo thời gian
+  giữ `createdAt`, `postId`.
+- Feed Following giữ đủ khóa activity `activityAt`, `itemRank`, `actorId`, `postId`.
 - Backend dùng keyset và lấy `limit + 1`, không dùng `page`, `offset` hoặc truy vấn tổng `COUNT(*)`.
 - Cursor không hợp lệ trả mã nghiệp vụ `INVALID_CURSOR`.
 
@@ -419,6 +448,7 @@ Các endpoint đã chuyển:
 - `GET /api/v1/feeds/for-you`.
 - `GET /api/v1/feeds/following`.
 - `GET /api/v1/users/{userId}/posts`.
+- `GET /api/v1/users/{userId}/reposts`.
 - `GET /api/v1/posts/saved`.
 - `GET /api/v1/posts/liked`.
 - `GET /api/v1/search/posts`.
@@ -451,10 +481,10 @@ không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 
 ### 🚩 9. Báo cáo vi phạm
 
-- Báo cáo bài viết.
-- Chọn lý do báo cáo.
-- Nhập mô tả bổ sung.
-- Theo dõi trạng thái xử lý.
+- Mỗi lần báo cáo bài viết tạo một dòng `reports` độc lập, giữ riêng reporter, reason, description và snapshot bằng chứng.
+- Mỗi Report thuộc một `Moderation Case`; nhiều Report cùng bài được gắn vào case `OPEN` hiện tại.
+- Một bài chỉ có tối đa một case `OPEN` tại một thời điểm. Case mới chỉ được tạo khi không còn case mở.
+- Cùng một người không được báo cáo lại bài đang có Report thuộc case `OPEN`; sau khi case cũ được giải quyết có thể báo cáo lại nếu bài vẫn đủ điều kiện.
 
 Trạng thái báo cáo:
 
@@ -462,7 +492,20 @@ Trạng thái báo cáo:
 - `RESOLVED`.
 - `REJECTED`.
 
+Trạng thái Moderation Case:
+
+- `OPEN`: đang chờ Admin đưa ra quyết định và tiếp tục nhận Report hợp lệ mới.
+- `RESOLVED_NO_VIOLATION`: Admin kết luận bài không vi phạm; các Report trong case chuyển `REJECTED`.
+- `RESOLVED_ACTION_TAKEN`: Admin kết luận có vi phạm và đã áp dụng hành động; các Report chuyển `RESOLVED`.
+
+Admin xử lý trực tiếp từ `OPEN` sang một trong hai kết quả cuối. Không có bước tiếp nhận, trạng thái
+`IN_REVIEW`, trạng thái `CLOSED`, `assigned_admin_id` hoặc `closed_at`. Case đã giải quyết không nhận
+Report mới và không được xử lý lại.
+
 Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên là người đưa ra quyết định xử lý cuối cùng.
+Luồng tạo Report khóa bản ghi Post bằng `PESSIMISTIC_WRITE`, sau đó tìm/tạo case, tạo Report và cập
+nhật `report_count` trong cùng transaction. Unique generated key trên case là lớp bảo vệ database để
+không tồn tại hai case `OPEN` cho cùng bài.
 
 ### 🛡️ 10. Quản trị hệ thống
 
@@ -482,14 +525,57 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 #### Quản lý báo cáo
 
-- Xem danh sách và chi tiết báo cáo.
-- Xác nhận hoặc từ chối báo cáo.
-- Ẩn bài viết vi phạm.
+- Xem danh sách Moderation Case, mỗi case đúng một dòng và phân trang tại database.
+- Xem chi tiết toàn bộ Report theo dạng rút gọn gồm reporter, reason, description và thời gian; snapshot vẫn được lưu độc lập làm bằng chứng nhưng không render trong từng Report trên giao diện Admin.
+- Kết luận trực tiếp không vi phạm hoặc có vi phạm và ẩn bài.
+- Chỉ một Admin được phép giải quyết case `OPEN` khi có thao tác đồng thời.
 
 #### Hoạt động quản trị
 
 - Ghi lại các hành động quản trị quan trọng.
 - Hỗ trợ hiển thị lịch sử hoạt động của quản trị viên.
+
+#### Analytics hoạt động người dùng — Backend/Frontend `IMPLEMENTED`, Frontend `TESTED`, test MySQL `CONDITIONAL`
+
+Analytics là module quản trị độc lập tại `/admin/user-analytics`, không nằm trên Dashboard. Frontend gọi hai
+API monthly/summary qua service tập trung, có bộ lọc khoảng tháng và ngưỡng không hoạt động, bốn KPI, biểu đồ
+hai trục cho số người quay lại/tỷ lệ tái kích hoạt và bảng snapshot tháng cuối cùng các trạng thái Loading/Empty/Error. Một hoạt động hợp lệ
+là request nghiệp vụ thành công đại diện cho hành vi thực của USER như mở Feed, xem chi tiết bài, tạo hoặc
+sửa bài, Like/Save, bình luận hoặc Follow. Refresh Token, Auth/OTP, health check, WebSocket heartbeat,
+request Admin và request nền không tạo activity. Ngày hoạt động dùng UTC; mỗi USER có tối đa một dòng
+`user_daily_activities` trong một ngày nhờ unique `(user_id, activity_date)` và MySQL UPSERT atomic.
+
+Eligible System User tại `evaluationDate` là tài khoản đã được tạo, có `role = USER`, hồ sơ đã hoàn tất và
+ở trạng thái `ACTIVE` tại ngày đánh giá. Trạng thái tháng lịch sử được dựng lại từ
+`account_status_histories`. Tại mỗi tháng, toàn bộ tài khoản USER hợp lệ được phân loại vào đúng một trong
+sáu nhóm `NEW`, `REGULAR`, `RETURNING`, `RECENTLY_INACTIVE`, `ELIGIBLE_INACTIVE_NOT_RETURNED` hoặc
+`NEVER_ACTIVE`. Ba nhóm đầu có hoạt động trong tháng; ba nhóm sau không hoạt động trong tháng. Các nhóm
+không chồng lặp và tổng sáu nhóm bằng Eligible System User.
+
+- `NEW`: có activity trong tháng và không có activity trước đầu tháng.
+- `REGULAR`: có activity trong tháng, có activity trước tháng và khoảng cách tới activity đầu tháng
+  `<= inactiveDays`.
+- `RETURNING`: có activity trong tháng, có activity trước tháng và khoảng cách đó `> inactiveDays`.
+- `RECENTLY_INACTIVE`: không activity trong tháng, đã từng activity và tại đầu tháng chưa vượt ngưỡng.
+- `ELIGIBLE_INACTIVE_NOT_RETURNED`: không activity trong tháng và đã vượt ngưỡng tại đầu tháng.
+- `NEVER_ACTIVE`: chưa từng có activity hợp lệ tính đến ngày đánh giá.
+
+Công thức:
+
+```text
+activeUserCount = NEW + REGULAR + RETURNING
+inactiveUserCount = RECENTLY_INACTIVE + ELIGIBLE_INACTIVE_NOT_RETURNED + NEVER_ACTIVE
+eligibleSystemUserCount = activeUserCount + inactiveUserCount
+eligibleInactiveUserCount = returningEligibleUserCount + eligibleInactiveNotReturnedUserCount
+Monthly Active User Rate = activeUserCount / eligibleSystemUserCount × 100
+Regular Active Rate = regularActiveUserCount / activeUserCount × 100
+Monthly Reactivation Rate = returningEligibleUserCount / eligibleInactiveUserCount × 100
+Never Active Rate = neverActiveUserCount / eligibleSystemUserCount × 100
+```
+
+Rate trả `null` khi mẫu số bằng 0. Điều kiện inactive dùng toán tử `>`: đúng 15 ngày là REGULAR/chưa đủ
+inactive, từ 16 ngày mới là RETURNING/eligible inactive khi `inactiveDays=15`. Tháng hiện tại dùng ngày UTC
+hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 
 ---
 
@@ -518,10 +604,13 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 - Liên kết và quản lý nhiều phương thức đăng nhập.
 - Save và Unsave.
+- Repost, Unrepost, tab Repost trên Profile và activity Repost trong Following Feed.
 - Hashtag và gợi ý hashtag.
 - Tìm kiếm người dùng.
 - Tìm kiếm bài viết.
 - Báo cáo bài viết.
+- Moderation Case và xử lý báo cáo theo nhóm bài viết.
+- Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
 - Hiển thị hoạt động quản trị cơ bản.
@@ -530,7 +619,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 
 - Trả lời bình luận một cấp.
 - Thông báo REST và realtime bằng WebSocket/STOMP.
-- Nhắn tin trực tiếp một-một text-only; gửi bằng REST và nhận realtime bằng WebSocket/STOMP dùng chung.
+- Nhắn tin trực tiếp một-một bằng text hoặc ảnh; gửi bằng REST và nhận realtime bằng WebSocket/STOMP dùng chung.
 
 ---
 
@@ -775,9 +864,17 @@ Nguyên tắc:
 ### Bài viết
 
 - `posts`.
+- `locations`: địa điểm Google Places dùng chung giữa nhiều bài viết, duy nhất theo `google_place_id`.
 - `post_media`.
 - `hashtags`.
 - `post_hashtags`.
+
+Quan hệ Location–Post:
+
+- `locations.id` là khóa chính nội bộ.
+- `locations.google_place_id` là natural unique key, `NOT NULL` và duy nhất.
+- `locations.display_name`, `locations.latitude` và `locations.longitude` là `NOT NULL`; `locations.formatted_address` cho phép `NULL`; bảng có `created_at` và `updated_at`.
+- `posts.location_id` cho phép `NULL`, có index, không duy nhất và tham chiếu `locations.id` bằng `ON DELETE SET NULL`.
 
 ### Tương tác
 
@@ -788,6 +885,7 @@ Nguyên tắc:
 ### Báo cáo và quản trị
 
 - `reports`.
+- `moderation_cases`: hồ sơ xử lý chung theo bài viết; duy nhất một case `OPEN` cho mỗi Post.
 - `account_status_histories`.
 - `admin_actions`.
 
@@ -930,6 +1028,39 @@ Các API trên yêu cầu JWT, luôn lấy người thực hiện từ Security 
 /api/v1/reports
 /api/v1/admin
 ```
+
+API Repost đã triển khai:
+
+```http
+PUT    /api/v1/posts/{postId}/repost
+DELETE /api/v1/posts/{postId}/repost
+GET    /api/v1/users/{userId}/reposts?limit=10&cursor=<opaque-cursor>
+```
+
+Post response công khai có thêm `repostCount` và `repostedByCurrentUser`. Realtime `POST_REPOST` được đẩy
+best-effort tới `/user/queue/notifications` sau transaction commit; REST/MySQL vẫn là nguồn sự thật.
+
+API Moderation Case dành cho Admin:
+
+```http
+GET   /api/v1/admin/moderation-cases
+GET   /api/v1/admin/moderation-cases/{caseId}
+PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-no-violation
+PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-action
+```
+
+Frontend chỉ gửi hành động nghiệp vụ và kết luận; `status` cùng `resolved_by` do Backend xác định từ
+state machine và JWT Principal.
+
+API Analytics độc lập dành cho Admin:
+
+```http
+GET /api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15
+GET /api/v1/admin/analytics/user-engagement/summary?month=2026-06&inactiveDays=15
+```
+
+Khoảng monthly tối đa 24 tháng. `summary` mặc định lấy tháng hiện tại. Response monthly gồm từng tháng,
+hai peak (`peakReturningMonth`, `peakReturnRateMonth`) và `comparisonOperator = GREATER_THAN`.
 
 Ví dụ bắt đầu đăng ký:
 
@@ -1099,6 +1230,11 @@ npm run preview
 - Liên kết và gỡ phương thức đăng nhập.
 - Từ chối gỡ phương thức cuối cùng.
 - Tài khoản `BLOCKED` bị từ chối ở mọi phương thức.
+- Report đầu tiên tạo case `OPEN`; các Report hợp lệ tiếp theo cùng bài dùng lại đúng case đó.
+- Hai request báo cáo đồng thời không tạo hai case `OPEN`, không mất Report và không làm sai `report_count`.
+- Admin giải quyết case `OPEN` đúng một lần; thao tác cạnh tranh còn lại nhận lỗi conflict.
+- Kết luận không vi phạm không ẩn bài và chuyển Report sang `REJECTED`; kết luận có vi phạm ẩn bài và chuyển Report sang `RESOLVED`.
+- Danh sách Admin hiển thị một dòng mỗi case; chi tiết giữ riêng reporter, reason, description và snapshot của từng Report.
 
 ---
 
@@ -1139,14 +1275,18 @@ npm run preview
 19. Người dùng tạo bài có nội dung hoặc hình ảnh.
 20. Chỉ tác giả được sửa hoặc xóa bài của mình.
 21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed.
+19. Người dùng tạo bài có nội dung hoặc hình ảnh và có thể tùy chọn gắn tối đa một Location; các bài dùng cùng Google Place ID phải dùng chung một bản ghi `locations`.
+20. Chỉ tác giả được sửa hoặc xóa bài của mình; trong giới hạn chỉnh sửa 15 phút, tác giả có thể cập nhật nội dung/hashtag, giữ/gỡ/thêm ảnh hoặc video và giữ/thay đổi/gỡ Location bằng `KEEP`, `REPLACE`, `REMOVE`.
+21. Bài bị ẩn hoặc xóa không xuất hiện trên Feed; xóa Post không xóa Location dùng chung.
 22. Like, Unlike, danh sách bài viết đã thích, bình luận và Save hoạt động đúng.
-23. Feed Following và Feed For You trả đúng dữ liệu hợp lệ.
-24. Tìm kiếm người dùng và bài viết hoạt động đúng.
-25. Người dùng gửi được báo cáo.
-26. Admin quản lý được người dùng, bài viết và báo cáo.
-27. Backend từ chối thao tác không có quyền.
-28. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
-29. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
+23. Repost và Unrepost idempotent; tab Repost và Following Feed chỉ hiển thị quan hệ có bài gốc còn `PUBLISHED`.
+24. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
+25. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
+26. Người dùng gửi được báo cáo.
+27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER, quản lý bài viết và báo cáo.
+28. Backend từ chối thao tác không có quyền.
+29. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
+30. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
 
 ---
 
@@ -1252,10 +1392,9 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Video và tài liệu trong bài viết.
 - Bài viết nháp.
 - Mention.
-- Repost.
 - Trích dẫn bài viết.
 - Chủ đề nội dung do Admin quản lý.
-- Địa điểm và Discovery Map.
+- Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
 - Feed cá nhân hóa do người dùng tạo.
 - Feed công khai và lưu Feed.
 - Elasticsearch.
@@ -1263,7 +1402,6 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê nâng cao.
-- Moderation Case.
 - Machine Learning cho hệ thống gợi ý.
 - Ứng dụng mobile native.
 - Group Chat.
@@ -1276,7 +1414,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 ## 🔮 Định hướng phát triển
 
 - Hồ sơ riêng tư và Follow Request.
-- Repost và trích dẫn bài viết.
+- Trích dẫn bài viết và Quote Post.
 - Video và tài liệu học tập.
 - Bài viết nháp.
 - Mention người dùng.
@@ -1284,12 +1422,12 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Khám phá nội dung theo địa điểm.
 - Discovery Map.
+- Backend xác minh và đồng bộ định kỳ dữ liệu với Google Places.
 - Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
-- Dashboard thống kê.
+- Dashboard thống kê nâng cao.
 - Audit Log chi tiết.
-- Moderation Case.
 - Thuật toán gợi ý nâng cao.
 - Ứng dụng di động.
 

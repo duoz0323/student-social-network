@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import logo from '../../../assets/brand/logo-dark.jpg';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BrandLockup from '../../../components/common/BrandLockup.jsx';
 import Button from '../../../components/common/Button.jsx';
 import { useAuth } from '../hooks/useAuth.js';

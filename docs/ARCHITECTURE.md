@@ -179,7 +179,9 @@ Quy tắc enum trong Backend:
 
 MySQL là nguồn dữ liệu chuẩn.
 
-Ảnh:
+Timestamp do MySQL/API quản lý được quy ước theo UTC. `Clock` của Backend phải dùng UTC để deadline nghiệp vụ, gồm giới hạn sửa Post 15 phút, không phụ thuộc múi giờ máy chạy; Frontend chuyển UTC sang múi giờ hiển thị của người dùng.
+
+Media:
 
 - Lưu trên Cloud Storage.
 - Database lưu URL và metadata.
@@ -208,11 +210,13 @@ Không sử dụng Machine Learning.
 
 ### Cursor Pagination cho danh sách bài viết
 
-- Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu và bài đã thích dùng Cursor Pagination.
+- Feed For You, Feed Following, bài trên hồ sơ, tab Repost, bài đã lưu và bài đã thích dùng Cursor Pagination.
 - Request đầu truyền `limit`; request sau truyền nguyên `nextCursor` opaque do Backend trả về.
 - `limit` mặc định 10, tối đa 20; Backend lấy `limit + 1` để xác định `hasNext`.
 - Feed For You dùng cursor gồm `score`, `publishedAt`, `postId`; danh sách theo thời gian dùng
   `createdAt`, `postId`.
+- Following Feed hợp nhất `ORIGINAL` và `REPOST` bằng `UNION ALL`, dùng cursor
+  `activityAt`, `itemRank`, `actorId`, `postId`; dữ liệu PostCard được batch-load để tránh N+1.
 - Search, bình luận, Follow và Admin tiếp tục dùng `PageResponse`.
 
 ## 8. Bảo mật

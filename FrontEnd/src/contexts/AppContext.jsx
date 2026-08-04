@@ -61,6 +61,8 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (currentUserId && auth.profileCompleted) {
+      // Đồng bộ profile từ API khi phiên xác thực trở nên đủ điều kiện.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void refreshMyProfile();
     } else {
       setMyProfile(null);
@@ -95,6 +97,11 @@ export function AppProvider({ children }) {
         && (includeHidden || post.status === 'PUBLISHED')) ?? null;
     }
 
+    async function getPostDetail(postId, signal) {
+      // Form sửa luôn dùng response chi tiết mới nhất, không dùng snapshot rút gọn của Feed/Search.
+      return toPostView(await postApi.getDetail(postId, signal));
+    }
+
     async function createPost(payload) {
       if (createPostInFlightRef.current) {
         return { ok: false, message: 'Bài viết đang được đăng. Vui lòng chờ trong giây lát.' };
@@ -117,8 +124,10 @@ export function AppProvider({ children }) {
       const response = await postApi.update(postId, {
         content: payload.content,
         hashtag: payload.hashtag ?? payload.hashtags?.split(',')[0],
-        keepMediaIds: current?.media?.map((item) => item.id) ?? [],
+        keepMediaIds: payload.keepMediaIds ?? current?.media?.map((item) => item.id) ?? [],
         newMediaFiles: payload.newMediaFiles ?? [],
+        locationAction: payload.locationAction,
+        location: payload.location,
       });
       setData((previous) => ({
         ...previous,
@@ -273,14 +282,16 @@ export function AppProvider({ children }) {
         : await adminApi.resolveReport(reportId, { resolutionNote: 'Báo cáo hợp lệ.', hidePost: false });
       setData((previous) => ({
         ...previous,
-        reports: previous.reports.map((report) => String(report.id) === String(reportId) ? { ...report, status: response.status } : report),
+        reports: previous.reports.map((report) => String(report.id) === String(reportId)
+          ? { ...report, status: response.status }
+          : report),
       }));
       return response;
     }
 
     return {
       data: { ...data, users }, currentUser, currentUserId, userRelationshipRevision,
-      publicPosts, getUserById, getPostById,
+      publicPosts, getUserById, getPostById, getPostDetail,
       logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
       deleteComment, toggleFollow, applyUserBlock, invalidateUserRelationshipData,
       showToast, updateProfile, refreshMyProfile, submitReport,

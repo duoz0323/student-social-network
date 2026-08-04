@@ -58,7 +58,9 @@ class AdminUserStatusServiceImplTest {
         Clock clock = Clock.fixed(Instant.parse("2026-07-14T01:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
         service = new AdminUserServiceImpl(
                 adminUserRepository, new AdminUserMapper(), currentUserProvider, refreshTokenRepository,
-                historyRepository, actionRepository, clock, entityManager, notificationService);
+                historyRepository, actionRepository, clock, entityManager, notificationService,
+                org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.repository.UserProfileRepository.class),
+                new com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport(clock));
         when(currentUserProvider.getCurrentUser())
                 .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
         when(entityManager.getReference(User.class, 1L)).thenReturn(admin);

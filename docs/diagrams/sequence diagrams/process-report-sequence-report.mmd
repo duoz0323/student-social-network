@@ -2,19 +2,24 @@ sequenceDiagram
     autonumber
     actor A as Quản trị viên
     participant FE as Admin Frontend
-    participant RC as AdminReportController
-    participant RS as AdminReportService
+    participant MC as AdminModerationCaseController
+    participant MS as AdminModerationCaseService
     participant DB as MySQL
 
-    A->>FE: Chọn xử lý báo cáo
-    FE->>RC: PATCH /api/v1/admin/reports/{id}/resolve
-    RC->>RS: resolveReport(reportId, request)
-    RS->>DB: Khóa và kiểm tra Report
-    alt Báo cáo không còn PENDING
-        RS-->>FE: Trả lỗi trạng thái
-    else Hợp lệ
-        RS->>DB: Cập nhật RESOLVED và ghi AdminAction
-        DB-->>RS: Commit transaction
-        RS-->>FE: AdminReportStatusResponse
-        FE-->>A: Hiển thị kết quả xử lý
+    A->>FE: Mở và đưa ra kết luận case
+    FE->>MC: PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-*
+    MC->>MS: resolveNoViolation hoặc resolveAction
+    MS->>DB: Khóa Moderation Case OPEN
+    alt Case đã được giải quyết
+        MS-->>FE: 409 trạng thái không hợp lệ
+    else Không vi phạm
+        MS->>DB: Case NO_VIOLATION + Reports REJECTED + Action + Notifications
+        DB-->>MS: Commit transaction
+        MS-->>FE: AdminModerationCaseStatusResponse
+    else Có vi phạm
+        MS->>DB: Khóa và ẩn Post + Case ACTION_TAKEN + Reports RESOLVED + Action + Notifications
+        DB-->>MS: Commit transaction
+        MS-->>FE: AdminModerationCaseStatusResponse
     end
+    FE->>MC: Tải lại chi tiết và danh sách
+    FE-->>A: Hiển thị trạng thái cuối

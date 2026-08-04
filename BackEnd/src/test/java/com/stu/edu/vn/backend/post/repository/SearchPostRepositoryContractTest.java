@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.post.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -11,20 +12,20 @@ import org.springframework.data.jpa.repository.Query;
 class SearchPostRepositoryContractTest {
 
     @Test
-    void pageableQueriesContainApprovedFiltersBindingCountAndOrdering() throws Exception {
+    void cursorQueriesContainApprovedFiltersAndStableOrdering() throws Exception {
         Query content = query(
-                PostRepository.class, "searchPublishedPostsByContent", String.class, Long.class, Pageable.class);
+                PostRepository.class, "searchPublishedPostsByContentAfter",
+                String.class, Long.class, Double.class, LocalDateTime.class, Long.class, Pageable.class);
         assertThat(content.value()).contains("MATCH(p.content)", ":keyword", "p.status = 'PUBLISHED'",
-                "u.status = 'ACTIVE'", "up.profile_completed_at IS NOT NULL", "p.published_at DESC", "p.id DESC");
-        assertThat(content.countQuery()).contains("COUNT(*)", "MATCH(p.content)", ":keyword",
-                "user_blocks", ":viewerId");
+                "u.status = 'ACTIVE'", "up.profile_completed_at IS NOT NULL", "user_blocks", ":viewerId",
+                ":cursorRelevance", ":cursorTime", ":cursorPostId", "p.published_at DESC", "p.id DESC");
 
         Query hashtag = query(
-                PostRepository.class, "searchPublishedPostsByHashtag", String.class, Long.class, Pageable.class);
+                PostRepository.class, "searchPublishedPostsByHashtagAfter",
+                String.class, Long.class, LocalDateTime.class, Long.class, Pageable.class);
         assertThat(hashtag.value()).contains("h.normalized_name = :normalizedName", "p.status = 'PUBLISHED'",
-                "u.status = 'ACTIVE'", "up.profile_completed_at IS NOT NULL", "p.published_at DESC", "p.id DESC");
-        assertThat(hashtag.countQuery()).contains("COUNT(*)", "h.normalized_name = :normalizedName",
-                "user_blocks", ":viewerId");
+                "u.status = 'ACTIVE'", "up.profile_completed_at IS NOT NULL", "user_blocks", ":viewerId",
+                ":cursorTime", ":cursorPostId", "p.published_at DESC", "p.id DESC");
     }
 
     @Test

@@ -8,7 +8,7 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 import InfinitePostList from '../../post/components/InfinitePostList.jsx';
 import PostComposer from '../../post/components/PostComposer.jsx';
 import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
-import { toPostView } from '../../post/utils/postViewModel.js';
+import { toFeedItemView, toPostView } from '../../post/utils/postViewModel.js';
 
 export default function FeedPage() {
   const { type = 'for-you' } = useParams();
@@ -18,7 +18,7 @@ export default function FeedPage() {
   const feedState = useInfinitePosts({
     cacheKey: `feed:${type}`,
     request: type === 'following' ? feedApi.getFollowing : feedApi.getForYou,
-    normalizePost: toPostView,
+    normalizePost: type === 'following' ? toFeedItemView : toPostView,
   });
 
   const { refresh } = feedState;

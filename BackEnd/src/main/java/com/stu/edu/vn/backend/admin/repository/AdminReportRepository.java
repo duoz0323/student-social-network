@@ -17,7 +17,7 @@ public interface AdminReportRepository extends Repository<Report, Long> {
 
     /** Khóa đúng report mục tiêu để chỉ một ADMIN được chuyển trạng thái khỏi PENDING. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select r from Report r where r.id = :reportId")
+    @Query("select r from Report r where r.id = :reportId and r.moderationCase is null")
     Optional<Report> findByIdForUpdate(@Param("reportId") Long reportId);
 
     @Query(value = """
@@ -38,6 +38,7 @@ public interface AdminReportRepository extends Repository<Report, Long> {
             JOIN users author ON author.id = p.author_id
             LEFT JOIN user_profiles ap ON ap.user_id = author.id
             WHERE (:status IS NULL OR r.status = :status)
+              AND r.moderation_case_id IS NULL
               AND (:reason IS NULL OR r.reason = :reason)
               AND (:postId IS NULL OR r.post_id = :postId)
               AND (:reporterId IS NULL OR r.reporter_id = :reporterId)
@@ -60,6 +61,7 @@ public interface AdminReportRepository extends Repository<Report, Long> {
             JOIN users author ON author.id = p.author_id
             LEFT JOIN user_profiles ap ON ap.user_id = author.id
             WHERE (:status IS NULL OR r.status = :status)
+              AND r.moderation_case_id IS NULL
               AND (:reason IS NULL OR r.reason = :reason)
               AND (:postId IS NULL OR r.post_id = :postId)
               AND (:reporterId IS NULL OR r.reporter_id = :reporterId)
@@ -101,7 +103,7 @@ public interface AdminReportRepository extends Repository<Report, Long> {
             LEFT JOIN user_profiles ap ON ap.user_id = author.id
             LEFT JOIN users resolver ON resolver.id = r.resolved_by
             LEFT JOIN user_profiles rsp ON rsp.user_id = resolver.id
-            WHERE r.id = :reportId
+            WHERE r.id = :reportId AND r.moderation_case_id IS NULL
             """, nativeQuery = true)
     Optional<AdminReportDetailProjection> findAdminReportDetail(@Param("reportId") Long reportId);
 }

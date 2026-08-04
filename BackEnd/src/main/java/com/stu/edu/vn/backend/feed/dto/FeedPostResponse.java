@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.feed.dto;
 
 import com.stu.edu.vn.backend.post.dto.response.PostAuthorResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostMediaResponse;
+import com.stu.edu.vn.backend.post.dto.response.PostLocationResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,11 +13,28 @@ public record FeedPostResponse(
         boolean isEdited,
         int likeCount,
         int commentCount,
+        int repostCount,
         LocalDateTime publishedAt,
         PostAuthorResponse author,
         List<PostMediaResponse> media,
         String hashtag,
         boolean likedByCurrentUser,
-        boolean savedByCurrentUser
+        boolean savedByCurrentUser,
+        boolean repostedByCurrentUser,
+        PostLocationResponse location
 ) {
+    public FeedPostResponse(Long postId, String content, boolean isEdited, int likeCount, int commentCount,
+                            LocalDateTime publishedAt, PostAuthorResponse author, List<PostMediaResponse> media,
+                            String hashtag, boolean likedByCurrentUser, boolean savedByCurrentUser) {
+        this(postId, content, isEdited, likeCount, commentCount, 0, publishedAt, author, media, hashtag,
+                likedByCurrentUser, savedByCurrentUser, false, null);
+    }
+
+    public FeedPostResponse(Long postId, String content, boolean isEdited, int likeCount, int commentCount,
+                            LocalDateTime publishedAt, PostAuthorResponse author, List<PostMediaResponse> media,
+                            String hashtag, boolean likedByCurrentUser, boolean savedByCurrentUser,
+                            PostLocationResponse location) {
+        this(postId, content, isEdited, likeCount, commentCount, 0, publishedAt, author, media, hashtag,
+                likedByCurrentUser, savedByCurrentUser, false, location);
+    }
 }

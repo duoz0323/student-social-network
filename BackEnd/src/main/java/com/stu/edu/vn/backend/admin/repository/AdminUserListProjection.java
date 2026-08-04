@@ -15,8 +15,6 @@ public interface AdminUserListProjection {
 
     String getEmail();
 
-    String getPhoneNumber();
-
     String getStatus();
 
     LocalDateTime getProfileCompletedAt();

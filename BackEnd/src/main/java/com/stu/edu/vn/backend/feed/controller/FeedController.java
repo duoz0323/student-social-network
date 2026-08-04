@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.feed.controller;
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
+import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
 import com.stu.edu.vn.backend.feed.service.FeedService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -31,7 +32,7 @@ public class FeedController {
     }
 
     @GetMapping("/following")
-    public ResponseEntity<ApiResponse<CursorPageResponse<FeedPostResponse>>> getFollowing(
+    public ResponseEntity<ApiResponse<CursorPageResponse<FeedItemResponse>>> getFollowing(
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") @Min(1) @Max(20) int limit
     ) {

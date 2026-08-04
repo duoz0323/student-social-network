@@ -2,12 +2,8 @@ import { useRef } from 'react';
 import { CameraIcon, SlidePanel, PrimaryBtn, SecondaryBtn, ArrowRightIcon, UserIcon } from './OnboardingShared.jsx';
 
 // Bước 2: Chọn ảnh đại diện
-export default function OnboardingStep2Avatar({ avatarUrl, displayName, onAvatarChange, onNext, onBack }) {
+export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNext, onBack }) {
   const fileInputRef = useRef(null);
-
-  const initials = displayName
-    ? displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'U';
 
   function handleFileChange(event) {
     const file = event.target.files?.[0];

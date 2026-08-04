@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.admin.dto.response;
 
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -11,6 +12,7 @@ public record AdminUserDetailResponse(
         String displayName,
         String avatarUrl,
         String bio,
+        LocalDate dateOfBirth,
         String email,
         UserStatus status,
         boolean profileCompleted,

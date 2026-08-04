@@ -417,8 +417,7 @@ IV. PHÂN HỆ BÀI VIẾT VÀ TƯƠNG TÁC
 - Khi đổi PUBLIC sang FOLLOWERS, Repost và kết quả Search phải cập nhật quyền truy cập.
 - Khi có báo cáo mới, hệ thống phải tạo snapshot nội dung tại thời điểm báo cáo.
 - Khi hồ sơ kiểm duyệt ở trạng thái OPEN, tác giả vẫn được chỉnh sửa hoặc xóa bài.
-- Khi hồ sơ kiểm duyệt chuyển sang IN_REVIEW, hệ thống tạm khóa chức năng chỉnh sửa và xóa.
-- Nếu kết luận không vi phạm, quyền chỉnh sửa và xóa được khôi phục.
+- Không có bước tiếp nhận hoặc trạng thái IN_REVIEW trong MVP hiện tại.
 - Nếu nội dung vi phạm, hệ thống áp dụng quyết định xử lý của Admin.
 
 5. Xóa bài viết
@@ -1214,10 +1213,9 @@ VII. PHÂN HỆ BÁO CÁO VÀ QUẢN TRỊ
 - Report lưu người báo cáo, đối tượng, lý do, mô tả, thời gian và bằng chứng.
 - Khi báo cáo bài viết, bình luận hoặc tin nhắn, hệ thống phải tạo snapshot tại thời điểm báo cáo.
 - Trạng thái Report:
-  + SUBMITTED.
-  + ATTACHED_TO_CASE.
-  + INVALID.
-  + WITHDRAWN.
+  + PENDING.
+  + RESOLVED.
+  + REJECTED.
 
 4.4 Moderation Case
 
@@ -1231,23 +1229,20 @@ VII. PHÂN HỆ BÁO CÁO VÀ QUẢN TRỊ
   tạo Moderation Case mới.
 - Trạng thái Moderation Case:
   + OPEN.
-  + IN_REVIEW.
   + RESOLVED_NO_VIOLATION.
   + RESOLVED_ACTION_TAKEN.
-  + CLOSED.
 
 4.5 Quy tắc chống trùng
 
 - Một người không được có nhiều Report đang hiệu lực cho cùng một đối tượng.
 - Không dùng unique tuyệt đối khiến người dùng không thể báo cáo lại khi có bằng chứng mới.
 - Nhiều Report từ nhiều người được nhóm vào cùng Moderation Case đang mở.
-- Report đã INVALID hoặc WITHDRAWN không được tính là báo cáo đang hiệu lực.
+- Report đang hiệu lực khi thuộc Moderation Case có trạng thái OPEN.
 
 5. Xử lý báo cáo
 
-- Admin tiếp nhận Moderation Case ở trạng thái OPEN và chuyển sang IN_REVIEW.
-- Khi chuyển sang IN_REVIEW, nội dung liên quan có thể bị khóa chỉnh sửa và xóa
-  theo quy tắc của từng loại đối tượng.
+- Admin mở Moderation Case ở trạng thái OPEN và đưa ra quyết định cuối cùng trực tiếp.
+- Không có thao tác tiếp nhận, trạng thái đang xử lý hoặc trạng thái đóng riêng.
 - Admin xem đối tượng, các Report liên quan, người báo cáo, người bị báo cáo,
   snapshot bằng chứng và lịch sử vi phạm.
 - Kết quả xử lý:
@@ -1260,8 +1255,8 @@ VII. PHÂN HỆ BÁO CÁO VÀ QUẢN TRỊ
 - Người bị xử lý nhận thông báo lý do tổng quát.
 - Báo cáo cố ý sai nhiều lần có thể bị hạn chế quyền báo cáo.
 - Mọi quyết định phải tạo Moderation Action và Audit Log.
-- Khi không vi phạm, Moderation Case chuyển RESOLVED_NO_VIOLATION rồi CLOSED.
-- Khi có biện pháp xử lý, Moderation Case chuyển RESOLVED_ACTION_TAKEN rồi CLOSED.
+- Khi không vi phạm, Moderation Case chuyển trực tiếp sang RESOLVED_NO_VIOLATION.
+- Khi ẩn bài do vi phạm, Moderation Case chuyển trực tiếp sang RESOLVED_ACTION_TAKEN.
 
 6. Quản lý địa điểm
 
@@ -1591,7 +1586,7 @@ Quyền truy cập thực tế là giao của toàn bộ điều kiện.
 - Bài đã PUBLISHED không được chuyển ngược về DRAFT.
 - Bài Trích dẫn không chứa media hoặc địa điểm mới.
 - Chủ bài chỉ được ẩn/khôi phục bình luận của người khác, không được xóa.
-- Nội dung thuộc Moderation Case IN_REVIEW bị khóa chỉnh sửa và xóa theo quy tắc.
+- Moderation Case chỉ có OPEN và hai trạng thái kết luận cuối; không có IN_REVIEW hoặc CLOSED.
 - Một đối tượng chỉ có tối đa một Moderation Case đang mở.
 - Một người không Like cùng một bài hai lần.
 - Một người không Save cùng một bài hai lần.

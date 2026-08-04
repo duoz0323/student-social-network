@@ -36,7 +36,6 @@ export default function NotificationsPage() {
   const {
     notifications,
     unreadCount,
-    socketConnected,
     loading,
     loadingMore,
     hasMore,

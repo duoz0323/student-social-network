@@ -20,7 +20,7 @@ export default function OnboardingStep1Name({ displayName, onChange, onNext, err
         <label className="block mb-2 text-sm font-medium text-zinc-800">
           Tên hiển thị
         </label>
-        
+
         {/* Input bọc icon theo đúng mockup */}
         <div className="relative flex items-center">
           <div className="pointer-events-none absolute left-4 text-zinc-400">

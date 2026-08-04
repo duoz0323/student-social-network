@@ -21,8 +21,11 @@ import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
+import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -55,6 +58,7 @@ public class SearchServiceImpl implements SearchService {
     private final UserRepository userRepository;
     private final SearchUserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final PostRepostRepository postRepostRepository;
     private final PostMediaRepository postMediaRepository;
     private final PostHashtagRepository postHashtagRepository;
     private final PostLikeRepository postLikeRepository;
@@ -62,13 +66,15 @@ public class SearchServiceImpl implements SearchService {
     private final SearchPostMapper searchPostMapper;
     private final HashtagNormalizer hashtagNormalizer;
     private final CursorCodec cursorCodec;
+    private final PostLocationBatchLoader postLocationBatchLoader;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
                              SearchUserProfileRepository userProfileRepository, PostRepository postRepository,
                              PostMediaRepository postMediaRepository, PostHashtagRepository postHashtagRepository,
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
+                             PostRepostRepository postRepostRepository,
                              SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer,
-                             CursorCodec cursorCodec) {
+                             CursorCodec cursorCodec, PostLocationBatchLoader postLocationBatchLoader) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -77,9 +83,11 @@ public class SearchServiceImpl implements SearchService {
         this.postHashtagRepository = postHashtagRepository;
         this.postLikeRepository = postLikeRepository;
         this.savedPostRepository = savedPostRepository;
+        this.postRepostRepository = postRepostRepository;
         this.searchPostMapper = searchPostMapper;
         this.hashtagNormalizer = hashtagNormalizer;
         this.cursorCodec = cursorCodec;
+        this.postLocationBatchLoader = postLocationBatchLoader;
     }
 
     @Override
@@ -136,6 +144,8 @@ public class SearchServiceImpl implements SearchService {
         Map<Long, String> hashtagsByPostId = loadHashtags(postIds);
         Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(currentUserId, postIds));
         Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(currentUserId, postIds));
+        Set<Long> repostedPostIds = new HashSet<>(postRepostRepository.findRepostedPostIds(currentUserId, postIds));
+        Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
 
         List<SearchPostResponse> content = posts.stream().map(post -> searchPostMapper.toResponse(
                 post,
@@ -143,7 +153,9 @@ public class SearchServiceImpl implements SearchService {
                 mediaByPostId.getOrDefault(post.getId(), List.of()),
                 hashtagsByPostId.get(post.getId()),
                 likedPostIds.contains(post.getId()),
-                savedPostIds.contains(post.getId())
+                savedPostIds.contains(post.getId()),
+                repostedPostIds.contains(post.getId()),
+                locations.get(post.getId())
         )).toList();
         String nextCursor = hasNext ? createSearchPostCursor(type, normalizedKeyword, posts.getLast()) : null;
         return new CursorPageResponse<>(content, nextCursor, hasNext);

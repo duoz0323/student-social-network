@@ -1,27 +1,7 @@
 import { POST_ENDPOINTS } from './apiEndpoints.js';
 import { httpClient } from './httpClient.js';
 import { compactParams, requestData } from './requestData.js';
-
-function appendValue(formData, key, value) {
-  if (value !== undefined && value !== null && value !== '') formData.append(key, value);
-}
-
-function createPostForm(payload) {
-  const formData = new FormData();
-  appendValue(formData, 'content', payload.content?.trim());
-  appendValue(formData, 'hashtag', payload.hashtag?.trim());
-  for (const file of payload.mediaFiles ?? []) formData.append('mediaFiles', file);
-  return formData;
-}
-
-function updatePostForm(payload) {
-  const formData = new FormData();
-  appendValue(formData, 'content', payload.content?.trim());
-  appendValue(formData, 'hashtag', payload.hashtag?.trim());
-  for (const id of payload.keepMediaIds ?? []) formData.append('keepMediaIds', id);
-  for (const file of payload.newMediaFiles ?? []) formData.append('newMediaFiles', file);
-  return formData;
-}
+import { createPostForm, updatePostForm } from '../features/post/locations/locationMultipart.js';
 
 export const postApi = Object.freeze({
   create: (payload, signal) => requestData(httpClient.post(POST_ENDPOINTS.root, createPostForm(payload), { signal })),
@@ -34,6 +14,8 @@ export const postApi = Object.freeze({
   unlike: (postId, signal) => requestData(httpClient.delete(POST_ENDPOINTS.likes(postId), { signal })),
   save: (postId, signal) => requestData(httpClient.post(POST_ENDPOINTS.saves(postId), undefined, { signal })),
   unsave: (postId, signal) => requestData(httpClient.delete(POST_ENDPOINTS.saves(postId), { signal })),
+  repost: (postId, signal) => requestData(httpClient.put(POST_ENDPOINTS.repost(postId), undefined, { signal })),
+  unrepost: (postId, signal) => requestData(httpClient.delete(POST_ENDPOINTS.repost(postId), { signal })),
   report: (postId, payload, signal) => requestData(httpClient.post(POST_ENDPOINTS.reports(postId), payload, { signal })),
   getComments: (postId, params, signal) => requestData(httpClient.get(POST_ENDPOINTS.comments(postId), { params: compactParams(params), signal })),
   createComment: (postId, content, signal) => requestData(httpClient.post(POST_ENDPOINTS.comments(postId), { content }, { signal })),

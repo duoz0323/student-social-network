@@ -109,13 +109,14 @@ Hiển thị empty state
 ```text
 FEED-01 hoặc sidebar Tạo bài viết
 → POST-02 Modal tạo bài viết
-→ Nhập nội dung tối đa 500 ký tự hoặc chọn ảnh
+→ Nhập nội dung tối đa 500 ký tự hoặc chọn ảnh/video
 → Có thể gắn hashtag
+→ Có thể chọn tối đa một Location từ dữ liệu Google Places phía Frontend
 → Đăng bài
 → Bài xuất hiện trên Feed/Profile nếu PUBLISHED
 ```
 
-Quy tắc: bài phải có nội dung hoặc ít nhất một ảnh; tối đa 4 ảnh; chỉ hỗ trợ JPG, JPEG, PNG, WEBP theo MVP.
+Quy tắc: bài phải có nội dung hoặc ít nhất một media; tổng tối đa 4 media và tối đa một video. Ảnh hỗ trợ JPG/JPEG/PNG/WEBP; video hỗ trợ MP4/WebM, tối đa 100 MB và 3 phút. Location là tùy chọn và không được tính là nội dung bài viết. Frontend gửi `placeId`, `displayName`, `formattedAddress`, `latitude`, `longitude`; Backend dùng lại Location theo Place ID nếu đã tồn tại.
 
 ### 1.5 Xem chi tiết bài viết
 
@@ -134,10 +135,16 @@ Chỉnh sửa:
 ```text
 PostCard của chính mình
 → POST-04 Menu thao tác bài viết
+→ Hiển thị Chỉnh sửa bài viết kèm countdown từ 15:00; tự ẩn hành động khi về 00:00
 → Chỉnh sửa bài viết
+→ Frontend gọi GET /api/v1/posts/{postId} và hiển thị trạng thái tải/lỗi
+→ Dùng Post Detail mới nhất để khởi tạo nội dung, hashtag, media và Location
 → POST-03 Modal chỉnh sửa bài viết
-→ Sửa nội dung/hashtag
-→ Lưu thay đổi
+→ Sửa nội dung; tìm/chọn hashtag bằng cùng bộ gợi ý của form tạo bài
+→ Giữ/gỡ media cũ hoặc thêm ảnh/video mới
+→ Chọn KEEP, REPLACE hoặc REMOVE cho Location
+→ Lưu thay đổi bằng PUT /api/v1/posts/{postId}; khóa form trong lúc gửi
+→ Cập nhật PostCard từ response PUT
 → Quay lại bài viết/feed/profile
 ```
 
@@ -153,7 +160,7 @@ PostCard của chính mình
 → Bài không còn hiển thị trong Feed/Profile/Search thông thường
 ```
 
-Quy tắc: chỉ tác giả được sửa/xóa; sau khi đăng không chỉnh sửa ảnh.
+Quy tắc: chỉ tác giả được sửa/xóa trong giới hạn chỉnh sửa 15 phút. Có thể giữ/gỡ media cũ hoặc thêm ảnh/video mới nhưng tổng tối đa 4 media và tối đa một video. `KEEP` giữ nguyên Location, `REPLACE` chọn Location khác, `REMOVE` gỡ Location; xóa Post không xóa Location dùng chung.
 
 ### 1.7 Like, bình luận và lưu bài
 
@@ -256,7 +263,8 @@ PostCard của người khác hoặc POST-01
 → POST-10 Gửi báo cáo thành công
 ```
 
-Quy tắc: chỉ báo cáo bài viết; một người không có nhiều report PENDING cho cùng một bài; gửi report không tự động ẩn bài.
+Quy tắc: chỉ báo cáo bài viết; mỗi lần gửi giữ một Report độc lập và gắn vào Moderation Case `OPEN`
+của bài. Một người không có nhiều Report trong cùng case `OPEN`; gửi Report không tự động ẩn bài.
 
 ### 1.12 Admin quản lý người dùng
 
@@ -264,9 +272,10 @@ Quy tắc: chỉ báo cáo bài viết; một người không có nhiều report
 Admin đăng nhập
 → ADMIN-02 Quản lý người dùng
 → Tìm kiếm/lọc người dùng
-→ ADMIN-03 Menu thao tác người dùng
-→ Khóa hoặc mở khóa tài khoản
+→ Click một dòng để mở ADMIN-03 Chi tiết người dùng
+→ Khóa hoặc mở khóa tài khoản trong chi tiết
 → Danh sách cập nhật trạng thái ACTIVE/BLOCKED
+→ Biểu đồ trạng thái tài khoản tự làm mới
 ```
 
 Tài khoản BLOCKED không được đăng nhập hoặc dùng chức năng hệ thống.
@@ -278,7 +287,8 @@ Admin đăng nhập
 → ADMIN-04 Quản lý bài viết
 → Tìm kiếm/lọc bài viết
 → Xem trạng thái bài
-→ Ẩn hoặc khôi phục bài viết khi cần
+→ Double-click một dòng để mở chi tiết bài viết
+→ Ẩn bài PUBLISHED sau khi chọn lý do hoặc khôi phục bài HIDDEN tại trang chi tiết
 ```
 
 Chỉ xử lý trạng thái phục vụ MVP: PUBLISHED, HIDDEN, DELETED.
@@ -288,15 +298,32 @@ Chỉ xử lý trạng thái phục vụ MVP: PUBLISHED, HIDDEN, DELETED.
 ```text
 Admin đăng nhập
 → ADMIN-05 Quản lý báo cáo
-→ Mở ADMIN-06 Chi tiết báo cáo
-→ Xem bài bị báo cáo và thông tin báo cáo
-→ Từ chối báo cáo hoặc xác nhận vi phạm
-→ Nếu vi phạm, admin có thể ẩn bài
+→ Danh sách một dòng mỗi Moderation Case
+→ Mở ADMIN-06 Chi tiết hồ sơ kiểm duyệt
+→ Xem bài, thống kê lý do và danh sách Report rút gọn theo người gửi, lý do, mô tả, thời gian
+→ Chọn trực tiếp Không vi phạm hoặc Có vi phạm / Ẩn bài
+→ Nếu có vi phạm, chọn một lý do ẩn bài thuộc enum Backend trong modal
+→ Backend cập nhật case, toàn bộ Report, Admin Action và Notification trong một transaction
 ```
 
-Lịch sử xử lý trong ảnh chỉ nên là lịch sử đơn giản; audit log chi tiết ngoài MVP.
+Không có bước tiếp nhận, trạng thái đang xử lý hoặc trạng thái đóng riêng. Case đã giải quyết chỉ hiển
+thị kết luận và không còn nút xử lý.
 
-### 1.15 Trạng thái hệ thống
+### 1.15 Admin xem thống kê hoạt động người dùng
+
+```text
+Admin đăng nhập
+→ Chọn Thống kê người dùng trên sidebar
+→ ADMIN-07 tải đồng thời thống kê monthly và summary
+→ Chọn khoảng từ tháng/đến tháng tối đa 24 tháng và ngưỡng không hoạt động
+→ Xem bốn KPI, xu hướng số người quay lại/tỷ lệ tái kích hoạt và bảng snapshot tháng kết thúc
+→ Khi lỗi có thể thử lại; khi không có USER đủ điều kiện hiển thị Empty State
+```
+
+Luồng dùng ngày UTC và route `/admin/user-analytics`. Đây là module Analytics riêng, không thêm widget vào
+ADMIN-01 Dashboard và không thay đổi phạm vi Dashboard nâng cao thuộc phát triển tương lai.
+
+### 1.16 Trạng thái hệ thống
 
 ```text
 Không có quyền → SYS-01
@@ -372,10 +399,9 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 
 ### 2.3 Các chức năng tương lai khác
 
-- Discovery Map.
+- Discovery Map, tìm bài theo bán kính, Feed theo Location và trang Location riêng.
 - Feed tùy chỉnh.
 - Follow Request.
-- Repost.
 - Trích dẫn bài viết.
 - Video hoặc tài liệu trong bài viết.
 - Elasticsearch.

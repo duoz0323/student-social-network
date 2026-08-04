@@ -34,7 +34,7 @@ export default function OnboardingStep3Info({
           Thêm thông tin cá nhân
         </h3>
         <p className="text-base text-zinc-500 leading-relaxed">
-          Thông tin này giúp UniShare gợi ý cho bạn những nội dung phù hợp hơn.
+          Ngày sinh bắt buộc — bạn phải đủ 18 tuổi để tham gia UniShare.
         </p>
       </div>
 

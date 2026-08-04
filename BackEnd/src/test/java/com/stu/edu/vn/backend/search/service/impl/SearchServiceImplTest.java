@@ -12,11 +12,13 @@ import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
 import com.stu.edu.vn.backend.post.validation.HashtagNormalizer;
+import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
 import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -45,14 +47,17 @@ class SearchServiceImplTest {
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
     private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
+    private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
+    private final PostLocationBatchLoader postLocationBatchLoader = org.mockito.Mockito.mock(PostLocationBatchLoader.class);
     private SearchServiceImpl searchService;
 
     @BeforeEach
     void setUp() {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
-                postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
-                new HashtagNormalizer(), cursorCodec);
+                postHashtagRepository, postLikeRepository, savedPostRepository, postRepostRepository,
+                new SearchPostMapper(),
+                new HashtagNormalizer(), cursorCodec, postLocationBatchLoader);
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));

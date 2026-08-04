@@ -6,8 +6,11 @@ package com.stu.edu.vn.backend.admin.enums;
 public enum AdminActionType {
     BLOCK_USER,
     UNBLOCK_USER,
+    UPDATE_USER_PROFILE,
     HIDE_POST,
     RESTORE_POST,
     RESOLVE_REPORT,
-    REJECT_REPORT
+    REJECT_REPORT,
+    RESOLVE_MODERATION_CASE,
+    REJECT_MODERATION_CASE
 }

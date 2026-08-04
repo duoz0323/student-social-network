@@ -20,6 +20,13 @@
 - Migration nền: `database/migrations/20260801_add_direct_messaging.sql`.
 - Migration ảnh: `database/migrations/20260803_add_messaging_images.sql`; backfill fingerprint cho text cũ, không sửa migration đã chạy.
 
+## Repost
+
+- `post_reposts` có composite primary key `(user_id, post_id)` để chống trùng tại database.
+- Quan hệ chỉ lưu bài gốc và `created_at`, không sao chép content, media, hashtag hoặc Location.
+- Trigger insert/delete cập nhật atomic `posts.repost_count`; trigger delete dùng `GREATEST(..., 0)`.
+- Index `(user_id, created_at DESC, post_id DESC)` phục vụ Profile Repost keyset.
+
 ## 1. Trạng thái thiết kế Auth 0E
 
 Auth dùng bốn bảng challenge riêng:
@@ -159,4 +166,13 @@ mysql --default-character-set=utf8mb4 -u root -p < database/student_social_netwo
 Sau rebuild, chạy `database/audit_auth_after_rebuild.sql` và integration/concurrency test bằng MySQL/Testcontainers. Hai file `student_social_network_db.sql` và `seed_data.sql` vẫn là nguồn thành phần để bảo trì schema và seed; người dùng thông thường không cần import riêng từng file.
 
 Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc rebuild database thật.
+
+## 12. Moderation Case
+
+- `moderation_cases` có quan hệ N-1 với `posts`; `reports.moderation_case_id` tham chiếu case.
+- Generated key `open_post_key` cùng unique index bảo đảm tối đa một case `OPEN` mỗi Post.
+- `report_count`, `first_reported_at`, `latest_reported_at` được cập nhật trong cùng transaction tạo Report.
+- Migration `V003__add_moderation_cases.sql` dừng trước khi backfill nếu Report legacy không thể map an toàn.
+- Backfill giữ nguyên reporter, reason, description và snapshot; không gộp dữ liệu thành CSV/JSON.
+- Report `PENDING` thuộc case `OPEN`; case không vi phạm chuyển Report sang `REJECTED`, case có hành động chuyển sang `RESOLVED`.
 
