@@ -420,9 +420,15 @@ export default function PostCard({
         </button>
         {post.location && (
           <a href={googleMapsLocationUrl(post.location)} target="_blank" rel="noopener noreferrer"
-            className="mt-2 flex max-w-full items-center gap-1 text-sm text-[var(--app-muted)] hover:text-[var(--app-brand)] hover:underline">
-            <span aria-hidden="true">📍</span>
-            <span className="truncate">{post.location.displayName}</span>
+            className="mt-2 inline-flex max-w-full items-center gap-2 rounded-lg py-0.5 pr-2 text-sm text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]">
+            {/* Dùng cùng nét icon với phần chọn địa điểm, chỉ thu nhỏ để hợp với bố cục bài đăng. */}
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--app-brand)_10%,var(--app-surface))] text-[var(--app-brand)]" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+            </span>
+            <span className="min-w-0 truncate font-medium">{post.location.displayName}</span>
           </a>
         )}
         {/* Media nằm ngoài nút điều hướng để controls của video có thể tương tác độc lập. */}

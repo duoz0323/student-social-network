@@ -18,6 +18,15 @@ function MediaToolIcon() {
   );
 }
 
+function LocationToolIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
 function readVideoDuration(url) {
   // Trình duyệt chỉ đọc metadata để kiểm tra UX; Backend vẫn là nơi quyết định cuối cùng.
   return new Promise((resolve) => {
@@ -255,7 +264,9 @@ export default function PostComposer({ mode, onClose }) {
         />
         <button type="button" onClick={() => setLocationPickerOpen((open) => !open)}
           className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
-          title="Gắn địa điểm" aria-label="Gắn địa điểm">📍</button>
+          title="Gắn địa điểm" aria-label="Gắn địa điểm">
+          <LocationToolIcon />
+        </button>
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-[var(--app-muted)]">{content.length}/500</span>

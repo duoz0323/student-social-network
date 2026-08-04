@@ -5,10 +5,16 @@ import { X } from 'lucide-react';
 export default function Modal({ open, title, customHeader, children, footer, footerClassName, bodyClassName, className, onClose, size = 'md' }) {
   const titleId = useId();
   const dialogRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  // Giữ callback mới nhất mà không chạy lại hiệu ứng focus khi nội dung form thay đổi.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     function closeByEscape(event) {
-      if (event.key === 'Escape') onClose?.();
+      if (event.key === 'Escape') onCloseRef.current?.();
     }
 
     if (open) {
@@ -27,7 +33,7 @@ export default function Modal({ open, title, customHeader, children, footer, foo
     }
 
     return undefined;
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 
