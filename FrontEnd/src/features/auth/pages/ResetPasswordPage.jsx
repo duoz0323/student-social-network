@@ -37,5 +37,5 @@ export default function ResetPasswordPage() {
     recovery.clearError();
   }
 
-  return <AuthEntryLayout><NewPasswordForm onSubmit={complete} onFieldChange={clearFieldError} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthEntryLayout>;
+  return <AuthEntryLayout title="Đặt lại mật khẩu"><NewPasswordForm onSubmit={complete} onFieldChange={clearFieldError} disabled={recovery.isSubmitting} error={recovery.error} fieldErrors={{ ...recovery.fieldErrors, ...localErrors }} /></AuthEntryLayout>;
 }

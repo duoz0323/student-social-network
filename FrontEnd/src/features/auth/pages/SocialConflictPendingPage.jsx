@@ -34,7 +34,7 @@ export default function SocialConflictPendingPage() {
 
   if (!socialConflict.conflict) return null;
   return (
-    <AuthEntryLayout>
+    <AuthEntryLayout title="Liên kết tài khoản">
       <SocialConflictCard
         conflict={socialConflict.conflict}
         isResolving={socialConflict.isResolving}

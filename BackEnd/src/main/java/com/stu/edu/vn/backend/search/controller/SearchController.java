@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.search.controller;
 
 import com.stu.edu.vn.backend.common.api.ApiResponse;
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -44,16 +45,23 @@ public class SearchController {
     }
 
     @GetMapping("/posts")
-    public ResponseEntity<ApiResponse<PageResponse<SearchPostResponse>>> searchPosts(
+    public ResponseEntity<ApiResponse<CursorPageResponse<SearchPostResponse>>> searchPosts(
             @RequestParam(value = "q", required = false) String keyword,
             @RequestParam(value = "type", required = false) SearchPostType type,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(20) int limit
     ) {
-        validatePagination(page, size);
+        validateCursorLimit(limit);
         // Client phải truyền type rõ ràng; Service không suy luận CONTENT/HASHTAG từ ký tự #.
-        PageResponse<SearchPostResponse> response = searchService.searchPosts(keyword, type, page, size);
+        CursorPageResponse<SearchPostResponse> response = searchService.searchPosts(keyword, type, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success("Tìm kiếm bài viết thành công", response));
+    }
+
+    private void validateCursorLimit(int limit) {
+        // Search Post dùng cùng giới hạn cursor với các danh sách bài viết Infinite Scroll.
+        if (limit < 1 || limit > 20) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
     }
 
     private void validatePagination(int page, int size) {

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test src/features/post/hooks/postListCache.test.js src/features/profile/utils/userBlockState.test.js src/features/profile/utils/followListState.test.js src/features/notification/utils/notificationState.test.js src/config/realtimeSocketCore.test.js",
+    "test": "node --test src/features/post/hooks/postListCache.test.js src/features/profile/utils/userBlockState.test.js src/features/profile/utils/followListState.test.js src/features/notification/utils/notificationState.test.js src/features/messaging/utils/messagingState.test.js src/features/messaging/utils/messageImages.test.js src/features/messaging/utils/messageTime.test.js src/features/messaging/utils/typingState.test.js src/features/search/utils/searchSuggestionNavigation.test.js src/config/realtimeSocketCore.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

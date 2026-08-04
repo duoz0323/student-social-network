@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, SearchX, ShieldAlert, ServerCrash, AlertTriangle } from 'lucide-react';
-import logo from '../../../assets/brand/logo.png';
+import useThemeLogo from '../../../hooks/useThemeLogo.js';
 import Button from '../../../components/common/Button.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 
 export default function ErrorPage({ code, title, description }) {
+  const logo = useThemeLogo();
   const navigate = useNavigate();
   const { currentUser } = useApp();
 
@@ -28,9 +29,7 @@ export default function ErrorPage({ code, title, description }) {
       <div className="w-full max-w-md flex flex-col items-center z-10">
         {/* Top Logo */}
         <div className="flex items-center gap-2 mb-12 sm:mb-16 animate-slide-up">
-          <div className="bg-black dark:bg-white rounded-xl p-1.5 shadow-sm">
-            <img src={logo} alt="UniShare" className="h-6 w-6 object-contain invert dark:invert-0" />
-          </div>
+          <img src={logo} alt="UniShare" className="h-8 w-8 rounded-xl object-cover shadow-sm" />
           <span className="text-xl font-extrabold tracking-tight text-[var(--app-text)]">UniShare</span>
         </div>
 

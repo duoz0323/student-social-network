@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.common.cursor.CursorCodec;
+import com.stu.edu.vn.backend.search.cursor.SearchContentCursor;
 import com.stu.edu.vn.backend.post.entity.Hashtag;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostHashtag;
@@ -33,11 +35,13 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.ObjectMapper;
 
 class SearchPostServiceImplTest {
+
+    private static final LocalDateTime FIRST_PAGE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
     private final CurrentUserProvider currentUserProvider = org.mockito.Mockito.mock(CurrentUserProvider.class);
     private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
@@ -47,6 +51,7 @@ class SearchPostServiceImplTest {
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
+    private final CursorCodec cursorCodec = new CursorCodec(new ObjectMapper());
     private SearchServiceImpl searchService;
 
     @BeforeEach
@@ -54,7 +59,7 @@ class SearchPostServiceImplTest {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
                 postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
-                new HashtagNormalizer());
+                new HashtagNormalizer(), cursorCodec);
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));
@@ -68,10 +73,11 @@ class SearchPostServiceImplTest {
         PostMedia second = media(post, 2L, 1);
         PostMedia first = media(post, 1L, 0);
         Hashtag hashtag = hashtag(50L, "java");
-        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest fetchLimit = PageRequest.of(0, 21);
 
-        when(postRepository.searchPublishedPostsByContent("Học Java", 10L, pageable))
-                .thenReturn(new PageImpl<>(List.of(post), pageable, 1));
+        when(postRepository.searchPublishedPostsByContentAfter(
+                "Học Java", 10L, null, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of(post));
         when(userProfileRepository.findAllById(List.of(20L))).thenReturn(List.of(authorProfile));
         when(postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(100L)))
                 .thenReturn(List.of(first, second));
@@ -80,7 +86,7 @@ class SearchPostServiceImplTest {
         when(postLikeRepository.findLikedPostIds(10L, List.of(100L))).thenReturn(List.of(100L));
         when(savedPostRepository.findSavedPostIds(10L, List.of(100L))).thenReturn(List.of(100L));
 
-        var response = searchService.searchPosts("  Học Java  ", SearchPostType.CONTENT, 0, 20);
+        var response = searchService.searchPosts("  Học Java  ", SearchPostType.CONTENT, null, 20);
 
         assertThat(response.content()).hasSize(1);
         var item = response.content().getFirst();
@@ -100,37 +106,38 @@ class SearchPostServiceImplTest {
 
     @Test
     void hashtagSearchNormalizesLeadingHashesAndLocaleRootLowercase() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(postRepository.searchPublishedPostsByHashtag("sinhvien", 10L, pageable))
-                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        when(postRepository.searchPublishedPostsByHashtag("java", 10L, pageable))
-                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        when(postRepository.searchPublishedPostsByHashtag("hoctap", 10L, pageable))
-                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+        PageRequest fetchLimit = PageRequest.of(0, 21);
+        when(postRepository.searchPublishedPostsByHashtagAfter("sinhvien", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of());
+        when(postRepository.searchPublishedPostsByHashtagAfter("java", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of());
+        when(postRepository.searchPublishedPostsByHashtagAfter("hoctap", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of());
 
-        searchService.searchPosts("#SinhVien", SearchPostType.HASHTAG, 0, 20);
-        searchService.searchPosts(" #Java ", SearchPostType.HASHTAG, 0, 20);
-        searchService.searchPosts("###HocTap", SearchPostType.HASHTAG, 0, 20);
+        searchService.searchPosts("#SinhVien", SearchPostType.HASHTAG, null, 20);
+        searchService.searchPosts(" #Java ", SearchPostType.HASHTAG, null, 20);
+        searchService.searchPosts("###HocTap", SearchPostType.HASHTAG, null, 20);
 
-        verify(postRepository).searchPublishedPostsByHashtag("sinhvien", 10L, pageable);
-        verify(postRepository).searchPublishedPostsByHashtag("java", 10L, pageable);
-        verify(postRepository).searchPublishedPostsByHashtag("hoctap", 10L, pageable);
+        verify(postRepository).searchPublishedPostsByHashtagAfter("sinhvien", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit);
+        verify(postRepository).searchPublishedPostsByHashtagAfter("java", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit);
+        verify(postRepository).searchPublishedPostsByHashtagAfter("hoctap", 10L, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit);
     }
 
     @Test
     void invalidHashtagIsRejectedBeforeRepositoryQuery() {
-        assertError(() -> searchService.searchPosts("###", SearchPostType.HASHTAG, 0, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
-        assertError(() -> searchService.searchPosts("#java!", SearchPostType.HASHTAG, 0, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
-        verify(postRepository, never()).searchPublishedPostsByHashtag(any(), any(), any());
+        assertError(() -> searchService.searchPosts("###", SearchPostType.HASHTAG, null, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
+        assertError(() -> searchService.searchPosts("#java!", SearchPostType.HASHTAG, null, 20), ErrorCode.SEARCH_HASHTAG_INVALID);
+        verify(postRepository, never()).searchPublishedPostsByHashtagAfter(any(), any(), any(), any(), any());
     }
 
     @Test
     void emptyPageSkipsAllBatchQueries() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(postRepository.searchPublishedPostsByContent("java", 10L, pageable))
-                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+        PageRequest fetchLimit = PageRequest.of(0, 21);
+        when(postRepository.searchPublishedPostsByContentAfter(
+                "java", 10L, null, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of());
 
-        var response = searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20);
+        var response = searchService.searchPosts("java", SearchPostType.CONTENT, null, 20);
 
         assertThat(response.content()).isEmpty();
         verify(userProfileRepository, never()).findAllById(any());
@@ -142,20 +149,60 @@ class SearchPostServiceImplTest {
 
     @Test
     void commonKeywordAndCurrentUserPreconditionsApplyToPostSearch() {
-        assertError(() -> searchService.searchPosts(null, SearchPostType.CONTENT, 0, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
-        assertError(() -> searchService.searchPosts("   ", SearchPostType.CONTENT, 0, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
-        assertError(() -> searchService.searchPosts("a".repeat(101), SearchPostType.CONTENT, 0, 20), ErrorCode.SEARCH_KEYWORD_TOO_LONG);
-        assertError(() -> searchService.searchPosts("java", null, 0, 20), ErrorCode.VALIDATION_ERROR);
+        assertError(() -> searchService.searchPosts(null, SearchPostType.CONTENT, null, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
+        assertError(() -> searchService.searchPosts("   ", SearchPostType.CONTENT, null, 20), ErrorCode.SEARCH_KEYWORD_REQUIRED);
+        assertError(() -> searchService.searchPosts("a".repeat(101), SearchPostType.CONTENT, null, 20), ErrorCode.SEARCH_KEYWORD_TOO_LONG);
+        assertError(() -> searchService.searchPosts("java", null, null, 20), ErrorCode.VALIDATION_ERROR);
+        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, null, 21), ErrorCode.VALIDATION_ERROR);
 
         when(userRepository.findById(10L)).thenReturn(Optional.empty());
-        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20), ErrorCode.USER_NOT_FOUND);
+        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, null, 20), ErrorCode.USER_NOT_FOUND);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.BLOCKED)));
-        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20), ErrorCode.USER_BLOCKED);
+        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, null, 20), ErrorCode.USER_BLOCKED);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.empty());
-        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20), ErrorCode.PROFILE_NOT_FOUND);
+        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, null, 20), ErrorCode.PROFILE_NOT_FOUND);
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current", false)));
-        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20), ErrorCode.PROFILE_NOT_COMPLETED);
+        assertError(() -> searchService.searchPosts("java", SearchPostType.CONTENT, null, 20), ErrorCode.PROFILE_NOT_COMPLETED);
+    }
+
+    @Test
+    void contentSearchCreatesStableCursorFromLastVisiblePost() {
+        User author = user(20L, UserStatus.ACTIVE);
+        Post first = post(100L, author, "Java one");
+        Post lookahead = post(99L, author, "Java two");
+        PageRequest fetchLimit = PageRequest.of(0, 2);
+        when(postRepository.searchPublishedPostsByContentAfter(
+                "java", 10L, null, FIRST_PAGE_TIME, Long.MAX_VALUE, fetchLimit))
+                .thenReturn(List.of(first, lookahead));
+        when(userProfileRepository.findAllById(List.of(20L))).thenReturn(List.of(profile(20L, "Minh", true)));
+        when(postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(100L))).thenReturn(List.of());
+        when(postHashtagRepository.findWithHashtagByPostIds(List.of(100L))).thenReturn(List.of());
+        when(postLikeRepository.findLikedPostIds(10L, List.of(100L))).thenReturn(List.of());
+        when(savedPostRepository.findSavedPostIds(10L, List.of(100L))).thenReturn(List.of());
+        when(postRepository.findContentSearchRelevance(100L, "java")).thenReturn(Optional.of(1.25));
+
+        var response = searchService.searchPosts("java", SearchPostType.CONTENT, null, 1);
+        SearchContentCursor cursor = cursorCodec.decode(response.nextCursor(), SearchContentCursor.class);
+
+        assertThat(response.content()).extracting("postId").containsExactly(100L);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(cursor.keyword()).isEqualTo("java");
+        assertThat(cursor.relevance()).isEqualTo(1.25);
+        assertThat(cursor.postId()).isEqualTo(100L);
+    }
+
+    @Test
+    void cursorFromAnotherKeywordIsRejected() {
+        String cursor = cursorCodec.encode(new SearchContentCursor(
+                "spring", 1.25, LocalDateTime.of(2026, 7, 13, 1, 0), 100L));
+
+        assertError(
+                () -> searchService.searchPosts("java", SearchPostType.CONTENT, cursor, 10),
+                ErrorCode.INVALID_CURSOR
+        );
+        verify(postRepository, never()).searchPublishedPostsByContentAfter(
+                any(), any(), any(), any(), any(), any());
     }
 
     private void assertError(Runnable action, ErrorCode code) {

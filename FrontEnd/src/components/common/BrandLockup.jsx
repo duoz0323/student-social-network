@@ -1,9 +1,10 @@
-import logo from '../../assets/brand/logo-transparent.png';
+import useThemeLogo from '../../hooks/useThemeLogo.js';
 
 /**
- * Cụm nhận diện sử dụng logo gốc đã loại khoảng trắng thừa, không biến đổi hình học hoặc màu sắc.
+ * Cụm nhận diện thương hiệu UniShare – tự động chuyển logo theo theme sáng/tối.
  */
 export default function BrandLockup({ compact = false, className = '' }) {
+  const logo = useThemeLogo();
   return (
     <span className={`brand-lockup ${compact ? 'brand-lockup--compact' : ''} ${className}`}>
       <span className="brand-mark" aria-hidden="true">

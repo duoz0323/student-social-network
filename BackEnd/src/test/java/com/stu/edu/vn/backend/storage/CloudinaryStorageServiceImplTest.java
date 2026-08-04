@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.storage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.cloudinary.Cloudinary;
@@ -11,6 +12,7 @@ import com.cloudinary.Url;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,5 +112,25 @@ class CloudinaryStorageServiceImplTest {
         assertThat(result.url()).isEqualTo("https://cdn.example/avatar.png");
         assertThat(result.publicId()).isEqualTo("student-social-network/avatars/avatar-id");
         assertThat(result.mimeType()).isNull();
+    }
+
+    @Test
+    void createsSignedAuthenticatedMessageUrlWithoutSeparateAuthTokenKey() {
+        properties.setMessageAccessTtl(Duration.ofMinutes(5));
+        when(cloudinary.apiSignRequest(any(Map.class), eq("demo-secret"))).thenReturn("signed-value");
+        when(cloudinary.cloudinaryApiUrl(eq("download"), any(Map.class)))
+                .thenReturn("https://api.cloudinary.com/v1_1/demo-cloud/image/download");
+
+        CloudinaryAccessResult result = storageService.createMessageImageAccess(
+                "student-social-network/messages/message-id", "image/jpeg");
+
+        assertThat(result.url()).contains("/image/download?")
+                .contains("public_id=student-social-network%2Fmessages%2Fmessage-id")
+                .contains("format=jpg")
+                .contains("type=authenticated")
+                .contains("expires_at=")
+                .contains("signature=signed-value")
+                .contains("api_key=demo-key");
+        assertThat(result.expiresAt()).isAfter(java.time.OffsetDateTime.now().plusMinutes(4));
     }
 }

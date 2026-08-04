@@ -16,6 +16,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserBlockRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
+import com.stu.edu.vn.backend.user.service.UserPairLockCoordinator;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,13 +32,15 @@ class UserBlockServiceImplTest {
     private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final UserRestrictionRepository userRestrictionRepository =
             org.mockito.Mockito.mock(UserRestrictionRepository.class);
+    private final UserPairLockCoordinator userPairLockCoordinator =
+            org.mockito.Mockito.mock(UserPairLockCoordinator.class);
     private UserBlockServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new UserBlockServiceImpl(
                 currentUserProvider, userRepository, userBlockRepository, followRepository,
-                userRestrictionRepository);
+                userRestrictionRepository, userPairLockCoordinator);
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userRepository.findById(20L)).thenReturn(Optional.of(user(20L, UserStatus.ACTIVE)));
@@ -62,6 +65,7 @@ class UserBlockServiceImplTest {
 
         assertThat(response).isEqualTo(new UserBlockStatusResponse(20L, true));
         verify(userBlockRepository).insertIfAbsent(10L, 20L);
+        verify(userPairLockCoordinator).lockPair(10L, 20L);
         verify(followRepository).deleteFollow(10L, 20L);
         verify(followRepository).deleteFollow(20L, 10L);
     }

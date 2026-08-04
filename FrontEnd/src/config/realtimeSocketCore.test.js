@@ -4,6 +4,7 @@ import { createRealtimeConnectionManager, toWebSocketUrl } from './realtimeSocke
 
 const NOTIFICATIONS = '/user/queue/notifications';
 const MESSAGING = '/user/queue/messaging';
+const TYPING = '/app/messaging/typing';
 
 class FakeClient {
   static instances = [];
@@ -15,6 +16,7 @@ class FakeClient {
     this.subscriptions = [];
     this.activateCount = 0;
     this.deactivateCount = 0;
+    this.publishedFrames = [];
     FakeClient.instances.push(this);
   }
 
@@ -42,6 +44,10 @@ class FakeClient {
     };
     this.subscriptions.push(subscription);
     return subscription;
+  }
+
+  publish(frame) {
+    this.publishedFrames.push(frame);
   }
 }
 
@@ -195,4 +201,19 @@ test('logout hoặc session clear deactivate connection nhưng giữ registry ch
   await manager.whenIdle();
   assert.equal(manager.isActive(), true);
   assert.equal(FakeClient.instances[0].subscriptions.length, 2);
+});
+
+test('chỉ SEND typing khi connection đang hoạt động và không tạo client thứ hai', async () => {
+  const manager = createFixture();
+  assert.equal(manager.send(TYPING, { conversationId: 15, typing: true }), false);
+  manager.activate();
+  await manager.whenIdle();
+
+  assert.equal(manager.send(TYPING, { conversationId: 15, typing: true }), true);
+  assert.deepEqual(FakeClient.instances[0].publishedFrames, [{
+    destination: TYPING,
+    body: '{"conversationId":15,"typing":true}',
+  }]);
+  assert.equal(FakeClient.instances.length, 1);
+  assert.throws(() => manager.send('/app/notifications', {}), TypeError);
 });

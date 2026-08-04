@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.storage;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import java.time.Duration;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,8 @@ public class CloudinaryProperties {
     private String apiSecret;
     private String avatarFolder = "student-social-network/avatars";
     private String postFolder = "student-social-network/posts";
+    private String messageFolder = "student-social-network/messages";
+    private Duration messageAccessTtl = Duration.ofMinutes(5);
 
     public boolean isConfigured() {
         return hasText(cloudName) && hasText(apiKey) && hasText(apiSecret);

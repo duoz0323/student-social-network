@@ -1,4 +1,4 @@
-import logo from '../../assets/brand/logo.png';
+import useThemeLogo from '../../hooks/useThemeLogo.js';
 
 const SIZES = {
   sm: { frame: 'h-5 w-5', logo: 'h-3 w-3', ring: 'border' },
@@ -8,13 +8,14 @@ const SIZES = {
 
 /** Loading dùng logo chính thức để mọi màn hình giữ cùng nhận diện UniShare. */
 export default function LogoLoader({ message = 'Đang tải...', size = 'md', fullScreen = false, className = '' }) {
+  const logo = useThemeLogo();
   const styles = SIZES[size] ?? SIZES.md;
   const loader = (
     <div className={`flex items-center justify-center ${size === 'sm' ? 'gap-2' : 'flex-col gap-3'} ${className}`} role="status" aria-live="polite">
       <span className={`relative flex shrink-0 items-center justify-center ${styles.frame}`} aria-hidden="true">
         <span className={`absolute inset-0 animate-spin rounded-full ${styles.ring} border-transparent border-t-[var(--app-brand)] border-r-violet-500`} />
         <span className="absolute inset-[12%] animate-pulse rounded-full bg-violet-500/10" />
-        <span className="absolute inset-[18%] flex items-center justify-center rounded-full bg-[var(--app-control-bg)] shadow-sm">
+        <span className="absolute inset-[18%] flex items-center justify-center rounded-full overflow-hidden shadow-sm">
           <img src={logo} alt="" className={`brand-logo ${styles.logo} object-contain`} />
         </span>
       </span>

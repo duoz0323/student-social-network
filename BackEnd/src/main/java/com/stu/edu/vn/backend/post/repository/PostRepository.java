@@ -6,7 +6,6 @@ import com.stu.edu.vn.backend.post.repository.projection.PostInteractionTargetPr
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -152,8 +151,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /**
      * Tìm nội dung bằng FULLTEXT MySQL nhưng chỉ trả bài công khai của tác giả đang hoạt động và đã hoàn tất hồ sơ.
      */
-    @Query(
-            value = """
+    @Query(value = """
                     SELECT p.*
                     FROM posts p
                     JOIN users u ON u.id = p.author_id
@@ -168,39 +166,39 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                              OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
                       )
                       AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
+                      AND (
+                          :cursorRelevance IS NULL
+                          OR MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) < :cursorRelevance
+                          OR (MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) = :cursorRelevance
+                              AND p.published_at < :cursorTime)
+                          OR (MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) = :cursorRelevance
+                              AND p.published_at = :cursorTime AND p.id < :cursorPostId)
+                      )
                     ORDER BY MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) DESC,
                              p.published_at DESC,
                              p.id DESC
-                    """,
-            countQuery = """
-                    SELECT COUNT(*)
-                    FROM posts p
-                    JOIN users u ON u.id = p.author_id
-                    JOIN user_profiles up ON up.user_id = p.author_id
-                    WHERE p.status = 'PUBLISHED'
-                      AND u.status = 'ACTIVE'
-                      AND up.profile_completed_at IS NOT NULL
-                      AND p.content IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM user_blocks ub
-                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
-                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
-                      )
-                      AND MATCH(p.content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
-                    """,
-            nativeQuery = true
-    )
-    Page<Post> searchPublishedPostsByContent(
+                    """, nativeQuery = true)
+    List<Post> searchPublishedPostsByContentAfter(
             @Param("keyword") String keyword,
             @Param("viewerId") Long viewerId,
-            Pageable pageable
+            @Param("cursorRelevance") Double cursorRelevance,
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
+    );
+
+    /** Đọc đúng điểm FULLTEXT của bài cuối trang để tạo cursor opaque cho trang kế tiếp. */
+    @Query(value = "SELECT MATCH(content) AGAINST (:keyword IN NATURAL LANGUAGE MODE) FROM posts WHERE id = :postId",
+            nativeQuery = true)
+    Optional<Double> findContentSearchRelevance(
+            @Param("postId") Long postId,
+            @Param("keyword") String keyword
     );
 
     /**
      * Tìm bài theo exact normalized hashtag, không join collection hiển thị để pagination và totalElements luôn chính xác.
      */
-    @Query(
-            value = """
+    @Query(value = """
                     SELECT p.*
                     FROM posts p
                     JOIN users u ON u.id = p.author_id
@@ -216,31 +214,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                              OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
                       )
                       AND h.normalized_name = :normalizedName
+                      AND (p.published_at < :cursorTime
+                           OR (p.published_at = :cursorTime AND p.id < :cursorPostId))
                     ORDER BY p.published_at DESC, p.id DESC
-                    """,
-            countQuery = """
-                    SELECT COUNT(*)
-                    FROM posts p
-                    JOIN users u ON u.id = p.author_id
-                    JOIN user_profiles up ON up.user_id = p.author_id
-                    JOIN post_hashtags ph ON ph.post_id = p.id
-                    JOIN hashtags h ON h.id = ph.hashtag_id
-                    WHERE p.status = 'PUBLISHED'
-                      AND u.status = 'ACTIVE'
-                      AND up.profile_completed_at IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM user_blocks ub
-                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
-                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
-                      )
-                      AND h.normalized_name = :normalizedName
-                    """,
-            nativeQuery = true
-    )
-    Page<Post> searchPublishedPostsByHashtag(
+                    """, nativeQuery = true)
+    List<Post> searchPublishedPostsByHashtagAfter(
             @Param("normalizedName") String normalizedName,
             @Param("viewerId") Long viewerId,
-            Pageable pageable
+            @Param("cursorTime") LocalDateTime cursorTime,
+            @Param("cursorPostId") Long cursorPostId,
+            Pageable limit
     );
 
     // Tìm bài theo id và trạng thái để loại bài HIDDEN/DELETED khỏi truy vấn thông thường.

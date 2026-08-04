@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
@@ -28,26 +28,59 @@ function toViewUser(user) {
 
 export function AppProvider({ children }) {
   const auth = useAuth();
-  // Context chỉ giữ snapshot dùng chung cho tương tác và hồ sơ; các danh sách Post tự tải qua service chuyên biệt.
+  // Context giữ snapshot dùng chung; tự động đồng bộ profile của tài khoản thật khi đã đăng nhập.
   const [data, setData] = useState(() => initialData);
+  const [myProfile, setMyProfile] = useState(null);
   const [toast, setToast] = useState(null);
   const [userRelationshipRevision, setUserRelationshipRevision] = useState(0);
   const createPostInFlightRef = useRef(false);
   const currentUserId = auth.user?.id ?? null;
 
+  const refreshMyProfile = useCallback(async () => {
+    if (!currentUserId || !auth.profileCompleted) {
+      setMyProfile(null);
+      return null;
+    }
+    try {
+      const profile = await socialApi.getMyProfile();
+      if (profile) {
+        setMyProfile({
+          id: profile.userId ?? profile.id ?? currentUserId,
+          displayName: profile.displayName ?? '',
+          avatarUrl: profile.avatarUrl ?? '',
+          birthDate: profile.dateOfBirth ?? profile.birthDate ?? null,
+          bio: profile.bio ?? '',
+          profileCompletedAt: profile.profileCompletedAt ?? null,
+        });
+      }
+      return profile;
+    } catch {
+      return null;
+    }
+  }, [currentUserId, auth.profileCompleted]);
+
+  useEffect(() => {
+    if (currentUserId && auth.profileCompleted) {
+      void refreshMyProfile();
+    } else {
+      setMyProfile(null);
+    }
+  }, [currentUserId, auth.profileCompleted, refreshMyProfile]);
+
   const currentUser = useMemo(() => {
     const knownUser = toViewUser(data.users.find((user) => String(user.id) === String(currentUserId)));
-    return knownUser ?? {
+    const authUser = auth.user;
+    return {
       id: currentUserId,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: 'Người dùng UniShare',
-      avatarUrl: '',
-      birthDate: null,
-      bio: '',
-      profileCompletedAt: auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null,
+      displayName: myProfile?.displayName || authUser?.displayName || knownUser?.displayName || 'Người dùng UniShare',
+      avatarUrl: myProfile?.avatarUrl ?? authUser?.avatarUrl ?? knownUser?.avatarUrl ?? '',
+      birthDate: myProfile?.birthDate ?? authUser?.birthDate ?? knownUser?.birthDate ?? null,
+      bio: myProfile?.bio ?? authUser?.bio ?? knownUser?.bio ?? '',
+      profileCompletedAt: myProfile?.profileCompletedAt ?? (auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null),
     };
-  }, [auth.profileCompleted, auth.role, currentUserId, data.users]);
+  }, [auth.profileCompleted, auth.role, auth.user, currentUserId, data.users, myProfile]);
 
   const value = useMemo(() => {
     const users = data.users.map(toViewUser);
@@ -63,7 +96,6 @@ export function AppProvider({ children }) {
     }
 
     async function createPost(payload) {
-      // Lớp phòng vệ thứ hai: không cho bất kỳ composer nào gửi thêm POST khi request trước chưa kết thúc.
       if (createPostInFlightRef.current) {
         return { ok: false, message: 'Bài viết đang được đăng. Vui lòng chờ trong giây lát.' };
       }
@@ -152,7 +184,6 @@ export function AppProvider({ children }) {
     }
 
     async function toggleFollow(targetUserId, followedByCurrentUser) {
-      // Danh sách Follow API truyền trạng thái authoritative; snapshot dùng chung chỉ là fallback.
       const following = resolveCurrentFollowState(
         followedByCurrentUser,
         data.follows,
@@ -171,19 +202,16 @@ export function AppProvider({ children }) {
     }
 
     function invalidateUserRelationshipData() {
-      // Revision buộc các màn hình giữ state cục bộ như Post Detail/Comment tải lại từ Backend.
       invalidateUserBlockCaches();
       setUserRelationshipRevision((revision) => revision + 1);
     }
 
     function applyUserBlock(targetUserId) {
-      // Một điểm cập nhật chung loại dữ liệu bị chặn khỏi Context và cache cursor liên quan.
       invalidateUserRelationshipData();
       setData((previous) => removeBlockedUserFromState(previous, currentUserId, targetUserId));
     }
 
     function showToast(message, type = 'success') {
-      // Toast đặt tại Provider để không biến mất khi thao tác Block điều hướng sang route khác.
       setToast({ message, type });
     }
 
@@ -193,6 +221,13 @@ export function AppProvider({ children }) {
         dateOfBirth: payload.dateOfBirth ?? payload.birthDate,
         bio: payload.bio,
       });
+      setMyProfile((current) => ({
+        ...(current ?? {}),
+        id: currentUserId,
+        displayName: response.displayName ?? payload.displayName,
+        bio: response.bio ?? payload.bio ?? '',
+        birthDate: response.dateOfBirth ?? payload.dateOfBirth ?? payload.birthDate ?? null,
+      }));
       setData((previous) => ({
         ...previous,
         users: previous.users.map((user) => String(user.id) === String(currentUserId)
@@ -248,10 +283,10 @@ export function AppProvider({ children }) {
       publicPosts, getUserById, getPostById,
       logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
       deleteComment, toggleFollow, applyUserBlock, invalidateUserRelationshipData,
-      showToast, updateProfile, submitReport,
+      showToast, updateProfile, refreshMyProfile, submitReport,
       setUserStatus, setPostStatus, setReportStatus,
     };
-  }, [auth.logout, currentUser, currentUserId, data, userRelationshipRevision]);
+  }, [auth.logout, currentUser, currentUserId, data, refreshMyProfile, userRelationshipRevision]);
 
   return (
     <AppContext.Provider value={value}>

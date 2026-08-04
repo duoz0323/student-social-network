@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   BookOpen,
   Bookmark,
@@ -13,7 +14,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import logo from '../../../assets/brand/logo.png';
+import logo from '../../../assets/brand/logo-dark.jpg';
 import studySpaceImg from '../../../assets/images/study_space.jpg';
 import avatarMinhAnh from '../../../assets/images/avatar_minh_anh.jpg';
 import avatarHoangNam from '../../../assets/images/avatar_hoang_nam.jpg';
@@ -58,19 +59,6 @@ function SocialPreview() {
         </div>
       </div>
 
-      {/* Bài viết phụ 1 – Hoàng Nam */}
-      <div className="auth-preview-card auth-preview-card--delay-one absolute right-1 top-2 w-[32%] rounded-[16px] border p-3.5" style={{ '--auth-card-rotation': '3deg', background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)', boxShadow: 'var(--auth-card-shadow)' }}>
-        <div className="mb-2 flex items-center gap-2">
-          <img src={avatarHoangNam} alt="" className="h-7 w-7 rounded-full object-cover" />
-          <div>
-            <p className="text-[11px] font-bold text-zinc-800">Hoàng Nam</p>
-            <p className="text-[9px] text-zinc-400">5 giờ</p>
-          </div>
-        </div>
-        <p className="text-[10px] font-medium leading-4 text-zinc-700">Tìm team làm đồ án môn Web</p>
-        <p className="mt-1 text-[10px] font-semibold text-zinc-950">#timteam</p>
-        <div className="mt-3 flex gap-3 text-[10px] text-zinc-400"><span className="flex items-center gap-1"><Heart size={13} />15</span><span className="flex items-center gap-1"><MessageCircle size={13} />3</span></div>
-      </div>
 
       {/* Bài viết phụ 2 – Trà My */}
       <div className="auth-preview-card auth-preview-card--delay-two absolute right-0 top-[175px] w-[34%] rounded-[16px] border p-3.5" style={{ '--auth-card-rotation': '1deg', background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)', boxShadow: 'var(--auth-card-shadow)' }}>
@@ -98,7 +86,11 @@ function SocialPreview() {
 }
 
 /** Layout Auth duy nhất, dùng hero đầy đủ trên desktop và ưu tiên form trên mobile. */
-export default function AuthEntryLayout({ children }) {
+export default function AuthEntryLayout({ children, title = 'Đăng nhập' }) {
+  useEffect(() => {
+    document.title = `${title} • UniShare`;
+  }, [title]);
+
   return (
     <main className="auth-theme relative min-h-dvh overflow-x-hidden font-sans text-zinc-950 lg:h-dvh lg:overflow-hidden" style={{ background: 'var(--auth-bg)' }}>
       {/* Lớp nền uốn cong duy nhất trải dài toàn bộ trang – không có bất kỳ ranh giới cột nào cắt ngang */}
@@ -113,7 +105,7 @@ export default function AuthEntryLayout({ children }) {
         <section className="relative hidden h-dvh bg-transparent px-10 py-7 lg:flex lg:flex-col xl:px-12 xl:py-8 2xl:px-16">
           {/* Logo ứng dụng */}
           <Link to="/" className="relative z-10 inline-flex w-fit items-center gap-3.5" aria-label="UniShare - Trang chủ">
-            <img src={logo} alt="" className="h-11 w-11 rounded-xl object-contain p-1 shadow-xs xl:h-12 xl:w-12" style={{ background: 'var(--auth-card-bg)' }} />
+            <img src={logo} alt="" className="h-11 w-11 rounded-xl object-contain shadow-xs xl:h-12 xl:w-12" />
             <span className="text-2xl font-bold tracking-[-0.03em] text-zinc-950 xl:text-[26px]">UniShare</span>
           </Link>
 
@@ -175,7 +167,7 @@ export default function AuthEntryLayout({ children }) {
         <section className="relative z-10 flex min-h-dvh items-center bg-transparent px-5 py-6 sm:px-8 sm:py-8 lg:h-dvh lg:min-h-0 lg:overflow-y-auto lg:px-10 lg:py-8 xl:px-14 2xl:px-20">
           <div className="auth-form-shell mx-auto w-full max-w-[500px]">
             <Link to="/" className="mb-4 inline-flex items-center gap-3 sm:mb-6 lg:hidden" aria-label="UniShare - Trang chủ">
-              <img src={logo} alt="" className="h-10 w-10 rounded-xl object-contain p-1 shadow-xs" style={{ background: 'var(--auth-card-bg)' }} />
+              <img src={logo} alt="" className="h-10 w-10 rounded-xl object-contain shadow-xs" />
               <span className="text-2xl font-bold tracking-[-0.03em] text-zinc-950">UniShare</span>
             </Link>
             {children}

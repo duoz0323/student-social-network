@@ -313,18 +313,28 @@ Trạng thái nghiệp vụ: `DESIGNED`. Restrict là quan hệ một chiều; A
 
 ### 💬 3.3. Nhắn tin trực tiếp một-một
 
-Trạng thái nghiệp vụ: `DESIGNED`, chưa `IMPLEMENTED` hoặc `TESTED`.
+Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text và Typing Indicator Giai đoạn 1D `IMPLEMENTED`; Backend gửi ảnh `IMPLEMENTED` và `TESTED`. Migration cùng 7 concurrency test đã chạy thành công trên MySQL 8.4 tạm; Frontend gửi/hiển thị ảnh và smoke test E2E hai trình duyệt chưa triển khai.
 
-- Giai đoạn đầu chỉ hỗ trợ conversation một-một và tin nhắn văn bản tối đa 2.000 ký tự.
-- Một cặp người dùng chỉ có một conversation logic.
+- Conversation một-một hỗ trợ `TEXT`, chỉ ảnh hoặc ảnh kèm chú thích. Nội dung/chú thích tối đa 2.000 Unicode code point; mỗi message có tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; video và tài liệu chưa hỗ trợ.
+- Chỉ tài khoản `USER`, `ACTIVE` và đã hoàn tất hồ sơ được dùng Messaging; `ADMIN` không dùng Messaging như tài khoản xã hội và không được nhắn chính mình.
+- Một cặp người dùng chỉ có một conversation logic, chuẩn hóa bằng `participant_low_id` và `participant_high_id`; conversation và đúng hai member được tạo trong cùng transaction.
+- A chỉ được bắt đầu conversation với B khi B đang Follow A. Conversation rỗng không xuất hiện trong Inbox và phải kiểm tra lại điều kiện Follow khi gửi tin đầu tiên; sau tin đầu tiên, Unfollow không đóng conversation.
+- Database gồm `conversations`, `conversation_members`, `messages`, `message_attachments` và `media_cleanup_tasks`; cặp participant, `(sender_id, client_message_id)`, thứ tự attachment và định danh storage là duy nhất. `last_message_id` và `last_read_message_id` phải thuộc đúng conversation và được Service kiểm soát ngoài foreign key.
+- REST Core giữ POST JSON gửi text và bổ sung cùng path POST với `multipart/form-data` gồm `clientMessageId`, `content` tùy chọn, `images` tối đa 5. URL ảnh ngắn hạn chỉ được cấp qua `GET /api/v1/message-attachments/{attachmentId}/access` sau khi kiểm tra lại quyền.
+- Danh sách conversation và lịch sử message dùng cursor Base64URL opaque, keyset pagination, không truy vấn tổng số. Page lịch sử được truy vấn mới nhất trước nhưng trả nội dung theo thời gian tăng dần trong từng page.
+- Gửi message lấy sender từ JWT, nhận UUID v4 `clientMessageId` và Backend tự xác định `TEXT`/`IMAGE`. Payload ảnh có fingerprint gồm conversation, content, số ảnh, MIME, size và SHA-256 từng file; replay chính xác không upload/phát event lại, còn tái sử dụng key với payload khác trả `IDEMPOTENCY_KEY_REUSED`.
+- Mark read chỉ tiến lên, không thay đổi `last_read_at` khi marker cũ được gửi lại. Unread được tính trực tiếp từ message của participant còn lại, không dùng counter denormalized.
 - Client gửi message bằng REST API; WebSocket/STOMP chỉ dùng để nhận event realtime theo mô hình best-effort.
 - REST API và MySQL là nguồn dữ liệu chuẩn; khi mất kết nối realtime, Frontend phải reconciliation lại bằng REST.
 - Notification và Messaging dùng chung đúng một native WebSocket/STOMP connection trên mỗi tab tại endpoint `/ws`.
-- Frontend subscribe Notification tại `/user/queue/notifications` và được chuẩn bị để subscribe Messaging tại `/user/queue/messaging`.
-- JWT tiếp tục được xác thực tại STOMP `CONNECT`; principal name là chuỗi `users.id` và mọi client `SEND` qua STOMP đều bị từ chối.
-- User Block theo một trong hai chiều phải chặn xem, gửi và nhận realtime giữa hai tài khoản; Restrict không ảnh hưởng nghiệp vụ nhắn tin.
-- Giai đoạn này chưa triển khai database, REST API, Entity, giao diện hoặc event nghiệp vụ Messaging.
-- Ảnh, tài liệu, Message Request, Hidden Message Request, typing, online status, recall và report message chưa thuộc phạm vi.
+- Frontend subscribe Notification tại `/user/queue/notifications` và Messaging tại `/user/queue/messaging` trên cùng connection.
+- JWT tiếp tục được xác thực tại STOMP `CONNECT`; principal name là chuỗi `users.id`. Client chỉ được `SEND` đúng destination `/app/messaging/typing`; mọi destination khác hoặc frame không có destination đều bị từ chối.
+- User Block theo một trong hai chiều phải ẩn conversation, chặn history/send/read, loại khỏi unread và chặn nhận realtime; Unblock làm dữ liệu cũ xuất hiện lại. Open/send và Block khóa cặp user theo thứ tự ID ổn định để tuần tự hóa race; Restrict không ảnh hưởng Messaging.
+- Message không tạo bản ghi Notification. `MESSAGE_CREATED` và `MESSAGES_READ` chỉ phát `AFTER_COMMIT`; payload message bổ sung metadata `attachments` nhưng không có URL/storage ID. Broker lỗi không rollback REST/MySQL đã commit và không thay đổi contract Notification.
+- Upload ảnh dùng Cloudinary `authenticated` ngoài transaction MySQL dài. Khi transaction ngắn lưu message/attachment thất bại, Backend xóa bù ngay; lỗi xóa được ghi durable cleanup task và scheduler retry.
+- Media chat không lưu hoặc trả URL công khai vĩnh viễn. Endpoint access chống IDOR, kiểm tra USER/ACTIVE/onboarding/membership/Block và cấp signed URL với TTL cấu hình, mặc định 5 phút.
+- Typing Indicator Giai đoạn 1D đã hoàn thành qua `TYPING_STARTED`/`TYPING_STOPPED`, không lưu database, không replay và không thay đổi unread.
+- Tài liệu, video, Message Request, Hidden Message Request, online status, delivered status, recall, xóa conversation phía cá nhân và report message chưa thuộc phạm vi.
 
 ### 📝 4. Quản lý bài viết
 
@@ -392,15 +402,15 @@ Công thức xếp hạng tham khảo:
 ```
 
 Các danh sách bài viết dùng Infinite Scroll gồm Feed For You, Feed Following, bài trên hồ sơ,
-bài đã lưu và bài đã thích. Các API này dùng Cursor Pagination:
+bài đã lưu, bài đã thích và kết quả Search bài viết/hashtag. Các API này dùng Cursor Pagination:
 
 - Request đầu: `?limit=10`.
 - Request tiếp theo: `?limit=10&cursor=<opaque-cursor>`.
 - `limit` mặc định 10, từ 1 đến 20.
 - Response dữ liệu: `{ "content": [], "nextCursor": null, "hasNext": false }`.
 - Cursor do Backend tạo dưới dạng Base64URL opaque; Client không tự tạo hoặc sửa cursor.
-- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; các danh sách theo thời gian
-  giữ `createdAt`, `postId`.
+- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; Search nội dung giữ
+  `relevance`, `publishedAt`, `postId`; các danh sách theo thời gian giữ `createdAt`, `postId`.
 - Backend dùng keyset và lấy `limit + 1`, không dùng `page`, `offset` hoặc truy vấn tổng `COUNT(*)`.
 - Cursor không hợp lệ trả mã nghiệp vụ `INVALID_CURSOR`.
 
@@ -411,8 +421,9 @@ Các endpoint đã chuyển:
 - `GET /api/v1/users/{userId}/posts`.
 - `GET /api/v1/posts/saved`.
 - `GET /api/v1/posts/liked`.
+- `GET /api/v1/search/posts`.
 
-Search bài viết/hashtag, bình luận, Follow và Admin vẫn dùng `PageResponse` vì giao diện hiện tại
+Search người dùng, bình luận, Follow và Admin vẫn dùng `PageResponse` vì giao diện hiện tại
 không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 
 ### #️⃣ 7. Hashtag
@@ -434,7 +445,7 @@ không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 - Tìm kiếm người dùng theo tên hiển thị.
 - Tìm kiếm bài viết theo nội dung.
 - Tìm kiếm bài viết theo hashtag.
-- Hỗ trợ phân trang kết quả.
+- Search người dùng dùng `PageResponse`; Search bài viết/hashtag dùng Cursor Pagination và Infinite Scroll.
 - MVP sử dụng MySQL làm nguồn tìm kiếm.
 - Elasticsearch được đưa vào hướng phát triển sau khi hệ thống cốt lõi ổn định.
 
@@ -571,7 +582,7 @@ Gửi báo cáo không tự động làm ẩn bài viết. Quản trị viên l�
 - Firebase Storage.
 - Amazon S3.
 
-Database chỉ lưu URL và metadata của media, không lưu dữ liệu BLOB.
+Database không lưu dữ liệu BLOB. Media công khai có thể lưu URL; media chat chỉ lưu storage identifier và metadata, URL truy cập được ký ngắn hạn sau khi kiểm tra quyền.
 
 ### Công cụ phát triển
 
@@ -820,13 +831,14 @@ Authorization: Bearer <access_token>
 - WebSocket/STOMP chỉ là kênh phân phối realtime theo mô hình best-effort.
 - Handshake endpoint là `/ws`, không bật SockJS và chưa dùng Outbox.
 - Mỗi tab chỉ tạo một STOMP client và một WebSocket connection dùng chung cho các module realtime.
-- Frontend subscribe Notification tại `/user/queue/notifications`; hạ tầng cho phép Messaging dùng `/user/queue/messaging` mà không tạo client thứ hai.
+- Frontend subscribe Notification tại `/user/queue/notifications` và Messaging tại `/user/queue/messaging` mà không tạo client thứ hai.
 - Access Token chỉ được gửi trong native header `Authorization: Bearer <access_token>` của STOMP `CONNECT`, không truyền token trong URL.
 - Principal của kết nối được Backend xác định từ JWT và có tên bằng chuỗi `users.id`; Backend không tin `userId` do Frontend gửi.
 - Event chỉ được phát sau khi transaction tạo Notification commit thành công.
 - Giai đoạn đầu chỉ phát event `NOTIFICATION_CREATED`; read, read-all, delete và invalidation vẫn đồng bộ qua REST.
-- Messaging vẫn ở trạng thái `DESIGNED`; chưa có event `MESSAGE_CREATED` hoặc `MESSAGES_READ` trong giai đoạn refactor hạ tầng.
-- Client không được gửi mutation nghiệp vụ qua STOMP; mọi frame `SEND` tiếp tục bị từ chối.
+- Messaging phát `MESSAGE_CREATED` và `MESSAGES_READ` sau commit cho cả hai participant; mỗi envelope có unread count authoritative riêng cho user nhận.
+- Client không được gửi mutation bền vững qua STOMP. Chỉ frame typing tạm thời tại `/app/messaging/typing` được phép; Backend tự lấy actor từ principal, kiểm tra membership/account/Block và chỉ phát cho participant còn lại qua `/user/queue/messaging`.
+- Typing dùng `TYPING_STARTED`/`TYPING_STOPPED`, giới hạn tối đa 4 frame/user/giây trong bộ nhớ của từng instance, không ghi database, không thay đổi unread và không replay. Frontend gửi START lần đầu, refresh mỗi 3 giây khi còn hoạt động, STOP sau 2 giây idle và tự hết hạn trạng thái nhận sau 5 giây.
 - Khi socket gián đoạn, Frontend phải reconcile bằng REST và chỉ polling unread count khi tab đang hiển thị.
 
 Quy trình tổng quát:
@@ -1248,7 +1260,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Feed công khai và lưu Feed.
 - Elasticsearch.
 - Message Request và Hidden Message Request.
-- Ảnh, tài liệu, typing, online status, recall và report message trong Nhắn tin.
+- Tài liệu, video, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê nâng cao.
 - Moderation Case.
@@ -1273,7 +1285,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Khám phá nội dung theo địa điểm.
 - Discovery Map.
 - Message Request.
-- Ảnh, tài liệu, typing, online status, recall và report message trong Nhắn tin.
+- Tài liệu, video, online status, recall và report message trong Nhắn tin.
 - Quản lý trường, khoa và ngành.
 - Dashboard thống kê.
 - Audit Log chi tiết.

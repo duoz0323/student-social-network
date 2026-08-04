@@ -910,6 +910,108 @@ LOCK TABLES `users` WRITE;
 UNLOCK TABLES;
 
 --
+-- Direct Messaging REST Core (không có dữ liệu seed cũ để backfill)
+--
+
+DROP TABLE IF EXISTS `messages`;
+DROP TABLE IF EXISTS `media_cleanup_tasks`;
+DROP TABLE IF EXISTS `message_attachments`;
+DROP TABLE IF EXISTS `conversation_members`;
+DROP TABLE IF EXISTS `conversations`;
+
+CREATE TABLE `conversations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `participant_low_id` bigint unsigned NOT NULL,
+  `participant_high_id` bigint unsigned NOT NULL,
+  `last_message_id` bigint unsigned DEFAULT NULL,
+  `last_message_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_conversations_participant_pair` (`participant_low_id`,`participant_high_id`),
+  KEY `idx_conversations_last_message` (`last_message_at` DESC,`id` DESC),
+  CONSTRAINT `fk_conversations_participant_low` FOREIGN KEY (`participant_low_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_conversations_participant_high` FOREIGN KEY (`participant_high_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_conversations_participant_order` CHECK ((`participant_low_id` < `participant_high_id`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `conversation_members` (
+  `conversation_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `last_read_message_id` bigint unsigned DEFAULT NULL,
+  `last_read_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`conversation_id`,`user_id`),
+  KEY `idx_conversation_members_user_cursor` (`user_id`,`conversation_id`,`last_read_message_id`),
+  CONSTRAINT `fk_conversation_members_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_conversation_members_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `messages` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `conversation_id` bigint unsigned NOT NULL,
+  `sender_id` bigint unsigned NOT NULL,
+  `client_message_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `type` enum('TEXT','IMAGE') NOT NULL,
+  `content` varchar(2000) DEFAULT NULL,
+  `payload_fingerprint` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_messages_sender_client_message` (`sender_id`,`client_message_id`),
+  KEY `idx_messages_conversation_cursor` (`conversation_id`,`id` DESC),
+  CONSTRAINT `fk_messages_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_messages_sender_member` FOREIGN KEY (`conversation_id`,`sender_id`) REFERENCES `conversation_members` (`conversation_id`,`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_messages_payload_shape` CHECK (((`type` = 'TEXT' AND `content` IS NOT NULL AND char_length(trim(`content`)) > 0) OR `type` = 'IMAGE')),
+  CONSTRAINT `chk_messages_content_length` CHECK ((char_length(`content`) <= 2000))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `message_attachments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `message_id` bigint unsigned NOT NULL,
+  `media_type` enum('IMAGE') NOT NULL,
+  `storage_provider` enum('CLOUDINARY') NOT NULL,
+  `storage_public_id` varchar(255) NOT NULL,
+  `mime_type` varchar(64) NOT NULL,
+  `file_size_bytes` bigint unsigned NOT NULL,
+  `width` int unsigned NOT NULL,
+  `height` int unsigned NOT NULL,
+  `display_order` tinyint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_message_attachments_message_order` (`message_id`,`display_order`),
+  UNIQUE KEY `uq_message_attachments_storage_asset` (`storage_provider`,`storage_public_id`),
+  KEY `idx_message_attachments_message` (`message_id`,`id`),
+  CONSTRAINT `fk_message_attachments_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_message_attachments_size` CHECK (`file_size_bytes` > 0),
+  CONSTRAINT `chk_message_attachments_dimensions` CHECK (`width` > 0 AND `height` > 0),
+  CONSTRAINT `chk_message_attachments_order` CHECK (`display_order` BETWEEN 0 AND 4)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `media_cleanup_tasks` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `storage_provider` varchar(32) NOT NULL,
+  `storage_public_id` varchar(255) NOT NULL,
+  `resource_type` varchar(32) NOT NULL,
+  `reason` varchar(64) NOT NULL,
+  `status` enum('PENDING','PROCESSING','COMPLETED','FAILED') NOT NULL,
+  `attempt_count` int unsigned NOT NULL DEFAULT 0,
+  `next_retry_at` datetime(6) NOT NULL,
+  `last_error` varchar(500) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `idx_media_cleanup_due` (`status`,`next_retry_at`,`id`),
+  KEY `idx_media_cleanup_asset` (`storage_provider`,`storage_public_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE `conversations`
+  ADD CONSTRAINT `fk_conversations_last_message` FOREIGN KEY (`last_message_id`) REFERENCES `messages` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `conversation_members`
+  ADD CONSTRAINT `fk_conversation_members_last_read_message` FOREIGN KEY (`last_read_message_id`) REFERENCES `messages` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+--
 -- Temporary view structure for view `v_active_posts`
 --
 

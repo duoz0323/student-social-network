@@ -1,4 +1,4 @@
-import logo from '../../../assets/brand/logo.png';
+import logo from '../../../assets/brand/logo-dark.jpg';
 import { SOCIAL_CONFLICT_ACTIONS, SOCIAL_CONFLICT_TYPES } from '../services/socialConflictService.js';
 
 const ACTION_PRESENTATION = Object.freeze({
@@ -29,7 +29,7 @@ export default function SocialConflictCard({ conflict, isResolving, isOutcomeUnk
 
   return (
     <section className="px-4 py-4 text-center sm:px-8 sm:py-6">
-      <img src={logo} alt="UniShare" className="mx-auto h-16 w-16 object-contain" />
+      <img src={logo} alt="UniShare" className="mx-auto h-14 w-14 rounded-2xl object-cover shadow-sm" />
       <div className="mx-auto mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-xl font-bold text-amber-700" aria-hidden="true">!</div>
       <h1 className="mt-4 text-xl font-bold text-gray-900">{copy.title}</h1>
       <p className="mt-2 text-sm leading-6 text-gray-600">{copy.description}</p>

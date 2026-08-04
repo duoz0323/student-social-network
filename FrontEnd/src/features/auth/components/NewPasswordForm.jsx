@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../../../assets/brand/logo.png';
+import logo from '../../../assets/brand/logo-dark.jpg';
 import Button from '../../../components/common/Button.jsx';
 import PasswordVisibilityIcon from './PasswordVisibilityIcon.jsx';
 
@@ -60,7 +60,7 @@ export default function NewPasswordForm({ onSubmit, onFieldChange, disabled, err
   return (
     <div className="px-4 py-4 sm:px-8 sm:py-6">
       <div className="mb-5 flex flex-col items-center text-center">
-        <img src={logo} alt="UniShare" className="mb-3 h-16 w-16 object-contain" />
+        <img src={logo} alt="UniShare" className="mb-3 h-14 w-14 rounded-2xl object-cover shadow-sm" />
         <h2 className="mb-1 text-[1.35rem] font-bold text-gray-900">Đặt mật khẩu mới</h2>
         <p className="text-[13px] text-gray-500">Chọn mật khẩu mới để tiếp tục sử dụng tài khoản.</p>
       </div>

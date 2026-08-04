@@ -90,7 +90,16 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `SearchResults` | Hiển thị kết quả user/post/hashtag khi có truy vấn. | SEARCH-01. | `query`, `users`, `posts`, `hashtags`, `loading`, `pagination`. User tìm theo displayName và điều hướng bằng userId. | Module search. |
 | `MentionSuggestionItem` | Gợi ý mention theo displayName khi phát triển sau MVP. | FUTURE_DEVELOPMENT. | `userId` hoặc `user`, `onSelect(mentionedUserId)`. Hiển thị avatar, displayName, bio ngắn nếu cần. | FUTURE_DEVELOPMENT, chưa dùng trong MVP. |
 
-## 7. Admin component
+## 7. Messaging component
+
+| Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props | Phạm vi |
+|---|---|---|---|---|
+| `ConversationList` | Render Inbox, unread và cursor load-more. | MSG-01, desktop MSG-02. | `conversations`, loading/error, cursor callbacks. | Messaging. |
+| `MessageThread` | Render text bubble, trạng thái sending/failed/seen và retry. | MSG-02. | `messages`, current user, read marker. | Không render HTML động. |
+| `MessagingContext` | State active conversation, subscription, optimistic merge, badge, typing tạm thời và reconciliation. | UserShell, MSG-01/02. | RealtimeContext và Messaging REST API. | Typing dedupe theo eventId và expiry 5 giây; chỉ cache history conversation đang mở. |
+| `Typing composer controller` | Điều phối START/refresh/STOP mà không phát theo từng phím. | MSG-02. | `conversationId`, content, trạng thái socket và callback `sendTyping`. | START lần đầu, refresh 3 giây, idle STOP 2 giây; cleanup khi blur/submit/leave. |
+
+## 8. Admin component
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
@@ -102,7 +111,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `ReportDetailPanel` | Chi tiết báo cáo và bài bị báo cáo. | ADMIN-06. | `report`, `post`, `onReject`, `onResolve`, `onHidePost`. | Module admin/report. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
 
-## 8. System state component
+## 9. System state component
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|

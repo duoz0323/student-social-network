@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
-import logo from '../../assets/brand/logo.png';
+import logo from '../../assets/brand/logo-light.jpg';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
 
@@ -21,7 +21,7 @@ export default function AdminShell() {
       <aside className="fixed left-0 top-0 h-screen w-72 border-r border-zinc-200 bg-zinc-50 flex flex-col z-10">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-8 border-b border-zinc-200">
-          <img src={logo} alt="UniShare" className="h-10 w-10 rounded-xl object-contain grayscale" />
+          <img src={logo} alt="UniShare" className="h-10 w-10 rounded-xl object-cover shadow-sm" />
           <div>
             <p className="text-xl font-semibold brand-text text-zinc-900">UniShare</p>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mt-0.5">Admin</p>

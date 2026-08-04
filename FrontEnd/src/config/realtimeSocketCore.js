@@ -25,6 +25,7 @@ export function createRealtimeConnectionManager({
   const callbacksByDestination = new Map();
   const brokerSubscriptions = new Map();
   const connectionListeners = new Set();
+  const allowedSendDestination = '/app/messaging/typing';
 
   function notifyConnectionState(nextConnected) {
     connected = nextConnected;
@@ -185,6 +186,20 @@ export function createRealtimeConnectionManager({
 
     unsubscribe(tokenOrDestination, callback) {
       return removeSubscription(tokenOrDestination, callback);
+    },
+
+    send(destination, payload) {
+      if (destination !== allowedSendDestination) {
+        throw new TypeError('STOMP SEND destination không được phép.');
+      }
+      if (!connected || !client?.active) return false;
+      try {
+        client.publish({ destination, body: JSON.stringify(payload) });
+        return true;
+      } catch {
+        // Typing là best-effort; lỗi serialize/publish không được ảnh hưởng composer.
+        return false;
+      }
     },
 
     addConnectionListener(listener) {

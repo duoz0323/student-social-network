@@ -1,11 +1,15 @@
 package com.stu.edu.vn.backend.search.service.impl;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.api.PageResponse;
+import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.util.LikePatternEscaper;
 import com.stu.edu.vn.backend.search.dto.response.SearchUserResponse;
 import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
+import com.stu.edu.vn.backend.search.cursor.SearchContentCursor;
+import com.stu.edu.vn.backend.search.cursor.SearchHashtagCursor;
 import com.stu.edu.vn.backend.search.enums.SearchPostType;
 import com.stu.edu.vn.backend.search.mapper.SearchPostMapper;
 import com.stu.edu.vn.backend.search.repository.SearchUserProfileRepository;
@@ -28,6 +32,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,6 +49,7 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
 
     private static final int MAX_KEYWORD_LENGTH = 100;
+    private static final LocalDateTime FIRST_PAGE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
@@ -55,12 +61,14 @@ public class SearchServiceImpl implements SearchService {
     private final SavedPostRepository savedPostRepository;
     private final SearchPostMapper searchPostMapper;
     private final HashtagNormalizer hashtagNormalizer;
+    private final CursorCodec cursorCodec;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
                              SearchUserProfileRepository userProfileRepository, PostRepository postRepository,
                              PostMediaRepository postMediaRepository, PostHashtagRepository postHashtagRepository,
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
-                             SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer) {
+                             SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer,
+                             CursorCodec cursorCodec) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -71,6 +79,7 @@ public class SearchServiceImpl implements SearchService {
         this.savedPostRepository = savedPostRepository;
         this.searchPostMapper = searchPostMapper;
         this.hashtagNormalizer = hashtagNormalizer;
+        this.cursorCodec = cursorCodec;
     }
 
     @Override
@@ -79,51 +88,105 @@ public class SearchServiceImpl implements SearchService {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanSearch(currentUserId);
         String normalizedKeyword = normalizeKeyword(keyword);
-        Page<SearchUserResponse> result = userProfileRepository
-                .searchCompletedActiveProfilesByDisplayName(
-                        escapeLikePattern(normalizedKeyword), currentUserId, PageRequest.of(page, size))
-                .map(this::toResponse);
+        Page<UserProfile> profiles = userProfileRepository.searchCompletedActiveProfilesByDisplayName(
+                escapeLikePattern(normalizedKeyword), currentUserId, PageRequest.of(page, size));
+        Set<Long> followedUserIds = profiles.isEmpty()
+                ? Set.of()
+                : new HashSet<>(userProfileRepository.findFollowedUserIds(
+                        currentUserId,
+                        profiles.getContent().stream().map(UserProfile::getUserId).toList()
+                ));
+        Page<SearchUserResponse> result = profiles.map(profile -> toResponse(
+                profile,
+                followedUserIds.contains(profile.getUserId())
+        ));
         return PageResponse.from(result);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<SearchPostResponse> searchPosts(String keyword, SearchPostType type, int page, int size) {
+    public CursorPageResponse<SearchPostResponse> searchPosts(
+            String keyword, SearchPostType type, String encodedCursor, int limit) {
         Long currentUserId = currentUserProvider.getCurrentUserId();
         ensureCurrentUserCanSearch(currentUserId);
         if (type == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        if (limit < 1 || limit > 20) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
         String normalizedKeyword = type == SearchPostType.CONTENT
                 ? normalizeKeyword(keyword)
                 : normalizeHashtag(keyword);
 
-        PageRequest pageable = PageRequest.of(page, size);
-        Page<Post> posts = type == SearchPostType.CONTENT
-                ? postRepository.searchPublishedPostsByContent(normalizedKeyword, currentUserId, pageable)
-                : postRepository.searchPublishedPostsByHashtag(normalizedKeyword, currentUserId, pageable);
+        PageRequest fetchLimit = PageRequest.of(0, limit + 1);
+        List<Post> fetched = type == SearchPostType.CONTENT
+                ? searchContentPosts(normalizedKeyword, currentUserId, encodedCursor, fetchLimit)
+                : searchHashtagPosts(normalizedKeyword, currentUserId, encodedCursor, fetchLimit);
+        boolean hasNext = fetched.size() > limit;
+        List<Post> posts = hasNext ? fetched.subList(0, limit) : fetched;
         if (posts.isEmpty()) {
             // Không chạy các batch query khi trang rỗng vì không có dữ liệu cần enrichment.
-            return new PageResponse<>(List.of(), posts.getNumber(), posts.getSize(), posts.getTotalElements(),
-                    posts.getTotalPages(), posts.isFirst(), posts.isLast());
+            return new CursorPageResponse<>(List.of(), null, false);
         }
 
-        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
-        Map<Long, UserProfile> authorProfiles = loadAuthorProfiles(posts.getContent());
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, UserProfile> authorProfiles = loadAuthorProfiles(posts);
         Map<Long, List<PostMedia>> mediaByPostId = loadMedia(postIds);
         Map<Long, String> hashtagsByPostId = loadHashtags(postIds);
         Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(currentUserId, postIds));
         Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(currentUserId, postIds));
 
-        Page<SearchPostResponse> result = posts.map(post -> searchPostMapper.toResponse(
+        List<SearchPostResponse> content = posts.stream().map(post -> searchPostMapper.toResponse(
                 post,
                 authorProfiles.get(post.getAuthor().getId()),
                 mediaByPostId.getOrDefault(post.getId(), List.of()),
                 hashtagsByPostId.get(post.getId()),
                 likedPostIds.contains(post.getId()),
                 savedPostIds.contains(post.getId())
-        ));
-        return PageResponse.from(result);
+        )).toList();
+        String nextCursor = hasNext ? createSearchPostCursor(type, normalizedKeyword, posts.getLast()) : null;
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
+    }
+
+    private List<Post> searchContentPosts(String keyword, Long currentUserId, String encodedCursor,
+                                          PageRequest fetchLimit) {
+        SearchContentCursor cursor = cursorCodec.decode(encodedCursor, SearchContentCursor.class);
+        if (cursor != null && !cursor.isValidFor(keyword)) {
+            throw new BusinessException(ErrorCode.INVALID_CURSOR);
+        }
+        return postRepository.searchPublishedPostsByContentAfter(
+                keyword,
+                currentUserId,
+                cursor == null ? null : cursor.relevance(),
+                cursor == null ? FIRST_PAGE_TIME : cursor.publishedAt(),
+                cursor == null ? Long.MAX_VALUE : cursor.postId(),
+                fetchLimit
+        );
+    }
+
+    private List<Post> searchHashtagPosts(String hashtag, Long currentUserId, String encodedCursor,
+                                          PageRequest fetchLimit) {
+        SearchHashtagCursor cursor = cursorCodec.decode(encodedCursor, SearchHashtagCursor.class);
+        if (cursor != null && !cursor.isValidFor(hashtag)) {
+            throw new BusinessException(ErrorCode.INVALID_CURSOR);
+        }
+        return postRepository.searchPublishedPostsByHashtagAfter(
+                hashtag,
+                currentUserId,
+                cursor == null ? FIRST_PAGE_TIME : cursor.publishedAt(),
+                cursor == null ? Long.MAX_VALUE : cursor.postId(),
+                fetchLimit
+        );
+    }
+
+    private String createSearchPostCursor(SearchPostType type, String keyword, Post lastPost) {
+        if (type == SearchPostType.HASHTAG) {
+            return cursorCodec.encode(new SearchHashtagCursor(keyword, lastPost.getPublishedAt(), lastPost.getId()));
+        }
+        Double relevance = postRepository.findContentSearchRelevance(lastPost.getId(), keyword)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR));
+        return cursorCodec.encode(new SearchContentCursor(keyword, relevance, lastPost.getPublishedAt(), lastPost.getId()));
     }
 
     private Map<Long, UserProfile> loadAuthorProfiles(List<Post> posts) {
@@ -200,7 +263,10 @@ public class SearchServiceImpl implements SearchService {
         return LikePatternEscaper.escape(keyword);
     }
 
-    private SearchUserResponse toResponse(UserProfile profile) {
-        return new SearchUserResponse(profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl(), profile.getBio());
+    private SearchUserResponse toResponse(UserProfile profile, boolean followedByCurrentUser) {
+        return new SearchUserResponse(
+                profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl(), profile.getBio(),
+                followedByCurrentUser
+        );
     }
 }

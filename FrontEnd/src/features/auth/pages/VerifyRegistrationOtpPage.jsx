@@ -93,7 +93,7 @@ export default function VerifyRegistrationOtpPage() {
   const isInformationMessage = message && message.includes('phiên đăng ký cũ');
 
   return (
-    <AuthEntryLayout>
+    <AuthEntryLayout title="Xác thực OTP">
       <form onSubmit={verify} className="px-4 py-4 sm:px-8 sm:py-6">
         <div className="mb-6 text-center">
           <h1 className="text-[1.35rem] font-bold text-gray-900 mb-2">

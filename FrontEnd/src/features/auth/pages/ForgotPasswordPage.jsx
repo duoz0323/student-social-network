@@ -43,5 +43,5 @@ export default function ForgotPasswordPage() {
         fieldError={localError || recovery.fieldErrors.email} />;
   }
 
-  return <AuthEntryLayout>{content}</AuthEntryLayout>;
+  return <AuthEntryLayout title="Quên mật khẩu">{content}</AuthEntryLayout>;
 }

@@ -6,7 +6,14 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,6 +48,67 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
         // Video dùng resource_type riêng để Cloudinary xử lý metadata và thao tác xóa đúng loại tài nguyên.
         return uploadMedia(file, properties.getPostFolder(), RESOURCE_TYPE_VIDEO,
                 ErrorCode.POST_VIDEO_UPLOAD_FAILED, true);
+    }
+
+    @Override
+    public CloudinaryUploadResult uploadMessageImage(MultipartFile file) {
+        ensureConfigured();
+        try {
+            Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "folder", properties.getMessageFolder(),
+                    "resource_type", RESOURCE_TYPE_IMAGE,
+                    "type", "authenticated",
+                    "use_filename", false,
+                    "unique_filename", true
+            ));
+            return new CloudinaryUploadResult(null, stringValue(result.get("public_id")),
+                    toMimeType(RESOURCE_TYPE_IMAGE, result.get("format")), longValue(result.get("bytes")),
+                    integerValue(result.get("width")), integerValue(result.get("height")));
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.MESSAGE_IMAGE_UPLOAD_FAILED);
+        }
+    }
+
+    @Override
+    public CloudinaryAccessResult createMessageImageAccess(String publicId, String mimeType) {
+        ensureConfigured();
+        long seconds = properties.getMessageAccessTtl().toSeconds();
+        long issuedAt = Instant.now().getEpochSecond();
+        long expiresAtEpoch = issuedAt + seconds;
+        OffsetDateTime expiresAt = OffsetDateTime.ofInstant(Instant.ofEpochSecond(expiresAtEpoch), ZoneOffset.UTC);
+        String format = messageImageFormat(mimeType);
+
+        // Private download API tạo URL signed có expires_at thật, không cần token key thuộc gói Cloudinary nâng cao.
+        Map<String, Object> signedParams = new LinkedHashMap<>();
+        signedParams.put("public_id", publicId);
+        signedParams.put("format", format);
+        signedParams.put("type", "authenticated");
+        signedParams.put("attachment", false);
+        signedParams.put("timestamp", issuedAt);
+        signedParams.put("expires_at", expiresAtEpoch);
+        String signature = cloudinary.apiSignRequest(signedParams, properties.getApiSecret());
+        Map<String, Object> queryParams = new LinkedHashMap<>(signedParams);
+        queryParams.put("signature", signature);
+        queryParams.put("api_key", properties.getApiKey());
+        String baseUrl = cloudinary.cloudinaryApiUrl("download", ObjectUtils.asMap(
+                "resource_type", RESOURCE_TYPE_IMAGE));
+        String url = baseUrl + "?" + queryParams.entrySet().stream()
+                .map(entry -> encode(entry.getKey()) + "=" + encode(String.valueOf(entry.getValue())))
+                .collect(Collectors.joining("&"));
+        return new CloudinaryAccessResult(url, expiresAt);
+    }
+
+    private String messageImageFormat(String mimeType) {
+        return switch (mimeType == null ? "" : mimeType.toLowerCase(java.util.Locale.ROOT)) {
+            case "image/jpeg", "image/jpg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> throw new BusinessException(ErrorCode.MESSAGE_IMAGE_MIME_TYPE_INVALID);
+        };
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private CloudinaryUploadResult uploadImage(
@@ -89,8 +157,23 @@ public class CloudinaryStorageServiceImpl implements CloudinaryStorageService {
     }
 
     @Override
+    public void deleteMessageImage(String publicId) {
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        ensureConfigured();
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(
+                    "resource_type", RESOURCE_TYPE_IMAGE, "type", "authenticated"));
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.MESSAGE_MEDIA_DELETE_FAILED);
+        }
+    }
+
+    @Override
     public void deleteImage(String publicId) {
         if (publicId == null || publicId.trim().isEmpty()) {
+
             return;
         }
         ensureConfigured();

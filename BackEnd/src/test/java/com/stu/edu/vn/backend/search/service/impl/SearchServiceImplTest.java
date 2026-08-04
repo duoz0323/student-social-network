@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
@@ -43,6 +44,7 @@ class SearchServiceImplTest {
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
     private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final SavedPostRepository savedPostRepository = org.mockito.Mockito.mock(SavedPostRepository.class);
+    private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
     private SearchServiceImpl searchService;
 
     @BeforeEach
@@ -50,7 +52,7 @@ class SearchServiceImplTest {
         searchService = new SearchServiceImpl(
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
                 postHashtagRepository, postLikeRepository, savedPostRepository, new SearchPostMapper(),
-                new HashtagNormalizer());
+                new HashtagNormalizer(), cursorCodec);
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));
@@ -63,16 +65,18 @@ class SearchServiceImplTest {
         resultProfile.setBio("Sinh viên CNTT");
         when(userProfileRepository.searchCompletedActiveProfilesByDisplayName(any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(resultProfile), PageRequest.of(0, 20), 1));
+        when(userProfileRepository.findFollowedUserIds(10L, List.of(20L))).thenReturn(List.of(20L));
 
         var response = searchService.searchUsers("  Minh  ", 0, 20);
 
         verify(currentUserProvider).getCurrentUserId();
         verify(userRepository).findById(10L);
         verify(userProfileRepository).searchCompletedActiveProfilesByDisplayName("Minh", 10L, PageRequest.of(0, 20));
+        verify(userProfileRepository).findFollowedUserIds(10L, List.of(20L));
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst())
-                .extracting("userId", "displayName", "avatarUrl", "bio")
-                .containsExactly(20L, "Nguyễn Minh", "https://cdn.example/avatar.png", "Sinh viên CNTT");
+                .extracting("userId", "displayName", "avatarUrl", "bio", "followedByCurrentUser")
+                .containsExactly(20L, "Nguyễn Minh", "https://cdn.example/avatar.png", "Sinh viên CNTT", true);
     }
 
     @Test

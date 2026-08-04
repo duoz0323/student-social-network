@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -39,7 +40,7 @@ class SearchControllerTest {
 
     @Test
     void searchUsersReturnsApiResponseWithDefaultPaginationAndPublicFields() throws Exception {
-        SearchUserResponse user = new SearchUserResponse(20L, "Nguyễn Minh", null, "Sinh viên");
+        SearchUserResponse user = new SearchUserResponse(20L, "Nguyễn Minh", null, "Sinh viên", true);
         when(searchService.searchUsers("minh", 0, 20))
                 .thenReturn(new PageResponse<>(List.of(user), 0, 20, 1, 1, true, true));
 
@@ -47,6 +48,7 @@ class SearchControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].userId").value(20))
+                .andExpect(jsonPath("$.data.content[0].followedByCurrentUser").value(true))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.content[0].email").doesNotExist())
@@ -76,33 +78,36 @@ class SearchControllerTest {
     }
 
     @Test
-    void searchPostsSupportsContentAndHashtagWithPageResponse() throws Exception {
+    void searchPostsSupportsContentAndHashtagWithCursorResponse() throws Exception {
         SearchPostResponse post = new SearchPostResponse(
                 100L, "Học Java", false, 3, 2, null,
                 new PostAuthorResponse(20L, "Minh", null), List.of(), "java", true, false);
-        PageResponse<SearchPostResponse> page = new PageResponse<>(List.of(post), 0, 20, 1, 1, true, true);
-        when(searchService.searchPosts("java", SearchPostType.CONTENT, 0, 20)).thenReturn(page);
-        when(searchService.searchPosts("#java", SearchPostType.HASHTAG, 0, 20)).thenReturn(page);
+        CursorPageResponse<SearchPostResponse> page = new CursorPageResponse<>(List.of(post), "next-token", true);
+        when(searchService.searchPosts("java", SearchPostType.CONTENT, null, 10)).thenReturn(page);
+        when(searchService.searchPosts("#java", SearchPostType.HASHTAG, "cursor-token", 5)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "CONTENT"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].postId").value(100))
                 .andExpect(jsonPath("$.data.content[0].likedByCurrentUser").value(true))
+                .andExpect(jsonPath("$.data.nextCursor").value("next-token"))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
                 .andExpect(jsonPath("$.data.content[0].email").doesNotExist());
-        mockMvc.perform(get("/api/v1/search/posts").param("q", "#java").param("type", "HASHTAG"))
+        mockMvc.perform(get("/api/v1/search/posts").param("q", "#java").param("type", "HASHTAG")
+                        .param("cursor", "cursor-token").param("limit", "5"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].hashtag").value("java"));
     }
 
     @Test
     void searchPostsRejectsInvalidTypeKeywordAndPagination() throws Exception {
-        when(searchService.searchPosts(null, SearchPostType.CONTENT, 0, 20))
+        when(searchService.searchPosts(null, SearchPostType.CONTENT, null, 10))
                 .thenThrow(new BusinessException(ErrorCode.SEARCH_KEYWORD_REQUIRED));
         mockMvc.perform(get("/api/v1/search/posts").param("type", "CONTENT"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("SEARCH_KEYWORD_REQUIRED"));
         mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "OTHER"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-        mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "CONTENT").param("page", "-1"))
+        mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "CONTENT").param("limit", "0"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-        mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "CONTENT").param("size", "101"))
+        mockMvc.perform(get("/api/v1/search/posts").param("q", "java").param("type", "CONTENT").param("limit", "21"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 }

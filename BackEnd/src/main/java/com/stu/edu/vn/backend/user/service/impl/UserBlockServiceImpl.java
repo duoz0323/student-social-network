@@ -13,6 +13,7 @@ import com.stu.edu.vn.backend.user.repository.UserBlockRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
 import com.stu.edu.vn.backend.user.service.UserBlockService;
+import com.stu.edu.vn.backend.user.service.UserPairLockCoordinator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,14 @@ public class UserBlockServiceImpl implements UserBlockService {
     private final UserBlockRepository userBlockRepository;
     private final FollowRepository followRepository;
     private final UserRestrictionRepository userRestrictionRepository;
+    private final UserPairLockCoordinator userPairLockCoordinator;
 
     @Override
     @Transactional
     public UserBlockStatusResponse block(Long targetUserId) {
         Long blockerId = currentUserProvider.getCurrentUserId();
         if (blockerId.equals(targetUserId)) throw new BusinessException(ErrorCode.CANNOT_BLOCK_SELF);
+        userPairLockCoordinator.lockPair(blockerId, targetUserId);
         requireActiveUser(blockerId);
         requireActiveUser(targetUserId);
         // Upsert no-op chỉ xử lý composite PK trùng; lỗi FK/CHECK vẫn phải rollback thay vì bị che thành warning.

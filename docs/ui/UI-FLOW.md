@@ -216,7 +216,7 @@ Chọn avatar/tên hiển thị từ Feed/Search/Comment
 → Follow hoặc Unfollow
 ```
 
-Quy tắc: `/profile/me` active mục Trang cá nhân. `/profile/:userId` không active mục Trang cá nhân. Nút Nhắn tin xuất hiện trong ảnh nhưng thuộc FUTURE_DEVELOPMENT.
+Quy tắc: `/profile/me` active mục Trang cá nhân. `/profile/:userId` không active mục Trang cá nhân. Nút Nhắn tin gọi REST mở conversation và chỉ điều hướng khi Backend cho phép.
 
 ### 1.9 Follow và Unfollow
 
@@ -321,6 +321,27 @@ Khi socket mất kết nối, Frontend chỉ polling unread count mỗi 30 giây
 connect/reconnect, Frontend reconcile lại bằng REST. Logout, tài khoản bị khóa hoặc hồ sơ chưa hoàn
 tất phải deactivate socket. Giai đoạn 1 không phát realtime cho read, read-all hoặc delete.
 
+### 1.17 Nhắn tin trực tiếp
+
+```text
+Profile người khác → Nhắn tin → PUT open direct → /messages/:conversationId
+Sidebar Tin nhắn → /messages → Inbox cursor
+Mở conversation → tải page message mới nhất → cuộn lên để prepend page cũ
+Gửi text → optimistic UUID v4 → REST POST → merge REST/WebSocket echo
+Message nhận đã hiển thị ở cuối → REST mark read → MESSAGES_READ cho các tab hai bên
+Gõ nội dung → SEND typing START/refresh → participant còn lại thấy "đang nhập..." → STOP/expiry xóa chỉ báo
+Reconnect/tab visible → reconcile unread, Inbox và conversation đang mở bằng REST
+```
+
+`MessagingContext` subscribe `/user/queue/messaging` trên connection dùng chung. Badge Messaging tách khỏi
+Notification. Khi disconnected và tab visible, polling REST khoảng 30 giây; lỗi Block/403/404 xóa nội dung
+conversation khỏi state và điều hướng an toàn về Inbox.
+
+Composer chỉ phát START ở lần nhập đầu, refresh tối đa mỗi 3 giây khi tiếp tục hoạt động và STOP sau 2 giây
+idle, khi submit, input blank, blur hoặc rời conversation. Khi socket disconnected không gửi frame và reconnect
+không tự khôi phục typing cũ. Receiver dedupe theo `eventId`, giữ state theo conversation + user và tự xóa sau
+5 giây; vùng chỉ báo dùng `aria-live="polite"` và giữ chiều cao ổn định.
+
 ## 2. Luồng phát triển tương lai
 
 Các luồng sau có thể đã có ảnh thiết kế nhưng thuộc `FUTURE_DEVELOPMENT`, không triển khai trong bản demo và Frontend MVP hiện tại.
@@ -351,7 +372,6 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 
 ### 2.3 Các chức năng tương lai khác
 
-- Nhắn tin.
 - Discovery Map.
 - Feed tùy chỉnh.
 - Follow Request.

@@ -8,7 +8,18 @@ function buildSession(response, fallbackUser = null) {
   if (!response.accessToken || !response.refreshToken || !user?.id || !user?.role) {
     throw new Error('Phản hồi Auth không đủ dữ liệu để thiết lập phiên.');
   }
-  return { user: { id: user.id, role: user.role }, profileCompleted: Boolean(response.profileCompleted), accessToken: response.accessToken, refreshToken: response.refreshToken };
+  // Giữ lại đầy đủ các thông tin profile trả về từ Backend (displayName, avatarUrl, email...)
+  return {
+    user: {
+      ...fallbackUser,
+      ...user,
+      id: user.id,
+      role: user.role,
+    },
+    profileCompleted: Boolean(response.profileCompleted),
+    accessToken: response.accessToken,
+    refreshToken: response.refreshToken,
+  };
 }
 
 function persistSession(session) {

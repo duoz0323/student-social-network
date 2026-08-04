@@ -57,7 +57,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthEntryLayout>
+    <AuthEntryLayout title="Đăng ký">
       <AuthForm
         type="register"
         form={form}

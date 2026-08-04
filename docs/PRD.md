@@ -321,6 +321,7 @@ Một người không được có nhiều report PENDING cho cùng một bài.
 
 - Reply bình luận một cấp.
 - Thông báo REST và realtime bằng WebSocket/STOMP.
+- Nhắn tin trực tiếp một-một text-only: Database, REST Core, realtime best-effort, UI và Typing Indicator đã triển khai đến Giai đoạn 1D.
 - Lịch sử thao tác quản trị đơn giản.
 
 Phạm vi Notification realtime Giai đoạn 1:
@@ -334,6 +335,18 @@ Phạm vi Notification realtime Giai đoạn 1:
   lại bằng REST sau khi kết nối hoặc tái kết nối.
 - Giai đoạn này không realtime hóa read, read-all, delete hoặc invalidation; không dùng SockJS,
   outbox hay message broker ngoài.
+
+Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
+
+- Chỉ `USER`, `ACTIVE`, hoàn tất hồ sơ; người nhận phải Follow người gửi để bắt đầu conversation.
+- Một cặp user có một conversation; conversation rỗng không vào Inbox và gửi tin đầu phải kiểm tra lại Follow.
+- Block hai chiều ẩn list/history, chặn send/read và loại unread; Restrict không ảnh hưởng.
+- Hỗ trợ `TEXT`, chỉ ảnh và ảnh kèm chú thích; content tối đa 2.000 Unicode code point. Mỗi message tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; không hỗ trợ video hoặc tài liệu.
+- JSON text cũ được giữ nguyên; ảnh gửi REST multipart cùng path và idempotent bằng UUID v4 cùng fingerprint SHA-256 payload.
+- Media chat lưu ở chế độ authenticated, response/event chỉ có metadata. Signed URL TTL ngắn chỉ cấp cho member hợp lệ sau khi kiểm tra USER/ACTIVE/onboarding và Block.
+- Upload nằm ngoài transaction MySQL dài; rollback xóa bù và ghi durable cleanup task để scheduler retry khi cần.
+- REST/MySQL là nguồn sự thật; WebSocket là best-effort. `MESSAGE_CREATED` và `MESSAGES_READ` phát after-commit, không tạo Notification. UI text có Inbox, detail, badge, optimistic send, cursor history và REST reconciliation; UI ảnh thuộc giai đoạn Frontend tiếp theo.
+- Typing là trạng thái tạm thời: client chỉ `SEND` `{conversationId, typing}` đến `/app/messaging/typing`; Backend lấy user từ STOMP principal, kiểm tra account/membership/Block và chỉ phát `TYPING_STARTED`/`TYPING_STOPPED` cho participant còn lại. Không lưu DB, không unread, không Notification, không replay và Restrict không ảnh hưởng.
 
 ## 6. Ngoài phạm vi
 - Hồ sơ riêng tư.
@@ -349,7 +362,6 @@ Phạm vi Notification realtime Giai đoạn 1:
 - Discovery Map.
 - Feed tùy chỉnh.
 - Elasticsearch.
-- Nhắn tin.
 - Dashboard nâng cao.
 - Moderation Case.
 - Audit Log chi tiết.

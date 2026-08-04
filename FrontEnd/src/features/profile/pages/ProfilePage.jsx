@@ -13,6 +13,7 @@ import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
 import PostComposer from '../../post/components/PostComposer.jsx';
 import UnfollowConfirmModal from '../../../components/common/UnfollowConfirmModal.jsx';
 import { socialApi } from '../../../api/index.js';
+import { messagingApi } from '../../messaging/services/messagingApi.js';
 import { isRequestCanceled } from '../../../api/apiError.js';
 import { toPostView } from '../../post/utils/postViewModel.js';
 import {
@@ -94,6 +95,7 @@ export default function ProfilePage({ self = false }) {
     currentUserId, toggleFollow, applyUserBlock, showToast, updateProfile,
   } = useApp();
   const [editing, setEditing] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [followModal, setFollowModal] = useState(null);
   const [modalUsers, setModalUsers] = useState({ followers: [], following: [] });
@@ -101,6 +103,30 @@ export default function ProfilePage({ self = false }) {
   const [unfollowTarget, setUnfollowTarget] = useState(null);
   const [followPendingId, setFollowPendingId] = useState(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [startingMessage, setStartingMessage] = useState(false);
+
+  async function handleMessageClick() {
+    if (startingMessage || !profile?.id) return;
+    setStartingMessage(true);
+    try {
+      const result = await messagingApi.openDirectConversation(profile.id);
+      if (result?.conversationId) {
+        navigate(`/messages/${result.conversationId}`, {
+          state: {
+            otherUser: {
+              userId: profile.id,
+              displayName: profile.displayName,
+              avatarUrl: profile.avatarUrl,
+            },
+          },
+        });
+      }
+    } catch (err) {
+      showToast(err.message || 'Không thể mở tin nhắn. Vui lòng thử lại.');
+    } finally {
+      setStartingMessage(false);
+    }
+  }
   const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState('');
@@ -179,10 +205,14 @@ export default function ProfilePage({ self = false }) {
 
   function openEdit() {
     setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl, dateOfBirth: profile.birthDate ?? '' });
+    setError('');
     setEditing(true);
   }
 
   async function saveProfile() {
+    if (savingProfile) return;
+    setSavingProfile(true);
+    setError('');
     try {
       await updateProfile(draft);
       setProfile((current) => ({
@@ -193,9 +223,11 @@ export default function ProfilePage({ self = false }) {
         dateOfBirth: draft.dateOfBirth,
       }));
       setEditing(false);
-      setError('');
+      showToast('Đã chỉnh sửa thông tin người dùng thành công.');
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
+      setSavingProfile(false);
     }
   }
 
@@ -353,7 +385,7 @@ export default function ProfilePage({ self = false }) {
               <p className="text-[15px] text-[var(--app-muted)] mt-0.5">{handle}</p>
             </div>
             <div className="shrink-0">
-              <Avatar src={profile.avatarUrl} name={profile.displayName} size="lg" className="!w-[84px] !h-[84px] text-3xl" />
+              <Avatar src={profile.avatarUrl} name={profile.displayName} size="lg" viewable className="!w-[84px] !h-[84px] text-3xl" />
             </div>
           </div>
 
@@ -416,15 +448,25 @@ export default function ProfilePage({ self = false }) {
                 Chỉnh sửa trang cá nhân
               </Button>
             ) : (
-              <Button
-                className="w-full !rounded-xl !font-semibold !h-[36px] text-[15px]"
-                disabled={sameUserId(followPendingId, profile.id)}
-                onClick={() => handleFollowClick(profile, isFollowing)}
-              >
-                {sameUserId(followPendingId, profile.id)
-                  ? 'Đang xử lý...'
-                  : (isFollowing ? 'Bỏ theo dõi' : 'Theo dõi')}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1 !rounded-xl !font-semibold !h-[36px] text-[15px]"
+                  disabled={sameUserId(followPendingId, profile.id)}
+                  onClick={() => handleFollowClick(profile, isFollowing)}
+                >
+                  {sameUserId(followPendingId, profile.id)
+                    ? 'Đang xử lý...'
+                    : (isFollowing ? 'Bỏ theo dõi' : 'Theo dõi')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1 !rounded-xl !font-semibold !border-[var(--app-border-strong)] !h-[36px] text-[15px] text-[var(--app-text)]"
+                  disabled={startingMessage}
+                  onClick={handleMessageClick}
+                >
+                  {startingMessage ? 'Đang mở...' : 'Nhắn tin'}
+                </Button>
+              </div>
             )}
           </div>
 
@@ -494,21 +536,28 @@ export default function ProfilePage({ self = false }) {
 
       <Modal
         open={editing}
-        onClose={() => setEditing(false)}
+        onClose={() => !savingProfile && setEditing(false)}
         customHeader={
           <header className="flex shrink-0 items-start justify-between border-b border-[var(--app-border)] px-6 py-4">
             <div>
               <h2 className="text-[17px] font-bold text-[var(--app-text)]">Chỉnh sửa hồ sơ</h2>
               <p className="text-[13px] text-[var(--app-muted)]">Cập nhật thông tin hồ sơ cá nhân của bạn</p>
             </div>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)]" onClick={() => setEditing(false)} aria-label="Dong modal">
+            <button 
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] disabled:opacity-50" 
+              onClick={() => setEditing(false)} 
+              disabled={savingProfile}
+              aria-label="Dong modal"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </header>
         }
         footer={
           <Button 
-            disabled={!draft.displayName.trim() || !draft.dateOfBirth}
+            disabled={savingProfile || !draft.displayName.trim() || !draft.dateOfBirth}
+            loading={savingProfile}
+            loadingLabel="Đang xử lý..."
             onClick={saveProfile}
             className="w-full !bg-[var(--app-active)] !text-[var(--app-surface)] hover:opacity-80 !rounded-xl !h-[50px] !font-bold text-[16px]"
           >
@@ -520,16 +569,16 @@ export default function ProfilePage({ self = false }) {
         {error && <p className="app-error mb-4 rounded-xl p-3 text-sm">{error}</p>}
         <div className="flex flex-col items-center mt-2 mb-6">
           <Avatar src={draft.avatarUrl} name={draft.displayName} size="lg" className="!w-[56px] !h-[56px] text-2xl" />
-          <label className="mt-2 cursor-pointer text-[14px] font-semibold text-blue-600 hover:underline">Thay đổi ảnh
-            <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={changeAvatar} />
+          <label className={`mt-2 text-[14px] font-semibold text-blue-600 hover:underline ${savingProfile ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>Thay đổi ảnh
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={changeAvatar} disabled={savingProfile} />
           </label>
-          {draft.avatarUrl && <button onClick={removeAvatar} className="mt-1 text-xs text-red-600">Xóa ảnh</button>}
+          {draft.avatarUrl && <button onClick={removeAvatar} disabled={savingProfile} className="mt-1 text-xs text-red-600 disabled:opacity-50">Xóa ảnh</button>}
         </div>
 
         <div className="mb-5">
           <label className="text-[15px] font-semibold text-[var(--app-text)] mb-1.5 block">Ngày sinh</label>
-          <input type="date" required value={draft.dateOfBirth} onChange={(event) => setDraft({ ...draft, dateOfBirth: event.target.value })}
-            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" />
+          <input type="date" required value={draft.dateOfBirth} disabled={savingProfile} onChange={(event) => setDraft({ ...draft, dateOfBirth: event.target.value })}
+            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition disabled:opacity-50" />
         </div>
 
         <div className="mb-5">
@@ -538,9 +587,10 @@ export default function ProfilePage({ self = false }) {
             <span className="text-[13px] text-[var(--app-muted)]">{draft.displayName.length}/50</span>
           </div>
           <input 
-            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" 
+            className="app-field w-full rounded-xl border px-3.5 py-3 text-[15px] outline-none transition disabled:opacity-50" 
             value={draft.displayName} 
             maxLength={50}
+            disabled={savingProfile}
             onChange={(e) => setDraft({ ...draft, displayName: e.target.value })} 
           />
           {!draft.displayName.trim() && <p className="text-red-500 text-[13px] mt-1.5">Tên hiển thị không được để trống</p>}
@@ -562,10 +612,11 @@ export default function ProfilePage({ self = false }) {
             <span className="text-[13px] text-[var(--app-muted)]">{(draft.bio || '').length}/160</span>
           </div>
           <textarea 
-            className="app-field w-full min-h-[96px] resize-none rounded-xl border px-3.5 py-3 text-[15px] outline-none transition" 
+            className="app-field w-full min-h-[96px] resize-none rounded-xl border px-3.5 py-3 text-[15px] outline-none transition disabled:opacity-50" 
             placeholder="Viết vài dòng giới thiệu về bạn"
             value={draft.bio} 
             maxLength={160}
+            disabled={savingProfile}
             onChange={(e) => setDraft({ ...draft, bio: e.target.value })} 
           />
         </div>
@@ -573,7 +624,7 @@ export default function ProfilePage({ self = false }) {
         <div className="mb-2">
           <div className="flex justify-between items-center mb-1">
             <span className="text-[15px] font-semibold text-[var(--app-text)]">Quyền riêng tư của trang cá nhân</span>
-            <button className="flex items-center gap-1 text-[15px] text-[var(--app-muted)] hover:text-[var(--app-text)] transition">
+            <button disabled={savingProfile} className="flex items-center gap-1 text-[15px] text-[var(--app-muted)] hover:text-[var(--app-text)] transition disabled:opacity-50">
               Riêng tư
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
             </button>

@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant A as Sender browser
+    participant WS as Shared STOMP /ws
+    participant BE as Messaging typing service
+    participant DB as MySQL read-only check
+    participant B as Recipient browser
+
+    A->>WS: SEND /app/messaging/typing<br/>{conversationId, typing: true}
+    WS->>BE: Principal users.id + payload
+    BE->>BE: Rate limit 4 frames/user/second
+    BE->>DB: Check USER/ACTIVE/profile, membership and two-way Block
+    DB-->>BE: recipient user id
+    BE->>WS: convertAndSendToUser(recipient, /queue/messaging)
+    WS-->>B: TYPING_STARTED (no unreadCount)
+    B->>B: Show aria-live indicator and reset 5-second expiry
+
+    alt idle 2 seconds, submit, blank, blur or leave
+        A->>WS: SEND {conversationId, typing: false}
+        WS->>BE: Principal users.id + payload
+        BE->>DB: Repeat visibility check
+        DB-->>BE: recipient user id
+        BE->>WS: recipient-only TYPING_STOPPED
+        WS-->>B: Clear typing indicator
+    else STOP frame is lost
+        B->>B: Expiry clears stale indicator after 5 seconds
+    end
+
+    Note over A,B: Typing is ephemeral: no DB write, Notification, unread, replay or after-commit event

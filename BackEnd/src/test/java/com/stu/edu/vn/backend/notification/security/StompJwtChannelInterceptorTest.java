@@ -144,9 +144,25 @@ class StompJwtChannelInterceptorTest {
     }
 
     @Test
-    void clientSendIsAlwaysRejected() {
+    void clientCanSendOnlyAuthenticatedTypingDestination() {
+        assertThat(interceptor.preSend(
+                message(StompCommand.SEND, "/app/messaging/typing", authenticatedUser(10L)), null))
+                .isNotNull();
+
+        assertThatThrownBy(() -> interceptor.preSend(
+                message(StompCommand.SEND, "/app/messaging/typing", null), null))
+                .isInstanceOf(InsufficientAuthenticationException.class);
+        assertThatThrownBy(() -> interceptor.preSend(
+                message(StompCommand.SEND, null, authenticatedUser(10L)), null))
+                .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> interceptor.preSend(
                 message(StompCommand.SEND, "/app/notifications", authenticatedUser(10L)), null))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> interceptor.preSend(
+                message(StompCommand.SEND, "/topic/messaging", authenticatedUser(10L)), null))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> interceptor.preSend(
+                message(StompCommand.SEND, "/user/20/queue/messaging", authenticatedUser(10L)), null))
                 .isInstanceOf(AccessDeniedException.class);
     }
 

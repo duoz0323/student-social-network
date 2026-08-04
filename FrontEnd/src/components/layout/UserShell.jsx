@@ -4,10 +4,12 @@ import Badge from '../common/Badge.jsx';
 import BrandLockup from '../common/BrandLockup.jsx';
 import PostComposer from '../../features/post/components/PostComposer.jsx';
 import MoreMenu from './MoreMenu.jsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../../contexts/AppContext.jsx';
 import { useNotifications } from '../../contexts/NotificationContext.jsx';
 import { notificationBadgeLabel } from '../../features/notification/utils/notificationState.js';
+import { useMessaging } from '../../features/messaging/hooks/useMessaging.js';
+import { messagingBadgeLabel } from '../../features/messaging/utils/messagingState.js';
 
 // SVG Icons cho Sidebar
 function HomeIcon({ active = false }) {
@@ -44,6 +46,14 @@ function ActivityIcon({ active = false }) {
   );
 }
 
+function MessageIcon({ active = false }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+    </svg>
+  );
+}
+
 function ProfileIcon({ active = false }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,10 +80,11 @@ function MoreIcon() {
   );
 }
 
-function NavigationIcon({ item, unreadCount }) {
+function NavigationIcon({ item, notificationUnreadCount, messagingUnreadCount }) {
   const badgeLabel = item.to === '/notifications'
-    ? notificationBadgeLabel(unreadCount)
-    : '';
+    ? notificationBadgeLabel(notificationUnreadCount)
+    : item.to === '/messages' ? messagingBadgeLabel(messagingUnreadCount) : '';
+  const unreadCount = item.to === '/messages' ? messagingUnreadCount : notificationUnreadCount;
   return (
     <span className="interactive-icon relative flex w-6 justify-center text-[var(--app-text)]">
       {item.icon(item.active)}
@@ -81,7 +92,7 @@ function NavigationIcon({ item, unreadCount }) {
         <Badge
           tone="danger"
           className="absolute -right-4 -top-2 min-w-5 px-1.5 py-0.5 text-center text-[10px] leading-4"
-          aria-label={`${unreadCount} thông báo chưa đọc`}
+          aria-label={`${unreadCount} ${item.to === '/messages' ? 'tin nhắn' : 'thông báo'} chưa đọc`}
         >
           {badgeLabel}
         </Badge>
@@ -90,22 +101,62 @@ function NavigationIcon({ item, unreadCount }) {
   );
 }
 
+const ROUTE_TITLES = {
+  '/feed': 'Trang chủ',
+  '/search': 'Tìm kiếm',
+  '/notifications': 'Thông báo',
+  '/messages': 'Tin nhắn',
+  '/profile': 'Trang cá nhân',
+  '/saved': 'Bài viết đã lưu',
+  '/liked': 'Bài viết đã thích',
+  '/settings': 'Cài đặt',
+};
+
+function getPageTitle(pathname) {
+  for (const [route, title] of Object.entries(ROUTE_TITLES)) {
+    if (pathname.startsWith(route)) return title;
+  }
+  return 'Trang chủ';
+}
+
 export default function UserShell() {
   const { logout } = useApp();
   const { unreadCount } = useNotifications();
+  const { totalUnreadCount } = useMessaging();
   const [composerMode, setComposerMode] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const isMessagingRoute = location.pathname.startsWith('/messages');
+
+  // Cập nhật tiêu đề tab trình duyệt hiển thị số thông báo/tin nhắn chưa đọc (VD: (1) Trang chủ • UniShare)
+  useEffect(() => {
+    const pageTitle = getPageTitle(location.pathname);
+    const totalUnread = (Number(unreadCount) || 0) + (Number(totalUnreadCount) || 0);
+    if (totalUnread > 0) {
+      const badgeStr = totalUnread > 99 ? '(99+)' : `(${totalUnread})`;
+      document.title = `${badgeStr} ${pageTitle} • UniShare`;
+    } else {
+      document.title = `${pageTitle} • UniShare`;
+    }
+  }, [location.pathname, totalUnreadCount, unreadCount]);
 
   const navItems = [
     { to: '/feed/for-you', label: 'Dành cho bạn', icon: (active) => <HomeIcon active={active} />, active: location.pathname.startsWith('/feed') },
     { to: '#create', label: 'Tạo bài viết', icon: (active) => <CreateIcon active={active} />, active: false, action: () => setComposerMode('modal') },
     { to: '/search', label: 'Tìm kiếm', icon: (active) => <SearchIcon active={active} />, active: location.pathname === '/search' },
     { to: '/notifications', label: 'Thông báo', icon: (active) => <ActivityIcon active={active} />, active: location.pathname === '/notifications' },
+    { to: '/messages', label: 'Tin nhắn', icon: (active) => <MessageIcon active={active} />, active: location.pathname.startsWith('/messages') },
     { to: '/profile/me', label: 'Trang cá nhân', icon: (active) => <ProfileIcon active={active} />, active: location.pathname === '/profile/me' },
     { to: '/saved', label: 'Bài viết đã lưu', icon: (active) => <BookmarkIcon active={active} />, active: location.pathname === '/saved' },
   ];
+
+  function handleLogoOrFeedClick(e, targetTo = '/feed/for-you') {
+    if (location.pathname.startsWith('/feed')) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.dispatchEvent(new CustomEvent('unishare:refresh-feed', { detail: { type: targetTo.includes('following') ? 'following' : 'for-you' } }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)] lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]">
@@ -115,7 +166,11 @@ export default function UserShell() {
       */}
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[var(--sidebar-width)] bg-[var(--app-bg)] px-4 py-5 lg:flex lg:flex-col">
         {/* Logo */}
-        <Link to="/feed/for-you" className="mb-8 rounded-2xl px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]">
+        <Link
+          to="/feed/for-you"
+          onClick={(e) => handleLogoOrFeedClick(e, '/feed/for-you')}
+          className="mb-8 rounded-2xl px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
           <BrandLockup />
         </Link>
         
@@ -129,14 +184,19 @@ export default function UserShell() {
             if (item.action) {
               return (
                 <button key={item.label} onClick={item.action} className={buttonClass}>
-                  <NavigationIcon item={item} unreadCount={unreadCount} />
+                  <NavigationIcon item={item} notificationUnreadCount={unreadCount} messagingUnreadCount={totalUnreadCount} />
                   <span className="text-[15px]">{item.label}</span>
                 </button>
               );
             }
             return (
-              <NavLink key={item.to} to={item.to} className={buttonClass}>
-                <NavigationIcon item={item} unreadCount={unreadCount} />
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={(e) => handleLogoOrFeedClick(e, item.to)}
+                className={buttonClass}
+              >
+                <NavigationIcon item={item} notificationUnreadCount={unreadCount} messagingUnreadCount={totalUnreadCount} />
                 <span className="text-[15px]">{item.label}</span>
               </NavLink>
             );
@@ -166,11 +226,15 @@ export default function UserShell() {
 
       {/* Mobile header */}
       <header className="sticky top-0 z-20 flex h-[var(--header-height)] items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-4 lg:hidden">
-        <Link to="/feed/for-you" className="flex items-center gap-2">
+        <Link
+          to="/feed/for-you"
+          onClick={(e) => handleLogoOrFeedClick(e, '/feed/for-you')}
+          className="flex items-center gap-2"
+        >
           <BrandLockup compact />
         </Link>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button>
+          {!isMessagingRoute ? <Button size="sm" onClick={() => setComposerMode('modal')}>Đăng bài</Button> : null}
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)]"
             onClick={() => navigate('/settings')}
@@ -192,15 +256,15 @@ export default function UserShell() {
         </div>
       </header>
 
-      <main className="flex flex-col min-h-screen items-center lg:items-start lg:pl-[12%] xl:pl-[18%] px-0 lg:col-start-2">
+      <main className={`flex min-h-screen flex-col px-0 lg:col-start-2 ${isMessagingRoute ? 'items-stretch lg:pl-0' : 'items-center lg:items-start lg:pl-[12%] xl:pl-[18%]'}`}>
         <Outlet />
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-xs font-semibold lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-6 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-[10px] font-semibold lg:hidden">
         {navItems.filter(item => item.to.startsWith('/')).map((item) => (
           <NavLink key={item.label} to={item.to} className={`grid gap-1 py-2 justify-items-center ${item.active ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)]'}`}>
-            <NavigationIcon item={item} unreadCount={unreadCount} />
+            <NavigationIcon item={item} notificationUnreadCount={unreadCount} messagingUnreadCount={totalUnreadCount} />
             <span>{item.label}</span>
           </NavLink>
         ))}
@@ -216,7 +280,7 @@ export default function UserShell() {
       />
       
       {/* Nút + nổi ở góc dưới phải */}
-      <button 
+      {!isMessagingRoute ? <button
         className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-50 flex h-[68px] w-[68px] items-center justify-center rounded-[20px] bg-[var(--app-surface)] text-[var(--app-text)] border border-[var(--app-border)] shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-105 hover:bg-[var(--app-surface-soft)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.2)] active:scale-95"
         onClick={() => setComposerMode('floating')}
         aria-label="Tạo bài viết mới"
@@ -225,7 +289,7 @@ export default function UserShell() {
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-      </button>
+      </button> : null}
       
     </div>
   );

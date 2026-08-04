@@ -2,6 +2,96 @@
 
 > `README.md` là nguồn sự thật cao nhất. File này là nơi duy nhất mô tả chi tiết request, response, HTTP status, header và error code của API. Các tài liệu flow/database/UI chỉ dẫn chiếu đến contract này.
 
+## 0. Messaging REST Core
+
+Tất cả endpoint yêu cầu JWT của `USER`, tài khoản `ACTIVE` và hồ sơ hoàn tất. Actor luôn lấy từ
+SecurityContext; request không nhận `senderId`, `currentUserId` hoặc `type`.
+
+- `GET /api/v1/conversations?limit=20&cursor=`: Inbox keyset theo last message, tối đa 50, không count tổng.
+- `PUT /api/v1/conversations/direct/{recipientUserId}`: open/create idempotent; B phải Follow A khi A bắt đầu.
+- `GET /api/v1/conversations/{conversationId}/messages?limit=30&cursor=`: lịch sử keyset ID, tối đa 100,
+  response sắp xếp ASC trong page.
+- `POST /api/v1/conversations/{conversationId}/messages`: body `{clientMessageId, content}`; UUID v4,
+  `TEXT`, tối đa 2.000 Unicode code point. Insert trả `201`; replay cùng payload trả `200` và
+- `POST /api/v1/conversations/{conversationId}/messages` với `multipart/form-data`: các part
+  `clientMessageId` bắt buộc, `content` tùy chọn và `images` tùy chọn/tối đa 5. Không nhận sender,
+  recipient, type, URL hay storage ID. Không có ảnh thì Backend tạo `TEXT`; có ít nhất một ảnh thì tạo
+  `IMAGE`. Caption tối đa 2.000 Unicode code point; mỗi ảnh tối đa 10 MB và chỉ nhận JPG/JPEG/PNG/WEBP.
+  Insert trả `201`; replay chính xác trả `200`; reuse key khác fingerprint trả
+  `409 IDEMPOTENCY_KEY_REUSED`.
+- Message REST và `MESSAGE_CREATED` bổ sung trường `attachments` theo hướng additive. Mỗi phần tử chỉ gồm:
+
+```json
+{"attachmentId":90,"mediaType":"IMAGE","mimeType":"image/png","fileSizeBytes":1234,"width":640,"height":480,"displayOrder":0}
+```
+
+- `GET /api/v1/message-attachments/{attachmentId}/access`: chỉ `USER`/`ACTIVE`/đã onboarding,
+  là member của conversation và không có Block hai chiều mới nhận
+  `{"attachmentId":90,"accessUrl":"<signed-url>","expiresAt":"timestamp"}`. Không tìm thấy hoặc IDOR
+  trả `MESSAGE_ATTACHMENT_NOT_FOUND`; Block trả `DIRECT_MESSAGE_NOT_ALLOWED`. URL có TTL cấu hình
+  mặc định 5 phút; không lưu hoặc phát URL/storage ID trong message/history/realtime.
+
+  `replayed=true`; reuse khác payload trả `409 IDEMPOTENCY_KEY_REUSED`.
+- `PUT /api/v1/conversations/{conversationId}/read`: body `{lastReadMessageId}`; marker chỉ tiến lên,
+  response gồm `updated`, `lastReadAt`, `totalUnreadCount`.
+- `GET /api/v1/conversations/unread-count`: đếm message của participant còn lại sau marker.
+
+Block một trong hai chiều làm tài nguyên conversation không khả dụng và loại unread; Restrict không
+ảnh hưởng. Message không tạo Notification; Giai đoạn 1C phát `MESSAGE_CREATED` và `MESSAGES_READ`
+best-effort qua `/user/queue/messaging` sau commit, trong khi REST/MySQL vẫn là nguồn sự thật.
+
+### Messaging WebSocket envelope
+
+Client subscribe `/user/queue/messaging`. Mutation bền vững vẫn đi qua REST; client chỉ được `SEND` typing
+đến đúng `/app/messaging/typing`. Cả sender và recipient nhận event bền vững; `unreadCount` được tính riêng
+cho chính user nhận envelope.
+
+```json
+{
+  "schemaVersion": 1,
+  "eventId": "UUID",
+  "eventType": "MESSAGE_CREATED | MESSAGES_READ",
+  "occurredAt": "timestamp",
+  "data": {},
+  "unreadCount": 0
+}
+```
+
+`MESSAGE_CREATED.data` gồm `messageId`, `conversationId`, `senderId`, `clientMessageId`, `type`, `content`,
+`attachments`, `createdAt`. `MESSAGES_READ.data` gồm `conversationId`, `readerId`, `lastReadMessageId`, `lastReadAt`.
+Event chỉ phát after-commit và có thể bị mất; không có Outbox nên client luôn reconciliation lại bằng REST.
+
+### Messaging Typing WebSocket contract
+
+Client gửi payload tối thiểu, không có `userId`, `senderId` hoặc dữ liệu profile:
+
+```json
+{
+  "conversationId": 15,
+  "typing": true
+}
+```
+
+Backend lấy actor từ STOMP principal, giới hạn tối đa 4 frame/user/giây trong bộ nhớ, kiểm tra cả hai tài
+khoản là `USER`/`ACTIVE`/đã hoàn tất hồ sơ, sender là member và không có Block hai chiều. Frame hợp lệ chỉ
+được phát cho recipient qua `/user/queue/messaging`; sender không nhận echo typing.
+
+```json
+{
+  "schemaVersion": 1,
+  "eventId": "UUID",
+  "eventType": "TYPING_STARTED | TYPING_STOPPED",
+  "occurredAt": "timestamp",
+  "data": {
+    "conversationId": 15,
+    "userId": 10
+  }
+}
+```
+
+Typing envelope không có `unreadCount`, không lưu database, không tạo Notification, không dùng after-commit
+và không replay khi reconnect. Restrict không ảnh hưởng; trạng thái START phía nhận tự hết hạn sau 5 giây.
+
 ## 1. Auth
 
 ### Quy ước Auth flow token
@@ -947,6 +1037,8 @@ Các endpoint danh sách bài viết ở trên dùng cùng response:
 ## 7. Search
 
 ### GET `/api/v1/search/users?q=minh&page=0&size=20`
+
+Mỗi kết quả user trả thêm `followedByCurrentUser` để Frontend hiển thị đúng thao tác Follow/Unfollow của người xem hiện tại.
 
 ### GET `/api/v1/search/posts?q=hoctap&page=0&size=20`
 

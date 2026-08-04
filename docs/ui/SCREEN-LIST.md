@@ -86,9 +86,16 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
 | PROFILE-01 | Hồ sơ của mình | `docs/ui/screens/profile/profile-for-self.jpg` | User | Xem và quản lý hồ sơ cá nhân. | Thông tin cá nhân công khai, số follower/following, chỉnh sửa trang cá nhân, tab bài viết, danh sách bài. | Route `/profile/me`; chỉnh sửa mở PROFILE-03; follower/following mở PROFILE-04; bài mở POST-01. | Phạm vi triển khai: MVP_CURRENT. Sidebar active mục "Trang cá nhân". Tab "Bài đăng lại", "Câu trả lời", "File phương tiện" thuộc FUTURE_DEVELOPMENT. |
-| PROFILE-02 | Hồ sơ người khác | `docs/ui/screens/profile/profile-for-other.jpg` | User | Xem hồ sơ công khai và theo dõi người khác. | Thông tin người dùng, Follow/Unfollow, menu thêm, tab nội dung, danh sách bài. | Route `/profile/:userId`; follower/following mở PROFILE-04; bài mở POST-01. | Phạm vi triển khai: MVP_CURRENT. Sidebar không active mục "Trang cá nhân". Nút "Nhắn tin" thuộc FUTURE_DEVELOPMENT. |
+| PROFILE-02 | Hồ sơ người khác | `docs/ui/screens/profile/profile-for-other.jpg` | User | Xem hồ sơ công khai và theo dõi/nhắn tin người khác. | Thông tin người dùng, Follow/Unfollow, Nhắn tin, menu thêm và tab nội dung. | Route `/profile/:userId`; Nhắn tin mở `/messages/:conversationId` khi Backend cho phép. | Phạm vi triển khai: MVP_CURRENT. |
 | PROFILE-03 | Modal chỉnh sửa hồ sơ | `docs/ui/screens/profile/model-edit-profile.jpg` | User | Cập nhật hồ sơ cá nhân. | Avatar, tên hiển thị, bio/thông tin cá nhân, ngày sinh bắt buộc, lưu. | Mở từ PROFILE-01. | Phạm vi triển khai: MVP_CURRENT. Không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi; không triển khai username hoặc hồ sơ riêng tư dù có trong ảnh. |
 | PROFILE-04 | Modal danh sách follower/following | `docs/ui/screens/other/model-list-follow.jpg` | User | Xem người theo dõi và đang theo dõi. | Tab Người theo dõi/Đang theo dõi, danh sách user theo displayName, nút theo dõi/trạng thái đang theo dõi. | Mở từ PROFILE-01/02; chọn user điều hướng `/profile/:userId`. | Phạm vi triển khai: MVP_CURRENT. |
+
+## Messaging
+
+| Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| MSG-01 | Inbox | Chưa có ảnh chuẩn | User | Xem conversation đã có message. | Avatar, displayName, preview, thời gian, unread, cursor load-more. | `/messages`; chọn item đến MSG-02. | Desktop split-view, mobile route riêng. |
+| MSG-02 | Conversation detail | Chưa có ảnh chuẩn | User | Đọc và gửi text một-một. | Cursor history, bubble, seen marker, optimistic/failed retry, composer. | `/messages/:conversationId`; mobile quay lại MSG-01. | Content render dạng text; REST/MySQL là nguồn sự thật. |
 
 ## Search, Saved Posts và Liked Posts
 

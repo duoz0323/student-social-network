@@ -255,3 +255,23 @@ Không sử dụng Machine Learning.
   tiếp tục là khóa chống trùng khi merge danh sách. Badge dùng unread count authoritative từ Backend
   và hiển thị tối đa `99+`.
 
+## 11. Messaging REST Core và realtime UI
+
+- Module `messaging` theo feature package, không trả Entity và không phụ thuộc module Notification.
+- MySQL dùng `conversations`, `conversation_members`, `messages`, `message_attachments` và
+  `media_cleanup_tasks`; unique participant pair và unique
+  `(sender_id, client_message_id)` là hàng rào chống trùng cuối cùng.
+- Inbox và history dùng keyset cursor Base64URL, lấy `limit + 1`, không dùng offset hoặc count tổng.
+- Service lấy sender từ SecurityContext, kiểm tra role/status/onboarding, Follow đúng hướng và Block
+  hai chiều. Open/send cùng dùng `UserPairLockCoordinator` với Block theo thứ tự low/high user ID.
+- Gửi mới lưu message rồi cập nhật last message trong cùng transaction; replay cùng payload trả bản
+  ghi cũ. Mark read khóa membership và chỉ cho marker tiến lên.
+- Service publish domain event nhẹ trong transaction chỉ khi insert/marker thực sự tiến lên. Listener `AFTER_COMMIT` mở read-only transaction mới, kiểm tra lại account/profile/Block, tính unread riêng và phát cho cả hai user qua `/queue/messaging`; lỗi broker chỉ log warning.
+- JSON text và multipart ảnh dùng cùng POST path theo content type. Toàn bộ file được kiểm tra extension,
+  MIME khai báo, magic bytes/khả năng giải mã, dimensions, size và SHA-256 trước khi upload.
+- Cloudinary lưu ảnh chat dạng `authenticated`. Upload ở ngoài transaction MySQL; transaction ngắn khóa pair/conversation, recheck idempotency rồi lưu message + attachments. Rollback/race xóa bù, lỗi xóa tạo durable cleanup task trong transaction độc lập.
+- REST/history/realtime chỉ trả attachment metadata. Endpoint access kiểm tra lại account/profile/membership/Block rồi tạo signed URL TTL cấu hình; storage public ID không đi ra client.
+- `MessagingContext` dùng connection manager chung, merge optimistic/REST/WebSocket theo `messageId` hoặc `clientMessageId`, reconcile qua REST khi reconnect/tab visible và polling 30 giây khi disconnected. Không tạo Notification row, Outbox hay STOMP client thứ hai.
+- Typing dùng cùng connection manager qua `/app/messaging/typing`; inbound interceptor chỉ allowlist chính xác destination này và vẫn từ chối mọi client `SEND` khác. Controller không nhận identity từ payload; service read-only xác thực principal, account/profile, hai member và Block bằng projection rồi phát riêng recipient.
+- `TypingRateLimiter` là fixed window in-memory tối đa 4 frame/user/giây, có cleanup key cũ và chỉ bảo vệ từng application instance. Frontend phát START lần đầu, refresh sau mỗi 3 giây hoạt động, STOP sau 2 giây idle/submit/blank/blur/leave; receiver dedupe `eventId` và tự xóa START sau 5 giây. Typing không dùng transaction after-commit vì không có state bền vững.
+

@@ -8,7 +8,8 @@ export default function ContentShell({ header, children }) {
         
         {/* Vùng xám bao phủ Tabs. Khi bài viết lướt qua mặt nạ, nó sẽ chui vào dưới vùng xám này và bị che đi hoàn toàn. */}
         <div className="bg-[var(--app-bg)] pt-2 lg:pt-6">
-          {header && <div className="mb-0 relative z-10">{header}</div>}
+          {/* Header phải nằm trên nắp bo tròn để các dropdown nổi không bị đường viền xuyên qua. */}
+          {header && <div className="relative z-20 mb-0">{header}</div>}
         </div>
 
         {/* Nắp bo tròn ảo (Corner Mask). Vùng giữa HOÀN TOÀN TRONG SUỐT để bài viết hiển thị khi lướt qua. */}

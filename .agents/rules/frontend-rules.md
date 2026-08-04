@@ -169,6 +169,9 @@ Form phải:
 - Không commit secret.
 
 ## 9. Ghi chú
-- Toàn bộ giao diện người dùng và quản trị phải sử dụng cùng một logo.
-- Logo chính thức nằm tại: `FrontEnd/src/assets/brand/logo.png`.
+- Hệ thống sử dụng 2 phiên bản logo theo theme:
+  - `FrontEnd/src/assets/brand/logo-light.jpg` – nền đen, chữ Ui trắng (dùng cho giao diện sáng).
+  - `FrontEnd/src/assets/brand/logo-dark.jpg` – nền trắng, chữ Ui đen (dùng cho giao diện tối).
+- Trong React component, dùng hook `useThemeLogo()` từ `src/hooks/useThemeLogo.js` để tự động chọn logo phù hợp với theme.
+- AdminShell cố định theme sáng nên import trực tiếp `logo-light.jpg`.
 - Nếu logo trong ảnh Stitch khác với logo chính thức thì bỏ qua logo trong ảnh và sử dụng file logo chính thức.

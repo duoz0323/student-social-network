@@ -105,19 +105,33 @@ export default function NotificationsPage() {
     [filter, notifications],
   );
 
-  const header = (
-    <div className="flex h-[var(--header-height)] items-center justify-between px-4 sm:px-6">
-      <div className="flex items-center gap-2.5">
-        <h1 className="text-[19px] font-bold tracking-[-0.01em] text-[var(--app-text)]">Thông báo</h1>
-        <span
-          className={`h-2 w-2 rounded-full ${socketConnected ? 'bg-emerald-500' : 'bg-[var(--app-border-strong)]'}`}
-          aria-label={socketConnected ? 'Đang nhận thông báo trực tiếp' : 'Đang đồng bộ thông báo qua REST'}
-          title={socketConnected ? 'Đang cập nhật trực tiếp' : 'Đang đồng bộ nền'}
-        />
-      </div>
+  const notificationTabs = (
+    <div className="relative flex h-[var(--header-height)] items-center justify-center gap-12 px-4 sm:px-6">
       <button
         type="button"
-        className="rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] disabled:cursor-default disabled:opacity-40"
+        className={`relative flex h-full items-center px-4 text-[15px] font-bold transition ${filter === 'all' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
+        onClick={() => setFilter('all')}
+      >
+        Tất cả
+        {filter === 'all' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
+      </button>
+      <button
+        type="button"
+        className={`relative flex h-full items-center gap-1.5 px-4 text-[15px] font-bold transition ${filter === 'unread' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
+        onClick={() => setFilter('unread')}
+      >
+        <span>Chưa đọc</span>
+        {unreadCount > 0 ? (
+          <span className="min-w-5 rounded-full bg-[var(--app-surface-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--app-muted)]">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
+        {filter === 'unread' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
+      </button>
+
+      <button
+        type="button"
+        className="absolute right-4 rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[var(--app-muted)] transition hover:bg-[var(--app-surface-soft)] hover:text-[var(--app-text)] disabled:cursor-default disabled:opacity-40 sm:right-6"
         disabled={unreadCount === 0 || markingAll}
         onClick={handleMarkAllAsRead}
       >
@@ -127,36 +141,7 @@ export default function NotificationsPage() {
   );
 
   return (
-    <ContentShell header={header}>
-      <div className="sticky top-[var(--header-height)] z-10 flex border-b border-[var(--app-border)] bg-[color-mix(in_srgb,var(--app-surface)_96%,transparent)] px-4 backdrop-blur-md sm:px-6 lg:static" role="tablist" aria-label="Lọc thông báo">
-          {[
-            { value: 'all', label: 'Tất cả' },
-            { value: 'unread', label: 'Chưa đọc' },
-          ].map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="tab"
-              aria-selected={filter === option.value}
-              className={`relative flex min-h-12 flex-1 items-center justify-center gap-1.5 px-3 text-[14px] font-semibold transition ${
-                filter === option.value
-                  ? 'text-[var(--app-text)]'
-                  : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'
-              }`}
-              onClick={() => setFilter(option.value)}
-            >
-              {option.label}
-              {option.value === 'unread' && unreadCount > 0 ? (
-                <span className="min-w-5 rounded-full bg-[var(--app-surface-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--app-muted)]">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              ) : null}
-              {filter === option.value ? (
-                <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-[var(--app-text)]" />
-              ) : null}
-            </button>
-          ))}
-      </div>
+    <ContentShell header={notificationTabs}>
 
       {error ? (
         <div className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 sm:mx-6">

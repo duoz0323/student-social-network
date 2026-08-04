@@ -33,6 +33,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
 
     static final String NOTIFICATION_DESTINATION = "/user/queue/notifications";
     static final String MESSAGING_DESTINATION = "/user/queue/messaging";
+    static final String MESSAGING_TYPING_DESTINATION = "/app/messaging/typing";
     private static final Set<String> ALLOWED_SUBSCRIPTION_DESTINATIONS = Set.of(
             NOTIFICATION_DESTINATION,
             MESSAGING_DESTINATION
@@ -55,10 +56,19 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         } else if (accessor.getCommand() == StompCommand.SUBSCRIBE) {
             authorizeSubscription(accessor);
         } else if (accessor.getCommand() == StompCommand.SEND) {
-            // Realtime chỉ phân phối server -> client; mọi mutation nghiệp vụ tiếp tục đi qua REST.
-            throw new AccessDeniedException("STOMP SEND is not supported");
+            authorizeSend(accessor);
         }
         return message;
+    }
+
+    private void authorizeSend(StompHeaderAccessor accessor) {
+        if (!(accessor.getUser() instanceof Authentication authentication)
+                || !authentication.isAuthenticated()) {
+            throw new InsufficientAuthenticationException("STOMP connection is not authenticated");
+        }
+        if (!MESSAGING_TYPING_DESTINATION.equals(accessor.getDestination())) {
+            throw new AccessDeniedException("STOMP SEND destination is not allowed");
+        }
     }
 
     private UsernamePasswordAuthenticationToken authenticate(StompHeaderAccessor accessor) {

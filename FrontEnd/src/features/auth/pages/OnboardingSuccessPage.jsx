@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import logo from '../../../assets/brand/logo.png';
+import logo from '../../../assets/brand/logo-dark.jpg';
 import BrandLockup from '../../../components/common/BrandLockup.jsx';
 import Button from '../../../components/common/Button.jsx';
 import { useAuth } from '../hooks/useAuth.js';
@@ -114,11 +114,6 @@ export default function OnboardingSuccessPage() {
       <div className="relative z-10 min-h-dvh lg:grid lg:h-dvh lg:grid-cols-[minmax(0,54fr)_minmax(450px,46fr)]">
         {/* ── Cột trái: Hero thông điệp đồng bộ ── */}
         <section className="relative hidden h-dvh bg-transparent px-10 py-7 lg:flex lg:flex-col xl:px-12 xl:py-8 2xl:px-16">
-          {/* Logo ứng dụng */}
-          <Link to="/" className="relative z-10 inline-flex w-fit items-center gap-3.5" aria-label="UniShare - Trang chủ">
-            <img src={logo} alt="" className="h-11 w-11 object-contain xl:h-12 xl:w-12" />
-            <span className="text-2xl font-bold tracking-[-0.02em] text-zinc-950 xl:text-[26px]">UniShare</span>
-          </Link>
 
           {/* Khối Hero thông điệp chính */}
           <div className="relative z-10 mx-auto mt-6 w-full max-w-[650px] pr-10 xl:mt-8 xl:pr-6 2xl:mt-10">
@@ -180,17 +175,10 @@ export default function OnboardingSuccessPage() {
 
         {/* ── Cột phải: Form thành công nằm ở vị trí tương ứng ── */}
         <section className="flex min-h-dvh flex-col items-center bg-transparent px-4 py-8 sm:px-8 lg:justify-center lg:overflow-y-auto lg:py-10">
-          {/* Logo mobile – ẩn trên desktop */}
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <img src={logo} alt="UniShare" className="h-10 w-10 object-contain" />
-            <span className="text-xl font-bold text-zinc-950">UniShare</span>
-          </div>
-
           <div className="w-full max-w-[440px]">
             {isPreparing ? (
               <div
-                className="rounded-[24px] border px-6 py-12 text-center sm:px-10"
-                style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)', boxShadow: 'var(--auth-card-shadow)' }}
+                className="py-10 text-center"
                 role="status"
                 aria-live="polite"
               >
@@ -202,9 +190,8 @@ export default function OnboardingSuccessPage() {
                 <p className="mt-2 text-sm text-zinc-500">Chỉ mất một chút thời gian.</p>
               </div>
             ) : (
-              <div 
-                className="animate-[fadeInUp_0.42s_ease-out_both] rounded-[24px] border px-6 py-8 text-center sm:px-10 sm:py-10"
-                style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)', boxShadow: 'var(--auth-card-shadow)' }}
+              <div
+                className="animate-[fadeInUp_0.42s_ease-out_both] py-6 text-center"
               >
                 <div className="flex justify-center">
                   <BrandLockup compact />
@@ -243,7 +230,7 @@ export default function OnboardingSuccessPage() {
                   Hồ sơ của bạn đã sẵn sàng. Bắt đầu khám phá những bài viết mới và kết nối cùng cộng đồng UniShare.
                 </p>
 
-                <div className="mt-8 border-t border-zinc-200 pt-6">
+                <div className="mt-8">
                   <Button
                     type="button"
                     size="lg"

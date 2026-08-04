@@ -1,6 +1,24 @@
 # Tài liệu Database MVP
 
-`README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả chi tiết tại `database/student_social_network_db.sql`; DBML tương ứng nằm tại `database/student_social_network_db.dbml`. SQL và DBML phải được cập nhật đồng thời.
+`README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả tại `database/student_social_network.sql`; DBML tương ứng nằm tại `database/student_social_network.dbml`. SQL và DBML phải được cập nhật đồng thời.
+
+## 0. Messaging trực tiếp và ảnh
+
+- `conversations`: cặp participant low/high duy nhất, last message nullable và index
+  `(last_message_at DESC, id DESC)` cho Inbox.
+- `conversation_members`: khóa chính `(conversation_id, user_id)`, marker đọc nullable và index theo user.
+- `messages`: `TEXT|IMAGE`, content nullable cho message chỉ có ảnh, fingerprint SHA-256 canonical,
+  UUID client dùng collation `ascii_bin`, unique `(sender_id, client_message_id)` và index
+  `(conversation_id, id DESC)`.
+- `message_attachments`: quan hệ N-1 tới message, chỉ `IMAGE`/`CLOUDINARY`, lưu public ID nội bộ,
+  MIME, size, dimensions và thứ tự 0..4; unique `(message_id, display_order)` và
+  `(storage_provider, storage_public_id)`.
+- `media_cleanup_tasks`: hàng đợi bền vững `PENDING|PROCESSING|COMPLETED|FAILED`, lưu lần thử và thời
+  điểm retry cho file upload đã thành rác; scheduler khóa/xử lý từng task trong transaction riêng.
+- Composite FK bảo đảm sender là member. Service bảo đảm hai member khớp participant và các marker
+  last/read thuộc đúng conversation.
+- Migration nền: `database/migrations/20260801_add_direct_messaging.sql`.
+- Migration ảnh: `database/migrations/20260803_add_messaging_images.sql`; backfill fingerprint cho text cũ, không sửa migration đã chạy.
 
 ## 1. Trạng thái thiết kế Auth 0E
 

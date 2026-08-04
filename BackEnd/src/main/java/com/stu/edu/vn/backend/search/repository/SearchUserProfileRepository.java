@@ -1,6 +1,7 @@
 package com.stu.edu.vn.backend.search.repository;
 
 import com.stu.edu.vn.backend.user.entity.UserProfile;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,5 +50,20 @@ public interface SearchUserProfileRepository extends JpaRepository<UserProfile, 
             @Param("keyword") String escapedKeyword,
             @Param("viewerId") Long viewerId,
             Pageable pageable
+    );
+
+    /** Lấy trạng thái Follow cho toàn bộ user trong một trang kết quả, tránh truy vấn từng user. */
+    @Query(
+            value = """
+                    SELECT f.following_id
+                    FROM follows f
+                    WHERE f.follower_id = :viewerId
+                      AND f.following_id IN (:targetUserIds)
+                    """,
+            nativeQuery = true
+    )
+    List<Long> findFollowedUserIds(
+            @Param("viewerId") Long viewerId,
+            @Param("targetUserIds") List<Long> targetUserIds
     );
 }

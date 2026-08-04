@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../../../assets/brand/logo.png';
+import logo from '../../../assets/brand/logo-dark.jpg';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { onboardingService } from '../services/onboardingService.js';
 import { todayIsoDate, calcAge } from '../components/onboarding/onboardingUtils.js';
@@ -180,7 +180,7 @@ export default function OnboardingProfilePage() {
         <section className="relative hidden h-dvh bg-transparent px-10 py-7 lg:flex lg:flex-col xl:px-12 xl:py-8 2xl:px-16">
           {/* Logo ứng dụng */}
           <Link to="/" className="relative z-10 inline-flex w-fit items-center gap-3.5" aria-label="UniShare - Trang chủ">
-            <img src={logo} alt="" className="h-11 w-11 object-contain xl:h-12 xl:w-12" />
+            <img src={logo} alt="" className="h-11 w-11 rounded-xl object-cover shadow-xs xl:h-12 xl:w-12" />
             <span className="text-2xl font-bold tracking-[-0.02em] text-zinc-950 xl:text-[26px]">UniShare</span>
           </Link>
 
@@ -246,7 +246,7 @@ export default function OnboardingProfilePage() {
         <section className="flex min-h-dvh flex-col items-center bg-transparent px-4 py-8 sm:px-8 lg:justify-center lg:overflow-y-auto lg:py-10">
           {/* Logo mobile – ẩn trên desktop */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <img src={logo} alt="UniShare" className="h-10 w-10 object-contain" />
+            <img src={logo} alt="UniShare" className="h-10 w-10 rounded-xl object-cover shadow-xs" />
             <span className="text-xl font-bold text-zinc-950">UniShare</span>
           </div>
 

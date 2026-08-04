@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 30/07/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 03/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -33,6 +33,9 @@
 | Báo cáo bài viết | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Chống trùng report `PENDING`. |
 | Admin user/post/report/action history | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có phân quyền và test security/controller/repository/service. |
 | Thông báo REST và realtime Giai đoạn 1 | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | REST/MySQL là nguồn sự thật; STOMP native phát `NOTIFICATION_CREATED` after-commit, có reconcile và polling fallback. |
+| Nhắn tin trực tiếp Giai đoạn 1C | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Database/REST + after-commit realtime + responsive UI text đã có; E2E hai browser chưa chạy. |
+| Ảnh trong Messaging một-một | IMPLEMENTED | PLANNED | TESTED | PARTIAL | Multipart/private media/durable cleanup và MySQL concurrency đã qua; chưa có UI gửi/hiển thị ảnh. |
+| Typing Indicator Messaging Giai đoạn 1D | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Ephemeral STOMP SEND exact allowlist, recipient-only events và UI timeout đã có; không DB, MySQL test hay E2E hai browser. |
 
 ## Thay đổi đang có trong worktree
 
@@ -46,6 +49,12 @@
   danh sách cài đặt và quan hệ `restrictedByMe`.
 - Notification đã có `/ws`, JWT STOMP `CONNECT`, user destination riêng, phát sự kiện after-commit,
   Context dùng chung, badge desktop/mobile, reconnect/reconcile và polling fallback.
+- Messaging có migration, REST cursor/idempotency/read, `MESSAGE_CREATED`/`MESSAGES_READ` after-commit,
+  Inbox/detail/badge/optimistic UI và reconciliation trên connection STOMP dùng chung.
+- Backend Messaging ảnh hỗ trợ tối đa 5 ảnh private, multipart cùng path, metadata attachment,
+  signed access URL, fingerprint idempotency và durable cleanup; Frontend chưa thay đổi.
+- Typing Indicator dùng cùng connection STOMP, chỉ allow `/app/messaging/typing`, kiểm tra membership/account/Block,
+  giới hạn 4 frame/user/giây trong từng instance và hiển thị có expiry 5 giây; không lưu DB hay thay đổi unread.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
@@ -59,6 +68,8 @@
 4. Test tích hợp MySQL cho `markAllRead` có điều kiện theo `AUTH_TEST_DB_URL`; môi trường hiện tại
    không có database test nên test này được skip. Kết nối WebSocket với hai phiên người dùng thật
    vẫn cần smoke test thủ công ở môi trường tích hợp.
+5. Migration Messaging text + ảnh và 7 test MySQL 8.4 cho concurrent open/text retry/image retry,
+   read, constraint và race Block-send/Block-open đã chạy thành công trên container test tạm.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo
 

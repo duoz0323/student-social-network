@@ -1,22 +1,25 @@
 sequenceDiagram
     autonumber
-    actor U as Người dùng
-    participant FE as Frontend
-    participant MC as MessageController
-    participant MS as MessageService
+    actor U as User
+    participant FE as Messaging UI
+    participant REST as Messaging REST
     participant DB as MySQL
+    participant EV as AFTER_COMMIT listener
+    participant WS as STOMP user queue
 
-    Note over U,DB: Thiết kế dự kiến ngoài phạm vi MVP hiện tại
-    U->>FE: Nhập và gửi tin nhắn
-    FE->>MC: POST /api/v1/conversations/{id}/messages
-    MC->>MS: sendMessage(conversationId, request)
-    MS->>DB: Kiểm tra thành viên và quyền nhắn tin
-    alt Không được phép gửi
-        MS-->>FE: Trả lỗi nghiệp vụ
-        FE-->>U: Hiển thị thông báo lỗi
-    else Hợp lệ
-        MS->>DB: Lưu tin nhắn
-        DB-->>MS: Commit transaction
-        MS-->>FE: MessageResponse
-        FE-->>U: Hiển thị tin nhắn đã gửi
+    U->>FE: Send TEXT
+    FE->>FE: Add optimistic item with UUID v4
+    FE->>REST: POST /api/v1/conversations/{id}/messages
+    REST->>DB: Pair lock, Block/Follow/idempotency checks
+    alt Valid replay
+        DB-->>REST: Existing message
+        REST-->>FE: 200 replayed=true
+    else New message
+        REST->>DB: Insert message and update conversation
+        REST->>DB: Commit
+        REST-->>FE: 201 message
+        DB-->>EV: MESSAGE_CREATED after commit
+        EV->>DB: Requery visibility and unread per user
+        EV->>WS: Send sender and recipient /queue/messaging
+        WS-->>FE: Merge by messageId/clientMessageId
     end

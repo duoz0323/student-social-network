@@ -110,12 +110,25 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
     observer.current.observe(node);
   }, [hasNext, loadMore, nextCursor]);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const reload = useCallback(() => {
     postListCache.delete(cacheKey);
     setPosts([]);
     setNextCursor(null);
     setHasNext(true);
     loadPage({ replace: true });
+  }, [cacheKey, loadPage]);
+
+  const refresh = useCallback(async () => {
+    if (inFlight.current) return;
+    setRefreshing(true);
+    try {
+      postListCache.delete(cacheKey);
+      await loadPage({ replace: true });
+    } finally {
+      setRefreshing(false);
+    }
   }, [cacheKey, loadPage]);
 
   const removePost = useCallback((postId) => {
@@ -128,7 +141,7 @@ export function useInfinitePosts({ cacheKey, request, normalizePost, limit = 10,
   }, [cacheKey]);
 
   return {
-    posts, initialLoading, loadingMore, initialError, loadMoreError,
-    hasNext, sentinelRef, reload, retryLoadMore: loadMore, removePost,
+    posts, initialLoading, loadingMore, refreshing, initialError, loadMoreError,
+    hasNext, sentinelRef, reload, refresh, retryLoadMore: loadMore, removePost,
   };
 }

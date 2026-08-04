@@ -31,5 +31,12 @@ class UserProfileSearchRepositoryContractTest {
         assertThat(query.countQuery())
                 .contains("COUNT(*)", "LIKE CONCAT('%', :keyword, '%')", "u.status = 'ACTIVE'",
                         "user_blocks", ":viewerId");
+
+        Method followedIdsMethod = SearchUserProfileRepository.class.getMethod(
+                "findFollowedUserIds", Long.class, java.util.List.class);
+        Query followedIdsQuery = followedIdsMethod.getAnnotation(Query.class);
+        assertThat(followedIdsQuery.nativeQuery()).isTrue();
+        assertThat(followedIdsQuery.value())
+                .contains("FROM follows", "f.follower_id = :viewerId", "f.following_id IN (:targetUserIds)");
     }
 }

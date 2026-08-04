@@ -25,6 +25,7 @@ import {
   LazyRouteBoundary,
   LikedPostsPage,
   NotificationsPage,
+  MessagingPage,
   PostDetailPage,
   ProfilePage,
   BlockedUsersPage,
@@ -66,6 +67,8 @@ export const router = createBrowserRouter([
       { path: '/liked', element: <LikedPostsPage /> },
       { path: '/search', element: <SearchPage /> },
       { path: '/notifications', element: <NotificationsPage /> },
+      { path: '/messages', element: <MessagingPage /> },
+      { path: '/messages/:conversationId', element: <MessagingPage /> },
       {
         path: '/settings',
         element: <SettingsLayout />,

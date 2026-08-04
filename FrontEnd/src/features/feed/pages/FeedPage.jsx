@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
@@ -21,18 +21,44 @@ export default function FeedPage() {
     normalizePost: toPostView,
   });
 
+  const { refresh } = feedState;
+
+  // Tự động cuộn lên đầu và kích hoạt load lại bài viết khi ấn Logo hoặc tab Dành cho bạn/Đang theo dõi
+  useEffect(() => {
+    const handleRefresh = (event) => {
+      const targetType = event.detail?.type;
+      if (!targetType || targetType === type) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        void refresh();
+      }
+    };
+    window.addEventListener('unishare:refresh-feed', handleRefresh);
+    return () => window.removeEventListener('unishare:refresh-feed', handleRefresh);
+  }, [refresh, type]);
+
+  function handleTabClick(targetType) {
+    if (type === targetType) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      void refresh();
+    } else {
+      navigate(`/feed/${targetType}`);
+    }
+  }
+
   const feedTabs = (
     <div className="flex h-[var(--header-height)] justify-center gap-12">
       <button
+        type="button"
         className={`relative px-4 text-[15px] font-bold transition ${type === 'for-you' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
-        onClick={() => navigate('/feed/for-you')}
+        onClick={() => handleTabClick('for-you')}
       >
         Dành cho bạn
         {type === 'for-you' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
       </button>
       <button
+        type="button"
         className={`relative px-4 text-[15px] font-bold transition ${type === 'following' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
-        onClick={() => navigate('/feed/following')}
+        onClick={() => handleTabClick('following')}
       >
         Đang theo dõi
         {type === 'following' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
@@ -57,6 +83,17 @@ export default function FeedPage() {
             Đăng
           </Button>
         </div>
+
+        {/* Spinner quay nhỏ ở giữa kiểu Threads/Instagram khi reload feed */}
+        {feedState.refreshing && (
+          <div className="flex items-center justify-center border-b border-[var(--app-border-strong)] py-4 text-[var(--app-muted)]">
+            <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Đang tải bài viết mới...">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </div>
+        )}
+
         <InfinitePostList
           {...feedState}
           errorTitle="Không thể tải Feed"

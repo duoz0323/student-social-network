@@ -11,6 +11,7 @@ export const SavedPostsPage = lazy(() => import('../features/post/pages/SavedPos
 export const LikedPostsPage = lazy(() => import('../features/post/pages/LikedPostsPage.jsx'));
 export const SearchPage = lazy(() => import('../features/search/pages/SearchPage.jsx'));
 export const NotificationsPage = lazy(() => import('../features/notification/pages/NotificationsPage.jsx'));
+export const MessagingPage = lazy(() => import('../features/messaging/pages/MessagingPage.jsx'));
 export const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage.jsx'));
 export const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage.jsx'));
 export const AdminPostsPage = lazy(() => import('../features/admin/pages/AdminPostsPage.jsx'));

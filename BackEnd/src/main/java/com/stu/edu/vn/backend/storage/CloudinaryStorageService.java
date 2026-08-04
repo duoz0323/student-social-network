@@ -13,8 +13,11 @@ public interface CloudinaryStorageService {
     CloudinaryUploadResult uploadPostImage(MultipartFile file);
 
     CloudinaryUploadResult uploadPostVideo(MultipartFile file);
+    CloudinaryUploadResult uploadMessageImage(MultipartFile file);
+    CloudinaryAccessResult createMessageImageAccess(String publicId, String mimeType);
 
     void deleteImage(String publicId);
 
     void deletePostMedia(String publicId, PostMediaType mediaType);
+    void deleteMessageImage(String publicId);
 }

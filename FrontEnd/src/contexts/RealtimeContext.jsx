@@ -55,13 +55,18 @@ export function RealtimeProvider({ children }) {
     [],
   );
   const reconnect = useCallback(() => realtimeSocket.reconnect(), []);
+  const send = useCallback(
+    (destination, payload) => realtimeSocket.send(destination, payload),
+    [],
+  );
 
   const value = useMemo(() => ({
     connected,
     subscribe,
     unsubscribe,
+    send,
     reconnect,
-  }), [connected, reconnect, subscribe, unsubscribe]);
+  }), [connected, reconnect, send, subscribe, unsubscribe]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }

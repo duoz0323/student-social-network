@@ -54,7 +54,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthEntryLayout>
+    <AuthEntryLayout title="Đăng nhập">
       <AuthForm
         type="login"
         form={form}

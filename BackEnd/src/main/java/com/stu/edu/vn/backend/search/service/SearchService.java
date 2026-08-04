@@ -1,5 +1,6 @@
 package com.stu.edu.vn.backend.search.service;
 
+import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.search.dto.response.SearchUserResponse;
 import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
@@ -12,5 +13,6 @@ public interface SearchService {
 
     PageResponse<SearchUserResponse> searchUsers(String keyword, int page, int size);
 
-    PageResponse<SearchPostResponse> searchPosts(String keyword, SearchPostType type, int page, int size);
+    CursorPageResponse<SearchPostResponse> searchPosts(
+            String keyword, SearchPostType type, String cursor, int limit);
 }

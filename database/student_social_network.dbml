@@ -567,6 +567,95 @@ Table users {
   Note: "chk_users_role: CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))) | chk_users_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_users_blocked_data: CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))) | chk_users_email_not_blank: CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))) | chk_users_email_verification_consistency: CHECK (((`email` is not null) or (`email_verified_at` is null))) | chk_users_password_verified_email: CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null)))"
 }
 
+Table conversations {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  participant_low_id bigint [not null, note: "UNSIGNED"]
+  participant_high_id bigint [not null, note: "UNSIGNED"]
+  last_message_id bigint [note: "UNSIGNED"]
+  last_message_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (participant_low_id, participant_high_id) [unique, name: "uq_conversations_participant_pair"]
+    (last_message_at, id) [name: "idx_conversations_last_message", note: "DESC, DESC"]
+  }
+
+  Note: "chk_conversations_participant_order: CHECK (participant_low_id < participant_high_id)"
+}
+
+Table conversation_members {
+  conversation_id bigint [not null, note: "UNSIGNED"]
+  user_id bigint [not null, note: "UNSIGNED"]
+  last_read_message_id bigint [note: "UNSIGNED"]
+  last_read_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (conversation_id, user_id) [pk]
+    (user_id, conversation_id, last_read_message_id) [name: "idx_conversation_members_user_cursor"]
+  }
+}
+
+Table messages {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  conversation_id bigint [not null, note: "UNSIGNED"]
+  sender_id bigint [not null, note: "UNSIGNED"]
+  client_message_id char(36) [not null, note: "CHARACTER SET ascii COLLATE ascii_bin"]
+  type varchar(16) [not null, note: "MySQL ENUM('TEXT','IMAGE')"]
+  content varchar(2000)
+  payload_fingerprint char(64) [not null, note: "CHARACTER SET ascii COLLATE ascii_bin"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (sender_id, client_message_id) [unique, name: "uq_messages_sender_client_message"]
+    (conversation_id, id) [name: "idx_messages_conversation_cursor", note: "id DESC"]
+  }
+
+  Note: "chk_messages_payload_shape: TEXT requires nonblank content; IMAGE may use nullable caption | chk_messages_content_length: CHECK (CHAR_LENGTH(content) <= 2000)"
+}
+
+Table message_attachments {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  message_id bigint [not null, note: "UNSIGNED"]
+  media_type varchar(16) [not null, note: "MySQL ENUM('IMAGE')"]
+  storage_provider varchar(32) [not null, note: "MySQL ENUM('CLOUDINARY')"]
+  storage_public_id varchar(255) [not null]
+  mime_type varchar(64) [not null]
+  file_size_bytes bigint [not null, note: "UNSIGNED"]
+  width int [not null, note: "UNSIGNED"]
+  height int [not null, note: "UNSIGNED"]
+  display_order tinyint [not null, note: "UNSIGNED, 0..4"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (message_id, display_order) [unique, name: "uq_message_attachments_message_order"]
+    (storage_provider, storage_public_id) [unique, name: "uq_message_attachments_storage_asset"]
+    (message_id, id) [name: "idx_message_attachments_message"]
+  }
+}
+
+Table media_cleanup_tasks {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  storage_provider varchar(32) [not null]
+  storage_public_id varchar(255) [not null]
+  resource_type varchar(32) [not null]
+  reason varchar(64) [not null]
+  status varchar(16) [not null, note: "PENDING, PROCESSING, COMPLETED, FAILED"]
+  attempt_count int [not null, default: 0, note: "UNSIGNED"]
+  next_retry_at datetime(6) [not null]
+  last_error varchar(500)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (status, next_retry_at, id) [name: "idx_media_cleanup_due"]
+    (storage_provider, storage_public_id) [name: "idx_media_cleanup_asset"]
+  }
+}
+
 // =============================================================================
 // KHÓA NGOẠI
 // =============================================================================
@@ -577,7 +666,16 @@ Ref fk_admin_actions_admin: admin_actions.admin_id > users.id [delete: restrict,
 Ref fk_comments_parent: comments.parent_comment_id > comments.id [delete: cascade, update: restrict]
 Ref fk_comments_post: comments.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_comments_user: comments.user_id > users.id [delete: restrict, update: restrict]
+Ref fk_conversations_participant_low: conversations.participant_low_id > users.id [delete: restrict, update: restrict]
+Ref fk_conversations_participant_high: conversations.participant_high_id > users.id [delete: restrict, update: restrict]
+Ref fk_conversations_last_message: conversations.last_message_id > messages.id [delete: restrict, update: restrict]
+Ref fk_conversation_members_conversation: conversation_members.conversation_id > conversations.id [delete: cascade, update: restrict]
+Ref fk_conversation_members_user: conversation_members.user_id > users.id [delete: restrict, update: restrict]
+Ref fk_conversation_members_last_read_message: conversation_members.last_read_message_id > messages.id [delete: restrict, update: restrict]
+Ref fk_messages_conversation: messages.conversation_id > conversations.id [delete: cascade, update: restrict]
+Ref fk_messages_sender_member: messages.(conversation_id, sender_id) > conversation_members.(conversation_id, user_id) [delete: restrict, update: restrict]
 Ref fk_follows_follower: follows.follower_id > users.id [delete: cascade, update: restrict]
+Ref fk_message_attachments_message: message_attachments.message_id > messages.id [delete: cascade, update: restrict]
 Ref fk_follows_following: follows.following_id > users.id [delete: cascade, update: restrict]
 Ref fk_user_blocks_blocker: user_blocks.blocker_id > users.id [delete: cascade, update: restrict]
 Ref fk_user_blocks_blocked: user_blocks.blocked_id > users.id [delete: cascade, update: restrict]

@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant FE as Messaging UI
+    participant REST as Messaging REST
+    participant DB as MySQL
+    participant EV as AFTER_COMMIT listener
+    participant WS as STOMP user queue
+
+    U->>FE: View received message at chat end
+    FE->>REST: PUT /api/v1/conversations/{id}/read
+    REST->>DB: Lock member and validate message
+    alt Marker is stale
+        REST-->>FE: updated=false
+    else Marker advances
+        REST->>DB: Update last_read_message_id and last_read_at
+        REST->>DB: Commit
+        REST-->>FE: updated=true and totalUnreadCount
+        DB-->>EV: MESSAGES_READ after commit
+        EV->>DB: Requery marker, Block and unread per user
+        EV->>WS: Send reader and other participant
+        WS-->>FE: Advance marker only
+    end
