@@ -543,7 +543,13 @@ export default function PostCard({
             <HeartIcon filled={liked} />
             <span className="font-normal">{formatNumber(likeCount)}</span>
           </button>
-          <button className="post-action" onClick={() => navigate(`/posts/${post.id}`)}>
+          <button
+            type="button"
+            className="post-action"
+            onClick={() => navigate(`/posts/${post.id}`)}
+            aria-label="Xem chi tiết bài viết và bình luận"
+            title="Xem chi tiết bài viết"
+          >
             <CommentIcon />
             <span className="font-normal">{formatNumber(commentCount)}</span>
           </button>

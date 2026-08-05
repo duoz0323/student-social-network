@@ -1000,7 +1000,9 @@ location: <application/json Location object>    // tùy chọn
 
 ### GET `/api/v1/posts/{postId}`
 
-Response chi tiết có trường `location` là object hiện tại hoặc `null`.
+Response chi tiết có trường `location` là object hiện tại hoặc `null`. Object `viewer` phải trả
+`owner` và `likedByCurrentUser` theo người dùng lấy từ JWT để Post Detail khởi tạo đúng thao tác
+Like/Unlike; Frontend không được suy đoán trạng thái này từ counter.
 
 ### PUT `/api/v1/posts/{postId}`
 

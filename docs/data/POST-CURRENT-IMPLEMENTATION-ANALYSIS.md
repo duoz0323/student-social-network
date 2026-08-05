@@ -275,12 +275,13 @@ Giới hạn hiện tại: `post_count` đếm quan hệ vật lý, chưa tự g
 5. Đọc profile tác giả.
 6. Đọc media theo `display_order`.
 7. Đọc tối đa một hashtag.
-8. Xác định viewer có phải owner không.
+8. Xác định viewer có phải owner và đã Like bài hay chưa.
 9. Trả `PostDetailResponse`.
 
 Post `HIDDEN`, `DELETED`, không tồn tại hoặc thuộc tác giả không hợp lệ đều được che bằng `POST_NOT_FOUND`.
 
-Response detail hiện mới có viewer state `owner`; chưa thấy `liked` và `saved` được Backend đưa vào `PostDetailResponse`.
+Response detail hiện trả `viewer.owner` và `viewer.likedByCurrentUser`; trạng thái Like ở Post Detail
+được lấy trực tiếp từ quan hệ `post_likes` của viewer. Trạng thái Save chưa nằm trong `PostDetailResponse`.
 
 ## 9. Sửa Post
 

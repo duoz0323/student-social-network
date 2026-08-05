@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import { shortTime } from '../../../utils/formatters.js';
+import { shouldSubmitComposerOnEnter } from '../utils/commentComposer.js';
 import './CommentSection.css';
+
+function submitComposerOnEnter(event) {
+  if (!shouldSubmitComposerOnEnter(event)) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+}
 
 function ChevronIcon({ expanded }) {
   return (
@@ -47,10 +54,12 @@ function CommentComposer({
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={submitComposerOnEnter}
           maxLength={500}
           rows={1}
           aria-label="Nội dung bình luận"
           placeholder="Viết bình luận của bạn..."
+          title="Nhấn Enter để đăng, Shift+Enter để xuống dòng"
         />
         <button type="submit" disabled={!value.trim() || submitting}>
           {submitting ? 'Đang đăng...' : 'Đăng'}
@@ -93,10 +102,12 @@ function ReplyComposer({
             autoFocus
             value={value}
             onChange={(event) => onChange(event.target.value)}
+            onKeyDown={submitComposerOnEnter}
             maxLength={500}
             rows={1}
             aria-label={`Trả lời ${displayName}`}
             placeholder="Viết câu trả lời..."
+            title="Nhấn Enter để gửi, Shift+Enter để xuống dòng"
           />
           <button type="submit" disabled={!value.trim() || submitting}>
             {submitting ? 'Đang gửi...' : 'Gửi'}

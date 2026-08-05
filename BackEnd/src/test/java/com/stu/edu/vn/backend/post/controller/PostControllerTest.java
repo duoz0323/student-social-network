@@ -96,7 +96,7 @@ class PostControllerTest {
                 new PostAuthorResponse(10L, "Nguyen Van A", "https://cdn.example/avatar.png"),
                 List.of(),
                 "sinhvien",
-                new PostViewerResponse(true)
+                new PostViewerResponse(true, true)
         ));
 
         mockMvc.perform(get("/api/v1/posts/1"))
@@ -104,6 +104,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.viewer.owner").value(true))
+                .andExpect(jsonPath("$.data.viewer.likedByCurrentUser").value(true))
                 .andExpect(jsonPath("$.data.hashtag").value("sinhvien"));
 
         verify(postService).getPostDetail(1L);

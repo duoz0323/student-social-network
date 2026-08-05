@@ -128,6 +128,9 @@ PostCard trong Feed/Profile/Saved
 → Nhập bình luận mới
 ```
 
+Nếu request danh sách bình luận lỗi, Post Detail hợp lệ vẫn phải hiển thị; lỗi được giới hạn trong
+khu vực bình luận và không được chuyển toàn màn hình sang trạng thái không tìm thấy bài viết.
+
 ### 1.6 Chỉnh sửa và xóa bài viết của mình
 
 Chỉnh sửa:
@@ -186,7 +189,7 @@ Bình luận:
 ```text
 POST-01
 → Nhập nội dung bình luận
-→ Gửi bình luận
+→ Nhấn Enter hoặc nút Đăng để gửi; Shift+Enter để xuống dòng
 → Bình luận xuất hiện trong danh sách
 → Chủ bình luận có thể xóa bình luận của mình
 ```
