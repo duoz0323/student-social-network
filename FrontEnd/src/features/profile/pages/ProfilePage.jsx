@@ -139,12 +139,14 @@ export default function ProfilePage({ self = false }) {
     request: (params) => socialApi.getUserPosts(profileUserId, params),
     normalizePost: toPostView,
     enabled: Boolean(profileUserId),
+    active: activeTab === 'threads',
   });
   const repostState = useInfinitePosts({
     cacheKey: `profile-reposts:${profileUserId ?? 'unknown'}`,
     request: (params) => socialApi.getUserReposts(profileUserId, params),
     normalizePost: toFeedItemView,
     enabled: Boolean(profileUserId),
+    active: activeTab === 'reposts',
   });
   const [draft, setDraft] = useState({ displayName: '', bio: '', avatarUrl: '', dateOfBirth: '' });
   const profileOptionsRef = useRef(null);

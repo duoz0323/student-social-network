@@ -7,6 +7,7 @@ import { useApp } from '../../../contexts/AppContext.jsx';
 import CommentSection from '../components/CommentSection.jsx';
 import PostCard from '../components/PostCard.jsx';
 import { toPostView } from '../utils/postViewModel.js';
+import { publishPostActivity, subscribePostActivity } from '../utils/postActivitySync.js';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -47,11 +48,20 @@ export default function PostDetailPage() {
     return () => controller.abort();
   }, [postId, requestKey]);
 
+  useEffect(() => subscribePostActivity((activity) => {
+    if (String(activity?.postId) !== String(postId)) return;
+    if (Number.isFinite(activity.commentCount)) {
+      setPost((current) => current ? { ...current, commentCount: Math.max(0, activity.commentCount) } : current);
+    }
+  }), [postId]);
+
   async function submitComment(content) {
     try {
       const created = await postApi.createComment(postId, content);
       setComments((items) => [...items, created]);
-      setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
+      const nextCommentCount = (Number(post?.commentCount) || 0) + 1;
+      setPost((item) => ({ ...item, commentCount: nextCommentCount }));
+      publishPostActivity({ postId, commentCount: nextCommentCount });
       setComment('');
       setError('');
       return created;
@@ -66,7 +76,9 @@ export default function PostDetailPage() {
       await postApi.deleteComment(commentId);
       setComments((items) => items.filter((item) => item.commentId !== commentId));
       // Backend trigger đã giảm posts.comment_count; cập nhật cùng thay đổi lên giao diện.
-      setPost((item) => ({ ...item, commentCount: Math.max(0, (Number(item.commentCount) || 0) - 1) }));
+      const nextCommentCount = Math.max(0, (Number(post?.commentCount) || 0) - 1);
+      setPost((item) => ({ ...item, commentCount: nextCommentCount }));
+      publishPostActivity({ postId, commentCount: nextCommentCount });
       setError('');
     } catch (requestError) {
       setError(requestError.message);
@@ -96,7 +108,9 @@ export default function PostDetailPage() {
           : item
       )));
       // Reply cũng là một bản ghi comments nên được tính vào bộ đếm bình luận của bài viết.
-      setPost((item) => ({ ...item, commentCount: (Number(item.commentCount) || 0) + 1 }));
+      const nextCommentCount = (Number(post?.commentCount) || 0) + 1;
+      setPost((item) => ({ ...item, commentCount: nextCommentCount }));
+      publishPostActivity({ postId, commentCount: nextCommentCount });
       setReplyDrafts((current) => ({ ...current, [commentId]: '' }));
       setError('');
       return created;
@@ -120,7 +134,9 @@ export default function PostDetailPage() {
           : item
       )));
       // Reply đã xóa mềm cũng làm bộ đếm tổng của bài viết giảm theo trigger Backend.
-      setPost((item) => ({ ...item, commentCount: Math.max(0, (Number(item.commentCount) || 0) - 1) }));
+      const nextCommentCount = Math.max(0, (Number(post?.commentCount) || 0) - 1);
+      setPost((item) => ({ ...item, commentCount: nextCommentCount }));
+      publishPostActivity({ postId, commentCount: nextCommentCount });
       setError('');
     } catch (requestError) {
       setError(requestError.message);

@@ -401,6 +401,8 @@ Quy tắc:
 - Không được tương tác với bài viết đã bị ẩn hoặc xóa.
 - Danh sách bài viết đã lưu chỉ hiển thị với chủ tài khoản.
 - Danh sách bài viết đã thích chỉ hiển thị với chủ tài khoản.
+- Frontend cập nhật ngay trạng thái và bộ đếm Like, Comment, Save, Repost từ response REST; các tab cùng trình duyệt đồng bộ qua `BroadcastChannel` và vô hiệu hóa đúng cache danh sách liên quan.
+- Khi tab trở lại foreground, Frontend reconciliation danh sách đang hiển thị bằng REST. Notification WebSocket của Like, Comment, Reply và Repost kích hoạt reconciliation Post cho người nhận; MySQL và REST API vẫn là nguồn dữ liệu chuẩn.
 
 ### 📰 6. Bảng tin
 

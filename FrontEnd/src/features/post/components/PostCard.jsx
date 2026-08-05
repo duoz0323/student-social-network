@@ -18,6 +18,7 @@ import SelectedLocation from '../locations/SelectedLocation.jsx';
 import { googleMapsLocationUrl } from '../locations/locationUtils.js';
 import { resolveLocationUpdate } from '../locations/locationMultipart.js';
 import { postApi } from '../../../api/index.js';
+import { publishPostActivity, subscribePostActivity } from '../utils/postActivitySync.js';
 
 function SuccessIcon() {
   return (
@@ -128,7 +129,10 @@ export default function PostCard({
   showRepostAttribution = true,
 }) {
   const navigate = useNavigate();
-  const { currentUserId, getUserById, data, toggleLike, toggleSave, getPostDetail, updatePost, deletePost } = useApp();
+  const {
+    currentUserId, getUserById, data, toggleLike, toggleSave,
+    getPostDetail, updatePost, deletePost, showToast,
+  } = useApp();
   const [updatedPost, setUpdatedPost] = useState(null);
   const post = updatedPost ?? initialPost;
   const content = post.content ?? '';
@@ -149,6 +153,7 @@ export default function PostCard({
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const menuRef = useRef(null);
   const editRequestRef = useRef(null);
+  const syncRequestRef = useRef(null);
   const author = getUserById(post.authorId) ?? post.author;
   const isOwner = post.authorId === currentUserId;
   const initialLiked = post.likedByCurrentUser
@@ -160,15 +165,67 @@ export default function PostCard({
   const [reposted, setReposted] = useState(Boolean(post.repostedByCurrentUser));
   const [repostCount, setRepostCount] = useState(Number(post.repostCount) || 0);
   const [repostSubmitting, setRepostSubmitting] = useState(false);
+  const [likeSubmitting, setLikeSubmitting] = useState(false);
   const [likeCountFromInteraction, setLikeCountFromInteraction] = useState(null);
+  const [commentCountFromInteraction, setCommentCountFromInteraction] = useState(null);
+  const [syncedInitialPost, setSyncedInitialPost] = useState(initialPost);
   const [editClockMs, setEditClockMs] = useState(() => Date.now());
   // Ưu tiên số mới nhất do API Like/Unlike trả về; trước tương tác dùng dữ liệu Feed/Post Detail.
   const likeCount = likeCountFromInteraction ?? (Number(post.likeCount) || 0);
+  const commentCount = commentCountFromInteraction ?? (Number(post.commentCount) || 0);
   const editRemainingSeconds = postEditRemainingSeconds(post.publishedAt ?? post.createdAt, editClockMs);
   const canShowEdit = editRemainingSeconds === null || editRemainingSeconds > 0;
   const shouldRunEditClock = isOwner && menuOpen && editRemainingSeconds !== null && editRemainingSeconds > 0;
 
-  useEffect(() => () => editRequestRef.current?.abort(), []);
+  useEffect(() => () => {
+    editRequestRef.current?.abort();
+    syncRequestRef.current?.abort();
+  }, []);
+
+  if (syncedInitialPost !== initialPost) {
+    setSyncedInitialPost(initialPost);
+    setUpdatedPost(null);
+    setLiked(Boolean(initialPost.likedByCurrentUser));
+    setSaved(Boolean(initialPost.savedByCurrentUser));
+    setReposted(Boolean(initialPost.repostedByCurrentUser));
+    setLikeCountFromInteraction(Number(initialPost.likeCount) || 0);
+    setCommentCountFromInteraction(Number(initialPost.commentCount) || 0);
+    setRepostCount(Number(initialPost.repostCount) || 0);
+  }
+
+  useEffect(() => subscribePostActivity((activity) => {
+    if (String(activity?.postId) !== String(post.id)) return;
+
+    if (Number.isFinite(activity.likeCount)) setLikeCountFromInteraction(Math.max(0, activity.likeCount));
+    if (Number.isFinite(activity.commentCount)) setCommentCountFromInteraction(Math.max(0, activity.commentCount));
+    if (Number.isFinite(activity.repostCount)) setRepostCount(Math.max(0, activity.repostCount));
+
+    const affectsCurrentViewer = activity.viewerUserId != null
+      && String(activity.viewerUserId) === String(currentUserId);
+    if (affectsCurrentViewer && typeof activity.likedByCurrentUser === 'boolean') setLiked(activity.likedByCurrentUser);
+    if (affectsCurrentViewer && typeof activity.savedByCurrentUser === 'boolean') setSaved(activity.savedByCurrentUser);
+    if (affectsCurrentViewer && typeof activity.repostedByCurrentUser === 'boolean') setReposted(activity.repostedByCurrentUser);
+
+    if (activity.requiresReconcile !== true) return;
+    syncRequestRef.current?.abort();
+    const controller = new AbortController();
+    syncRequestRef.current = controller;
+    postApi.getDetail(post.id, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        const snapshot = toPostView(response);
+        setUpdatedPost(snapshot);
+        setLiked(Boolean(snapshot.likedByCurrentUser));
+        setSaved(Boolean(snapshot.savedByCurrentUser));
+        setReposted(Boolean(snapshot.repostedByCurrentUser));
+        setLikeCountFromInteraction(Number(snapshot.likeCount) || 0);
+        setCommentCountFromInteraction(Number(snapshot.commentCount) || 0);
+        setRepostCount(Number(snapshot.repostCount) || 0);
+      })
+      .catch(() => {
+        // REST reconciliation ở list/foreground sẽ thử lại nếu request realtime tạm thời thất bại.
+      });
+  }), [currentUserId, post.id]);
 
   useEffect(() => {
     if (!shouldRunEditClock) return undefined;
@@ -274,16 +331,46 @@ export default function PostCard({
   }
 
   async function handleLike() {
-    const response = await toggleLike(post.id, liked);
-    setLiked(response.likedByCurrentUser);
-    setLikeCountFromInteraction(Number(response.likeCount) || 0);
-    // Cho màn hình Đã thích loại bài khỏi danh sách ngay khi người dùng Unlike.
-    onLikeChange?.(post.id, response.likedByCurrentUser);
+    if (likeSubmitting) return;
+    const previousLiked = liked;
+    const previousLikeCount = likeCount;
+    const optimisticLiked = !previousLiked;
+
+    // Phản hồi ngay trên UI; response Backend sau đó chốt lại counter authoritative.
+    setLikeSubmitting(true);
+    setLiked(optimisticLiked);
+    setLikeCountFromInteraction(Math.max(0, previousLikeCount + (optimisticLiked ? 1 : -1)));
+    try {
+      const response = await toggleLike(post.id, previousLiked);
+      setLiked(response.likedByCurrentUser);
+      setLikeCountFromInteraction(Number(response.likeCount) || 0);
+      publishPostActivity({
+        postId: post.id,
+        viewerUserId: currentUserId,
+        likedByCurrentUser: Boolean(response.likedByCurrentUser),
+        likeCount: Number(response.likeCount) || 0,
+        memberships: [{ cacheKey: 'posts:liked', included: Boolean(response.likedByCurrentUser) }],
+      });
+      // Cho màn hình Đã thích loại bài khỏi danh sách ngay khi người dùng Unlike.
+      onLikeChange?.(post.id, response.likedByCurrentUser);
+    } catch (error) {
+      setLiked(previousLiked);
+      setLikeCountFromInteraction(previousLikeCount);
+      showToast(error.message || 'Không thể cập nhật lượt thích. Vui lòng thử lại.', 'error');
+    } finally {
+      setLikeSubmitting(false);
+    }
   }
 
   async function handleSave() {
     const response = await toggleSave(post.id, saved);
     setSaved(response.saved);
+    publishPostActivity({
+      postId: post.id,
+      viewerUserId: currentUserId,
+      savedByCurrentUser: Boolean(response.saved),
+      memberships: [{ cacheKey: 'posts:saved', included: Boolean(response.saved) }],
+    });
     // Cho màn hình Saved loại bài khỏi danh sách ngay khi người dùng bỏ lưu.
     onSaveChange?.(post.id, response.saved);
   }
@@ -296,6 +383,17 @@ export default function PostCard({
       const response = reposted ? await postApi.unrepost(post.id) : await postApi.repost(post.id);
       setReposted(Boolean(response.repostedByCurrentUser));
       setRepostCount(Number(response.repostCount) || 0);
+      publishPostActivity({
+        postId: post.id,
+        viewerUserId: currentUserId,
+        repostedByCurrentUser: Boolean(response.repostedByCurrentUser),
+        repostCount: Number(response.repostCount) || 0,
+        memberships: [{
+          cacheKey: `profile-reposts:${currentUserId}`,
+          included: Boolean(response.repostedByCurrentUser),
+        }],
+        invalidateCacheKeys: ['feed:following'],
+      });
       onRepostChange?.(post.id, Boolean(response.repostedByCurrentUser));
     } finally {
       setRepostSubmitting(false);
@@ -436,13 +534,18 @@ export default function PostCard({
 
         {/* Thanh hành động: like, comment, repost và chia sẻ liên kết. */}
         <footer className="mt-3 flex items-center gap-6">
-          <button className={`post-action ${liked ? 'post-action--active text-red-500' : ''}`} onClick={handleLike}>
+          <button
+            className={`post-action ${liked ? 'post-action--active text-red-500' : ''}`}
+            onClick={handleLike}
+            disabled={likeSubmitting}
+            aria-label={liked ? 'Bỏ thích bài viết' : 'Thích bài viết'}
+          >
             <HeartIcon filled={liked} />
             <span className="font-normal">{formatNumber(likeCount)}</span>
           </button>
           <button className="post-action" onClick={() => navigate(`/posts/${post.id}`)}>
             <CommentIcon />
-            <span className="font-normal">{formatNumber(Number(post.commentCount) || 0)}</span>
+            <span className="font-normal">{formatNumber(commentCount)}</span>
           </button>
           {/* Repost gọi API idempotent; bài của chính mình được vô hiệu hóa theo rule Backend. */}
           <button

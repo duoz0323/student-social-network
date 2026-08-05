@@ -7,10 +7,11 @@ import { useApp } from '../../contexts/AppContext.jsx';
 import AdminToastProvider from '../../features/admin/components/AdminToastProvider.jsx';
 
 export default function AdminShell() {
-  const { currentUser } = useApp();
+  const { currentUser, logout } = useApp();
   const navigate = useNavigate();
   // Giữ trạng thái thu gọn tại layout để không bị đặt lại khi chuyển giữa các trang quản trị.
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const items = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Người dùng', icon: Users },
@@ -19,6 +20,15 @@ export default function AdminShell() {
     { to: '/admin/reports', label: 'Báo cáo', icon: Flag },
     { to: '/admin/actions', label: 'Lịch sử', icon: History },
   ];
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    // Dùng luồng logout chung để thu hồi Refresh Token và xóa toàn bộ phiên cục bộ trước khi rời app.
+    await logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <div className="admin-theme min-h-screen bg-white text-zinc-950 flex">
@@ -89,16 +99,17 @@ export default function AdminShell() {
           {isCollapsed ? (
             <button
               type="button"
-              aria-label="Thoát quản trị"
-              title="Thoát quản trị"
-              onClick={() => navigate('/feed/for-you')}
+              aria-label={isLoggingOut ? 'Đang đăng xuất' : 'Đăng xuất'}
+              title={isLoggingOut ? 'Đang đăng xuất' : 'Đăng xuất'}
+              onClick={handleLogout}
+              disabled={isLoggingOut}
               className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-800 shadow-sm transition hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2"
             >
               <LogOut size={16} />
             </button>
           ) : (
-            <Button className="w-full justify-center gap-2 border-zinc-300 hover:bg-zinc-200 text-zinc-800" variant="secondary" onClick={() => navigate('/feed/for-you')}>
-              <LogOut size={16} /> Thoát quản trị
+            <Button className="w-full justify-center gap-2 border-zinc-300 hover:bg-zinc-200 text-zinc-800" variant="secondary" onClick={handleLogout} disabled={isLoggingOut}>
+              <LogOut size={16} /> {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
             </Button>
           )}
         </div>

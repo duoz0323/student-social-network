@@ -10,6 +10,7 @@ import {
   removeBlockedUserFromState,
 } from '../features/profile/utils/userBlockState.js';
 import { resolveCurrentFollowState } from '../features/profile/utils/followListState.js';
+import { publishPostActivity } from '../features/post/utils/postActivitySync.js';
 
 const AppContext = createContext(null);
 
@@ -111,6 +112,15 @@ export function AppProvider({ children }) {
       try {
         const response = await postApi.create(payload);
         setData((previous) => ({ ...previous, posts: [toPostView(response), ...previous.posts] }));
+        publishPostActivity({
+          postId: response.postId ?? response.id,
+          viewerUserId: currentUserId,
+          invalidateCacheKeys: [
+            `profile-posts:${currentUserId}`,
+            'feed:for-you',
+            'feed:following',
+          ],
+        });
         return { ok: true, data: response };
       } catch (error) {
         return { ok: false, message: error.message };

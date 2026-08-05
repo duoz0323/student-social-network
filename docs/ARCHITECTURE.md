@@ -279,3 +279,11 @@ Không sử dụng Machine Learning.
 - Typing dùng cùng connection manager qua `/app/messaging/typing`; inbound interceptor chỉ allowlist chính xác destination này và vẫn từ chối mọi client `SEND` khác. Controller không nhận identity từ payload; service read-only xác thực principal, account/profile, hai member và Block bằng projection rồi phát riêng recipient.
 - `TypingRateLimiter` là fixed window in-memory tối đa 4 frame/user/giây, có cleanup key cũ và chỉ bảo vệ từng application instance. Frontend phát START lần đầu, refresh sau mỗi 3 giây hoạt động, STOP sau 2 giây idle/submit/blank/blur/leave; receiver dedupe `eventId` và tự xóa START sau 5 giây. Typing không dùng transaction after-commit vì không có state bền vững.
 
+## 12. Đồng bộ hoạt động Post trên Frontend
+
+- Response REST của Like/Unlike, Save/Unsave, Repost/Unrepost và Comment/Reply cập nhật ngay mọi snapshot Post đang mount; trạng thái riêng của viewer chỉ được áp dụng khi `viewerUserId` khớp phiên hiện tại.
+- Các tab cùng origin đồng bộ activity bằng `BroadcastChannel`; trình duyệt không hỗ trợ dùng `storage` event làm fallback. Cache Feed, Profile Posts, Profile Reposts, Liked và Saved được cập nhật counter hoặc vô hiệu hóa theo membership tương ứng.
+- Danh sách đang hiển thị reconciliation bằng REST khi tab trở lại foreground. Tab Profile chỉ kích hoạt request cho tab nội dung đang được chọn để tránh tải đồng thời Posts và Reposts.
+- `NOTIFICATION_CREATED` thuộc Like, Repost, Comment hoặc Reply chỉ đóng vai trò tín hiệu cho người nhận tải lại Post Detail/counter; payload Notification không được dùng làm nguồn counter.
+- Cơ chế này không tạo WebSocket topic Post công khai và không thay đổi API/Database. MySQL cùng REST API vẫn là nguồn sự thật; đồng bộ local/realtime là lớp giảm độ trễ hiển thị.
+

@@ -23,9 +23,16 @@ import {
   removeNotificationState,
   shouldPollNotificationCount,
 } from '../features/notification/utils/notificationState.js';
+import { publishPostActivity } from '../features/post/utils/postActivitySync.js';
 
 const POLLING_INTERVAL_MS = 30_000;
 const NOTIFICATION_DESTINATION = '/user/queue/notifications';
+const POST_ACTIVITY_NOTIFICATION_TYPES = new Set([
+  'POST_LIKE',
+  'POST_REPOST',
+  'POST_COMMENT',
+  'COMMENT_REPLY',
+]);
 const NotificationContext = createContext(null);
 
 const initialState = {
@@ -140,6 +147,15 @@ export function NotificationProvider({ children }) {
       realtimeNotificationIdsRef.current.add(String(event.notificationId));
     }
     setState((current) => applyCreatedNotificationEvent(current, event));
+    if (event?.notification?.postId
+      && POST_ACTIVITY_NOTIFICATION_TYPES.has(event.notification.type)) {
+      // Notification realtime báo có thay đổi; counter chuẩn được reconciliation lại qua REST.
+      publishPostActivity({
+        postId: event.notification.postId,
+        eventId: `notification:${event.eventId}`,
+        requiresReconcile: true,
+      });
+    }
   }, []);
 
   useEffect(() => {
