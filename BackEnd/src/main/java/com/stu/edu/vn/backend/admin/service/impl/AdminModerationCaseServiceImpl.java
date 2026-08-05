@@ -237,7 +237,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
                 new AdminReportStatusPostResponse(
                         post.getId(), post.getStatus(), post.getHiddenAt(), post.getHiddenReason()));
     }
-
+// kiểm tra là admin và hoạt động
     private CustomUserPrincipal requireActiveAdmin() {
         CustomUserPrincipal principal = currentUserProvider.getCurrentUser();
         if (principal.getRole() != UserRole.ADMIN) throw new BusinessException(ErrorCode.FORBIDDEN);

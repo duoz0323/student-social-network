@@ -27,6 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Ánh xạ scalar projection sang contract Admin Report và parse snapshot JSON an toàn. */
 @Component
 public class AdminReportMapper {
+    // biến này tạo ra để giữ lại kiểu dữ liệu của Json sau khi chuyển từ Json sang list
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() { };
 
     private final ObjectMapper objectMapper;

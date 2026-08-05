@@ -73,7 +73,7 @@ public class AdminActionMapper {
             case REJECT_MODERATION_CASE -> "Kết luận hồ sơ kiểm duyệt không vi phạm";
         };
     }
-
+// hàm kiểm tra dữ liệu đầu vào , biến json thành object
     private Object parseAndSanitize(String rawData) {
         if (rawData == null || rawData.isBlank()) {
             return null;
@@ -86,7 +86,7 @@ public class AdminActionMapper {
             throw new IllegalStateException("Dữ liệu lịch sử quản trị không phải JSON hợp lệ", exception);
         }
     }
-
+// hàm đệ quy loại bỏ trường không thể trả về như pasword
     private Object sanitize(Object value) {
         if (value instanceof Map<?, ?> sourceMap) {
             Map<String, Object> safeMap = new LinkedHashMap<>();

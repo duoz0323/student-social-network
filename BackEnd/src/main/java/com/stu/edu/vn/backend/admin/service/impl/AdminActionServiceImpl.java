@@ -78,7 +78,7 @@ public class AdminActionServiceImpl implements AdminActionService {
         Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> targets = resolveTargets(List.of(action));
         return adminActionMapper.toDetail(action, targetFor(action, targets));
     }
-
+// trả về mục tiêu tương tác
     private Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> resolveTargets(
             List<? extends AdminActionListProjection> actions
     ) {

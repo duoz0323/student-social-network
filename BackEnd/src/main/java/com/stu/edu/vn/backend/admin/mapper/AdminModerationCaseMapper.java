@@ -30,6 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Mapper contract Moderation Case; parse snapshot từng Report và không trả dữ liệu xác thực. */
 @Component
 public class AdminModerationCaseMapper {
+    // biến này tạo ra để giữ lại kiểu dữ liệu của Json sau khi chuyển từ Json sang list
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() { };
     private final ObjectMapper objectMapper;
 
@@ -92,7 +93,7 @@ public class AdminModerationCaseMapper {
                 source.getActionId(), AdminActionType.valueOf(source.getActionType()), source.getAdminId(),
                 source.getAdminDisplayName(), source.getNote(), source.getCreatedAt());
     }
-
+// chuyển đổi Json lưu trong database thành List chưa url ảnh
     private List<String> parseMediaSnapshot(String rawSnapshot) {
         if (rawSnapshot == null || rawSnapshot.isBlank()) return List.of();
         try {
@@ -101,7 +102,7 @@ public class AdminModerationCaseMapper {
             throw new IllegalStateException("Snapshot media của báo cáo không hợp lệ", exception);
         }
     }
-
+// đổi Long có thể null -> long không thể null
     private long safeLong(Long value) {
         return value == null ? 0L : value;
     }

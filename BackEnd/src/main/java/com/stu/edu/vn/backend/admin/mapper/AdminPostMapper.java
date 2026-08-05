@@ -17,7 +17,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/** Chuyển projection quản trị sang response DTO ổn định. */
+/** Chuyển projection quản trị sang response DTO. */
 @Component
 public class AdminPostMapper {
 
@@ -36,13 +36,13 @@ public class AdminPostMapper {
                 source.getThumbnailUrl(), source.getMediaCount(), source.getLikeCount(), source.getCommentCount(),
                 source.getPendingReportCount(), source.getCreatedAt(), source.getUpdatedAt());
     }
-
     public AdminPostDetailResponse toDetail(AdminPostDetailProjection source,
-            List<AdminPostMediaProjection> media, String hashtag) {
+                                            List<AdminPostMediaProjection> media, String hashtag) {
         AdminPostAuthorResponse author = new AdminPostAuthorResponse(source.getAuthorId(),
                 source.getAuthorDisplayName(), source.getAuthorAvatarUrl(), source.getAuthorEmail(),
                 UserStatus.valueOf(source.getAuthorAccountStatus()));
         AdminPostHiddenByResponse hiddenBy = source.getHiddenByAdminId() == null ? null
+
                 : new AdminPostHiddenByResponse(source.getHiddenByAdminId(), source.getHiddenByDisplayName());
 
         // Tạo danh sách DTO mới để response không giữ projection do persistence provider quản lý.

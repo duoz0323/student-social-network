@@ -27,7 +27,8 @@ export default function AdminActionsPage() {
     {loading ? <LoadingState /> : <DataTable rows={result.content} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
       totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
       { key: 'actionLabel', label: 'Thao tác' }, { key: 'admin', label: 'Quản trị viên', render: (row) => row.admin?.displayName },
-      { key: 'target', label: 'Đối tượng', render: (row) => row.target?.displayText }, { key: 'note', label: 'Ghi chú' },
+      { key: 'target', label: 'Đối tượng', render: (row) => row.target?.displayText },
+      { key: 'note', label: 'Ghi chú' },
       { key: 'createdAt', label: 'Thời gian', render: (row) => formatDateTime(row.createdAt) },
     ]} />}
   </section>;

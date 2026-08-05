@@ -23,7 +23,7 @@ public interface AdminModerationCaseService {
             int size);
 
     AdminModerationCaseDetailResponse getCaseDetail(Long caseId);
-
+// không vi phạm
     AdminModerationCaseStatusResponse resolveNoViolation(
             Long caseId,
             ResolveModerationCaseNoViolationRequest request);
