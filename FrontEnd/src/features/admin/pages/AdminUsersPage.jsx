@@ -101,12 +101,12 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function saveEditedProfile(payload) {
+  async function saveEditedProfile(payload, avatarChange) {
     if (!editTarget) return;
     setEditSubmitting(true);
     setEditError('');
     try {
-      const updatedDetail = await adminApi.updateUserProfile(editTarget.userId, payload);
+      const updatedDetail = await adminApi.updateUserProfile(editTarget.userId, payload, avatarChange);
       setEditTarget(null);
       setSelectedUserId(updatedDetail.userId);
       setUserDetail(updatedDetail);

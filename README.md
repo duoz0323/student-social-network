@@ -100,16 +100,18 @@ Người dùng đã đăng nhập và có tài khoản đang hoạt động có 
 - Like, bình luận và lưu bài viết.
 - Xem Feed.
 - Tìm kiếm.
-- Báo cáo bài viết vi phạm.
+- Báo cáo bài viết hoặc trang cá nhân của người dùng khác vi phạm.
 
 ### 3. Quản trị viên
 
 Quản trị viên có thể:
 
 - Quản lý người dùng.
-- Xem và chỉnh sửa tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
+- Xem và chỉnh sửa ảnh đại diện, tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
+- Sau khi chỉnh sửa hồ sơ, gửi thông báo hệ thống cho USER rằng nội dung đã bị điều chỉnh do vi phạm Tiêu chuẩn hệ thống.
 - Khóa và mở khóa tài khoản.
 - Quản lý bài viết.
+- Xem, tìm kiếm, tạo, đổi tên và xóa hashtag; đổi tên giữ nguyên liên kết bài viết, còn xóa khiến bài liên quan không còn hashtag.
 - Ẩn và khôi phục bài viết.
 - Xem và xử lý báo cáo vi phạm.
 - Xem lịch sử thao tác quản trị khi chức năng tương ứng được triển khai.
@@ -488,6 +490,17 @@ không dùng Infinite Scroll hoặc cần metadata tổng số/trang.
 - Một bài chỉ có tối đa một case `OPEN` tại một thời điểm. Case mới chỉ được tạo khi không còn case mở.
 - Cùng một người không được báo cáo lại bài đang có Report thuộc case `OPEN`; sau khi case cũ được giải quyết có thể báo cáo lại nếu bài vẫn đủ điều kiện.
 
+Báo cáo trang cá nhân:
+
+- Chỉ được báo cáo trang cá nhân của USER khác; không được tự báo cáo hoặc báo cáo khi hai tài khoản đang có quan hệ Block.
+- Sáu lý do cố định: nội dung không được phép, giả mạo, chưa đủ tuổi tối thiểu, lừa đảo/gian lận, thông tin sai sự thật, bạo lực/tổ chức nguy hiểm.
+- Mỗi reporter chỉ có tối đa một báo cáo `PENDING` cho cùng một trang cá nhân.
+- Mỗi trang cá nhân chỉ có một `profile_report_cases`; mọi `profile_reports` từ nhiều reporter được gom vào case này.
+- `profile_reports` giữ từng reporter, lý do và snapshot; Admin đồng thời xem hồ sơ hiện tại, danh sách người báo cáo và các bài viết hiện tại của target.
+- Báo cáo mới mở lại case đã kết luận; lịch sử kết luận vẫn được giữ trong `admin_actions`.
+- Admin kết luận đồng thời toàn bộ lượt `PENDING` trong case thành `RESOLVED` hoặc `REJECTED`.
+- Khi xác nhận trang cá nhân vi phạm, Admin có quyền khóa ngay tài khoản target trong cùng transaction; nếu không chọn khóa thì chỉ kết luận case.
+
 Trạng thái báo cáo:
 
 - `PENDING`.
@@ -499,6 +512,10 @@ Trạng thái Moderation Case:
 - `OPEN`: đang chờ Admin đưa ra quyết định và tiếp tục nhận Report hợp lệ mới.
 - `RESOLVED_NO_VIOLATION`: Admin kết luận bài không vi phạm; các Report trong case chuyển `REJECTED`.
 - `RESOLVED_ACTION_TAKEN`: Admin kết luận có vi phạm và đã áp dụng hành động; các Report chuyển `RESOLVED`.
+
+Mỗi Moderation Case chuyển sang `RESOLVED_ACTION_TAKEN` được tính đúng một lần vi phạm bài viết cho tác giả,
+không phụ thuộc số Report/reporter trong case. Khi tổng số case vi phạm của tác giả đạt 3, Backend tự động khóa
+tài khoản bằng lý do `REPEATED_VIOLATION`, thu hồi Refresh Token, ghi lịch sử trạng thái, Admin Action và thông báo.
 
 Admin xử lý trực tiếp từ `OPEN` sang một trong hai kết quả cuối. Không có bước tiếp nhận, trạng thái
 `IN_REVIEW`, trạng thái `CLOSED`, `assigned_admin_id` hoặc `closed_at`. Case đã giải quyết không nhận
@@ -515,6 +532,7 @@ không tồn tại hai case `OPEN` cho cùng bài.
 
 - Xem danh sách người dùng.
 - Tìm kiếm người dùng.
+- Chỉnh sửa ảnh đại diện và nội dung hồ sơ của tài khoản USER.
 - Khóa và mở khóa tài khoản.
 - Lưu lý do thay đổi trạng thái tài khoản.
 - Thu hồi Refresh Token còn hiệu lực khi khóa tài khoản.
@@ -524,6 +542,15 @@ không tồn tại hai case `OPEN` cho cùng bài.
 - Xem danh sách và chi tiết bài viết.
 - Ẩn và khôi phục bài viết.
 - Không khôi phục bài viết đã bị tác giả xóa mềm.
+
+#### Quản lý hashtag
+
+- Xem và tìm kiếm danh sách hashtag có phân trang.
+- Hiển thị tên hashtag, số bài viết đang liên kết, ngày tạo và ngày sử dụng mới nhất.
+- Admin có thể tạo hashtag theo cùng quy tắc chuẩn hóa dùng khi tạo bài viết; không cho tạo tên trùng sau chuẩn hóa.
+- Admin có thể đổi tên hashtag; toàn bộ bài đang sử dụng tự hiển thị tên mới do quan hệ giữ nguyên `hashtag_id`.
+- Khi Admin xóa hashtag, Backend gỡ hashtag khỏi mọi bài liên quan rồi xóa hashtag trong cùng transaction; bài viết, nội dung và media vẫn được giữ nguyên.
+- Thao tác tạo/xóa hashtag được ghi vào lịch sử quản trị.
 
 #### Quản lý báo cáo
 
@@ -539,13 +566,19 @@ không tồn tại hai case `OPEN` cho cùng bài.
 
 #### Analytics hoạt động người dùng — Backend/Frontend `IMPLEMENTED`, Frontend `TESTED`, test MySQL `CONDITIONAL`
 
-Analytics là module quản trị độc lập tại `/admin/user-analytics`, không nằm trên Dashboard. Frontend gọi hai
+Analytics gồm module quản trị độc lập tại `/admin/user-analytics` và widget Dashboard tại `/admin`. Frontend gọi hai
 API monthly/summary qua service tập trung, có bộ lọc khoảng tháng và ngưỡng không hoạt động, bốn KPI, biểu đồ
 hai trục cho số người quay lại/tỷ lệ tái kích hoạt và bảng snapshot tháng cuối cùng các trạng thái Loading/Empty/Error. Một hoạt động hợp lệ
 là request nghiệp vụ thành công đại diện cho hành vi thực của USER như mở Feed, xem chi tiết bài, tạo hoặc
 sửa bài, Like/Save, bình luận hoặc Follow. Refresh Token, Auth/OTP, health check, WebSocket heartbeat,
 request Admin và request nền không tạo activity. Ngày hoạt động dùng UTC; mỗi USER có tối đa một dòng
 `user_daily_activities` trong một ngày nhờ unique `(user_id, activity_date)` và MySQL UPSERT atomic.
+
+Widget Dashboard gọi `GET /api/v1/admin/analytics/user-engagement/dashboard?days=30` (từ 1 đến 90 ngày) để
+hiển thị chuỗi tổng `activity_count` theo từng ngày UTC. Response luôn bù các ngày chưa có dữ liệu bằng `0` và
+trả tối đa 5 USER nổi bật của ngày UTC hiện tại. USER nổi bật phải `ACTIVE`, hoàn tất hồ sơ; được xếp theo số bài
+`PUBLISHED` tạo trong ngày giảm dần, sau đó theo tổng `activity_count` giảm dần. Dashboard không hiển thị lịch sử
+hoạt động chi tiết hoặc khối “Hoạt động gần đây”.
 
 Eligible System User tại `evaluationDate` là tài khoản đã được tạo, có `role = USER`, hồ sơ đã hoàn tất và
 ở trạng thái `ACTIVE` tại ngày đánh giá. Trạng thái tháng lịch sử được dựng lại từ
@@ -610,7 +643,7 @@ hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 - Hashtag và gợi ý hashtag.
 - Tìm kiếm người dùng.
 - Tìm kiếm bài viết.
-- Báo cáo bài viết.
+- Báo cáo bài viết và trang cá nhân.
 - Moderation Case và xử lý báo cáo theo nhóm bài viết.
 - Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
 - Admin khóa và mở khóa tài khoản.
@@ -888,6 +921,8 @@ Quan hệ Location–Post:
 
 - `reports`.
 - `moderation_cases`: hồ sơ xử lý chung theo bài viết; duy nhất một case `OPEN` cho mỗi Post.
+- `profile_report_cases`: một vụ việc duy nhất cho mỗi trang cá nhân, gom báo cáo từ nhiều người.
+- `profile_reports`: từng lượt báo cáo thuộc case, giữ reporter/lý do/snapshot và chống trùng `PENDING` theo reporter/target.
 - `account_status_histories`.
 - `admin_actions`.
 
@@ -1059,10 +1094,12 @@ API Analytics độc lập dành cho Admin:
 ```http
 GET /api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15
 GET /api/v1/admin/analytics/user-engagement/summary?month=2026-06&inactiveDays=15
+GET /api/v1/admin/analytics/user-engagement/dashboard?days=30
 ```
 
 Khoảng monthly tối đa 24 tháng. `summary` mặc định lấy tháng hiện tại. Response monthly gồm từng tháng,
 hai peak (`peakReturningMonth`, `peakReturnRateMonth`) và `comparisonOperator = GREATER_THAN`.
+Dashboard mặc định dùng 30 ngày, cho phép từ 1 đến 90 ngày và trả `dailyInteractions` cùng `featuredUsers`.
 
 Ví dụ bắt đầu đăng ký:
 
@@ -1285,7 +1322,7 @@ npm run preview
 24. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
 25. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
 26. Người dùng gửi được báo cáo.
-27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER, quản lý bài viết và báo cáo.
+27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER và USER nhận được thông báo hệ thống sau khi chỉnh sửa, quản lý bài viết và báo cáo.
 28. Backend từ chối thao tác không có quyền.
 29. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
 30. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.

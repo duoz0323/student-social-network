@@ -13,8 +13,10 @@ import com.stu.edu.vn.backend.admin.dto.request.ResolveModerationCaseActionReque
 import com.stu.edu.vn.backend.admin.dto.request.ResolveModerationCaseNoViolationRequest;
 import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.enums.AdminPostHideReason;
+import com.stu.edu.vn.backend.admin.enums.AdminBlockReason;
 import com.stu.edu.vn.backend.admin.enums.ModerationCaseAction;
 import com.stu.edu.vn.backend.admin.mapper.AdminModerationCaseMapper;
+import com.stu.edu.vn.backend.admin.service.ModerationAccountBlockService;
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
 import com.stu.edu.vn.backend.admin.repository.AdminModerationCaseRepository;
 import com.stu.edu.vn.backend.admin.repository.AdminPostRepository;
@@ -55,6 +57,7 @@ class AdminModerationCaseServiceImplTest {
     private final AdminActionRepository adminActionRepository = mock(AdminActionRepository.class);
     private final AdminModerationCaseMapper mapper = mock(AdminModerationCaseMapper.class);
     private final NotificationService notificationService = mock(NotificationService.class);
+    private final ModerationAccountBlockService accountBlockService = mock(ModerationAccountBlockService.class);
     private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
     private final EntityManager entityManager = mock(EntityManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-31T03:00:00Z"), ZoneOffset.UTC);
@@ -72,7 +75,8 @@ class AdminModerationCaseServiceImplTest {
     void setUp() {
         service = new AdminModerationCaseServiceImpl(
                 adminCaseRepository, caseRepository, reportRepository, adminPostRepository,
-                adminActionRepository, mapper, notificationService, currentUserProvider, entityManager, clock);
+                adminActionRepository, mapper, notificationService, accountBlockService,
+                currentUserProvider, entityManager, clock);
         admin = user(1L, UserRole.ADMIN);
         author = user(2L, UserRole.USER);
         reporterOne = user(3L, UserRole.USER);
@@ -131,6 +135,25 @@ class AdminModerationCaseServiceImplTest {
         verify(notificationService).createReportResolvedNotification(4L, 32L);
         verify(notificationService).createPostHiddenByAdminNotification(2L, 10L);
         verify(adminActionRepository, times(2)).save(any(AdminAction.class));
+        verify(accountBlockService, never()).blockIfActive(any(), any(), any(), any());
+    }
+
+    @Test
+    void thirdViolatedPostCaseBlocksAuthorExactlyOnce() {
+        when(caseRepository.findById(20L)).thenReturn(Optional.of(moderationCase));
+        when(adminPostRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(post));
+        when(caseRepository.countByPost_Author_IdAndStatus(
+                2L, ModerationCaseStatus.RESOLVED_ACTION_TAKEN)).thenReturn(3L);
+        when(accountBlockService.blockIfActive(any(), any(), any(), any())).thenReturn(true);
+
+        var response = service.resolveAction(20L, new ResolveModerationCaseActionRequest(
+                ModerationCaseAction.HIDE_POST, AdminPostHideReason.HARMFUL_CONTENT, null));
+
+        assertThat(response.authorViolationCount()).isEqualTo(3L);
+        assertThat(response.accountBlocked()).isTrue();
+        verify(accountBlockService).blockIfActive(
+                2L, admin, LocalDateTime.of(2026, 7, 31, 3, 0),
+                AdminBlockReason.REPEATED_VIOLATION);
     }
 
     @Test

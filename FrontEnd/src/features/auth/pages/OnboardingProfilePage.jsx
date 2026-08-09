@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../../assets/brand/logo-dark.jpg';
+import { socialApi } from '../../../api/index.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { onboardingService } from '../services/onboardingService.js';
+import { uploadSelectedOnboardingAvatar } from '../utils/onboardingAvatarUpload.js';
 import { todayIsoDate, calcAge } from '../components/onboarding/onboardingUtils.js';
 import { StepIndicator } from '../components/onboarding/OnboardingShared.jsx';
 import OnboardingStep1Name from '../components/onboarding/OnboardingStep1Name.jsx';
@@ -91,6 +93,7 @@ export default function OnboardingProfilePage() {
   const [form, setForm] = useState({
     displayName: currentUser?.profile?.displayName ?? '',
     avatarUrl: currentUser?.profile?.avatarUrl ?? '',
+    avatarFile: null,
     dateOfBirth: currentUser?.profile?.dateOfBirth ?? '',
     bio: currentUser?.profile?.bio ?? '',
   });
@@ -103,6 +106,11 @@ export default function OnboardingProfilePage() {
       setForm((prev) => ({ ...prev, [field]: value }));
       setError('');
     };
+  }
+
+  function setAvatar(file, previewUrl) {
+    setForm((previous) => ({ ...previous, avatarFile: file, avatarUrl: previewUrl }));
+    setError('');
   }
 
   // ── Validate bước 1: tên hiển thị bắt buộc, ≥2 ký tự ──
@@ -144,6 +152,13 @@ export default function OnboardingProfilePage() {
     setIsSubmitting(true);
     setError('');
     try {
+      // Avatar endpoint được Backend cho phép trong onboarding. Upload trước để chỉ điều hướng
+      // thành công khi ảnh đã được lưu thật, thay vì mất preview base64 sau khi đổi trang.
+      const uploadedAvatarUrl = await uploadSelectedOnboardingAvatar(form.avatarFile, socialApi.uploadAvatar);
+      if (uploadedAvatarUrl) {
+        // Nếu bước hoàn tất hồ sơ thất bại, lần thử lại không upload trùng ảnh đã lưu.
+        setForm((previous) => ({ ...previous, avatarFile: null, avatarUrl: uploadedAvatarUrl }));
+      }
       const result = await onboardingService.completeProfile(form);
       if (!result.profileCompleted) {
         throw new Error('Backend chưa xác nhận hồ sơ đã hoàn tất. Vui lòng thử lại.');
@@ -271,7 +286,7 @@ export default function OnboardingProfilePage() {
                 <OnboardingStep2Avatar
                   avatarUrl={form.avatarUrl}
                   displayName={form.displayName}
-                  onAvatarChange={setField('avatarUrl')}
+                  onAvatarChange={setAvatar}
                   onNext={handleNextFromStep2}
                   onBack={goBack}
                 />

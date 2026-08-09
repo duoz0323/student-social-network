@@ -3,6 +3,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { adminApi, postApi, socialApi } from '../api/index.js';
 import { initialData } from '../data/mockData.js';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
+import {
+  isCurrentUserProfile,
+  mergeCurrentUserProfile,
+  toCurrentUserProfile,
+} from '../features/profile/utils/currentUserProfile.js';
 import { toPostView } from '../features/post/utils/postViewModel.js';
 import Toast from '../components/common/Toast.jsx';
 import {
@@ -45,20 +50,18 @@ export function AppProvider({ children }) {
     try {
       const profile = await socialApi.getMyProfile();
       if (profile) {
-        setMyProfile({
-          id: profile.userId ?? profile.id ?? currentUserId,
-          displayName: profile.displayName ?? '',
-          avatarUrl: profile.avatarUrl ?? '',
-          birthDate: profile.dateOfBirth ?? profile.birthDate ?? null,
-          bio: profile.bio ?? '',
-          profileCompletedAt: profile.profileCompletedAt ?? null,
-        });
+        setMyProfile(toCurrentUserProfile(profile, currentUserId));
       }
       return profile;
     } catch {
       return null;
     }
   }, [currentUserId, auth.profileCompleted]);
+
+  const syncCurrentUserProfile = useCallback((patch) => {
+    // Các composer dùng currentUser; cập nhật Context ngay khi API hồ sơ/ảnh trả thành công.
+    setMyProfile((current) => mergeCurrentUserProfile(current, patch, currentUserId));
+  }, [currentUserId]);
 
   useEffect(() => {
     if (currentUserId && auth.profileCompleted) {
@@ -73,15 +76,17 @@ export function AppProvider({ children }) {
   const currentUser = useMemo(() => {
     const knownUser = toViewUser(data.users.find((user) => String(user.id) === String(currentUserId)));
     const authUser = auth.user;
+    // Khi đổi phiên, không được chớp nhoáng hiển thị profile cache của người dùng trước.
+    const currentProfile = isCurrentUserProfile(myProfile, currentUserId) ? myProfile : null;
     return {
       id: currentUserId,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: myProfile?.displayName || authUser?.displayName || knownUser?.displayName || 'Người dùng UniShare',
-      avatarUrl: myProfile?.avatarUrl ?? authUser?.avatarUrl ?? knownUser?.avatarUrl ?? '',
-      birthDate: myProfile?.birthDate ?? authUser?.birthDate ?? knownUser?.birthDate ?? null,
-      bio: myProfile?.bio ?? authUser?.bio ?? knownUser?.bio ?? '',
-      profileCompletedAt: myProfile?.profileCompletedAt ?? (auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null),
+      displayName: currentProfile?.displayName || authUser?.displayName || knownUser?.displayName || 'Người dùng UniShare',
+      avatarUrl: currentProfile?.avatarUrl ?? authUser?.avatarUrl ?? knownUser?.avatarUrl ?? '',
+      birthDate: currentProfile?.birthDate ?? authUser?.birthDate ?? knownUser?.birthDate ?? null,
+      bio: currentProfile?.bio ?? authUser?.bio ?? knownUser?.bio ?? '',
+      profileCompletedAt: currentProfile?.profileCompletedAt ?? (auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null),
     };
   }, [auth.profileCompleted, auth.role, auth.user, currentUserId, data.users, myProfile]);
 
@@ -240,13 +245,11 @@ export function AppProvider({ children }) {
         dateOfBirth: payload.dateOfBirth ?? payload.birthDate,
         bio: payload.bio,
       });
-      setMyProfile((current) => ({
-        ...(current ?? {}),
-        id: currentUserId,
+      syncCurrentUserProfile({
         displayName: response.displayName ?? payload.displayName,
         bio: response.bio ?? payload.bio ?? '',
         birthDate: response.dateOfBirth ?? payload.dateOfBirth ?? payload.birthDate ?? null,
-      }));
+      });
       setData((previous) => ({
         ...previous,
         users: previous.users.map((user) => String(user.id) === String(currentUserId)
@@ -304,10 +307,10 @@ export function AppProvider({ children }) {
       publicPosts, getUserById, getPostById, getPostDetail,
       logout: auth.logout, createPost, updatePost, deletePost, toggleLike, toggleSave, addComment,
       deleteComment, toggleFollow, applyUserBlock, invalidateUserRelationshipData,
-      showToast, updateProfile, refreshMyProfile, submitReport,
+      showToast, updateProfile, refreshMyProfile, syncCurrentUserProfile, submitReport,
       setUserStatus, setPostStatus, setReportStatus,
     };
-  }, [auth.logout, currentUser, currentUserId, data, refreshMyProfile, userRelationshipRevision]);
+  }, [auth.logout, currentUser, currentUserId, data, refreshMyProfile, syncCurrentUserProfile, userRelationshipRevision]);
 
   return (
     <AppContext.Provider value={value}>

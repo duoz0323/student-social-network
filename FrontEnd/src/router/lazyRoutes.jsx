@@ -16,9 +16,11 @@ export const AdminDashboardPage = lazy(() => import('../features/admin/pages/Adm
 export const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage.jsx'));
 export const AdminUserAnalyticsPage = lazy(() => import('../features/admin/pages/AdminUserAnalyticsPage.jsx'));
 export const AdminPostsPage = lazy(() => import('../features/admin/pages/AdminPostsPage.jsx'));
+export const AdminHashtagsPage = lazy(() => import('../features/admin/pages/AdminHashtagsPage.jsx'));
 export const AdminPostDetailPage = lazy(() => import('../features/admin/pages/AdminPostDetailPage.jsx'));
 export const AdminReportsPage = lazy(() => import('../features/admin/pages/AdminReportsPage.jsx'));
 export const AdminReportDetailPage = lazy(() => import('../features/admin/pages/AdminReportDetailPage.jsx'));
+export const AdminProfileReportDetailPage = lazy(() => import('../features/admin/pages/AdminProfileReportDetailPage.jsx'));
 export const AdminActionsPage = lazy(() => import('../features/admin/pages/AdminActionsPage.jsx'));
 
 export function LazyRouteBoundary({ children }) {

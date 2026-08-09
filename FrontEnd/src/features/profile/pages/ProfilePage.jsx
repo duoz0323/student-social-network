@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Ban, MoreHorizontal } from 'lucide-react';
+import { Ban, Flag, MoreHorizontal } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
 import UserRestrictionAction from '../components/UserRestrictionAction.jsx';
+import ProfileReportDialog from '../components/ProfileReportDialog.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import InfinitePostList from '../../post/components/InfinitePostList.jsx';
@@ -92,7 +93,7 @@ export default function ProfilePage({ self = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
   const {
-    currentUserId, toggleFollow, applyUserBlock, showToast, updateProfile,
+    currentUserId, toggleFollow, applyUserBlock, showToast, updateProfile, syncCurrentUserProfile,
   } = useApp();
   const [editing, setEditing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -103,6 +104,7 @@ export default function ProfilePage({ self = false }) {
   const [unfollowTarget, setUnfollowTarget] = useState(null);
   const [followPendingId, setFollowPendingId] = useState(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [startingMessage, setStartingMessage] = useState(false);
 
   async function handleMessageClick() {
@@ -261,6 +263,8 @@ export default function ProfilePage({ self = false }) {
     if (!file) return;
     try {
       const response = await socialApi.uploadAvatar(file);
+      // Đồng bộ avatar mới cho Feed, modal tạo bài và composer bình luận trong cùng phiên.
+      syncCurrentUserProfile({ avatarUrl: response.avatarUrl });
       setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl }));
       setProfile((current) => ({ ...current, avatarUrl: response.avatarUrl }));
       setError('');
@@ -272,6 +276,8 @@ export default function ProfilePage({ self = false }) {
   async function removeAvatar() {
     try {
       const response = await socialApi.deleteAvatar();
+      // Avatar bị xóa cũng phải được phản ánh ngay tại mọi composer đang dùng currentUser.
+      syncCurrentUserProfile({ avatarUrl: response.avatarUrl || '' });
       setDraft((current) => ({ ...current, avatarUrl: response.avatarUrl || '' }));
       setProfile((current) => ({ ...current, avatarUrl: response.avatarUrl || '' }));
       setError('');
@@ -435,6 +441,16 @@ export default function ProfilePage({ self = false }) {
                     />
                     <button
                       type="button"
+                      onClick={() => {
+                        setProfileOptionsOpen(false);
+                        setReportDialogOpen(true);
+                      }}
+                    >
+                      <span>Báo cáo</span>
+                      <Flag size={16} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
                       className="danger-item"
                       onClick={() => {
                         setProfileOptionsOpen(false);
@@ -550,6 +566,12 @@ export default function ProfilePage({ self = false }) {
       >
         Hai bạn sẽ không thể xem hồ sơ, bài viết hoặc tương tác với nhau. Quan hệ theo dõi hiện tại sẽ bị hủy.
       </Modal>
+
+      <ProfileReportDialog
+        open={reportDialogOpen}
+        user={profile}
+        onClose={() => setReportDialogOpen(false)}
+      />
 
       <Modal
         open={editing}

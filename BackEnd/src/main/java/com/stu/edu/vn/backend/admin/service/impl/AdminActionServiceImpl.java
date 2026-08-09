@@ -91,8 +91,10 @@ public class AdminActionServiceImpl implements AdminActionService {
         Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> result = new EnumMap<>(AdminTargetType.class);
         loadUserTargets(idsByType.get(AdminTargetType.USER), result);
         loadPostTargets(idsByType.get(AdminTargetType.POST), result);
+        loadHashtagTargets(idsByType.get(AdminTargetType.HASHTAG), result);
         loadReportTargets(idsByType.get(AdminTargetType.REPORT), result);
         loadModerationCaseTargets(idsByType.get(AdminTargetType.MODERATION_CASE), result);
+        loadProfileReportTargets(idsByType.get(AdminTargetType.PROFILE_REPORT), result);
         return result;
     }
 
@@ -156,6 +158,38 @@ public class AdminActionServiceImpl implements AdminActionService {
         result.put(AdminTargetType.MODERATION_CASE, targets);
     }
 
+    private void loadHashtagTargets(
+            Set<Long> targetIds,
+            Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> result
+    ) {
+        if (targetIds == null || targetIds.isEmpty()) {
+            return;
+        }
+        Map<Long, AdminActionTargetResponse> targets = adminActionRepository.findHashtagTargets(targetIds).stream()
+                .map(target -> new AdminActionTargetResponse(
+                        AdminTargetType.HASHTAG,
+                        target.getTargetId(),
+                        hasText(target.getDisplayName()) ? "#" + target.getDisplayName() : hashtagFallback(target.getTargetId()),
+                        true
+                ))
+                .collect(Collectors.toMap(AdminActionTargetResponse::targetId, Function.identity()));
+        result.put(AdminTargetType.HASHTAG, targets);
+    }
+
+    private void loadProfileReportTargets(
+            Set<Long> targetIds,
+            Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> result
+    ) {
+        if (targetIds == null || targetIds.isEmpty()) return;
+        Map<Long, AdminActionTargetResponse> targets = adminActionRepository.findProfileReportTargets(targetIds)
+                .stream()
+                .map(AdminActionReportTargetProjection::getTargetId)
+                .map(id -> new AdminActionTargetResponse(
+                        AdminTargetType.PROFILE_REPORT, id, profileReportFallback(id), true))
+                .collect(Collectors.toMap(AdminActionTargetResponse::targetId, Function.identity()));
+        result.put(AdminTargetType.PROFILE_REPORT, targets);
+    }
+
     private AdminActionTargetResponse targetFor(
             AdminActionListProjection action,
             Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> targets
@@ -168,8 +202,10 @@ public class AdminActionServiceImpl implements AdminActionService {
         String displayText = switch (type) {
             case USER -> userFallback(action.getTargetId());
             case POST -> postFallback(action.getTargetId());
+            case HASHTAG -> hashtagFallback(action.getTargetId());
             case REPORT -> reportFallback(action.getTargetId());
             case MODERATION_CASE -> moderationCaseFallback(action.getTargetId());
+            case PROFILE_REPORT -> profileReportFallback(action.getTargetId());
         };
         return new AdminActionTargetResponse(type, action.getTargetId(), displayText, false);
     }
@@ -195,11 +231,19 @@ public class AdminActionServiceImpl implements AdminActionService {
         return "Bài viết #" + id;
     }
 
+    private String hashtagFallback(Long id) {
+        return "Hashtag #" + id;
+    }
+
     private String reportFallback(Long id) {
         return "Báo cáo #" + id;
     }
 
     private String moderationCaseFallback(Long id) {
         return "Hồ sơ kiểm duyệt #" + id;
+    }
+
+    private String profileReportFallback(Long id) {
+        return "Báo cáo trang cá nhân #" + id;
     }
 }

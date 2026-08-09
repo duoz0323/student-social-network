@@ -10,6 +10,8 @@ public record AdminModerationCaseStatusResponse(
         LocalDateTime resolvedAt,
         String resolutionNote,
         AdminReportResolvedByResponse resolvedBy,
-        AdminReportStatusPostResponse post
+        AdminReportStatusPostResponse post,
+        long authorViolationCount,
+        boolean accountBlocked
 ) {
 }

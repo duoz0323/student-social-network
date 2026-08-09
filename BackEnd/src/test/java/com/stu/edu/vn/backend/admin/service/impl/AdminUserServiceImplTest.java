@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.enums.AdminActionType;
+import com.stu.edu.vn.backend.admin.enums.AdminAvatarAction;
 import com.stu.edu.vn.backend.admin.mapper.AdminUserMapper;
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
 import com.stu.edu.vn.backend.admin.repository.AdminUserDetailProjection;
@@ -19,6 +20,7 @@ import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
+import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserRole;
@@ -33,12 +35,19 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import com.stu.edu.vn.backend.storage.CloudinaryStorageService;
+import com.stu.edu.vn.backend.storage.CloudinaryUploadResult;
+import com.stu.edu.vn.backend.user.service.impl.UserAvatarFileValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 
 class AdminUserServiceImplTest {
 
@@ -47,6 +56,9 @@ class AdminUserServiceImplTest {
     private final AdminActionRepository adminActionRepository = org.mockito.Mockito.mock(AdminActionRepository.class);
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final EntityManager entityManager = org.mockito.Mockito.mock(EntityManager.class);
+    private final CloudinaryStorageService cloudinaryStorageService = org.mockito.Mockito.mock(CloudinaryStorageService.class);
+    private final TransactionTemplate transactionTemplate = org.mockito.Mockito.mock(TransactionTemplate.class);
+    private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-30T01:00:00Z"), ZoneOffset.UTC);
     private AdminUserServiceImpl adminUserService;
 
@@ -61,10 +73,17 @@ class AdminUserServiceImplTest {
                 adminActionRepository,
                 clock,
                 entityManager,
-                org.mockito.Mockito.mock(com.stu.edu.vn.backend.notification.service.NotificationService.class),
+                notificationService,
                 userProfileRepository,
-                new UserProfileValidationSupport(clock)
+                new UserProfileValidationSupport(clock),
+                cloudinaryStorageService,
+                new UserAvatarFileValidator(),
+                transactionTemplate
         );
+        when(transactionTemplate.execute(any(TransactionCallback.class))).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(org.mockito.Mockito.mock(TransactionStatus.class));
+        });
     }
 
     @Test
@@ -183,6 +202,71 @@ class AdminUserServiceImplTest {
                 .extracting(AdminAction::getActionType, AdminAction::getTargetId, AdminAction::getNote)
                 .containsExactly(AdminActionType.UPDATE_USER_PROFILE, 10L, "ADMIN_UPDATE_PROFILE");
         verify(entityManager).flush();
+        verify(notificationService).createUserProfileUpdatedByAdminNotification(10L);
+    }
+
+    @Test
+    void updateProfileWithAvatarReplacesImageAndDeletesOldFileAfterDatabaseSuccess() {
+        User admin = user(1L, UserRole.ADMIN, UserStatus.ACTIVE);
+        User target = user(10L, UserRole.USER, UserStatus.ACTIVE);
+        UserProfile profile = new UserProfile(target);
+        profile.setAvatarUrl("https://cdn.example/old.png");
+        profile.setAvatarPublicId("avatars/old");
+        AdminUserDetailProjection updatedProjection = detailProjection("USER", "ACTIVE", true);
+        when(updatedProjection.getAvatarUrl()).thenReturn("https://cdn.example/new.png");
+        when(currentUserProvider.getCurrentUser())
+                .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
+        when(adminUserRepository.findManagedUserDetail(10L)).thenReturn(Optional.of(updatedProjection));
+        when(adminUserRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(target));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(profile));
+        when(entityManager.getReference(User.class, 1L)).thenReturn(admin);
+        when(cloudinaryStorageService.uploadAvatar(any())).thenReturn(
+                new CloudinaryUploadResult("https://cdn.example/new.png", "avatars/new"));
+        byte[] pngHeader = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        MockMultipartFile avatar = new MockMultipartFile("avatar", "avatar.png", "image/png", pngHeader);
+
+        var response = adminUserService.updateUserProfileWithAvatar(
+                10L,
+                new AdminUpdateUserProfileRequest("Tên mới", LocalDate.of(2001, 6, 15), "Bio mới"),
+                AdminAvatarAction.REPLACE,
+                avatar
+        );
+
+        assertThat(profile.getAvatarUrl()).isEqualTo("https://cdn.example/new.png");
+        assertThat(profile.getAvatarPublicId()).isEqualTo("avatars/new");
+        assertThat(response.avatarUrl()).isEqualTo("https://cdn.example/new.png");
+        verify(cloudinaryStorageService).deleteImage("avatars/old");
+        verify(notificationService).createUserProfileUpdatedByAdminNotification(10L);
+    }
+
+    @Test
+    void updateProfileWithAvatarRemovesCurrentImageWithoutUploadingNewFile() {
+        User admin = user(1L, UserRole.ADMIN, UserStatus.ACTIVE);
+        User target = user(10L, UserRole.USER, UserStatus.ACTIVE);
+        UserProfile profile = new UserProfile(target);
+        profile.setAvatarUrl("https://cdn.example/old.png");
+        profile.setAvatarPublicId("avatars/old");
+        AdminUserDetailProjection updatedProjection = detailProjection("USER", "ACTIVE", true);
+        when(currentUserProvider.getCurrentUser())
+                .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
+        when(adminUserRepository.findManagedUserDetail(10L)).thenReturn(Optional.of(updatedProjection));
+        when(adminUserRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(target));
+        when(userProfileRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(profile));
+        when(entityManager.getReference(User.class, 1L)).thenReturn(admin);
+
+        var response = adminUserService.updateUserProfileWithAvatar(
+                10L,
+                new AdminUpdateUserProfileRequest("Tên mới", LocalDate.of(2001, 6, 15), "Bio mới"),
+                AdminAvatarAction.REMOVE,
+                null
+        );
+
+        assertThat(profile.getAvatarUrl()).isNull();
+        assertThat(profile.getAvatarPublicId()).isNull();
+        assertThat(response.avatarUrl()).isNull();
+        verify(cloudinaryStorageService, never()).uploadAvatar(any());
+        verify(cloudinaryStorageService).deleteImage("avatars/old");
+        verify(notificationService).createUserProfileUpdatedByAdminNotification(10L);
     }
 
     private void assertError(Runnable action, ErrorCode errorCode) {

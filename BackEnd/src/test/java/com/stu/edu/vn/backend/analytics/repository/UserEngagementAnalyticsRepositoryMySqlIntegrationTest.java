@@ -69,7 +69,36 @@ class UserEngagementAnalyticsRepositoryMySqlIntegrationTest {
         assertThat(counts.eligibleSystemUserCount()).isEqualTo(
                 counts.newActiveUserCount() + counts.regularActiveUserCount() + counts.returningUserCount()
                         + counts.recentlyInactiveUserCount() + counts.eligibleInactiveNotReturnedUserCount()
-                        + counts.neverActiveUserCount());
+                + counts.neverActiveUserCount());
+    }
+
+    @Test
+    void summarizesDailyCountsAndRanksFeaturedUsersByPostsThenInteractions() {
+        Long postLeader = insertEligibleUser("dashboard-post-leader");
+        Long interactionLeader = insertEligibleUser("dashboard-interaction-leader");
+        insertActivity(postLeader, "2026-06-15", 4);
+        insertActivity(interactionLeader, "2026-06-15", 40);
+        jdbcTemplate.update("""
+                INSERT INTO posts (author_id, content, status, published_at, created_at, updated_at)
+                VALUES (?, 'Bài Dashboard 1', 'PUBLISHED', '2026-06-15 08:00:00',
+                        '2026-06-15 08:00:00', '2026-06-15 08:00:00')
+                """, postLeader);
+        jdbcTemplate.update("""
+                INSERT INTO posts (author_id, content, status, published_at, created_at, updated_at)
+                VALUES (?, 'Bài Dashboard 2', 'PUBLISHED', '2026-06-15 09:00:00',
+                        '2026-06-15 09:00:00', '2026-06-15 09:00:00')
+                """, postLeader);
+
+        assertThat(repository.findDailyInteractionCounts(
+                LocalDate.of(2026, 6, 14), LocalDate.of(2026, 6, 15)))
+                .containsExactly(new DailyInteractionCount(LocalDate.of(2026, 6, 15), 44));
+        assertThat(repository.findFeaturedUsers(
+                LocalDate.of(2026, 6, 15),
+                LocalDateTime.of(2026, 6, 15, 0, 0),
+                LocalDateTime.of(2026, 6, 16, 0, 0),
+                5
+        )).extracting(FeaturedUserEngagement::userId)
+                .containsExactly(postLeader, interactionLeader);
     }
 
     private Long insertEligibleUser(String label) {
@@ -90,11 +119,15 @@ class UserEngagementAnalyticsRepositoryMySqlIntegrationTest {
     }
 
     private void insertActivity(Long userId, String date) {
+        insertActivity(userId, date, 1);
+    }
+
+    private void insertActivity(Long userId, String date, int activityCount) {
         jdbcTemplate.update("""
                 INSERT INTO user_daily_activities (
                     user_id, activity_date, first_active_at, last_active_at, activity_count
-                ) VALUES (?, ?, CONCAT(?, ' 08:00:00'), CONCAT(?, ' 08:00:00'), 1)
-                """, userId, LocalDate.parse(date), date, date);
+                ) VALUES (?, ?, CONCAT(?, ' 08:00:00'), CONCAT(?, ' 08:00:00'), ?)
+                """, userId, LocalDate.parse(date), date, date, activityCount);
     }
 
     private static String requiredEnvironment(String name) {

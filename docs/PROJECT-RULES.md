@@ -99,18 +99,24 @@
 
 ## 10. Report
 
-- Chỉ report post.
+- Report hỗ trợ Post và trang cá nhân; hai loại dùng bảng và workflow riêng.
 - Trạng thái PENDING, RESOLVED, REJECTED.
 - Mỗi Report giữ riêng reporter, reason, description và snapshot; không gộp chuỗi/JSON thay quan hệ.
 - Report phải thuộc Moderation Case; không có nhiều report đang hiệu lực cùng user và post.
 - Một post chỉ có một Moderation Case `OPEN`; case dùng `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`.
 - Report không tự động ẩn post.
+- Mỗi case bài viết `RESOLVED_ACTION_TAKEN` tính một strike; strike thứ ba tự động khóa USER và thu hồi phiên.
+- Profile Report không cho tự báo cáo, không trùng `PENDING` theo reporter/target; tất cả lượt cùng target thuộc một Profile Report Case. Admin được chọn khóa USER ngay khi xác nhận vi phạm.
 
 ## 11. Admin
 
 - Chỉ ADMIN truy cập API quản trị.
+- Chỉ ADMIN đang hoạt động được cập nhật hoặc xóa avatar của tài khoản role USER; file dùng cùng validation với avatar cá nhân.
 - Có thể khóa/mở user.
 - Có thể ẩn/khôi phục post.
+- Quản lý hashtag dành cho ADMIN có tìm kiếm, phân trang, tạo, đổi tên và xóa; tên mới dùng pipeline chuẩn hóa chung và không được trùng `normalized_name`.
+- Đổi tên cập nhật chính bản ghi `hashtags`, giữ nguyên `id`, `post_count` và toàn bộ quan hệ `post_hashtags`.
+- Xóa hashtag phải khóa target, xóa quan hệ `post_hashtags` trước vì FK `RESTRICT`, rồi xóa `hashtags` trong cùng transaction; không xóa Post.
 - Xử lý trực tiếp Moderation Case từ `OPEN` sang một kết quả cuối; không có bước tiếp nhận.
 
 ## 12. API

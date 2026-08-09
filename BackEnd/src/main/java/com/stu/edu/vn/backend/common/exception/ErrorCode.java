@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    ANALYTICS_DASHBOARD_DAYS_INVALID(HttpStatus.BAD_REQUEST, "days phải nằm trong khoảng từ 1 đến 90"),
     ANALYTICS_MONTH_INVALID(HttpStatus.BAD_REQUEST, "Tháng thống kê phải có định dạng yyyy-MM"),
     ANALYTICS_MONTH_RANGE_INVALID(HttpStatus.BAD_REQUEST, "Tháng bắt đầu không được sau tháng kết thúc"),
     ANALYTICS_FUTURE_MONTH(HttpStatus.BAD_REQUEST, "Tháng kết thúc không được nằm trong tương lai"),
@@ -13,6 +14,11 @@ public enum ErrorCode {
     ANALYTICS_INACTIVE_DAYS_INVALID(HttpStatus.BAD_REQUEST, "inactiveDays phải nằm trong khoảng từ 1 đến 365"),
     HASHTAG_SUGGESTION_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa gợi ý hashtag không được vượt quá 100 ký tự"),
     ADMIN_ACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lịch sử thao tác quản trị"),
+    ADMIN_HASHTAG_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy hashtag cần quản lý"),
+    ADMIN_HASHTAG_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "Tên hashtag không được để trống"),
+    ADMIN_HASHTAG_NAME_INVALID(HttpStatus.BAD_REQUEST, "Hashtag chỉ được chứa chữ, số, dấu gạch dưới hoặc khoảng trắng hợp lệ"),
+    ADMIN_HASHTAG_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "Tên hashtag không được vượt quá 100 ký tự"),
+    ADMIN_HASHTAG_ALREADY_EXISTS(HttpStatus.CONFLICT, "Hashtag đã tồn tại"),
     ADMIN_MODERATION_CASE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ kiểm duyệt"),
     ADMIN_MODERATION_CASE_ALREADY_RESOLVED(HttpStatus.CONFLICT, "Hồ sơ kiểm duyệt đã được giải quyết"),
     ADMIN_MODERATION_CASE_KEYWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "Từ khóa hồ sơ kiểm duyệt không được vượt quá 100 ký tự"),
@@ -229,6 +235,10 @@ public enum ErrorCode {
     REPORT_DESCRIPTION_TOO_LONG(HttpStatus.BAD_REQUEST, "Mô tả báo cáo không được vượt quá 1000 ký tự"),
     REPORT_OWN_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không thể báo cáo bài viết của chính mình"),
     REPORT_ALREADY_PENDING(HttpStatus.CONFLICT, "Bạn đã có một báo cáo đang chờ xử lý cho bài viết này"),
+    PROFILE_REPORT_SELF_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không thể báo cáo trang cá nhân của chính mình"),
+    PROFILE_REPORT_ALREADY_PENDING(HttpStatus.CONFLICT, "Bạn đã có một báo cáo đang chờ xử lý cho trang cá nhân này"),
+    ADMIN_PROFILE_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo trang cá nhân"),
+    ADMIN_PROFILE_REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "Báo cáo trang cá nhân đã được xử lý"),
     CLOUDINARY_CONFIGURATION_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "Cấu hình lưu trữ ảnh chưa hợp lệ"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để tiếp tục"),
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "Access Token không hợp lệ"),

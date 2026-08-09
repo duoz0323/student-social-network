@@ -9,7 +9,8 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onAvatarChange(String(reader.result));
+    // Giữ File để upload thật ở lúc hoàn tất, còn data URL chỉ phục vụ preview tại bước này.
+    reader.onload = () => onAvatarChange(file, String(reader.result));
     reader.readAsDataURL(file);
   }
 
@@ -64,14 +65,6 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
           </SecondaryBtn>
         </div>
 
-        {/* Link bỏ qua bước này */}
-        <button
-          type="button"
-          onClick={onNext}
-          className="mt-3 text-sm font-medium text-zinc-600 hover:text-zinc-950 hover:underline transition-colors"
-        >
-          Bỏ qua bước này
-        </button>
       </div>
 
       {/* Hàng 2 nút dưới cùng: Quay lại + Tiếp tục theo đúng mockup */}

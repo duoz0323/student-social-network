@@ -144,6 +144,21 @@ class NotificationServiceImplTest {
     }
 
     @Test
+    void adminProfileUpdateCreatesSystemNotificationWithoutAdminActor() {
+        User recipient = user(20L);
+        when(entityManager.getReference(User.class, 20L)).thenReturn(recipient);
+
+        service.createUserProfileUpdatedByAdminNotification(20L);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo(NotificationType.PROFILE_UPDATED_BY_ADMIN);
+        assertThat(captor.getValue().getActor()).isNull();
+        assertThat(captor.getValue().getRecipient().getId()).isEqualTo(20L);
+        verify(eventPublisher).publishEvent(new NotificationCreatedEvent(99L, 20L));
+    }
+
+    @Test
     void markAsReadOnlyLoadsNotificationOwnedByCurrentUser() {
         Notification notification = new Notification(
                 user(20L), user(10L), NotificationType.FOLLOW, null, null, null);

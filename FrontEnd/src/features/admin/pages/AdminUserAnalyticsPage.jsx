@@ -171,14 +171,14 @@ function AnalyticsContent({ monthly, summary }) {
       helperTone: 'text-blue-600',
     },
     {
-      label: 'Tỷ lệ quay lại cao nhất',
+      label: 'Tỷ lệ người quay lại cao nhất',
       value: formatRate(monthly.peakReturnRate),
-      helper: monthly.peakReturnRateMonth ? formatMonth(monthly.peakReturnRateMonth) : 'Chưa đủ dữ liệu',
+      helper:  monthly.peakReturnRateMonth ? 'Trong '+formatMonth(monthly.peakReturnRateMonth) : 'Chưa đủ dữ liệu',
       accent: 'border-l-indigo-500',
       helperTone: 'text-indigo-600',
     },
     {
-      label: 'Tỷ lệ tái kích hoạt tháng cuối',
+      label: 'Tỷ lệ quay người dùng quay lại trong tháng',
       value: formatRate(summary.returnRate),
       helper: formatMonth(summary.month),
       accent: 'border-l-orange-500',

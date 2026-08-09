@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.stu.edu.vn.backend.analytics.dto.MonthlyUserEngagementItemResponse;
+import com.stu.edu.vn.backend.analytics.dto.DashboardUserEngagementResponse;
 import com.stu.edu.vn.backend.analytics.service.UserEngagementAnalyticsService;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.common.util.ClientIpAddressResolver;
@@ -22,6 +23,7 @@ import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +72,24 @@ class AdminUserEngagementAnalyticsSecurityTest {
                         .header("Authorization", "Bearer admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.month").value("2026-06"));
+    }
+
+    @Test
+    void dashboardRequiresAdminRole() throws Exception {
+        authenticate("user", user(9L, UserRole.USER));
+
+        mockMvc.perform(get("/api/v1/admin/analytics/user-engagement/dashboard")
+                        .header("Authorization", "Bearer user"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        authenticate("admin", user(1L, UserRole.ADMIN));
+        when(analyticsService.getDashboard(30)).thenReturn(new DashboardUserEngagementResponse(
+                LocalDate.of(2026, 5, 17), LocalDate.of(2026, 6, 15), List.of(), List.of()));
+
+        mockMvc.perform(get("/api/v1/admin/analytics/user-engagement/dashboard")
+                        .header("Authorization", "Bearer admin"))
+                .andExpect(status().isOk());
     }
 
     private void authenticate(String token, User user) {

@@ -27,6 +27,15 @@
 - Trigger insert/delete cập nhật atomic `posts.repost_count`; trigger delete dùng `GREATEST(..., 0)`.
 - Index `(user_id, created_at DESC, post_id DESC)` phục vụ Profile Repost keyset.
 
+## Hashtag và danh sách quản trị
+
+- Không bổ sung bảng hoặc cột nghiệp vụ hashtag; `V009` thêm audit tạo/xóa và target `HASHTAG`, còn `V010__add_admin_hashtag_update_action.sql` thêm `UPDATE_HASHTAG` mà không sửa migration cũ.
+- `hashtags.post_count` là bộ đếm số quan hệ hiện tại và được trigger insert/delete trên `post_hashtags` duy trì atomic.
+- Ngày sử dụng mới nhất được đọc bằng `MAX(post_hashtags.created_at)`; hashtag không còn quan hệ có giá trị `NULL`.
+- API quản trị dùng projection tổng hợp và phân trang tại database, không tải collection bài viết nên không phát sinh N+1.
+- Do FK `post_hashtags.hashtag_id` dùng `ON DELETE RESTRICT`, service phải xóa quan hệ trước hashtag trong cùng transaction. Trigger delete hiện có giảm `hashtags.post_count`; Post không bị xóa.
+- Đổi tên chỉ cập nhật `hashtags.normalized_name` và `display_name`; khóa chính cùng quan hệ bài viết được giữ nguyên.
+
 ## 1. Trạng thái thiết kế Auth 0E
 
 Auth dùng bốn bảng challenge riêng:
@@ -175,4 +184,14 @@ Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc r
 - Migration `V003__add_moderation_cases.sql` dừng trước khi backfill nếu Report legacy không thể map an toàn.
 - Backfill giữ nguyên reporter, reason, description và snapshot; không gộp dữ liệu thành CSV/JSON.
 - Report `PENDING` thuộc case `OPEN`; case không vi phạm chuyển Report sang `REJECTED`, case có hành động chuyển sang `RESOLVED`.
+
+## 13. Báo cáo trang cá nhân
+
+- `profile_reports` tách khỏi `reports` để không làm nullable/polymorphic quan hệ Post và Moderation Case.
+- `profile_report_cases` duy nhất theo `reported_user_id`, gom mọi lượt báo cáo của nhiều reporter và lưu `report_count`, `latest_reported_at`.
+- `profile_reports.case_id` bắt buộc tham chiếu case; mỗi dòng vẫn giữ reporter, lý do và snapshot riêng.
+- Generated `pending_report_key` cùng unique index bảo đảm một reporter chỉ có một `PENDING` cho cùng target.
+- Snapshot lưu display name, avatar, bio và ngày sinh tại thời điểm gửi; không lưu email hoặc dữ liệu xác thực.
+- Check constraint cấm reporter trùng target và giữ invariant các trường resolution.
+- Migration: chạy `V007__add_profile_reports.sql`, sau đó `V008__group_profile_reports_into_cases.sql`; dự án không tự chạy migration.
 

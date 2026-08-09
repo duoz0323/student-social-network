@@ -2,7 +2,17 @@ export const ADMIN_PROFILE_LIMITS = Object.freeze({
   minimumDisplayNameLength: 2,
   maximumDisplayNameLength: 100,
   maximumBioLength: 500,
+  maximumAvatarSizeBytes: 10 * 1024 * 1024,
 });
+
+const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+export function validateAdminAvatarFile(file) {
+  if (!file) return 'Vui lòng chọn một ảnh đại diện.';
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) return 'Ảnh phải có định dạng JPG, JPEG, PNG hoặc WEBP.';
+  if (file.size > ADMIN_PROFILE_LIMITS.maximumAvatarSizeBytes) return 'Ảnh đại diện không được vượt quá 10 MB.';
+  return '';
+}
 
 export function validateAdminProfileDraft(draft) {
   const displayNameLength = draft.displayName.trim().length;

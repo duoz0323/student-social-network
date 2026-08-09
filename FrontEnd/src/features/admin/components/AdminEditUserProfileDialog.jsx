@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { Camera, Trash2, UserRound, X } from 'lucide-react';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import {
   ADMIN_PROFILE_LIMITS,
   buildAdminProfilePayload,
   getLatestAdultBirthDate,
+  validateAdminAvatarFile,
   validateAdminProfileDraft,
 } from '../utils/adminUserProfile.js';
 
@@ -15,6 +16,10 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
     dateOfBirth: user.dateOfBirth ?? '',
     bio: user.bio ?? '',
   });
+  const [avatarPreview, setAvatarPreview] = useState(user.avatarUrl ?? '');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarAction, setAvatarAction] = useState('KEEP');
+  const [avatarError, setAvatarError] = useState('');
   const maximumBirthDate = useMemo(() => getLatestAdultBirthDate(), []);
   const displayNameLength = draft.displayName.trim().length;
   const canSubmit = validateAdminProfileDraft(draft) && !submitting;
@@ -26,7 +31,33 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
   function submit(event) {
     event.preventDefault();
     if (!canSubmit) return;
-    onSubmit(buildAdminProfilePayload(draft));
+    onSubmit(buildAdminProfilePayload(draft), { avatarAction, avatarFile });
+  }
+
+  function selectAvatar(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const validationError = validateAdminAvatarFile(file);
+    if (validationError) {
+      setAvatarError(validationError);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(String(reader.result));
+      setAvatarFile(file);
+      setAvatarAction('REPLACE');
+      setAvatarError('');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeAvatar() {
+    setAvatarPreview('');
+    setAvatarFile(null);
+    setAvatarAction(user.avatarUrl ? 'REMOVE' : 'KEEP');
+    setAvatarError('');
   }
 
   return (
@@ -50,6 +81,34 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
     >
       <form onSubmit={submit}>
         {error ? <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p> : null}
+
+        <div className="mb-5 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-slate-500 ring-2 ring-white">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Ảnh đại diện đang chọn" className="h-full w-full object-cover" />
+            ) : (
+              <UserRound className="h-9 w-9" aria-hidden="true" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-700">Ảnh đại diện</p>
+            <p className="mt-1 text-xs text-slate-500">JPG, JPEG, PNG hoặc WEBP; tối đa 10 MB.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label className={`inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white transition hover:bg-blue-700 ${submitting ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
+                <Camera className="h-4 w-4" aria-hidden="true" />
+                Chọn ảnh
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={submitting} onChange={selectAvatar} />
+              </label>
+              {avatarPreview ? (
+                <button type="button" disabled={submitting} onClick={removeAvatar} className="inline-flex h-9 items-center gap-2 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60">
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  Xóa ảnh
+                </button>
+              ) : null}
+            </div>
+            {avatarError ? <p className="mt-2 text-xs text-red-600" role="alert">{avatarError}</p> : null}
+          </div>
+        </div>
 
         <label className="block text-sm font-semibold text-slate-700" htmlFor="admin-profile-display-name">
           Tên hiển thị

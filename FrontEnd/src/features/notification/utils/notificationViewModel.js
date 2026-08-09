@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPE_LABELS = Object.freeze({
   REPORT_REJECTED: 'Báo cáo của bạn đã bị từ chối',
   POST_HIDDEN_BY_ADMIN: 'Bài viết của bạn đã bị ẩn',
   POST_RESTORED_BY_ADMIN: 'Bài viết của bạn đã được khôi phục',
+  PROFILE_UPDATED_BY_ADMIN: 'Hồ sơ của bạn đã được quản trị viên điều chỉnh vì nội dung vi phạm Tiêu chuẩn hệ thống',
   ACCOUNT_BLOCKED: 'Tài khoản của bạn đã bị khóa',
   ACCOUNT_UNBLOCKED: 'Tài khoản của bạn đã được mở khóa',
 });
@@ -17,6 +18,7 @@ const SYSTEM_NOTIFICATION_TYPES = new Set([
   'REPORT_REJECTED',
   'POST_HIDDEN_BY_ADMIN',
   'POST_RESTORED_BY_ADMIN',
+  'PROFILE_UPDATED_BY_ADMIN',
   'ACCOUNT_BLOCKED',
   'ACCOUNT_UNBLOCKED',
 ]);

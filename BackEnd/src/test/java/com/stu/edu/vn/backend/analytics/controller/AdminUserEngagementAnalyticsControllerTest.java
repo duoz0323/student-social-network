@@ -7,12 +7,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.stu.edu.vn.backend.analytics.dto.MonthlyUserEngagementItemResponse;
+import com.stu.edu.vn.backend.analytics.dto.DailyInteractionResponse;
+import com.stu.edu.vn.backend.analytics.dto.DashboardUserEngagementResponse;
+import com.stu.edu.vn.backend.analytics.dto.FeaturedUserResponse;
 import com.stu.edu.vn.backend.analytics.service.UserEngagementAnalyticsService;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,6 +58,23 @@ class AdminUserEngagementAnalyticsControllerTest {
                         .param("toMonth", "2026-06"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("ANALYTICS_MONTH_RANGE_INVALID"));
+    }
+
+    @Test
+    void dashboardUsesDefaultThirtyDays() throws Exception {
+        when(service.getDashboard(30)).thenReturn(new DashboardUserEngagementResponse(
+                LocalDate.of(2026, 5, 17),
+                LocalDate.of(2026, 6, 15),
+                List.of(new DailyInteractionResponse(LocalDate.of(2026, 6, 15), 12)),
+                List.of(new FeaturedUserResponse(7L, "Mai", null, 2, 12))
+        ));
+
+        mockMvc.perform(get("/api/v1/admin/analytics/user-engagement/dashboard"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dailyInteractions[0].interactionCount").value(12))
+                .andExpect(jsonPath("$.data.featuredUsers[0].displayName").value("Mai"));
+
+        verify(service).getDashboard(30);
     }
 
     private MonthlyUserEngagementItemResponse emptyItem() {

@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
 import com.stu.edu.vn.backend.admin.enums.AdminBlockReason;
+import com.stu.edu.vn.backend.admin.enums.AdminAvatarAction;
 import com.stu.edu.vn.backend.admin.service.AdminUserService;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
@@ -29,6 +31,8 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 
 class AdminUserControllerTest {
 
@@ -145,6 +149,35 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.data.email").value("minh@example.com"))
                 .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
         verify(adminUserService).updateUserProfile(10L, request);
+    }
+
+    @Test
+    void updateProfileWithAvatarAcceptsMultipartContract() throws Exception {
+        LocalDate dateOfBirth = LocalDate.of(2001, 6, 15);
+        LocalDateTime timestamp = LocalDateTime.of(2026, 7, 30, 8, 0);
+        var request = new AdminUpdateUserProfileRequest("Tên mới", dateOfBirth, "Giới thiệu mới");
+        var response = new AdminUserDetailResponse(
+                10L, "Tên mới", "https://cdn.example/avatar.png", "Giới thiệu mới", dateOfBirth,
+                "minh@example.com", UserStatus.ACTIVE, true, timestamp, null, null, timestamp, timestamp);
+        when(adminUserService.updateUserProfileWithAvatar(
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.eq(request),
+                org.mockito.ArgumentMatchers.eq(AdminAvatarAction.REPLACE),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(response);
+        MockMultipartFile profile = new MockMultipartFile(
+                "profile", "", MediaType.APPLICATION_JSON_VALUE,
+                "{\"displayName\":\"Tên mới\",\"dateOfBirth\":\"2001-06-15\",\"bio\":\"Giới thiệu mới\"}".getBytes());
+        MockPart avatarAction = new MockPart("avatarAction", "REPLACE".getBytes());
+        avatarAction.getHeaders().setContentType(MediaType.TEXT_PLAIN);
+        MockMultipartFile avatar = new MockMultipartFile(
+                "avatar", "avatar.png", MediaType.IMAGE_PNG_VALUE, new byte[]{1});
+
+        mockMvc.perform(multipart("/api/v1/admin/users/10/profile")
+                        .file(profile).part(avatarAction).file(avatar)
+                        .with(httpRequest -> { httpRequest.setMethod("PUT"); return httpRequest; }))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example/avatar.png"));
     }
 
     @Test

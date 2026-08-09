@@ -5,6 +5,7 @@ import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
+import com.stu.edu.vn.backend.admin.enums.AdminAvatarAction;
 import com.stu.edu.vn.backend.admin.service.AdminUserService;
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import com.stu.edu.vn.backend.common.api.PageResponse;
@@ -15,6 +16,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,13 +63,25 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("Lấy chi tiết người dùng thành công", response));
     }
 
-    @PutMapping("/{userId}/profile")
+    @PutMapping(value = "/{userId}/profile", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<AdminUserDetailResponse>> updateUserProfile(
             @PathVariable @Positive Long userId,
             @RequestBody AdminUpdateUserProfileRequest request
     ) {
         AdminUserDetailResponse response = adminUserService.updateUserProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ người dùng thành công", response));
+    }
+
+    @PutMapping(value = "/{userId}/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<AdminUserDetailResponse>> updateUserProfileWithAvatar(
+            @PathVariable @Positive Long userId,
+            @RequestPart("profile") AdminUpdateUserProfileRequest request,
+            @RequestParam("avatarAction") AdminAvatarAction avatarAction,
+            @RequestPart(value = "avatar", required = false) MultipartFile avatarFile
+    ) {
+        AdminUserDetailResponse response = adminUserService.updateUserProfileWithAvatar(
+                userId, request, avatarAction, avatarFile);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ và ảnh đại diện thành công", response));
     }
 
     @PatchMapping("/{userId}/block")

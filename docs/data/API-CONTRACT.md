@@ -1151,7 +1151,95 @@ Request:
 }
 ```
 
+### POST `/api/v1/users/{userId}/profile-reports`
+
+USER đang hoạt động và đã onboarding báo cáo trang cá nhân của USER khác:
+
+```json
+{
+  "reason": "IMPERSONATION"
+}
+```
+
+`reason` chỉ nhận `PROHIBITED_CONTENT`, `IMPERSONATION`, `UNDER_MINIMUM_AGE`, `SCAM_OR_FRAUD`,
+`FALSE_INFORMATION`, `VIOLENCE_OR_DANGEROUS_ORGANIZATION`. Backend lấy reporter từ JWT, từ chối tự báo
+cáo, quan hệ Block hai chiều, target không khả dụng và báo cáo `PENDING` trùng. Response 201 trả
+`reportId`, `reportedUserId`, `reason`, `status`, `createdAt`.
+
 ## 9. Admin
+
+### GET `/api/v1/admin/hashtags?keyword=&page=0&size=20`
+
+Chỉ `ADMIN` được truy cập. `keyword` tùy chọn, tìm không phân biệt hoa thường theo tên hiển thị hoặc tên đã chuẩn hóa;
+`page` bắt đầu từ 0 và `size` từ 1 đến 100. Response dùng `PageResponse`:
+
+```json
+{
+  "content": [
+    {
+      "hashtagId": 7,
+      "name": "sinhvien",
+      "postCount": 12,
+      "createdAt": "2026-08-01T08:00:00",
+      "latestUsedAt": "2026-08-09T10:30:00"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
+```
+
+`postCount` là số quan hệ bài viết–hashtag hiện tại do counter của database duy trì. `latestUsedAt` là
+`MAX(post_hashtags.created_at)` trên các quan hệ hiện tại và bằng `null` nếu hashtag chưa được sử dụng.
+Danh sách không thay đổi hashtag hoặc bài viết.
+
+### POST `/api/v1/admin/hashtags`
+
+```json
+{ "name": "##Sinh Viên" }
+```
+
+Chỉ ADMIN đang hoạt động được gọi. Backend loại bỏ dấu `#`, trim/gộp khoảng trắng Unicode, chuẩn hóa NFC,
+chuyển chữ thường và áp dụng giới hạn 100 code point giống Post. Tên trùng sau chuẩn hóa trả
+`ADMIN_HASHTAG_ALREADY_EXISTS` với HTTP 409. Thành công trả HTTP 201 và một `AdminHashtagListItemResponse`
+có `postCount = 0`, `latestUsedAt = null`.
+
+### DELETE `/api/v1/admin/hashtags/{hashtagId}`
+
+Backend khóa hashtag, xóa toàn bộ quan hệ `post_hashtags`, sau đó xóa `hashtags` trong cùng transaction.
+Post liên quan vẫn tồn tại và trở thành bài không có hashtag. Response 200:
+
+```json
+{
+  "hashtagId": 7,
+  "name": "sinhvien",
+  "detachedPostCount": 3
+}
+```
+
+Target không tồn tại trả `ADMIN_HASHTAG_NOT_FOUND` với HTTP 404. Hai thao tác tạo/xóa đều ghi
+`admin_actions` với target type `HASHTAG`.
+
+### PATCH `/api/v1/admin/hashtags/{hashtagId}`
+
+```json
+{ "name": "Tên hashtag mới" }
+```
+
+Backend khóa hashtag, chuẩn hóa tên bằng cùng pipeline tạo hashtag và kiểm tra unique trên các hashtag khác.
+Việc đổi tên cập nhật `normalized_name` và `display_name` trên cùng bản ghi, giữ nguyên `hashtag_id`, số bài,
+ngày sử dụng và mọi quan hệ `post_hashtags`. Response 200:
+
+```json
+{ "hashtagId": 7, "name": "tên hashtag mới" }
+```
+
+Nếu giá trị sau chuẩn hóa không đổi, response vẫn thành công nhưng không ghi audit rỗng. Tên trùng trả 409;
+target không tồn tại trả 404. Thay đổi thực tế ghi `UPDATE_HASHTAG` vào lịch sử quản trị.
 
 ### GET `/api/v1/admin/users?page=0&size=20`
 
@@ -1178,6 +1266,20 @@ Report và cập nhật `report_count` trong cùng transaction. Request/response
 Chỉ ADMIN đang hoạt động được sửa hồ sơ của tài khoản có role `USER`. Tên hiển thị, ngày sinh
 và bio dùng cùng quy tắc validation với cập nhật hồ sơ cá nhân; thao tác được ghi vào
 `admin_actions` với loại `UPDATE_USER_PROFILE`. Avatar không được cập nhật qua endpoint JSON này.
+
+Sau khi cập nhật thành công, Backend tạo Notification hệ thống `PROFILE_UPDATED_BY_ADMIN` cho USER trong
+cùng transaction database. Notification không có actor để không lộ danh tính ADMIN và được phát realtime
+best-effort bằng `NOTIFICATION_CREATED` sau commit. Frontend hiển thị nội dung hồ sơ đã bị điều chỉnh vì vi
+phạm Tiêu chuẩn hệ thống; notification không điều hướng tới tài nguyên khác.
+
+Khi thay hoặc xóa avatar, Frontend gọi cùng endpoint bằng `multipart/form-data`:
+
+- Part `profile`: JSON có `displayName`, `dateOfBirth`, `bio` như trên.
+- Part `avatarAction`: `REPLACE` hoặc `REMOVE`.
+- Part `avatar`: bắt buộc khi `avatarAction = REPLACE`, hỗ trợ JPG/JPEG/PNG/WEBP tối đa 10 MB.
+- Backend cập nhật nội dung hồ sơ và tham chiếu avatar trong cùng transaction database; file mới được
+  cleanup nếu transaction thất bại và file cũ chỉ bị xóa sau khi database cập nhật thành công.
+- Response 200 trả lại `AdminUserDetailResponse` đã có `avatarUrl` mới hoặc `null` khi xóa ảnh.
 
 ### PATCH `/api/v1/admin/users/{userId}/block`
 
@@ -1234,6 +1336,46 @@ Trả thông tin case, bài hiện tại, tổng Report/reporter khác nhau, th�
 Frontend không gửi `status`, `resolvedBy` hoặc `adminId`. Backend lấy Admin từ JWT và chỉ cho phép
 case `OPEN` chuyển thẳng sang `RESOLVED_NO_VIOLATION` hoặc `RESOLVED_ACTION_TAKEN`. Giao diện hiện
 không yêu cầu kết luận tự do; `resolutionNote` được Backend giữ tương thích ở dạng tùy chọn.
+
+Mỗi lần chuyển thành `RESOLVED_ACTION_TAKEN` tính một lần vi phạm cho tác giả. Response trả thêm
+`authorViolationCount` và `accountBlocked`. Khi count đạt 3, Backend khóa tài khoản với
+`REPEATED_VIOLATION`, thu hồi Refresh Token và trả `accountBlocked = true` nếu tài khoản vừa bị khóa.
+
+### GET `/api/v1/admin/profile-reports?status=PENDING&keyword=nguyen&page=0&size=10`
+
+Danh sách Profile Report Case, mỗi `reportedUserId` chỉ xuất hiện một lần. Mỗi item trả `caseId`, `status`,
+`reportCount`, target snapshot, `createdAt` và `latestReportedAt`. `keyword` tìm theo tên target snapshot;
+hàng đợi `PENDING` cũ nhất trước, các truy vấn khác mới nhất trước.
+
+### GET `/api/v1/admin/profile-reports/{caseId}`
+
+Trả target, snapshot hồ sơ, kết luận và mảng `reports`; mỗi phần tử trong `reports` gồm `reportId`,
+`reporterId`, `reporterDisplayName`, `reason`, `status`, `createdAt`. Frontend đọc hồ sơ hiện tại bằng
+`GET /api/v1/admin/users/{reportedUserId}` và tải nối tiếp bài bằng
+`GET /api/v1/admin/posts?authorId={reportedUserId}&page=...&size=10`.
+
+### PATCH `/api/v1/admin/profile-reports/{caseId}/resolve`
+
+```json
+{
+  "resolutionNote": "Đã xác nhận trang cá nhân có nội dung vi phạm.",
+  "blockUser": false
+}
+```
+
+Admin đặt `blockUser = true` để khóa target ngay trong cùng transaction. Response trả `accountBlocked = true`
+nếu tài khoản vừa chuyển từ `ACTIVE` sang `BLOCKED`; tài khoản đã bị khóa trả `false` nhưng case vẫn được kết luận.
+
+### PATCH `/api/v1/admin/profile-reports/{caseId}/reject`
+
+```json
+{ "resolutionNote": "Không phát hiện vi phạm sau khi xem xét.", "blockUser": false }
+```
+
+Chỉ case `PENDING` được kết luận. Hai endpoint khóa case và chuyển đồng thời mọi report `PENDING` thuộc case,
+ghi một Admin Action theo `caseId`. Endpoint reject không chấp nhận `blockUser = true`. Khóa tài khoản phải thu hồi
+phiên, ghi Account Status History, Admin Action và Notification; không tự sửa hồ sơ hoặc ẩn bài viết. Một report mới
+sau kết luận sẽ mở lại case và không xóa lịch sử Admin Action cũ.
 
 ### GET `/api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15`
 

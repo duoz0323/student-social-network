@@ -73,13 +73,15 @@ export default function AdminReportDetailPage() {
   async function hidePost(reasonCode) {
     setSubmitting(true);
     try {
-      await adminApi.resolveCaseAction(caseId, {
+      const result = await adminApi.resolveCaseAction(caseId, {
         action: 'HIDE_POST',
         reasonCode,
       });
       await Promise.all([load(), adminApi.getModerationCases({ postId: moderationCase.reportedPost.postId, page: 0, size: 1 })]);
       setHideDialogOpen(false);
-      showToast('Đã ẩn bài.');
+      showToast(result.accountBlocked
+        ? `Đã ẩn bài và khóa tài khoản do vi phạm lần ${result.authorViolationCount}.`
+        : `Đã ẩn bài. Tác giả đã vi phạm ${result.authorViolationCount}/3 lần.`);
     } catch (requestError) {
       setError(requestError.message);
       showToast(requestError.message || 'Không thể xử lý bài viết.', { type: 'error' });

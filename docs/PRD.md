@@ -64,7 +64,7 @@ Không được sử dụng chức năng mạng xã hội.
 - Xem Feed For You.
 - Xem Feed Following.
 - Tìm kiếm.
-- Báo cáo bài viết.
+- Báo cáo bài viết hoặc trang cá nhân của người dùng khác.
 
 ### 3.3 Quản trị viên
 
@@ -73,9 +73,11 @@ Có role `ADMIN`.
 Ngoài quyền người dùng, Admin được phép:
 
 - Xem và tìm kiếm người dùng.
-- Xem và chỉnh sửa tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
+- Xem và chỉnh sửa avatar, tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
+- Sau khi chỉnh sửa thành công, USER nhận thông báo hồ sơ đã bị điều chỉnh vì vi phạm Tiêu chuẩn hệ thống.
 - Khóa/Mở khóa tài khoản.
 - Xem danh sách bài viết.
+- Xem, tìm kiếm, tạo, đổi tên và xóa hashtag; đổi tên giữ liên kết, còn xóa chỉ gỡ hashtag và không xóa bài viết.
 - Xem bài bị báo cáo.
 - Ẩn/Khôi phục bài viết.
 - Xử lý báo cáo.
@@ -267,7 +269,7 @@ Location gắn với Post thuộc P1 và có phạm vi độc lập với Discov
 
 ### 4.9 Báo cáo
 
-Chỉ báo cáo bài viết. Mỗi lần gửi tạo một Report độc lập và Report thuộc một Moderation Case của bài.
+Báo cáo bài viết giữ nguyên mô hình mỗi Report thuộc một Moderation Case của bài.
 
 Thông tin:
 
@@ -290,13 +292,27 @@ Một bài chỉ có tối đa một Moderation Case `OPEN` tại một thời �
 `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`; không có bước tiếp nhận hoặc trạng thái
 đang xử lý. Case đã giải quyết không nhận Report mới và báo cáo hợp lệ tiếp theo tạo case mới.
 
+Báo cáo trang cá nhân dùng `profile_report_cases` và `profile_reports` riêng, không đưa User vào Moderation Case của Post:
+
+- Không báo cáo chính mình hoặc target đang bị Block hai chiều.
+- Chỉ dùng sáu lý do cố định đã chốt trong README.
+- Mọi lượt báo cáo cùng target được gom vào một case; Admin thấy số lượng, danh sách reporter và lý do tương ứng.
+- Báo cáo mới mở lại case đã kết luận; Admin xử lý đồng thời các lượt đang chờ trong case.
+- Một reporter chỉ có một báo cáo `PENDING` cho cùng target.
+- Lưu snapshot hồ sơ lúc gửi; Admin xem thêm hồ sơ và danh sách bài viết hiện tại.
+- Admin kết luận `RESOLVED`/`REJECTED`; khi xác nhận vi phạm có thể khóa ngay tài khoản target trong cùng transaction.
+
+Mỗi Moderation Case bài viết được kết luận `RESOLVED_ACTION_TAKEN` tính một lần vi phạm cho tác giả, dù case có
+nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với lý do `REPEATED_VIOLATION` và thu hồi mọi Refresh Token.
+
 ### 4.10 Quản trị
 
 #### Người dùng
 
 - Danh sách.
 - Tìm kiếm.
-- Xem chi tiết và chỉnh sửa nội dung hồ sơ USER.
+- Xem chi tiết và chỉnh sửa avatar cùng nội dung hồ sơ USER.
+- Tạo Notification hệ thống `PROFILE_UPDATED_BY_ADMIN` sau khi transaction chỉnh sửa hồ sơ thành công.
 - Khóa.
 - Mở khóa.
 
@@ -313,6 +329,7 @@ Một bài chỉ có tối đa một Moderation Case `OPEN` tại một thời �
 - Chi tiết toàn bộ Report và snapshot độc lập trong case.
 - Kết luận trực tiếp không vi phạm hoặc có vi phạm.
 - Ẩn bài khi kết luận có vi phạm.
+- Có tab vụ việc trang cá nhân, chi tiết gồm danh sách người báo cáo/lý do, snapshot, hồ sơ hiện tại và danh sách bài viết tải nối tiếp.
 
 ## 5. Ưu tiên
 
@@ -392,7 +409,7 @@ Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
 - Quản trị Location, xác minh Backend và đồng bộ định kỳ với Google Places.
 - Feed tùy chỉnh.
 - Elasticsearch.
-- Dashboard nâng cao.
+- Các chỉ số Dashboard nâng cao khác ngoài biểu đồ tương tác và USER nổi bật theo ngày.
 - Audit Log chi tiết.
 
 ## 7. Tiêu chí nghiệm thu
@@ -431,3 +448,7 @@ Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
 - API từ chối khi không có quyền.
 - Password không lưu plain text.
 
+- Admin xem và tìm kiếm danh sách hashtag có phân trang với tên, số bài viết, ngày tạo và ngày sử dụng mới nhất.
+- Admin được tạo hashtag theo quy tắc chuẩn hóa chung và xóa hashtag sau bước xác nhận.
+- Admin được đổi tên hashtag theo quy tắc chuẩn hóa chung; không cho trùng tên và không thay đổi quan hệ bài viết.
+- Xóa hashtag gỡ toàn bộ quan hệ `post_hashtags` trong cùng transaction; các Post liên quan trở thành bài không có hashtag và không bị xóa.

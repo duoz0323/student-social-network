@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronLeft, ChevronRight, LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight, Hash, LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
 import logo from '../../assets/brand/logo-light.jpg';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
@@ -17,6 +17,7 @@ export default function AdminShell() {
     { to: '/admin/users', label: 'Người dùng', icon: Users },
     { to: '/admin/user-analytics', label: 'Thống kê người dùng', icon: BarChart3 },
     { to: '/admin/posts', label: 'Bài viết', icon: FileText },
+    { to: '/admin/hashtags', label: 'Hashtag', icon: Hash },
     { to: '/admin/reports', label: 'Báo cáo', icon: Flag },
     { to: '/admin/actions', label: 'Lịch sử', icon: History },
   ];

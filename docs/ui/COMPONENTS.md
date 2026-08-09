@@ -10,8 +10,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 |---|---|---|---|---|
 | `UserShell` | Khung giao diện người dùng gồm sidebar trái và vùng nội dung chính. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeNav`, `currentUser`, `children`, `onCreatePost`. | Dùng chung. |
 | `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
-| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-07. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
-| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-07. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
+| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-09. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
+| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-09. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
 | `AuthEntryLayout` | Bố trí hero UniShare và vùng form Auth trên nền sáng, ưu tiên form trên mobile. | AUTH-01 đến AUTH-06. | `children`. | Layout Auth duy nhất; không dùng dữ liệu thật cho phần minh họa. |
 
 ## 2. Common component
@@ -26,7 +26,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `StatusResult` | Màn hình/modal trạng thái thành công hoặc lỗi. | AUTH-03/06, POST-06/10, SYS-01 đến SYS-04. | `type`, `title`, `description`, `primaryAction`, `secondaryAction`. | Dùng chung. |
 | `Avatar` | Hiển thị ảnh đại diện hoặc fallback. | Feed, post, profile, search, admin detail. | `src`, `name`, `size`, `verified`. | Dùng chung. |
 | `Badge` | Hiển thị trạng thái hoặc nhãn ngắn. | Admin, report detail, PostCard nếu cần. | `tone`, `children`. | Dùng chung. |
-| `DataTable` | Bảng dữ liệu có header, row, empty/loading và phân trang. | ADMIN-02, ADMIN-04, ADMIN-05. | `columns`, `rows`, `loading`, `pagination`, `onRowAction`. | Dùng chung admin, có thể tái dùng. |
+| `DataTable` | Bảng dữ liệu có header, row, empty/loading và phân trang. | ADMIN-02, ADMIN-04, ADMIN-05, ADMIN-09. | `columns`, `rows`, `loading`, `pagination`, `onRowAction`. | Dùng chung admin, có thể tái dùng. |
 | `Pagination` | Điều hướng trang cho danh sách dạng trang. | Admin tables và search. | `page`, `totalPages`, `onChange`. | Không dùng cho các danh sách bài Infinite Scroll. |
 
 ## 3. Authentication component
@@ -80,6 +80,7 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`, `onOpenProfile(userId)`. | Module follow/profile. |
 | `FollowButton` | Theo dõi hoặc bỏ theo dõi. | PROFILE-02, PROFILE-04, SEARCH-01. | `isFollowing`, `loading`, `onClick`. | Dùng chung profile/search. |
 | `UserListItem` | Hiển thị một người dùng trong danh sách follow/search/gợi ý. | PROFILE-04, SEARCH-01. | `userId` hoặc `user`, `onOpenProfile(userId)`, `onFollowToggle`. | Dùng chung profile/search. |
+| `ProfileReportDialog` | Chọn một trong sáu lý do và gửi báo cáo trang cá nhân. | PROFILE-02. | `user`, `open`, `onClose`; có loading/error/success. | Không nhận reporterId; Backend lấy từ JWT. |
 
 ## 6. Search component
 
@@ -105,14 +106,17 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `AdminSummaryCards` | Hiển thị chỉ số tổng quan đơn giản. | ADMIN-01. | `totalUsers`, `totalPosts`, `pendingReports`, `blockedUsers`. | Module admin, CẦN XÁC NHẬN vì dashboard nâng cao ngoài MVP. |
+| `AdminSummaryCards` | Hiển thị chỉ số tổng quan và widget tương tác. | ADMIN-01. | `totalUsers`, `totalPosts`, `pendingReports`, `blockedUsers`, `dailyInteractions`, `featuredUsers`. | Module admin; biểu đồ dùng tổng activity theo ngày UTC, không hiển thị hoạt động gần đây. |
 | `AdminUserTable` | Danh sách user không chứa nút Khóa/Mở khóa trên từng dòng. | ADMIN-02. | `users`, `pagination`, `loading`, `onSearch`, `onOpenDetail`. | Click dòng mở chi tiết; thay đổi trạng thái chỉ thực hiện trong chi tiết. |
 | `AdminUserAnalytics` | Biểu đồ vòng trạng thái ACTIVE/BLOCKED và biểu đồ số người dùng mới từng ngày trong tuần hiện tại. | ADMIN-02. | Dữ liệu lấy từ `useAdminUserStatistics`; `refreshKey` làm mới sau Khóa/Mở khóa. | Cột rộng 16rem từ breakpoint 2XL và không làm co bảng dữ liệu. |
+| `AdminEditUserProfileDialog` | Cập nhật avatar và nội dung hồ sơ USER. | ADMIN-03. | `user`, `submitting`, `error`, `onSubmit`; hỗ trợ preview, thay hoặc xóa avatar. | Dùng multipart khi avatar thay đổi; Backend quyết định validation và quyền cuối cùng. |
 | `AdminUserActionMenu` | Menu thao tác user. | ADMIN-03. | `user`, `onBlock`, `onUnblock`, `onView`. | Module admin. |
 | `AdminPostTable` | Danh sách bài viết và trạng thái, không chứa nút Ẩn/Khôi phục. | ADMIN-04. | `posts`, `pagination`, `loading`, `onOpenDetail`. | Double-click hoặc Enter/Space trên dòng để mở chi tiết Admin; thay đổi trạng thái chỉ thực hiện ở trang chi tiết. |
 | `AdminPostAnalytics` | Hai thẻ biểu đồ gọn theo kích thước nội dung: vòng tổng bài/số bài đã ẩn và cột số bài từng ngày trong tuần hiện tại. | ADMIN-04. | Dữ liệu lấy từ `useAdminPostStatistics`. | Cột rộng 16rem từ breakpoint 2XL; bố cục mở rộng và dịch trái để giữ nguyên chiều rộng bảng dữ liệu. |
 | `AdminReportTable` | Danh sách một dòng mỗi Moderation Case, không hiển thị lý do. | ADMIN-05. | `moderationCases`, `filters`, `pagination`, `loading`, `onOpenDetail`. | Module admin; dữ liệu đã aggregate từ Backend và vùng bảng tự cuộn trong viewport. |
 | `ReportDetailPanel` | Chi tiết case, bài và danh sách Report rút gọn không render snapshot/media. | ADMIN-06. | `moderationCase`, `post`, `onResolveNoViolation`, `onResolveAction`. | Module admin/report; không có trường kết luận hoặc bước tiếp nhận. |
+| `AdminProfileReportDetailPage` | Hiển thị mọi reporter/lý do trong case, snapshot, hồ sơ hiện tại và danh sách bài viết cuộn/tải thêm. | ADMIN-08. | `caseId`; tải Profile Report Case, Admin User Detail và Admin Posts theo `authorId`. | Ba lựa chọn: không vi phạm, vi phạm, hoặc vi phạm và khóa USER ngay. |
+| `AdminHashtagsPage` | Bảng quản trị hashtag có tìm kiếm, phân trang, tạo, sửa tên và xóa. | ADMIN-09. | `keyword`, `page`, `size`; API qua `adminApi`. | Modal sửa giữ quan hệ bài viết; modal xóa nêu số bài bị gỡ hashtag; không gọi Axios trực tiếp. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
 | `AdminUserAnalyticsPage` | Hiển thị Analytics độc lập với Dashboard theo bố cục KPI, biểu đồ hai trục và bảng snapshot tháng kết thúc. | ADMIN-07. | Chỉ dùng trường từ monthly/summary: peak, `returningUserCount`, `returnRate` và các count/rate của item; khoảng tối đa 24 tháng. | Module admin; xử lý Loading/Empty/Error và retry, không gọi Axios trực tiếp trong page. |
 | `useUserEngagementAnalytics` | Điều phối đồng thời API monthly và summary, hủy request cũ và chuẩn hóa trạng thái tải/lỗi. | ADMIN-07. | `filters`, `retry`; dùng `userEngagementAnalyticsService`. | Hook chuyên biệt của module Analytics. |
