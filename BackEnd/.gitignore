@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Biến môi trường local chứa secret, chỉ dùng cho IDE và không commit.
+/.env.local
