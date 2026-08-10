@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Ban, MoreHorizontal, Shield } from 'lucide-react';
+import { Ban, Flag, MoreHorizontal, Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
@@ -112,6 +112,7 @@ export default function ProfilePage({ self = false }) {
   const [followPendingId, setFollowPendingId] = useState(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [restrictionConfirmOpen, setRestrictionConfirmOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [startingMessage, setStartingMessage] = useState(false);
 
   async function handleMessageClick() {
