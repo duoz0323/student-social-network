@@ -52,6 +52,11 @@ export function AppProvider({ children }) {
           birthDate: profile.dateOfBirth ?? profile.birthDate ?? null,
           bio: profile.bio ?? '',
           profileCompletedAt: profile.profileCompletedAt ?? null,
+          school: profile.school ?? null,
+          faculty: profile.faculty ?? null,
+          major: profile.major ?? null,
+          entryYear: profile.entryYear ?? null,
+          interests: profile.interests ?? [],
         });
       }
       return profile;
@@ -239,6 +244,8 @@ export function AppProvider({ children }) {
         displayName: payload.displayName,
         dateOfBirth: payload.dateOfBirth ?? payload.birthDate,
         bio: payload.bio,
+        ...(Object.hasOwn(payload, 'academic') ? { academic: payload.academic } : {}),
+        ...(Object.hasOwn(payload, 'interestIds') ? { interestIds: payload.interestIds } : {}),
       });
       setMyProfile((current) => ({
         ...(current ?? {}),
@@ -246,6 +253,11 @@ export function AppProvider({ children }) {
         displayName: response.displayName ?? payload.displayName,
         bio: response.bio ?? payload.bio ?? '',
         birthDate: response.dateOfBirth ?? payload.dateOfBirth ?? payload.birthDate ?? null,
+        school: response.school ?? null,
+        faculty: response.faculty ?? null,
+        major: response.major ?? null,
+        entryYear: response.entryYear ?? null,
+        interests: response.interests ?? [],
       }));
       setData((previous) => ({
         ...previous,

@@ -33,6 +33,7 @@ export function ProfileCompletionRoute({
   children,
   requireCompleted = false,
   allowCompletionTransition = false,
+  allowCompleted = false,
 }) {
   const auth = useAuth();
   const location = useLocation();
@@ -44,7 +45,9 @@ export function ProfileCompletionRoute({
   if (requireCompleted && !auth.profileCompleted && !hasValidCompletionTransition) {
     return <Navigate to="/onboarding/profile" replace />;
   }
-  if (!requireCompleted && auth.profileCompleted) return <Navigate to={getAuthenticatedHome(auth)} replace />;
+  if (!requireCompleted && auth.profileCompleted && !allowCompleted) {
+    return <Navigate to={getAuthenticatedHome(auth)} replace />;
+  }
   return children;
 }
 

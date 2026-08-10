@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 04/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 10/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -22,6 +22,7 @@
 | Quản lý/link/unlink phương thức đăng nhập | IMPLEMENTED | IMPLEMENTED | TESTED | PARTIAL | Backend đầy đủ; một số màn hình vẫn không có ảnh thiết kế riêng. |
 | Password Recovery bằng OTP | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có decoy challenge, verify/resend/complete và thu hồi Refresh Token. |
 | Onboarding, hồ sơ và avatar | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Bắt buộc displayName, dateOfBirth và đủ 18 tuổi. |
+| Academic Profile & Interests foundation | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Schema/master/profile API, onboarding wizard, Edit/Profile Display và test Frontend đã có; manual E2E phụ thuộc Backend/MySQL local. Recommendation, AI/ML và Admin Academic UI chưa triển khai. |
 | Follow/Unfollow và danh sách follow | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách vẫn dùng `PageResponse`. |
 | Block/Unblock và danh sách đã chặn | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Block hai chiều ở lớp truy cập; đồng bộ Feed, Search, Profile, Comment và Messaging. |
 | Restrict/Unrestrict và danh sách đã hạn chế | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Restrict một chiều; suppress Like/Comment/Reply trước khi lưu Notification, không ảnh hưởng tương tác. |
@@ -64,24 +65,25 @@
 - Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh và không triển khai Discovery Map.
 - Repost đã tích hợp với Profile, Following Feed, Notification realtime và các bộ lọc Block/Restrict.
 - Moderation Case, chỉnh sửa hồ sơ người dùng bởi Admin và analytics hoạt động người dùng đã tích hợp xuyên suốt Backend, schema và Admin UI.
+- Academic Profile & Interests đã có SQL/DBML/JPA, master API autocomplete, profile transaction, seed demo, onboarding wizard, Edit/Profile Display và test tự động; không bao gồm Recommendation, AI/ML hoặc Admin Academic UI.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
-1. SQL baseline và DBML đã đồng bộ schema Location. Các migration `V001` đến `V005` là file chạy thủ công vì dự án chưa dùng Flyway/Liquibase; chưa được áp dụng tự động lên local hoặc Aiven.
+1. SQL canonical và DBML đã đồng bộ schema Location cùng Academic Profile. Repo demo chỉ giữ full rebuild; không có migration tự động và không tự áp dụng thay đổi lên local hoặc database thật.
 2. `post_hashtags` vẫn là bảng nối nhiều-nhiều ở mức schema; giới hạn một hashtag hiện do Service
    kiểm soát, chưa có constraint database bảo đảm tuyệt đối.
 3. Source và SQL demo có media `VIDEO`, trong khi README MVP chỉ quy định tối đa bốn ảnh và xếp video ngoài
    phạm vi. Cần quyết định bỏ demo video hoặc chính thức thay đổi phạm vi trước khi phát triển tiếp.
-4. Frontend chưa có framework component test để tự động hóa đầy đủ Context, badge, modal Restrict, picker hashtag/Location và trình sửa media; Node test, lint và production build đã pass.
+4. Frontend chưa có framework component test để tự động hóa đầy đủ Context, onboarding Academic autocomplete/chips, badge, modal Restrict, picker hashtag/Location và trình sửa media; Node test, lint và production build đã pass.
 5. Các test tích hợp MySQL/Google phụ thuộc biến môi trường và database test riêng. Kết nối WebSocket với hai phiên người dùng thật vẫn cần smoke test thủ công ở môi trường tích hợp.
-6. Migration Messaging text + ảnh và 7 test MySQL 8.4 cho concurrent open/text retry/image retry,
+6. Schema Messaging text + ảnh và 7 test MySQL 8.4 cho concurrent open/text retry/image retry,
    read, constraint và race Block-send/Block-open đã chạy thành công trên container test tạm.
 7. Cần cấu hình `VITE_GOOGLE_MAPS_API_KEY` theo từng môi trường và giới hạn key theo HTTP referrer/API trong Google Cloud Console trước khi kiểm thử Places thật.
 
-## Kết quả quality gate của bản merge 04/08/2026
+## Kết quả quality gate ngày 10/08/2026
 
-- Backend: `750` test, `0` failure, `0` error, `62` test tích hợp được skip do thiếu biến môi trường/database test.
-- Frontend: `91` test pass; ESLint pass; production build pass.
+- Backend: `778` test, `0` failure, `0` error, `62` test tích hợp được skip do thiếu biến môi trường/database test; package build pass.
+- Frontend: `114` test pass; ESLint pass; production build pass.
 - Kiểm tra merge: không còn conflict marker và `git diff --check` không phát hiện lỗi whitespace.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import logo from '../../../assets/brand/logo-dark.jpg';
 import { isRequestCanceled } from '../../../api/apiError.js';
+import { socialApi } from '../../../api/index.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
+import { useAuth } from '../hooks/useAuth.js';
 import { onboardingService } from '../services/onboardingService.js';
 import {
   todayIsoDate,
@@ -10,11 +12,19 @@ import {
   getUsernameValidationMessage,
   mapUsernameErrorCode,
   normalizeUsernameInput,
+  uploadOnboardingAvatar,
 } from '../components/onboarding/onboardingUtils.js';
 import { StepIndicator } from '../components/onboarding/OnboardingShared.jsx';
 import OnboardingStep1Name from '../components/onboarding/OnboardingStep1Name.jsx';
 import OnboardingStep2Avatar from '../components/onboarding/OnboardingStep2Avatar.jsx';
 import OnboardingStep3Info from '../components/onboarding/OnboardingStep3Info.jsx';
+import OnboardingStep2Academic from '../components/onboarding/OnboardingStep2Academic.jsx';
+import OnboardingStep3Interests from '../components/onboarding/OnboardingStep3Interests.jsx';
+import {
+  buildProfileUpdatePayload,
+  createAcademicSelection,
+  mapAcademicProfileError,
+} from '../../profile/utils/academicProfileUtils.js';
 
 // ── Minh họa hero – Các thẻ mạng xã hội trang trí ────────────────
 function HeroIllustration() {
@@ -91,10 +101,15 @@ function HeroIllustration() {
 // ── Trang chính: layout 2 cột đồng bộ với AuthEntryLayout ────────
 export default function OnboardingProfilePage() {
   const { currentUser } = useApp();
+  const { profileCompleted } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialRequestedStepRef = useRef(Number(searchParams.get('step')));
 
-  // State form chia sẻ giữa cả 3 bước
+  // Ba màn hình cơ bản hiện có được giữ nguyên bên trong bước lớn Hồ sơ cơ bản.
   const [step, setStep] = useState(1);
+  const [basicStep, setBasicStep] = useState(1);
+  const [basicCompleted, setBasicCompleted] = useState(Boolean(profileCompleted));
   const [form, setForm] = useState({
     username: '',
     displayName: currentUser?.displayName ?? '',
@@ -102,17 +117,23 @@ export default function OnboardingProfilePage() {
     dateOfBirth: currentUser?.birthDate ?? '',
     bio: currentUser?.bio ?? '',
   });
+  const [academic, setAcademic] = useState(() => createAcademicSelection());
+  const [interestIds, setInterestIds] = useState([]);
   const [error, setError] = useState('');
   const [usernameError, setUsernameError] = useState('');
   const [availabilityStatus, setAvailabilityStatus] = useState('idle');
   const [isHydrating, setIsHydrating] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const availabilityRequestRef = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
     onboardingService.getStatus(controller.signal)
-      .then((status) => {
+      .then(async (status) => {
+        const profile = status.profileCompleted
+          ? await socialApi.getMyProfile(controller.signal)
+          : null;
         // GET onboarding là nguồn dữ liệu cho legacy user, tránh ghi đè displayName/dateOfBirth/bio bằng rỗng.
         setForm({
           username: status.username ?? '',
@@ -122,9 +143,16 @@ export default function OnboardingProfilePage() {
           bio: status.bio ?? '',
         });
         const hydratedUsernameError = getUsernameValidationMessage(status.username ?? '');
-        setAvailabilityStatus(status.username
+        setAvailabilityStatus(status.profileCompleted ? 'available' : status.username
           ? (hydratedUsernameError ? 'invalid' : 'checking')
           : 'idle');
+        setBasicCompleted(Boolean(status.profileCompleted));
+        if (profile) {
+          setAcademic(createAcademicSelection(profile));
+          setInterestIds((profile.interests ?? []).map((interest) => Number(interest.id)));
+          const requestedStep = initialRequestedStepRef.current;
+          setStep(requestedStep === 3 ? 3 : 2);
+        }
         setError('');
       })
       .catch((requestError) => {
@@ -145,7 +173,7 @@ export default function OnboardingProfilePage() {
     const requestId = availabilityRequestRef.current + 1;
     availabilityRequestRef.current = requestId;
 
-    if (!form.username) {
+    if (basicCompleted || !form.username) {
       return undefined;
     }
     if (localUsernameError) {
@@ -176,7 +204,7 @@ export default function OnboardingProfilePage() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [form.username, localUsernameError]);
+  }, [basicCompleted, form.username, localUsernameError]);
 
   const canContinue = form.displayName.trim().length >= 2
     && !localUsernameError
@@ -185,6 +213,12 @@ export default function OnboardingProfilePage() {
     && form.dateOfBirth <= todayIsoDate()
     && calcAge(form.dateOfBirth) >= 18;
   const canFinish = canContinue && dateIsValid;
+
+  function moveToStep(nextStep) {
+    setError('');
+    setStep(nextStep);
+    setSearchParams({ step: String(nextStep) }, { replace: true });
+  }
 
   // Helper: cập nhật một field, xóa lỗi hiện tại
   function setField(field) {
@@ -219,17 +253,33 @@ export default function OnboardingProfilePage() {
       return;
     }
     setError('');
-    setStep(2);
+    setBasicStep(2);
   }
 
-  // ── Bước 2: ảnh là tùy chọn, chuyển tiếp không cần validate ──
-  function handleNextFromStep2() {
+  // Upload ngay khi chọn để avatar được lưu bền vững trước khi chuyển sang Feed.
+  async function handleAvatarChange(file) {
+    if (isUploadingAvatar) return;
+    setIsUploadingAvatar(true);
     setError('');
-    setStep(3);
+    try {
+      const avatarUrl = await uploadOnboardingAvatar(file, socialApi.uploadAvatar);
+      setForm((current) => ({ ...current, avatarUrl }));
+    } catch (uploadError) {
+      setError(uploadError.message || 'Không thể tải ảnh đại diện. Vui lòng thử lại.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
+  // ── Bước 2: ảnh là tùy chọn, chuyển tiếp sau khi request upload đã hoàn tất ──
+  function handleNextFromStep2() {
+    if (isUploadingAvatar) return;
+    setError('');
+    setBasicStep(3);
   }
 
   // ── Validate bước 3: ngày sinh bắt buộc + ≥18 tuổi ──
-  async function handleFinish() {
+  async function handleCompleteBasic() {
     if (isSubmitting || !canFinish) return;
     if (!form.dateOfBirth) {
       setError('Ngày sinh là bắt buộc để hoàn tất hồ sơ.');
@@ -251,11 +301,9 @@ export default function OnboardingProfilePage() {
       if (!result.profileCompleted) {
         throw new Error('Backend chưa xác nhận hồ sơ đã hoàn tất. Vui lòng thử lại.');
       }
-      // Đánh dấu chuyển tiếp hợp lệ để route success hiển thị trước khi guard nhận trạng thái profile mới.
-      navigate('/onboarding/success', {
-        replace: true,
-        state: { onboardingJustCompleted: true },
-      });
+      setBasicCompleted(true);
+      setAvailabilityStatus('available');
+      moveToStep(2);
     } catch (submitError) {
       const mappedUsernameError = mapUsernameErrorCode(submitError.code);
       if (mappedUsernameError) {
@@ -265,7 +313,7 @@ export default function OnboardingProfilePage() {
           submitError.code === 'USERNAME_RESERVED' ? 'reserved'
             : submitError.code === 'USERNAME_ALREADY_EXISTS' ? 'exists' : 'invalid',
         );
-        setStep(1);
+        setBasicStep(1);
       } else {
         setError(submitError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
       }
@@ -275,9 +323,54 @@ export default function OnboardingProfilePage() {
   }
 
   // ── Quay lại bước trước, xóa lỗi ──
-  function goBack() {
+  function goBackBasic() {
     setError('');
-    setStep((s) => Math.max(1, s - 1));
+    setBasicStep((current) => Math.max(1, current - 1));
+  }
+
+  async function saveAcademic() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const response = await socialApi.updateProfile(buildProfileUpdatePayload({
+        basic: form,
+        academic,
+        includeAcademic: true,
+      }));
+      setAcademic(createAcademicSelection(response));
+      moveToStep(3);
+    } catch (submitError) {
+      setError(mapAcademicProfileError(submitError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function saveInterests() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      await socialApi.updateProfile(buildProfileUpdatePayload({
+        basic: form,
+        interestIds,
+        includeInterests: true,
+      }));
+      finishOptionalOnboarding();
+    } catch (submitError) {
+      setError(mapAcademicProfileError(submitError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function finishOptionalOnboarding() {
+    // Success page cập nhật AuthContext sau khi mount để guard không bỏ qua màn hình xác nhận.
+    navigate('/onboarding/success', {
+      replace: true,
+      state: { onboardingJustCompleted: true },
+    });
   }
 
   return (
@@ -377,8 +470,8 @@ export default function OnboardingProfilePage() {
                 </div>
               ) : (
                 <>
-              {/* Bước 1 – Tên hiển thị */}
-              {step === 1 && (
+              {/* Bước lớn 1 giữ nguyên ba màn hình hồ sơ cơ bản hiện có. */}
+              {step === 1 && basicStep === 1 && (
                 <OnboardingStep1Name
                   displayName={form.displayName}
                   username={form.username}
@@ -392,31 +485,54 @@ export default function OnboardingProfilePage() {
                 />
               )}
 
-              {/* Bước 2 – Ảnh đại diện */}
-              {step === 2 && (
+              {step === 1 && basicStep === 2 && (
                 <OnboardingStep2Avatar
                   avatarUrl={form.avatarUrl}
                   displayName={form.displayName}
-                  onAvatarChange={setField('avatarUrl')}
+                  onAvatarChange={handleAvatarChange}
                   onNext={handleNextFromStep2}
-                  onBack={goBack}
+                  onBack={goBackBasic}
+                  isUploading={isUploadingAvatar}
+                  error={error}
                 />
               )}
 
-              {/* Bước 3 – Ngày sinh + Bio */}
-              {step === 3 && (
+              {step === 1 && basicStep === 3 && (
                 <OnboardingStep3Info
                   dateOfBirth={form.dateOfBirth}
                   bio={form.bio}
                   onDateChange={setField('dateOfBirth')}
                   onBioChange={setField('bio')}
-                  onFinish={handleFinish}
-                  onBack={goBack}
+                  onFinish={handleCompleteBasic}
+                  onBack={goBackBasic}
                   error={error}
                   isSubmitting={isSubmitting}
                   canFinish={canFinish}
                 />
               )}
+
+              {step === 2 && basicCompleted ? (
+                <OnboardingStep2Academic
+                  value={academic}
+                  onChange={setAcademic}
+                  onSave={saveAcademic}
+                  onSkip={() => moveToStep(3)}
+                  error={error}
+                  isSubmitting={isSubmitting}
+                />
+              ) : null}
+
+              {step === 3 && basicCompleted ? (
+                <OnboardingStep3Interests
+                  value={interestIds}
+                  onChange={setInterestIds}
+                  onSave={saveInterests}
+                  onSkip={finishOptionalOnboarding}
+                  onBack={() => moveToStep(2)}
+                  error={error}
+                  isSubmitting={isSubmitting}
+                />
+              ) : null}
                 </>
               )}
             </div>

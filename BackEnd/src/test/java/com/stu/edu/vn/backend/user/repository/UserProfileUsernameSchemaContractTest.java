@@ -20,17 +20,6 @@ class UserProfileUsernameSchemaContractTest {
         assertThat(dbml).contains("(username) [unique, name: \"uq_user_profiles_username\"]");
     }
 
-    @Test
-    void migrationKeepsUsernameNullableAndResetsLegacyCompletionBeforeAddingConstraint() throws Exception {
-        String migration = Files.readString(databasePath("migrations", "V006__add_user_profile_username.sql"));
-
-        assertThat(migration).contains("ADD COLUMN `username` varchar(30) NULL");
-        assertThat(migration).contains("SET `profile_completed_at` = NULL");
-        assertThat(migration).contains("ADD CONSTRAINT `uq_user_profiles_username` UNIQUE (`username`)");
-        assertThat(migration.indexOf("SET `profile_completed_at` = NULL"))
-                .isLessThan(migration.indexOf("ADD CONSTRAINT `chk_user_profiles_completion_consistency`"));
-    }
-
     private Path databasePath(String first, String... more) {
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path databaseDirectory = workingDirectory.resolve("database");

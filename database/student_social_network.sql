@@ -945,6 +945,64 @@ UNLOCK TABLES;
 -- Table structure for table `user_profiles`
 --
 
+DROP TABLE IF EXISTS `schools`;
+CREATE TABLE `schools` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `short_name` varchar(50) DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_schools_name` (`name`),
+  KEY `idx_schools_status_name` (`status`,`name`),
+  KEY `idx_schools_status_short_name` (`status`,`short_name`),
+  CONSTRAINT `chk_schools_status` CHECK (`status` IN ('ACTIVE','INACTIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `faculties`;
+CREATE TABLE `faculties` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `school_id` bigint unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_faculties_school_name` (`school_id`,`name`),
+  KEY `idx_faculties_school_status_name` (`school_id`,`status`,`name`),
+  CONSTRAINT `fk_faculties_school` FOREIGN KEY (`school_id`) REFERENCES `schools` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_faculties_status` CHECK (`status` IN ('ACTIVE','INACTIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `majors`;
+CREATE TABLE `majors` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `faculty_id` bigint unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_majors_faculty_name` (`faculty_id`,`name`),
+  KEY `idx_majors_faculty_status_name` (`faculty_id`,`status`,`name`),
+  CONSTRAINT `fk_majors_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_majors_status` CHECK (`status` IN ('ACTIVE','INACTIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `interest_categories`;
+CREATE TABLE `interest_categories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_interest_categories_name` (`name`),
+  KEY `idx_interest_categories_status_name` (`status`,`name`),
+  CONSTRAINT `chk_interest_categories_status` CHECK (`status` IN ('ACTIVE','INACTIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 DROP TABLE IF EXISTS `user_profiles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -956,16 +1014,27 @@ CREATE TABLE `user_profiles` (
   `avatar_public_id` varchar(255) DEFAULT NULL,
   `bio` varchar(500) DEFAULT NULL,
   `date_of_birth` date DEFAULT NULL,
+  `school_id` bigint unsigned DEFAULT NULL,
+  `faculty_id` bigint unsigned DEFAULT NULL,
+  `major_id` bigint unsigned DEFAULT NULL,
+  `entry_year` smallint unsigned DEFAULT NULL,
   `profile_completed_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `uq_user_profiles_username` (`username`),
   FULLTEXT KEY `ftx_user_profiles_display_name` (`display_name`),
+  KEY `idx_user_profiles_school` (`school_id`),
+  KEY `idx_user_profiles_faculty` (`faculty_id`),
+  KEY `idx_user_profiles_major` (`major_id`),
   CONSTRAINT `fk_user_profiles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_user_profiles_school` FOREIGN KEY (`school_id`) REFERENCES `schools` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_user_profiles_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `fk_user_profiles_major` FOREIGN KEY (`major_id`) REFERENCES `majors` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))),
   CONSTRAINT `chk_user_profiles_completion_requires_birth_date` CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))),
-  CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))
+  CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0))),
+  CONSTRAINT `chk_user_profiles_entry_year` CHECK (`entry_year` IS NULL OR `entry_year` BETWEEN 1900 AND 9999)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1020,6 +1089,17 @@ LOCK TABLES `users` WRITE;
 UNLOCK TABLES;
 
 --
+-- Academic interests dùng khóa chính kép để chống trùng tại database.
+DROP TABLE IF EXISTS `user_interests`;
+CREATE TABLE `user_interests` (
+  `user_id` bigint unsigned NOT NULL,
+  `interest_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`user_id`,`interest_id`),
+  KEY `idx_user_interests_interest_user` (`interest_id`,`user_id`),
+  CONSTRAINT `fk_user_interests_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_user_interests_interest` FOREIGN KEY (`interest_id`) REFERENCES `interest_categories` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Direct Messaging REST Core (không có dữ liệu seed cũ để backfill)
 --
 
@@ -1325,6 +1405,46 @@ START TRANSACTION;
 SET @demo_password_hash = '$2a$10$OZDWQo86Ao3A2cbcPxTzUOhaV4At2WuPcQMXK6xSRCfdVVnzSsXAy';
 SET @seed_time = '2026-07-19 03:00:00.000000';
 
+-- Master data Academic DEV/DEMO; không phải danh mục chính thức hoặc đầy đủ của Việt Nam.
+INSERT INTO schools (id, name, short_name, status) VALUES
+    (1, 'Trường Đại học Công Nghệ Sài Gòn', 'STU', 'ACTIVE'),
+    (2, 'Trường Đại học Bách khoa - Đại học Quốc gia TP.HCM', 'HCMUT', 'ACTIVE'),
+    (3, 'Trường Đại học Khoa học Tự nhiên - Đại học Quốc gia TP.HCM', 'HCMUS', 'ACTIVE'),
+    (4, 'Trường Đại học Kinh tế TP.HCM', 'UEH', 'ACTIVE'),
+    (5, 'Trường Đại học Sư phạm Kỹ thuật TP.HCM', 'HCMUTE', 'ACTIVE');
+
+INSERT INTO faculties (id, school_id, name, status) VALUES
+    (1, 1, 'Khoa Công nghệ Thông tin', 'ACTIVE'),
+    (2, 1, 'Khoa Điện - Điện tử', 'ACTIVE'),
+    (3, 1, 'Khoa Kỹ thuật Công trình', 'ACTIVE'),
+    (4, 1, 'Khoa Cơ khí', 'ACTIVE'),
+    (5, 1, 'Khoa Công nghệ Thực phẩm', 'ACTIVE'),
+    (6, 1, 'Khoa Quản trị Kinh doanh', 'ACTIVE'),
+    (7, 2, 'Khoa Khoa học và Kỹ thuật Máy tính', 'ACTIVE'),
+    (8, 3, 'Khoa Công nghệ Thông tin', 'ACTIVE'),
+    (9, 4, 'Khoa Kinh doanh', 'ACTIVE'),
+    (10, 5, 'Khoa Công nghệ Thông tin', 'ACTIVE');
+
+INSERT INTO majors (id, faculty_id, name, status) VALUES
+    (1, 1, 'Công nghệ Thông tin', 'ACTIVE'), (2, 1, 'Khoa học Dữ liệu', 'ACTIVE'),
+    (3, 2, 'Kỹ thuật Điện', 'ACTIVE'), (4, 2, 'Kỹ thuật Điện tử - Viễn thông', 'ACTIVE'),
+    (5, 3, 'Kỹ thuật Xây dựng', 'ACTIVE'), (6, 3, 'Quản lý Xây dựng', 'ACTIVE'),
+    (7, 4, 'Công nghệ Kỹ thuật Cơ điện tử', 'ACTIVE'), (8, 4, 'Công nghệ Kỹ thuật Ô tô', 'ACTIVE'),
+    (9, 5, 'Công nghệ Thực phẩm', 'ACTIVE'), (10, 5, 'Đảm bảo Chất lượng và An toàn Thực phẩm', 'ACTIVE'),
+    (11, 6, 'Quản trị Kinh doanh', 'ACTIVE'), (12, 6, 'Kinh doanh Quốc tế', 'ACTIVE'),
+    (13, 7, 'Khoa học Máy tính', 'ACTIVE'), (14, 8, 'Công nghệ Thông tin', 'ACTIVE'),
+    (15, 9, 'Quản trị Kinh doanh', 'ACTIVE'), (16, 10, 'Công nghệ Thông tin', 'ACTIVE');
+
+INSERT INTO interest_categories (id, name, status) VALUES
+    (1, 'Lập trình', 'ACTIVE'), (2, 'Trí tuệ nhân tạo', 'ACTIVE'),
+    (3, 'Khoa học dữ liệu', 'ACTIVE'), (4, 'An toàn thông tin', 'ACTIVE'),
+    (5, 'Thiết kế UI/UX', 'ACTIVE'), (6, 'Khởi nghiệp', 'ACTIVE'),
+    (7, 'Ngoại ngữ', 'ACTIVE'), (8, 'Nhiếp ảnh', 'ACTIVE'),
+    (9, 'Âm nhạc', 'ACTIVE'), (10, 'Thể thao', 'ACTIVE'),
+    (11, 'Đọc sách', 'ACTIVE'), (12, 'Du lịch', 'ACTIVE'),
+    (13, 'Tình nguyện', 'ACTIVE'), (14, 'Nghiên cứu khoa học', 'ACTIVE'),
+    (15, 'Kỹ năng mềm', 'ACTIVE'), (16, 'Cơ hội thực tập', 'ACTIVE');
+
 INSERT INTO users (
     id,
     email,
@@ -1366,6 +1486,15 @@ INSERT INTO user_profiles (
     (1006, 'local_google_demo', 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
     (1007, 'blocked_demo', 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
     (1008, NULL, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
+
+UPDATE user_profiles
+SET school_id = 1, faculty_id = 1, major_id = 1, entry_year = 2022
+WHERE user_id IN (1002, 1003, 1006);
+
+INSERT INTO user_interests (user_id, interest_id) VALUES
+    (1002, 1), (1002, 8), (1002, 13),
+    (1003, 1), (1003, 3), (1003, 11),
+    (1006, 1), (1006, 2), (1006, 16);
 
 INSERT INTO user_auth_providers (
     id,

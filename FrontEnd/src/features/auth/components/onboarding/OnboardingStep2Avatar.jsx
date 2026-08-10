@@ -1,16 +1,15 @@
 import { useRef } from 'react';
-import { CameraIcon, SlidePanel, PrimaryBtn, SecondaryBtn, ArrowRightIcon, UserIcon } from './OnboardingShared.jsx';
+import { CameraIcon, SlidePanel, PrimaryBtn, SecondaryBtn, ArrowRightIcon, UserIcon, ErrorMsg } from './OnboardingShared.jsx';
 
 // Bước 2: Chọn ảnh đại diện
-export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNext, onBack }) {
+export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNext, onBack, isUploading = false, error = '' }) {
   const fileInputRef = useRef(null);
 
-  function handleFileChange(event) {
+  async function handleFileChange(event) {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onAvatarChange(String(reader.result));
-    reader.readAsDataURL(file);
+    await onAvatarChange(file);
   }
 
   return (
@@ -29,7 +28,7 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
       <div className="my-6 flex flex-col items-center">
         <div
           className="group relative mb-5 cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
         >
           <div 
             className="flex h-32 w-32 select-none items-center justify-center overflow-hidden rounded-full shadow-md ring-4"
@@ -54,16 +53,18 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
         </div>
 
         {/* Input file ẩn */}
-        <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleFileChange} />
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleFileChange} disabled={isUploading} />
 
         {/* Nút chọn ảnh từ thiết bị */}
         <div className="w-full max-w-[280px]">
-          <SecondaryBtn onClick={() => fileInputRef.current?.click()} className="!h-11 text-sm">
+          <SecondaryBtn onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="!h-11 text-sm">
             <CameraIcon size={16} />
-            <span>Chọn ảnh từ thiết bị</span>
+            <span>{isUploading ? 'Đang tải ảnh...' : 'Chọn ảnh từ thiết bị'}</span>
           </SecondaryBtn>
         </div>
       </div>
+
+      <ErrorMsg msg={error} />
 
       {/* Hàng 2 nút dưới cùng: Quay lại + Tiếp tục theo đúng mockup */}
       <div className="mt-8 grid grid-cols-2 gap-3">
@@ -71,7 +72,7 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
           <span>Quay lại</span>
         </SecondaryBtn>
 
-        <PrimaryBtn onClick={onNext}>
+        <PrimaryBtn onClick={onNext} disabled={isUploading}>
           <span>Tiếp tục</span>
           <ArrowRightIcon size={18} />
         </PrimaryBtn>

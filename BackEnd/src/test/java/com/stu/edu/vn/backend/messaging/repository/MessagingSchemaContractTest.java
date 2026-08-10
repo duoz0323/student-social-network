@@ -5,25 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.*;
 import org.junit.jupiter.api.Test;
 
-/** Khóa đồng bộ migration, full rebuild và DBML trước khi chạy MySQL integration. */
+/** Khóa đồng bộ SQL canonical và DBML trước khi chạy MySQL integration. */
 class MessagingSchemaContractTest {
-    @Test
-    void migrationContainsAllMessagingInvariants() throws Exception {
-        String sql = Files.readString(databasePath("migrations", "20260801_add_direct_messaging.sql"));
-        assertThat(sql).contains(
-                "CREATE TABLE IF NOT EXISTS `conversations`",
-                "CREATE TABLE IF NOT EXISTS `conversation_members`",
-                "CREATE TABLE IF NOT EXISTS `messages`",
-                "uq_conversations_participant_pair",
-                "`participant_low_id` < `participant_high_id`",
-                "uq_messages_sender_client_message",
-                "CHAR_LENGTH(TRIM(`content`)) > 0",
-                "CHAR_LENGTH(`content`) <= 2000",
-                "fk_messages_sender_member",
-                "fk_conversations_last_message",
-                "fk_conversation_members_last_read_message");
-    }
-
     @Test
     void fullSqlAndDbmlDescribeSameTablesKeysAndIndexes() throws Exception {
         String sql = Files.readString(databasePath("student_social_network.sql"));

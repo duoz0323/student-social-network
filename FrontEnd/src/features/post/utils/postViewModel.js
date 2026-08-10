@@ -56,3 +56,19 @@ export async function copyPostLink(postId) {
   await navigator.clipboard.writeText(url);
   return url;
 }
+
+/**
+ * Ưu tiên tác giả mới nhất do API Post/Feed trả về; cache chỉ dùng để bổ sung field còn thiếu.
+ * Điều này tránh avatar vừa upload bị dữ liệu user cũ trong AppContext ghi đè thành rỗng.
+ */
+export function resolvePostAuthor(post = {}, cachedAuthor = null) {
+  const responseAuthor = post.author ?? {};
+
+  return {
+    ...(cachedAuthor ?? {}),
+    ...responseAuthor,
+    id: responseAuthor.id ?? cachedAuthor?.id ?? post.authorId ?? null,
+    displayName: responseAuthor.displayName || cachedAuthor?.displayName || 'Người dùng UniShare',
+    avatarUrl: responseAuthor.avatarUrl || cachedAuthor?.avatarUrl || '',
+  };
+}

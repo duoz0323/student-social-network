@@ -599,6 +599,66 @@ Table user_auth_providers {
   Note: "chk_user_auth_providers_provider: CHECK ((`provider` in (_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_user_auth_providers_provider_user_id: CHECK ((char_length(trim(`provider_user_id`)) > 0)) | chk_user_auth_providers_email: CHECK (((`provider_email` is null and `provider_email_verified` is null) or (`provider_email` is not null and `provider_email_verified` is not null)))"
 }
 
+Table schools {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  name varchar(255) [not null]
+  short_name varchar(50)
+  status varchar(16) [not null, default: 'ACTIVE']
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (name) [unique, name: "uq_schools_name"]
+    (status, name) [name: "idx_schools_status_name"]
+    (status, short_name) [name: "idx_schools_status_short_name"]
+  }
+  Note: "chk_schools_status: CHECK (status IN ('ACTIVE','INACTIVE'))"
+}
+
+Table faculties {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  school_id bigint [not null, note: "UNSIGNED"]
+  name varchar(255) [not null]
+  status varchar(16) [not null, default: 'ACTIVE']
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (school_id, name) [unique, name: "uq_faculties_school_name"]
+    (school_id, status, name) [name: "idx_faculties_school_status_name"]
+  }
+  Note: "chk_faculties_status: CHECK (status IN ('ACTIVE','INACTIVE'))"
+}
+
+Table majors {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  faculty_id bigint [not null, note: "UNSIGNED"]
+  name varchar(255) [not null]
+  status varchar(16) [not null, default: 'ACTIVE']
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (faculty_id, name) [unique, name: "uq_majors_faculty_name"]
+    (faculty_id, status, name) [name: "idx_majors_faculty_status_name"]
+  }
+  Note: "chk_majors_status: CHECK (status IN ('ACTIVE','INACTIVE'))"
+}
+
+Table interest_categories {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  name varchar(100) [not null]
+  status varchar(16) [not null, default: 'ACTIVE']
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (name) [unique, name: "uq_interest_categories_name"]
+    (status, name) [name: "idx_interest_categories_status_name"]
+  }
+  Note: "chk_interest_categories_status: CHECK (status IN ('ACTIVE','INACTIVE'))"
+}
+
 Table user_profiles {
   user_id bigint [pk, not null, note: "UNSIGNED"]
   username varchar(30)
@@ -607,6 +667,10 @@ Table user_profiles {
   avatar_public_id varchar(255)
   bio varchar(500)
   date_of_birth date
+  school_id bigint [note: "UNSIGNED"]
+  faculty_id bigint [note: "UNSIGNED"]
+  major_id bigint [note: "UNSIGNED"]
+  entry_year smallint [note: "UNSIGNED"]
   profile_completed_at datetime(6)
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
@@ -614,9 +678,21 @@ Table user_profiles {
   Indexes {
     (username) [unique, name: "uq_user_profiles_username"]
     (display_name) [name: "ftx_user_profiles_display_name"]
+    (school_id) [name: "idx_user_profiles_school"]
+    (faculty_id) [name: "idx_user_profiles_faculty"]
+    (major_id) [name: "idx_user_profiles_major"]
   }
 
-  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
+  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0))) | chk_user_profiles_entry_year: CHECK (entry_year IS NULL OR entry_year BETWEEN 1900 AND 9999)"
+}
+
+Table user_interests {
+  user_id bigint [pk, not null, note: "UNSIGNED"]
+  interest_id bigint [pk, not null, note: "UNSIGNED"]
+
+  Indexes {
+    (interest_id, user_id) [name: "idx_user_interests_interest_user"]
+  }
 }
 
 Table users {
@@ -807,3 +883,10 @@ Ref fk_saved_posts_post: saved_posts.post_id > posts.id [delete: cascade, update
 Ref fk_saved_posts_user: saved_posts.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_user_auth_providers_user: user_auth_providers.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_user_profiles_user: user_profiles.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_faculties_school: faculties.school_id > schools.id [delete: restrict, update: restrict]
+Ref fk_majors_faculty: majors.faculty_id > faculties.id [delete: restrict, update: restrict]
+Ref fk_user_profiles_school: user_profiles.school_id > schools.id [delete: set null, update: restrict]
+Ref fk_user_profiles_faculty: user_profiles.faculty_id > faculties.id [delete: set null, update: restrict]
+Ref fk_user_profiles_major: user_profiles.major_id > majors.id [delete: set null, update: restrict]
+Ref fk_user_interests_user: user_interests.user_id > users.id [delete: cascade, update: restrict]
+Ref fk_user_interests_interest: user_interests.interest_id > interest_categories.id [delete: restrict, update: restrict]

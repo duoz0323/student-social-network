@@ -42,6 +42,7 @@ TRUNCATE TABLE `auth_method_link_challenges`;
 TRUNCATE TABLE `pending_registrations`;
 TRUNCATE TABLE `refresh_tokens`;
 TRUNCATE TABLE `user_auth_providers`;
+TRUNCATE TABLE `user_interests`;
 TRUNCATE TABLE `user_profiles`;
 TRUNCATE TABLE `users`;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -128,7 +129,8 @@ BEGIN
 
         INSERT INTO `user_profiles` (
             `user_id`, `username`, `display_name`, `avatar_url`, `avatar_public_id`,
-            `bio`, `date_of_birth`, `profile_completed_at`, `created_at`, `updated_at`
+            `bio`, `date_of_birth`, `school_id`, `faculty_id`, `major_id`, `entry_year`,
+            `profile_completed_at`, `created_at`, `updated_at`
         ) VALUES (
             current_user_id,
             IF(user_no <= 990, CONCAT('student_', LPAD(user_no, 4, '0')), NULL),
@@ -162,10 +164,41 @@ BEGIN
                 END
             ),
             IF(user_no <= 990, DATE('1998-01-01') + INTERVAL MOD(user_no * 29, 2555) DAY, NULL),
+            IF(user_no <= 990, 1 + MOD(user_no - 1, 5), NULL),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE MOD(user_no - 1, 5)
+                    WHEN 0 THEN 1 + MOD(user_no, 6)
+                    WHEN 1 THEN 7
+                    WHEN 2 THEN 8
+                    WHEN 3 THEN 9
+                    ELSE 10
+                END
+            ),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE MOD(user_no - 1, 5)
+                    WHEN 0 THEN (2 * (1 + MOD(user_no, 6)) - 1) + MOD(user_no, 2)
+                    WHEN 1 THEN 13
+                    WHEN 2 THEN 14
+                    WHEN 3 THEN 15
+                    ELSE 16
+                END
+            ),
+            IF(user_no <= 990, 2018 + MOD(user_no, 9), NULL),
             IF(user_no <= 990, seed_time_value + INTERVAL 30 MINUTE, NULL),
             seed_time_value,
             seed_time_value
         );
+
+        -- Gan hai so thich khac nhau cho profile da hoan tat de demo loc/goi y sau nay.
+        IF user_no <= 990 THEN
+            INSERT INTO `user_interests` (`user_id`, `interest_id`) VALUES
+                (current_user_id, 1 + MOD(user_no - 1, 16)),
+                (current_user_id, 1 + MOD(user_no + 4, 16));
+        END IF;
 
         SET user_no = user_no + 1;
     END WHILE;
@@ -573,8 +606,31 @@ SELECT
     (SELECT COUNT(*) FROM `user_profiles`) AS profiles_count,
     (SELECT COUNT(*) FROM `user_profiles` WHERE `username` IS NOT NULL) AS completed_usernames,
     (SELECT COUNT(*) FROM `user_profiles` WHERE `profile_completed_at` IS NULL) AS onboarding_profiles,
+    (SELECT COUNT(*) FROM `user_profiles` WHERE `school_id` IS NOT NULL) AS academic_profiles,
+    (SELECT COUNT(*) FROM `user_interests`) AS user_interests_count,
     (SELECT COUNT(*) FROM `posts`) AS posts_count,
     (SELECT COUNT(*) FROM `post_media`) AS post_media_count;
+
+-- Moi dong vi pham phai tra ve 0; giu verify cung seed de thu muc database gon hon.
+SELECT 'invalid_demo_counts' AS check_name, COUNT(*) AS violations
+FROM (SELECT 1) AS expected
+WHERE (SELECT COUNT(*) FROM `users`) <> 1000
+   OR (SELECT COUNT(*) FROM `user_profiles`) <> 1000
+   OR (SELECT COUNT(*) FROM `posts`) <> 1000
+   OR (SELECT COUNT(*) FROM `user_profiles` WHERE `profile_completed_at` IS NULL) <> 10
+UNION ALL
+SELECT 'invalid_academic_hierarchy', COUNT(*)
+FROM `user_profiles` profile
+LEFT JOIN `faculties` faculty ON faculty.id = profile.faculty_id
+LEFT JOIN `majors` major ON major.id = profile.major_id
+WHERE profile.school_id IS NOT NULL
+  AND (faculty.school_id <> profile.school_id OR major.faculty_id <> profile.faculty_id)
+UNION ALL
+SELECT 'counter_mismatch', COUNT(*)
+FROM `posts` post
+WHERE post.like_count <> (SELECT COUNT(*) FROM `post_likes` item WHERE item.post_id = post.id)
+   OR post.comment_count <> (SELECT COUNT(*) FROM `comments` item WHERE item.post_id = post.id AND item.status <> 'DELETED')
+   OR post.repost_count <> (SELECT COUNT(*) FROM `post_reposts` item WHERE item.post_id = post.id);
 
 SELECT `status`, COUNT(*) AS total
 FROM `posts`

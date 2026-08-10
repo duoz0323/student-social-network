@@ -266,6 +266,17 @@ Trạng thái feature username: Backend và Frontend `IMPLEMENTED`; unit test, l
 Tất cả hồ sơ trong MVP đều công khai. Email và dữ liệu xác thực không được trả trong API hồ sơ công khai.
 Username được trả không kèm ký tự `@`, không được trùng giữa các hồ sơ và không được dùng thay `users.id` trong quan hệ nội bộ.
 
+#### Academic Profile & Interests
+
+Academic Profile & Interests có trạng thái Backend/Database/API/Frontend `IMPLEMENTED` và test tự động `TESTED`. Onboarding, Edit Profile và Profile Display đã tích hợp master API; kiểm thử E2E với Backend/MySQL thật vẫn phụ thuộc môi trường local.
+
+- `schools`, `faculties`, `majors` và `interest_categories` là master data chuẩn hóa; profile chỉ lưu khóa ngoại, không lưu tên trường/khoa/ngành hoặc sở thích dạng text tự do.
+- `user_profiles` có `school_id`, `faculty_id`, `major_id`, `entry_year` nullable; `user_interests` dùng khóa chính kép để chống trùng.
+- School → Faculty → Major phải đúng hierarchy và toàn bộ master data được chọn phải ở trạng thái `ACTIVE`.
+- `entry_year` nếu có phải từ 1900 đến năm hiện tại theo UTC. Mỗi profile chọn tối đa 10 sở thích ACTIVE hợp lệ.
+- Academic data vẫn là tùy chọn, không thay đổi username hoặc điều kiện cập nhật `profile_completed_at`.
+- Đây chỉ là nền dữ liệu cho personalization và Smart Student Match ở phase sau; Recommendation, AI/ML, Location Recommendation, School Suggestion và Admin Academic Management UI chưa được triển khai.
+
 ### 👥 3. Theo dõi người dùng
 
 - Theo dõi người dùng.
@@ -620,6 +631,7 @@ hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
 - Hiển thị hoạt động quản trị cơ bản.
+- Academic Profile & Interests từ Database/API đến onboarding, Edit Profile và Profile Display; không gồm Recommendation.
 
 ### P2 – Thực hiện nếu đủ tiến độ
 
@@ -788,10 +800,8 @@ student-social-network/
 ├── database/
 │   ├── student_social_network.sql
 │   ├── student_social_network.dbml
-│   ├── migrations/
-│   ├── seeds/
-│   │   └── seed_1000_website_cases.sql
-│   └── triggers/
+│   └── seeds/
+│       └── seed_1000_website_cases.sql
 │
 ├── docs/
 │   ├── api/
@@ -864,6 +874,13 @@ Nguyên tắc:
 - `refresh_tokens`: phiên làm mới JWT.
 - `password_recovery_challenges`: challenge thật/decoy cho Password Recovery, chỉ lưu OTP và token dạng hash.
 - `password_reset_tokens`: bảng đặt lại mật khẩu legacy, được giữ nguyên để audit và không được service mới ghi dữ liệu.
+
+### Academic Profile & Interests
+
+- `schools` → `faculties` → `majors`: master data học thuật có hierarchy và trạng thái `ACTIVE`/`INACTIVE`.
+- `interest_categories`: danh mục sở thích chuẩn hóa.
+- `user_profiles.school_id`, `faculty_id`, `major_id`, `entry_year`: dữ liệu học thuật tùy chọn.
+- `user_interests(user_id, interest_id)`: quan hệ N-N, chống trùng bằng khóa chính kép.
 
 ### Quan hệ theo dõi
 
@@ -1044,6 +1061,17 @@ GET /api/v1/users/me/onboarding
 GET /api/v1/users/me/onboarding/username-availability?username=duoz_03
 PUT /api/v1/users/me/onboarding
 ```
+
+API master data Academic/Profile yêu cầu JWT nhưng được phép gọi trước khi hoàn tất onboarding để phục vụ lựa chọn dữ liệu:
+
+```http
+GET /api/v1/academic/schools?keyword=Cong&limit=10
+GET /api/v1/academic/schools/{schoolId}/faculties?keyword=Cong&limit=10
+GET /api/v1/academic/faculties/{facultyId}/majors?keyword=Cong&limit=10
+GET /api/v1/interests
+```
+
+Ba API autocomplete chỉ query master data `ACTIVE` tại MySQL, dùng `limit` mặc định 10 và tối đa 20. `PUT /api/v1/users/me/profile` nhận thêm khối `academic` và `interestIds`; bỏ các field này sẽ giữ nguyên dữ liệu hiện có.
 
 API Repost đã triển khai:
 
@@ -1283,6 +1311,7 @@ npm run preview
 
 16. Người dùng hoàn tất onboarding bằng username duy nhất, tên hiển thị và ngày sinh hợp lệ trước khi truy cập chức năng chính.
 17. Người dùng cập nhật và xem hồ sơ thành công.
+17a. Người dùng cập nhật Academic Profile đúng hierarchy, năm nhập học hợp lệ và tối đa 10 sở thích không trùng; các field nullable không làm thay đổi trạng thái hoàn tất profile.
 18. Follow và Unfollow hoạt động đúng, không tạo quan hệ trùng.
 18a. Block hoạt động idempotent, xóa Follow hai chiều; Unblock không khôi phục Follow.
 18b. Các query dành cho người dùng lọc Block hai chiều trực tiếp tại database mà không làm sai phân trang/cursor.
@@ -1344,6 +1373,7 @@ npm run preview
 - Không tải toàn bộ Entity Relationship không cần thiết.
 - Việc gửi email không giữ transaction database mở quá lâu.
 - Các tác vụ dọn đăng ký hết hạn có thể chạy theo lịch.
+- Autocomplete School/Faculty/Major truy vấn trực tiếp tại MySQL theo prefix, trạng thái và hierarchy; mặc định 10, tối đa 20 kết quả.
 
 ---
 
@@ -1422,7 +1452,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Message Request và Hidden Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
-- Quản lý trường, khoa và ngành.
+- School Suggestion và giao diện quản trị trường, khoa, ngành hoặc sở thích.
+- Smart Student Match, Recommendation và AI/ML dựa trên Academic Profile & Interests.
 - Dashboard thống kê nâng cao.
 - Machine Learning cho hệ thống gợi ý.
 - Ứng dụng mobile native.
@@ -1447,7 +1478,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Backend xác minh và đồng bộ định kỳ dữ liệu với Google Places.
 - Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
-- Quản lý trường, khoa và ngành.
+- School Suggestion và giao diện quản trị trường, khoa, ngành hoặc sở thích.
+- Smart Student Match và thuật toán Recommendation dựa trên Academic Profile & Interests.
 - Dashboard thống kê nâng cao.
 - Audit Log chi tiết.
 - Thuật toán gợi ý nâng cao.

@@ -67,9 +67,9 @@ export function OnboardingBackground() {
 
 // ─── Step Indicator – dạng node + line giống hệt mẫu ────────────────────
 const STEP_META = [
-  { label: 'Tên & username' },
-  { label: 'Ảnh đại diện' },
-  { label: 'Thông tin cá nhân' },
+  { label: 'Hồ sơ cơ bản' },
+  { label: 'Học tập' },
+  { label: 'Sở thích' },
 ];
 
 export function StepIndicator({ current, total = 3 }) {

@@ -49,7 +49,10 @@ export const router = createBrowserRouter([
   { path: '/register', element: <GuestRoute><RegisterPage /></GuestRoute> },
   { path: '/register/verify', element: <GuestRoute><VerifyRegistrationOtpPage /></GuestRoute> },
   { path: '/auth/social-conflict', element: <GuestRoute><SocialConflictPendingPage /></GuestRoute> },
-  { path: '/onboarding/profile', element: <ProfileCompletionRoute><OnboardingProfilePage /></ProfileCompletionRoute> },
+  {
+    path: '/onboarding/profile',
+    element: <ProfileCompletionRoute allowCompleted><OnboardingProfilePage /></ProfileCompletionRoute>,
+  },
   {
     path: '/onboarding/success',
     element: (

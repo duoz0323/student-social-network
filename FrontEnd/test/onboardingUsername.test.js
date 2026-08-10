@@ -4,7 +4,25 @@ import {
   getUsernameValidationMessage,
   mapUsernameErrorCode,
   normalizeUsernameInput,
+  uploadOnboardingAvatar,
 } from '../src/features/auth/components/onboarding/onboardingUtils.js';
+
+test('upload avatar onboarding và giữ URL bền vững do Backend trả về', async () => {
+  const file = { name: 'avatar.png' };
+  const avatarUrl = await uploadOnboardingAvatar(file, async (receivedFile) => {
+    assert.equal(receivedFile, file);
+    return { avatarUrl: 'https://cdn.example/avatar.png' };
+  });
+
+  assert.equal(avatarUrl, 'https://cdn.example/avatar.png');
+});
+
+test('không cho onboarding tiếp tục với response upload thiếu avatarUrl', async () => {
+  await assert.rejects(
+    uploadOnboardingAvatar({ name: 'avatar.png' }, async () => ({})),
+    /không trả về URL ảnh đại diện/,
+  );
+});
 
 test('username state loại @ và chuẩn hóa chữ thường trước khi gọi API', () => {
   assert.equal(normalizeUsernameInput('@DuOz_03'), 'duoz_03');

@@ -15,7 +15,7 @@ Kết quả thực tế:
 
 Dự án đang dùng SQL canonical chạy thủ công, không có Flyway hoặc Liquibase. Migration bổ sung nằm tại:
 
-- `database/migrations/20260728_add_user_blocks.sql`
+- Repo demo đã tinh gọn, không còn lưu migration rời.
 - Schema đầy đủ: `database/student_social_network.sql`
 - Mô hình đối chiếu: `database/student_social_network.dbml`
 
@@ -32,7 +32,7 @@ PowerShell:
 
 ```powershell
 mysql.exe --host=localhost --port=3306 --user=<test_user> --password <test_database> `
-  -e "SOURCE E:/Duoz/LVTN/SocialWebProject/database/migrations/20260728_add_user_blocks.sql"
+  < database/student_social_network.sql
 ```
 
 Sau khi schema test đã sẵn sàng, cấu hình:

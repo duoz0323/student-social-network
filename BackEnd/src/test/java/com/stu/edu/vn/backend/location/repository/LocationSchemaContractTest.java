@@ -41,22 +41,6 @@ class LocationSchemaContractTest {
                 .contains("Ref fk_posts_location: posts.location_id > locations.id [delete: set null, update: restrict]");
     }
 
-    @Test
-    void manualMigrationAddsSchemaInSafeOrder() throws Exception {
-        // Migration độc lập tạo bảng trước, rồi mới thêm cột, index và foreign key cho database hiện hữu.
-        String migration = Files.readString(databasePath("migrations", "V001__add_post_locations.sql"));
-        int createTable = migration.indexOf("CREATE TABLE `locations`");
-        int addColumn = migration.indexOf("ADD COLUMN `location_id`");
-        int createIndex = migration.indexOf("CREATE INDEX `idx_posts_location_id`");
-        int addForeignKey = migration.indexOf("ADD CONSTRAINT `fk_posts_location`");
-
-        assertThat(createTable).isGreaterThanOrEqualTo(0);
-        assertThat(addColumn).isGreaterThan(createTable);
-        assertThat(createIndex).isGreaterThan(addColumn);
-        assertThat(addForeignKey).isGreaterThan(createIndex);
-        assertThat(migration).contains("ON DELETE SET NULL").doesNotContain("DROP TABLE", "DROP COLUMN");
-    }
-
     private Path databasePath(String first, String... more) {
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path databaseDirectory = workingDirectory.resolve("database");

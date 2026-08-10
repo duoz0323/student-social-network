@@ -10,6 +10,7 @@ import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
+import com.stu.edu.vn.backend.user.mapper.AcademicProfileResponseMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
 import com.stu.edu.vn.backend.user.service.UserProfileService;
@@ -34,6 +35,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final UserProfileMapper userProfileMapper;
     private final UserRelationshipPolicyService relationshipPolicyService;
     private final UserRestrictionRepository userRestrictionRepository;
+    private final AcademicProfileValidationSupport academicValidationSupport;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +71,8 @@ public class UserProfileServiceImpl implements UserProfileService {
         profile.setDisplayName(displayName);
         profile.setDateOfBirth(dateOfBirth);
         profile.setBio(bio);
+        academicValidationSupport.applyAcademic(profile, request.academic());
+        academicValidationSupport.applyInterests(profile, request.interestIds());
 
         return userProfileMapper.toUserProfileResponse(profile);
     }
@@ -98,6 +102,11 @@ public class UserProfileServiceImpl implements UserProfileService {
                 // Ngày sinh chỉ cần cho chủ tài khoản chỉnh sửa, không trả ở hồ sơ người khác.
                 includePrivateFields ? profile.getDateOfBirth() : null,
                 profile.getBio(),
+                AcademicProfileResponseMapper.school(profile.getSchool()),
+                AcademicProfileResponseMapper.faculty(profile.getFaculty()),
+                AcademicProfileResponseMapper.major(profile.getMajor()),
+                profile.getEntryYear(),
+                AcademicProfileResponseMapper.interests(profile.getInterests()),
                 followRepository.countByIdFollowingId(profileUserId),
                 followRepository.countByIdFollowerId(profileUserId),
                 !profileUserId.equals(currentUserId)
