@@ -8,6 +8,7 @@ import com.stu.edu.vn.backend.admin.dto.response.AdminUserStatusResponse;
 import com.stu.edu.vn.backend.admin.entity.AccountStatusHistory;
 import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.enums.AdminActionType;
+import com.stu.edu.vn.backend.admin.enums.AdminAvatarAction;
 import com.stu.edu.vn.backend.admin.enums.AdminTargetType;
 import com.stu.edu.vn.backend.admin.mapper.AdminUserMapper;
 import com.stu.edu.vn.backend.admin.repository.AccountStatusHistoryRepository;
@@ -29,9 +30,15 @@ import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport;
+import com.stu.edu.vn.backend.user.service.impl.UserAvatarFileValidator;
+import com.stu.edu.vn.backend.storage.CloudinaryStorageService;
+import com.stu.edu.vn.backend.storage.CloudinaryUploadResult;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -41,6 +48,7 @@ import java.time.LocalDateTime;
  * Triển khai truy vấn và transaction thay đổi trạng thái tài khoản USER dành cho ADMIN.
  */
 @Service
+@Slf4j
 public class AdminUserServiceImpl implements AdminUserService {
 
     private static final int MAX_KEYWORD_LENGTH = 100;
@@ -58,6 +66,9 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final NotificationService notificationService;
     private final UserProfileRepository userProfileRepository;
     private final UserProfileValidationSupport profileValidationSupport;
+    private final CloudinaryStorageService cloudinaryStorageService;
+    private final UserAvatarFileValidator avatarFileValidator;
+    private final TransactionTemplate transactionTemplate;
 
     public AdminUserServiceImpl(
             AdminUserRepository adminUserRepository,
@@ -70,7 +81,10 @@ public class AdminUserServiceImpl implements AdminUserService {
             EntityManager entityManager,
             NotificationService notificationService,
             UserProfileRepository userProfileRepository,
-            UserProfileValidationSupport profileValidationSupport
+            UserProfileValidationSupport profileValidationSupport,
+            CloudinaryStorageService cloudinaryStorageService,
+            UserAvatarFileValidator avatarFileValidator,
+            TransactionTemplate transactionTemplate
     ) {
         this.adminUserRepository = adminUserRepository;
         this.adminUserMapper = adminUserMapper;
@@ -83,6 +97,9 @@ public class AdminUserServiceImpl implements AdminUserService {
         this.notificationService = notificationService;
         this.userProfileRepository = userProfileRepository;
         this.profileValidationSupport = profileValidationSupport;
+        this.cloudinaryStorageService = cloudinaryStorageService;
+        this.avatarFileValidator = avatarFileValidator;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
@@ -145,12 +162,42 @@ public class AdminUserServiceImpl implements AdminUserService {
                 target.getId(),
                 "ADMIN_UPDATE_PROFILE"
         ));
+        notificationService.createUserProfileUpdatedByAdminNotification(target.getId());
 
         // Flush trước khi đọc projection để response phản ánh dữ liệu vừa cập nhật trong cùng transaction.
         entityManager.flush();
         AdminUserDetailProjection updated = adminUserRepository.findManagedUserDetail(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
         return adminUserMapper.toDetail(updated);
+    }
+
+    @Override
+    public AdminUserDetailResponse updateUserProfileWithAvatar(
+            Long userId,
+            AdminUpdateUserProfileRequest request,
+            AdminAvatarAction avatarAction,
+            MultipartFile avatarFile
+    ) {
+        CustomUserPrincipal principal = requireActiveAdmin();
+        validateNotSelfAction(principal.getUserId(), userId);
+        validateAvatarRequest(request, avatarAction, avatarFile);
+        validateManagedUserTarget(userId);
+
+        CloudinaryUploadResult newAvatar = avatarAction == AdminAvatarAction.REPLACE
+                ? cloudinaryStorageService.uploadAvatar(avatarFile)
+                : null;
+        try {
+            AdminProfileUpdateResult result = transactionTemplate.execute(status ->
+                    updateProfileWithAvatarInDatabase(principal, userId, request, avatarAction, newAvatar));
+            if (result == null) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+            }
+            deleteOldAvatarAfterDatabaseSuccess(result.oldAvatarPublicId());
+            return result.response();
+        } catch (RuntimeException exception) {
+            cleanupNewAvatarAfterDatabaseFailure(newAvatar);
+            throw exception;
+        }
     }
 
     @Override
@@ -223,6 +270,101 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new BusinessException(ErrorCode.USER_BLOCKED);
         }
         return principal;
+    }
+
+    private void validateAvatarRequest(
+            AdminUpdateUserProfileRequest request,
+            AdminAvatarAction avatarAction,
+            MultipartFile avatarFile
+    ) {
+        if (request == null || avatarAction == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        if (avatarAction == AdminAvatarAction.REPLACE) {
+            avatarFileValidator.validate(avatarFile);
+            return;
+        }
+        if (avatarFile != null && !avatarFile.isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+    }
+
+    private void validateManagedUserTarget(Long userId) {
+        AdminUserDetailProjection target = adminUserRepository.findManagedUserDetail(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
+        if (!UserRole.USER.name().equals(target.getRole())) {
+            throw new BusinessException(ErrorCode.ADMIN_USER_MANAGEMENT_FORBIDDEN);
+        }
+    }
+
+    private AdminProfileUpdateResult updateProfileWithAvatarInDatabase(
+            CustomUserPrincipal principal,
+            Long userId,
+            AdminUpdateUserProfileRequest request,
+            AdminAvatarAction avatarAction,
+            CloudinaryUploadResult newAvatar
+    ) {
+        User target = lockManagedUser(userId);
+        UserProfile profile = userProfileRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
+
+        profile.setDisplayName(profileValidationSupport.normalizeAndValidateDisplayName(request.displayName()));
+        profile.setDateOfBirth(profileValidationSupport.validateDateOfBirth(request.dateOfBirth()));
+        profile.setBio(profileValidationSupport.normalizeAndValidateBio(request.bio()));
+
+        String oldAvatarPublicId = null;
+        if (avatarAction == AdminAvatarAction.REPLACE) {
+            oldAvatarPublicId = profile.getAvatarPublicId();
+            profile.setAvatarUrl(newAvatar.url());
+            profile.setAvatarPublicId(newAvatar.publicId());
+        } else if (avatarAction == AdminAvatarAction.REMOVE) {
+            oldAvatarPublicId = profile.getAvatarPublicId();
+            profile.setAvatarUrl(null);
+            profile.setAvatarPublicId(null);
+        }
+
+        User adminReference = entityManager.getReference(User.class, principal.getUserId());
+        adminActionRepository.save(new AdminAction(
+                adminReference,
+                AdminActionType.UPDATE_USER_PROFILE,
+                AdminTargetType.USER,
+                target.getId(),
+                avatarAction == AdminAvatarAction.KEEP
+                        ? "ADMIN_UPDATE_PROFILE"
+                        : "ADMIN_UPDATE_PROFILE_AND_AVATAR"
+        ));
+        notificationService.createUserProfileUpdatedByAdminNotification(target.getId());
+
+        entityManager.flush();
+        AdminUserDetailProjection updated = adminUserRepository.findManagedUserDetail(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
+        return new AdminProfileUpdateResult(adminUserMapper.toDetail(updated), oldAvatarPublicId);
+    }
+
+    private void deleteOldAvatarAfterDatabaseSuccess(String oldAvatarPublicId) {
+        if (oldAvatarPublicId == null || oldAvatarPublicId.isBlank()) return;
+        try {
+            cloudinaryStorageService.deleteImage(oldAvatarPublicId);
+        } catch (BusinessException exception) {
+            // Database đã commit nên lỗi xóa file cũ chỉ được ghi nhận để cleanup sau.
+            log.warn("Không thể xóa avatar cũ sau khi ADMIN cập nhật hồ sơ");
+        }
+    }
+
+    private void cleanupNewAvatarAfterDatabaseFailure(CloudinaryUploadResult newAvatar) {
+        if (newAvatar == null || newAvatar.publicId() == null || newAvatar.publicId().isBlank()) return;
+        try {
+            cloudinaryStorageService.deleteImage(newAvatar.publicId());
+        } catch (BusinessException exception) {
+            // Không log public_id để tránh lộ metadata lưu trữ.
+            log.warn("Không thể cleanup avatar mới sau khi ADMIN cập nhật hồ sơ thất bại");
+        }
+    }
+
+    private record AdminProfileUpdateResult(
+            AdminUserDetailResponse response,
+            String oldAvatarPublicId
+    ) {
     }
 
     private void validateNotSelfAction(Long adminId, Long targetId) {

@@ -154,6 +154,7 @@ class UserBlockPostQueryMySqlIntegrationTest {
         newUser.setEmailVerifiedAt(LocalDateTime.now());
         User user = userRepository.saveAndFlush(newUser);
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("post_user_" + user.getId());
         profile.setDisplayName(unique);
         profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(LocalDateTime.now());

@@ -33,5 +33,6 @@
 - Các invariant trong README có constraint hoặc transaction/service bảo đảm tương ứng.
 - SQL, DBML, Entity, Repository và test được kiểm tra đồng bộ theo cùng một trạng thái đích.
 - Nullable, unique, foreign key, index, lifecycle, cleanup và dữ liệu cũ đều được phân tích.
+- Với username, kiểm tra nullable trước onboarding, unique constraint khi có giá trị và migration legacy reset completion mà không làm mất các field hồ sơ cũ.
 - Quan hệ xóa phù hợp.
 - Index phục vụ truy vấn chính.

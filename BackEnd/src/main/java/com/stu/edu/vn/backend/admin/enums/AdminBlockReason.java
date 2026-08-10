@@ -9,5 +9,6 @@ public enum AdminBlockReason {
     HARMFUL_CONTENT,
     FAKE_ACCOUNT,
     REPEATED_VIOLATION,
+    PROFILE_VIOLATION,
     OTHER
 }

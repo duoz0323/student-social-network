@@ -6,6 +6,7 @@ import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import CommentSection from '../components/CommentSection.jsx';
 import PostCard from '../components/PostCard.jsx';
+import { loadPostDetailData } from '../utils/postDetailLoader.js';
 import { toPostView } from '../utils/postViewModel.js';
 import { publishPostActivity, subscribePostActivity } from '../utils/postActivitySync.js';
 
@@ -25,14 +26,15 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
+    loadPostDetailData(
       postApi.getDetail(postId, controller.signal),
       postApi.getComments(postId, { page: 0, size: 50 }, controller.signal),
-    ]).then(([postResponse, commentPage]) => {
+    ).then(({ post: postResponse, comments: loadedComments, commentsError }) => {
       setPost(toPostView(postResponse));
-      setComments(commentPage.content ?? []);
+      setComments(loadedComments);
       setReplies({});
-      setError('');
+      // Lỗi Comments chỉ thuộc khu vực bình luận, không được che nội dung Post Detail hợp lệ.
+      setError(commentsError?.message ?? '');
       setLoadedRequestKey(requestKey);
     }).catch((requestError) => {
       if (requestError.code !== 'ERR_CANCELED') {

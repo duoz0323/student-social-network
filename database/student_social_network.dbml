@@ -16,19 +16,26 @@ Enum admin_actions_action_type_enum {
   BLOCK_USER
   UNBLOCK_USER
   UPDATE_USER_PROFILE
+  CREATE_HASHTAG
+  UPDATE_HASHTAG
+  DELETE_HASHTAG
   HIDE_POST
   RESTORE_POST
   RESOLVE_REPORT
   REJECT_REPORT
   RESOLVE_MODERATION_CASE
   REJECT_MODERATION_CASE
+  RESOLVE_PROFILE_REPORT
+  REJECT_PROFILE_REPORT
 }
 
 Enum admin_actions_target_type_enum {
   USER
   POST
+  HASHTAG
   REPORT
   MODERATION_CASE
+  PROFILE_REPORT
 }
 
 Enum comments_status_enum {
@@ -71,6 +78,15 @@ Enum reports_status_enum {
   REJECTED
 }
 
+Enum profile_reports_reason_enum {
+  PROHIBITED_CONTENT
+  IMPERSONATION
+  UNDER_MINIMUM_AGE
+  SCAM_OR_FRAUD
+  FALSE_INFORMATION
+  VIOLENCE_OR_DANGEROUS_ORGANIZATION
+}
+
 Enum notifications_type_enum {
   FOLLOW
   POST_LIKE
@@ -81,6 +97,7 @@ Enum notifications_type_enum {
   REPORT_REJECTED
   POST_HIDDEN_BY_ADMIN
   POST_RESTORED_BY_ADMIN
+  PROFILE_UPDATED_BY_ADMIN
   ACCOUNT_BLOCKED
   ACCOUNT_UNBLOCKED
 }
@@ -545,6 +562,60 @@ Table reports {
   Note: "chk_reports_resolution_state: CHECK ((((`status` = _utf8mb4'PENDING') and (`resolved_by` is null) and (`resolved_at` is null)) or ((`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED')) and (`resolved_by` is not null) and (`resolved_at` is not null))))"
 }
 
+Table profile_report_cases {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  reported_user_id bigint [not null, unique, note: "UNSIGNED; mỗi target chỉ có một case"]
+  status reports_status_enum [not null, default: 'PENDING']
+  resolved_by bigint [note: "UNSIGNED"]
+  resolved_at datetime(6)
+  resolution_note varchar(1000)
+  reported_display_name_snapshot varchar(100) [not null]
+  reported_avatar_url_snapshot varchar(1000)
+  reported_bio_snapshot varchar(500)
+  reported_date_of_birth_snapshot date
+  report_count int [not null, default: 0, note: "UNSIGNED"]
+  latest_reported_at datetime(6) [not null]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (status, latest_reported_at, id) [name: "idx_profile_report_cases_status_latest"]
+    (resolved_by) [name: "idx_profile_report_cases_resolved_by"]
+  }
+
+  Note: "Vụ việc duy nhất theo trang cá nhân, gom nhiều lượt báo cáo và được mở lại khi có báo cáo mới."
+}
+
+Table profile_reports {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  case_id bigint [not null, note: "UNSIGNED"]
+  reporter_id bigint [not null, note: "UNSIGNED"]
+  reported_user_id bigint [not null, note: "UNSIGNED"]
+  reason profile_reports_reason_enum [not null]
+  status reports_status_enum [not null, default: 'PENDING']
+  resolved_by bigint [note: "UNSIGNED"]
+  resolved_at datetime(6)
+  resolution_note varchar(1000)
+  reporter_display_name_snapshot varchar(100) [not null]
+  reported_display_name_snapshot varchar(100) [not null]
+  reported_avatar_url_snapshot varchar(1000)
+  reported_bio_snapshot varchar(500)
+  reported_date_of_birth_snapshot date
+  pending_report_key varchar(100) [unique, note: "Generated khi status = PENDING"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Indexes {
+    (status, created_at, id) [name: "idx_profile_reports_status_created"]
+    (reported_user_id, created_at, id) [name: "idx_profile_reports_target_created"]
+    (reporter_id, created_at, id) [name: "idx_profile_reports_reporter_created"]
+    (resolved_by) [name: "idx_profile_reports_resolved_by"]
+    (case_id, created_at, id) [name: "idx_profile_reports_case_created"]
+  }
+
+  Note: "Không tự report; chỉ một PENDING mỗi reporter/target; snapshot giữ bằng chứng hồ sơ lúc gửi."
+}
+
 Table notifications {
   id bigint [pk, not null, increment, note: "UNSIGNED"]
   recipient_id bigint [not null, note: "UNSIGNED"]
@@ -601,6 +672,7 @@ Table user_auth_providers {
 
 Table user_profiles {
   user_id bigint [pk, not null, note: "UNSIGNED"]
+  username varchar(30)
   display_name varchar(100)
   avatar_url varchar(1000)
   avatar_public_id varchar(255)
@@ -611,10 +683,11 @@ Table user_profiles {
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
 
   Indexes {
+    (username) [unique, name: "uq_user_profiles_username"]
     (display_name) [name: "ftx_user_profiles_display_name"]
   }
 
-  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
+  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
 }
 
 Table users {
@@ -796,6 +869,12 @@ Ref fk_reports_post: reports.post_id > posts.id [delete: restrict, update: restr
 Ref fk_reports_moderation_case: reports.moderation_case_id > moderation_cases.id [delete: restrict, update: restrict]
 Ref fk_reports_reporter: reports.reporter_id > users.id [delete: restrict, update: restrict]
 Ref fk_reports_resolved_by: reports.resolved_by > users.id [delete: restrict, update: restrict]
+Ref fk_profile_reports_reporter: profile_reports.reporter_id > users.id [delete: restrict, update: restrict]
+Ref fk_profile_reports_case: profile_reports.case_id > profile_report_cases.id [delete: restrict, update: restrict]
+Ref fk_profile_reports_target: profile_reports.reported_user_id > users.id [delete: restrict, update: restrict]
+Ref fk_profile_reports_resolved_by: profile_reports.resolved_by > users.id [delete: restrict, update: restrict]
+Ref fk_profile_report_cases_target: profile_report_cases.reported_user_id > users.id [delete: restrict, update: restrict]
+Ref fk_profile_report_cases_resolved_by: profile_report_cases.resolved_by > users.id [delete: restrict, update: restrict]
 Ref fk_notifications_actor: notifications.actor_id > users.id [delete: set null, update: restrict]
 Ref fk_notifications_comment: notifications.comment_id > comments.id [delete: set null, update: restrict]
 Ref fk_notifications_post: notifications.post_id > posts.id [delete: set null, update: restrict]

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
@@ -141,6 +142,8 @@ export default function PostCard({
   const [editing, setEditing] = useState(false);
   const [deleteStep, setDeleteStep] = useState(null); // null | 'confirm' | 'success'
   const [reporting, setReporting] = useState(false);
+  const [restrictionConfirmOpen, setRestrictionConfirmOpen] = useState(false);
+  const [restrictedByMe, setRestrictedByMe] = useState(Boolean(initialPost.author?.restrictedByMe));
   const [draft, setDraft] = useState(content);
   const [tags, setTags] = useState(hashtags.join(', '));
   const [editLocation, setEditLocation] = useState(post.location ?? null);
@@ -185,6 +188,8 @@ export default function PostCard({
   if (syncedInitialPost !== initialPost) {
     setSyncedInitialPost(initialPost);
     setUpdatedPost(null);
+    // PostCard đổi dữ liệu đầu vào thì lấy lại trạng thái quan hệ từ snapshot mới.
+    setRestrictedByMe(Boolean(initialPost.author?.restrictedByMe));
     setLiked(Boolean(initialPost.likedByCurrentUser));
     setSaved(Boolean(initialPost.savedByCurrentUser));
     setReposted(Boolean(initialPost.repostedByCurrentUser));
@@ -363,16 +368,21 @@ export default function PostCard({
   }
 
   async function handleSave() {
-    const response = await toggleSave(post.id, saved);
-    setSaved(response.saved);
-    publishPostActivity({
-      postId: post.id,
-      viewerUserId: currentUserId,
-      savedByCurrentUser: Boolean(response.saved),
-      memberships: [{ cacheKey: 'posts:saved', included: Boolean(response.saved) }],
-    });
-    // Cho màn hình Saved loại bài khỏi danh sách ngay khi người dùng bỏ lưu.
-    onSaveChange?.(post.id, response.saved);
+    try {
+      const response = await toggleSave(post.id, saved);
+      setSaved(response.saved);
+      publishPostActivity({
+        postId: post.id,
+        viewerUserId: currentUserId,
+        savedByCurrentUser: Boolean(response.saved),
+        memberships: [{ cacheKey: 'posts:saved', included: Boolean(response.saved) }],
+      });
+      // Cho màn hình Saved loại bài khỏi danh sách ngay khi người dùng bỏ lưu.
+      onSaveChange?.(post.id, response.saved);
+      showToast(response.saved ? 'Đã lưu bài viết.' : 'Đã bỏ lưu bài viết.');
+    } catch (error) {
+      showToast(error.message || 'Không thể cập nhật bài viết đã lưu. Vui lòng thử lại.', 'error');
+    }
   }
 
   async function handleRepost() {
@@ -397,6 +407,15 @@ export default function PostCard({
       onRepostChange?.(post.id, Boolean(response.repostedByCurrentUser));
     } finally {
       setRepostSubmitting(false);
+    }
+  }
+
+  async function handleCopyPostLink() {
+    try {
+      await copyPostLink(post.id);
+      showToast('Đã sao chép liên kết.');
+    } catch {
+      showToast('Không thể sao chép liên kết. Vui lòng thử lại.', 'error');
     }
   }
 
@@ -488,15 +507,15 @@ export default function PostCard({
                       <span>Báo cáo</span>
                       <FlagIcon />
                     </button>
-                    <UserRestrictionAction
-                      userId={author.id}
-                      displayName={author.displayName}
-                      initialRestricted={Boolean(author.restrictedByMe)}
-                      blocked={Boolean(author.blockedByMe)}
-                    />
+                    {!author.blockedByMe ? (
+                      <button onClick={() => menuAction(() => setRestrictionConfirmOpen(true))}>
+                        <span>{restrictedByMe ? 'Bỏ hạn chế' : 'Hạn chế'}</span>
+                        <Shield size={16} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    ) : null}
                   </>
                 )}
-                <button onClick={() => menuAction(() => copyPostLink(post.id))}>
+                <button onClick={() => menuAction(handleCopyPostLink)}>
                   <span>Sao chép liên kết</span>
                   <LinkIcon />
                 </button>
@@ -543,7 +562,13 @@ export default function PostCard({
             <HeartIcon filled={liked} />
             <span className="font-normal">{formatNumber(likeCount)}</span>
           </button>
-          <button className="post-action" onClick={() => navigate(`/posts/${post.id}`)}>
+          <button
+            type="button"
+            className="post-action"
+            onClick={() => navigate(`/posts/${post.id}`)}
+            aria-label="Xem chi tiết bài viết và bình luận"
+            title="Xem chi tiết bài viết"
+          >
             <CommentIcon />
             <span className="font-normal">{formatNumber(commentCount)}</span>
           </button>
@@ -557,11 +582,20 @@ export default function PostCard({
             <RepostIcon />
             <span className="font-normal">{formatNumber(repostCount)}</span>
           </button>
-          <button className="post-action" onClick={() => copyPostLink(post.id)} title="Chia sẻ liên kết">
+          <button className="post-action" onClick={handleCopyPostLink} title="Chia sẻ liên kết">
             <ShareIcon />
           </button>
         </footer>
       </div>
+
+      <UserRestrictionAction
+        open={restrictionConfirmOpen}
+        userId={author.id}
+        displayName={author.displayName}
+        restricted={restrictedByMe}
+        onClose={() => setRestrictionConfirmOpen(false)}
+        onChanged={setRestrictedByMe}
+      />
 
       {/* Modal chỉnh sửa bài viết */}
       <Modal

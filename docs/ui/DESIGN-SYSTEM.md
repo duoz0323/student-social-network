@@ -24,7 +24,7 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 - Sidebar admin dùng brand `UniShare`, nhãn khu vực "Trang quản trị" và danh mục quản trị.
 - Danh mục quan sát được: Tổng quan, Người dùng, Bài viết, Báo cáo, Cài đặt, Quay lại ứng dụng.
 - Các mục thuộc MVP: Người dùng, Bài viết, Báo cáo, Quay lại ứng dụng.
-- `Tổng quan` chỉ nên hiểu là dashboard tóm tắt đơn giản nếu cần; dashboard nâng cao ngoài MVP.
+- `Tổng quan` hiển thị chỉ số tóm tắt, biểu đồ tổng tương tác 30 ngày và USER nổi bật; các dashboard nâng cao khác ngoài MVP.
 - `Cài đặt` CẦN XÁC NHẬN và không nằm trong luồng MVP đã chốt.
 
 ## 4. Vùng nội dung

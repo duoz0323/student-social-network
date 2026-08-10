@@ -202,6 +202,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void createUserProfileUpdatedByAdminNotification(Long recipientId) {
+        // Actor để null nhằm thông báo ở cấp hệ thống và không làm lộ danh tính ADMIN thực hiện.
+        createNotification(null, recipientId, NotificationType.PROFILE_UPDATED_BY_ADMIN, null, null, null);
+    }
+
+    @Override
+    @Transactional
     public void createAccountBlockedNotification(Long recipientId) {
         createNotification(null, recipientId, NotificationType.ACCOUNT_BLOCKED, null, null, null);
     }

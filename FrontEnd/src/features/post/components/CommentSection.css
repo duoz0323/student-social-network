@@ -53,9 +53,9 @@
   flex: 1;
   align-items: flex-end;
   gap: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--app-border-strong);
   border-radius: 14px;
-  background: var(--app-surface-soft);
+  background: var(--app-surface);
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 
@@ -67,7 +67,7 @@
 .comment-composer__field:focus-within,
 .reply-composer__field:focus-within {
   border-color: var(--app-border-strong);
-  box-shadow: 0 0 0 3px var(--app-focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-text) 12%, transparent);
 }
 
 .comment-composer textarea,
@@ -95,16 +95,17 @@
 
 .comment-composer__field > button,
 .reply-composer__field > button {
-  border: 0;
-  background: transparent;
-  color: var(--app-brand);
+  border: 1px solid var(--app-text);
+  border-radius: 999px;
+  background: var(--app-text);
+  color: var(--app-surface);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .comment-composer__field > button {
-  padding: 3px 2px 3px 6px;
+  padding: 5px 11px;
 }
 
 .comment-composer__field > button:disabled,
@@ -357,7 +358,7 @@
 }
 
 .reply-composer__field > button {
-  padding: 2px;
+  padding: 4px 9px;
   font-size: 11px;
 }
 

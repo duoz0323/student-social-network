@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toFeedItemView, toPostEditDraft } from '../src/features/post/utils/postViewModel.js';
+import { copyPostLink, toFeedItemView, toPostEditDraft } from '../src/features/post/utils/postViewModel.js';
 
 test('tạo draft sửa từ Post Detail và giữ đúng media cùng Location', () => {
   const location = { id: 7, placeId: 'ChIJ-detail', displayName: 'Cao Lỗ' };
@@ -43,4 +43,50 @@ test('tạo draft an toàn khi Post Detail không có hashtag, media hoặc Loca
   assert.equal(draft.hashtag, '');
   assert.deepEqual(draft.keepMediaIds, []);
   assert.equal(draft.location, null);
+});
+
+test('sao chép permalink đã encode và trả lại URL vừa ghi vào clipboard', async () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let copiedText = '';
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { origin: 'https://unis.example' } },
+  });
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: async (value) => { copiedText = value; } } },
+  });
+
+  try {
+    const copiedUrl = await copyPostLink('bài viết 1');
+    assert.equal(copiedText, 'https://unis.example/posts/b%C3%A0i%20vi%E1%BA%BFt%201');
+    assert.equal(copiedUrl, copiedText);
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor);
+    else delete globalThis.window;
+    if (navigatorDescriptor) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+    else delete globalThis.navigator;
+  }
+});
+
+test('báo lỗi khi trình duyệt không cung cấp Clipboard API', async () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { origin: 'https://unis.example' } },
+  });
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {} });
+
+  try {
+    await assert.rejects(copyPostLink(10), /không hỗ trợ sao chép tự động/);
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor);
+    else delete globalThis.window;
+    if (navigatorDescriptor) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+    else delete globalThis.navigator;
+  }
 });

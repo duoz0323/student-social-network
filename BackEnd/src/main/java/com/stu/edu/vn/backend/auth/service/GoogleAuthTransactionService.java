@@ -131,7 +131,7 @@ public class GoogleAuthTransactionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_GOOGLE_AUTHENTICATION_FAILED));
         IssuedRefreshToken refresh = refreshTokenIssuer.issue(user, deviceId, deviceInfo, ipAddress);
         String access = jwtService.generateAccessToken(user.getId(), user.getRole().name());
-        boolean completed = profile.getProfileCompletedAt() != null;
+        boolean completed = profile.isCompleted();
         return new GoogleAuthResponse(
                 access, refresh.rawToken(), GoogleAuthResponse.BEARER_TOKEN_TYPE,
                 Duration.ofMillis(jwtProperties.getAccessTokenExpirationMillis()).toSeconds(),

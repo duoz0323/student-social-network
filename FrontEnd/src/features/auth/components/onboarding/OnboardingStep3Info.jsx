@@ -18,6 +18,7 @@ export default function OnboardingStep3Info({
   onBack,
   error,
   isSubmitting,
+  canFinish,
 }) {
   const [displayDate, setDisplayDate] = useState(() => isoDateToDisplay(dateOfBirth));
 
@@ -93,7 +94,7 @@ export default function OnboardingStep3Info({
           <span>Quay lại</span>
         </SecondaryBtn>
 
-        <PrimaryBtn onClick={onFinish} disabled={isSubmitting}>
+        <PrimaryBtn onClick={onFinish} disabled={isSubmitting || !canFinish}>
           <span>{isSubmitting ? 'Đang lưu...' : 'Hoàn tất'}</span>
           {!isSubmitting && <CheckIcon size={16} />}
         </PrimaryBtn>

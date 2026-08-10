@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildAdminProfilePayload,
   getLatestAdultBirthDate,
+  validateAdminAvatarFile,
   validateAdminProfileDraft,
 } from '../src/features/admin/utils/adminUserProfile.js';
 
@@ -25,4 +26,10 @@ test('không cho lưu hồ sơ thiếu tên, ngày sinh hoặc vượt giới h�
 
 test('ngày sinh tối đa đủ 18 tuổi xử lý đúng ngày nhuận', () => {
   assert.equal(getLatestAdultBirthDate(new Date(2028, 1, 29)), '2010-02-28');
+});
+
+test('chỉ chấp nhận avatar đúng định dạng và không vượt quá 10 MB', () => {
+  assert.equal(validateAdminAvatarFile({ type: 'image/png', size: 1024 }), '');
+  assert.match(validateAdminAvatarFile({ type: 'image/gif', size: 1024 }), /JPG/);
+  assert.match(validateAdminAvatarFile({ type: 'image/jpeg', size: 10 * 1024 * 1024 + 1 }), /10 MB/);
 });

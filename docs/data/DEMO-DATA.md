@@ -25,7 +25,8 @@ Dùng để:
 - Dữ liệu đăng nhập nằm trong `demoAccounts`.
 - Đăng nhập bằng email và mật khẩu mô phỏng.
 - Mỗi tài khoản demo nên có ít nhất một phương thức email; có thể để `email` hoặc `email` là `null` để mô phỏng đúng luồng đăng ký MVP.
-- Không dùng username trong dữ liệu demo.
+- Hồ sơ demo đã hoàn tất phải có username duy nhất, đúng quy tắc onboarding và không kèm ký tự `@`.
+- Hồ sơ demo chưa hoàn tất onboarding giữ `username = null`; không tự sinh username thay người dùng.
 - Không render công khai email, `passwordDemo` hoặc `passwordHash`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 
@@ -56,6 +57,7 @@ Ghi chú: `passwordHash` trong Frontend React chỉ là mô phỏng để không
 
 ### Cấu trúc `users.profile`
 
+- `username`
 - `displayName`
 - `avatarUrl`
 - `dateOfBirth`
@@ -67,7 +69,7 @@ Quy tắc hồ sơ:
 - User mới sau đăng ký có `profile.displayName = null`.
 - User mới sau đăng ký có `profile.profileCompletedAt = null`.
 - `profileCompletedAt = null` nghĩa là chưa được vào Feed hoặc chức năng mạng xã hội chính.
-- Tên hiển thị và ngày sinh bắt buộc ở onboarding; avatar và bio là tùy chọn.
+- Username, tên hiển thị và ngày sinh bắt buộc ở onboarding; avatar và bio là tùy chọn.
 - Mọi user có `profileCompletedAt` khác `null` phải có `dateOfBirth` và đủ 18 tuổi tại thời điểm demo.
 
 Thông tin công khai chỉ dùng displayName, avatarUrl, bio, dateOfBirth nếu cần, followerCount và followingCount.
@@ -78,8 +80,8 @@ Có dữ liệu:
 
 - PUBLISHED.
 - HIDDEN.
-- Có ảnh.
-- Không ảnh.
+- Bộ seed 1.000 bài bảo đảm mỗi bài có từ 1 đến 4 ảnh.
+- Có bài chỉ chứa ảnh và bài chứa cả nội dung lẫn ảnh.
 - Đã Like.
 - Chưa Like.
 - Đã Save.
@@ -108,7 +110,7 @@ Quy tắc dữ liệu:
 - Hiển thị mention bằng displayName.
 - Lưu liên kết bằng `mentionedUserId`.
 - Có thể lưu `displayNameSnapshot` nếu cần.
-- Không lưu hoặc render `@username`.
+- Lưu username không có `@`; chỉ profile current/other tự thêm `@` khi render. PostCard, Comment và Follow UI chưa hiển thị username trong phạm vi hiện tại.
 - Khi bấm mention, điều hướng đến `/profile/:userId`.
 
 ## 5. UI State

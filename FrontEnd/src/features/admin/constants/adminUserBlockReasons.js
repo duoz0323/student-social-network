@@ -4,6 +4,7 @@ export const ADMIN_USER_BLOCK_REASONS = Object.freeze([
   { value: 'HARMFUL_CONTENT', label: 'Nội dung gây hại' },
   { value: 'FAKE_ACCOUNT', label: 'Tài khoản giả mạo' },
   { value: 'REPEATED_VIOLATION', label: 'Vi phạm nhiều lần' },
+  { value: 'PROFILE_VIOLATION', label: 'Vi phạm trang cá nhân' },
   { value: 'OTHER', label: 'Lý do khác' },
 ]);
 

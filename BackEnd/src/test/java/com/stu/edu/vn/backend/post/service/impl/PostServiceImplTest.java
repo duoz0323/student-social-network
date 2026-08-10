@@ -28,6 +28,7 @@ import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.mapper.PostMapper;
 import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
+import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
@@ -74,6 +75,7 @@ class PostServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final PostRepository postRepository = org.mockito.Mockito.mock(PostRepository.class);
     private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
+    private final PostLikeRepository postLikeRepository = org.mockito.Mockito.mock(PostLikeRepository.class);
     private final PostMediaRepository postMediaRepository = org.mockito.Mockito.mock(PostMediaRepository.class);
     private final HashtagRepository hashtagRepository = org.mockito.Mockito.mock(HashtagRepository.class);
     private final PostHashtagRepository postHashtagRepository = org.mockito.Mockito.mock(PostHashtagRepository.class);
@@ -98,6 +100,7 @@ class PostServiceImplTest {
                 userProfileRepository,
                 postRepository,
                 postRepostRepository,
+                postLikeRepository,
                 postMediaRepository,
                 hashtagRepository,
                 postHashtagRepository,
@@ -370,12 +373,14 @@ class PostServiceImplTest {
         when(postRepository.findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED)).thenReturn(Optional.of(post));
         when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of(firstMedia, secondMedia));
         when(postHashtagRepository.findWithHashtagByPostId(1L)).thenReturn(List.of(new PostHashtag(post, hashtag)));
+        when(postLikeRepository.existsByIdUserIdAndIdPostId(10L, 1L)).thenReturn(true);
 
         var response = postService.getPostDetail(1L);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.author().id()).isEqualTo(10L);
         assertThat(response.viewer().owner()).isTrue();
+        assertThat(response.viewer().likedByCurrentUser()).isTrue();
         assertThat(response.media()).extracting("displayOrder").containsExactly(0, 1);
         assertThat(response.hashtag()).isEqualTo("sinhvien");
     }

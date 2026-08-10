@@ -48,6 +48,8 @@ public interface NotificationService {
 
     void createPostRestoredByAdminNotification(Long recipientId, Long postId);
 
+    void createUserProfileUpdatedByAdminNotification(Long recipientId);
+
     void createAccountBlockedNotification(Long recipientId);
 
     void createAccountUnblockedNotification(Long recipientId);

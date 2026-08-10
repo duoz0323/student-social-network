@@ -5,7 +5,7 @@
 ## 1. Tài khoản
 
 - Email duy nhất nếu có giá trị.
-- Không dùng username hoặc email công khai tương tự trong MVP.
+- Username chỉ được nhập trong onboarding, không thuộc request đăng ký và không thay `users.id` trong quan hệ nội bộ.
 - Đăng ký bằng đúng một phương thức email: email.
 - Form đăng ký chỉ gồm phương thức email, mật khẩu và xác nhận mật khẩu.
 - Request đăng ký chỉ nhận một giá trị email tại một thời điểm.
@@ -30,12 +30,13 @@
 - Email không hiển thị công khai.
 - Chỉ chủ tài khoản cập nhật hồ sơ.
 - Backend chỉ tạo `user_profiles` cùng `users` sau khi OTP hoặc social identity hợp lệ theo README.
-- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
+- `user_profiles.username`, `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
 - Tên hiển thị thuộc `user_profiles`, không thuộc `users`.
-- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ ban đầu.
+- Username duy nhất, tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ ban đầu.
+- Username dài 3–30 ký tự, chỉ gồm `a-z`, `0-9`, `_`, `.`, normalize lowercase và không lưu ký tự `@`.
 - Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
-- Avatar và bio là tùy chọn; tên hiển thị và ngày sinh không được bỏ qua khi hoàn tất onboarding.
-- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
+- Avatar và bio là tùy chọn; username, tên hiển thị và ngày sinh không được bỏ qua khi hoàn tất onboarding.
+- Hồ sơ chỉ hoàn tất khi username duy nhất, tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - API mạng xã hội chính phải trả lỗi nghiệp vụ `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.
@@ -99,18 +100,24 @@
 
 ## 10. Report
 
-- Chỉ report post.
+- Report hỗ trợ Post và trang cá nhân; hai loại dùng bảng và workflow riêng.
 - Trạng thái PENDING, RESOLVED, REJECTED.
 - Mỗi Report giữ riêng reporter, reason, description và snapshot; không gộp chuỗi/JSON thay quan hệ.
 - Report phải thuộc Moderation Case; không có nhiều report đang hiệu lực cùng user và post.
 - Một post chỉ có một Moderation Case `OPEN`; case dùng `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`.
 - Report không tự động ẩn post.
+- Mỗi case bài viết `RESOLVED_ACTION_TAKEN` tính một strike; strike thứ ba tự động khóa USER và thu hồi phiên.
+- Profile Report không cho tự báo cáo, không trùng `PENDING` theo reporter/target; tất cả lượt cùng target thuộc một Profile Report Case. Admin được chọn khóa USER ngay khi xác nhận vi phạm.
 
 ## 11. Admin
 
 - Chỉ ADMIN truy cập API quản trị.
+- Chỉ ADMIN đang hoạt động được cập nhật hoặc xóa avatar của tài khoản role USER; file dùng cùng validation với avatar cá nhân.
 - Có thể khóa/mở user.
 - Có thể ẩn/khôi phục post.
+- Quản lý hashtag dành cho ADMIN có tìm kiếm, phân trang, tạo, đổi tên và xóa; tên mới dùng pipeline chuẩn hóa chung và không được trùng `normalized_name`.
+- Đổi tên cập nhật chính bản ghi `hashtags`, giữ nguyên `id`, `post_count` và toàn bộ quan hệ `post_hashtags`.
+- Xóa hashtag phải khóa target, xóa quan hệ `post_hashtags` trước vì FK `RESTRICT`, rồi xóa `hashtags` trong cùng transaction; không xóa Post.
 - Xử lý trực tiếp Moderation Case từ `OPEN` sang một kết quả cuối; không có bước tiếp nhận.
 
 ## 12. API

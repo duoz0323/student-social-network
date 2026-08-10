@@ -58,6 +58,11 @@ const TYPE_PRESENTATION = {
     icon: RotateCcw,
     iconClass: 'bg-emerald-500 text-white',
   },
+  PROFILE_UPDATED_BY_ADMIN: {
+    message: 'đã điều chỉnh hồ sơ của bạn vì nội dung vi phạm Tiêu chuẩn hệ thống',
+    icon: ShieldAlert,
+    iconClass: 'bg-orange-600 text-white',
+  },
   ACCOUNT_BLOCKED: {
     message: 'đã khóa tài khoản của bạn',
     icon: LockKeyhole,

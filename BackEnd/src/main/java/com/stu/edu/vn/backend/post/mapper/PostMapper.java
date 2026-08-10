@@ -55,7 +55,7 @@ public interface PostMapper {
     @Mapping(target = "author", source = "authorProfile")
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
-    @Mapping(target = "viewer", source = "owner")
+    @Mapping(target = "viewer", expression = "java(new PostViewerResponse(owner, likedByCurrentUser))")
     @Mapping(target = "location", source = "post.location")
     @Mapping(target = "repostedByCurrentUser", source = "reposted")
     PostDetailResponse toDetailResponse(
@@ -64,12 +64,13 @@ public interface PostMapper {
             List<PostMedia> media,
             String hashtag,
             boolean owner,
+            boolean likedByCurrentUser,
             boolean reposted
     );
 
     default PostDetailResponse toDetailResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                                 String hashtag, boolean owner) {
-        return toDetailResponse(post, authorProfile, media, hashtag, owner, false);
+        return toDetailResponse(post, authorProfile, media, hashtag, owner, false, false);
     }
 
     @Mapping(target = "id", source = "userId")
@@ -84,7 +85,4 @@ public interface PostMapper {
     @Mapping(target = "placeId", source = "googlePlaceId")
     PostLocationResponse toLocationResponse(Location location);
 
-    default PostViewerResponse toViewerResponse(boolean owner) {
-        return new PostViewerResponse(owner);
-    }
 }

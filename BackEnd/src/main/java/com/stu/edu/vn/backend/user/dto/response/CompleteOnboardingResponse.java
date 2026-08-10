@@ -6,6 +6,7 @@ import java.time.LocalDate;
  * Response sau khi hoàn tất onboarding, giúp Frontend chuyển người dùng sang Feed.
  */
 public record CompleteOnboardingResponse(
+        String username,
         String displayName,
         String avatarUrl,
         LocalDate dateOfBirth,

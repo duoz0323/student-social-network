@@ -29,6 +29,18 @@ test('thông báo hệ thống không gắn tên actor và không điều hướ
   assert.equal(getNotificationTarget(notification), null);
 });
 
+test('hiển thị lý do hệ thống khi admin điều chỉnh hồ sơ người dùng', () => {
+  const notification = { type: 'PROFILE_UPDATED_BY_ADMIN', actor: null };
+
+  assert.deepEqual(getNotificationPresentation(notification), {
+    actorName: 'UniShare',
+    avatarUrl: null,
+    message: 'Hồ sơ của bạn đã được quản trị viên điều chỉnh vì nội dung vi phạm Tiêu chuẩn hệ thống',
+    isSystem: true,
+  });
+  assert.equal(getNotificationTarget(notification), null);
+});
+
 test('hiển thị POST_REPOST và điều hướng về bài gốc', () => {
   const notification = {
     type: 'POST_REPOST',

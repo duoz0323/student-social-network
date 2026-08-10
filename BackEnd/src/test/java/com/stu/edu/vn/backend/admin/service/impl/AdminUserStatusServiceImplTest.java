@@ -60,7 +60,10 @@ class AdminUserStatusServiceImplTest {
                 adminUserRepository, new AdminUserMapper(), currentUserProvider, refreshTokenRepository,
                 historyRepository, actionRepository, clock, entityManager, notificationService,
                 org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.repository.UserProfileRepository.class),
-                new com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport(clock));
+                new com.stu.edu.vn.backend.user.service.impl.UserProfileValidationSupport(clock),
+                org.mockito.Mockito.mock(com.stu.edu.vn.backend.storage.CloudinaryStorageService.class),
+                new com.stu.edu.vn.backend.user.service.impl.UserAvatarFileValidator(),
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class));
         when(currentUserProvider.getCurrentUser())
                 .thenReturn(new CustomUserPrincipal(1L, UserRole.ADMIN, UserStatus.ACTIVE));
         when(entityManager.getReference(User.class, 1L)).thenReturn(admin);

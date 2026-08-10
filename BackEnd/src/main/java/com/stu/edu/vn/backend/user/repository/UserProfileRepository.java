@@ -13,8 +13,20 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
 
-    /** Kiểm tra onboarding bằng truy vấn tồn tại, không tải toàn bộ hồ sơ cho mỗi request. */
-    boolean existsByUserIdAndProfileCompletedAtIsNotNull(Long userId);
+    /** Kiểm tra đầy đủ invariant onboarding mà không tải toàn bộ hồ sơ cho mỗi request. */
+    @Query("""
+            select (count(profile) > 0)
+            from UserProfile profile
+            where profile.userId = :userId
+              and profile.username is not null
+              and profile.profileCompletedAt is not null
+            """)
+    boolean existsByUserIdAndProfileCompletedAtIsNotNull(@Param("userId") Long userId);
+
+    /** Username luôn được lưu ở dạng lowercase nên derived query có thể so sánh chính xác. */
+    boolean existsByUsername(String username);
+
+    Optional<UserProfile> findByUsername(String username);
 
     /**
      * Khóa hồ sơ trong transaction để các cập nhật onboarding, profile và avatar không ghi đè lẫn nhau.

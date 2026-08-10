@@ -31,6 +31,7 @@ export const AUTH_ENDPOINTS = Object.freeze({
 
 export const USER_ENDPOINTS = Object.freeze({
   onboarding: USER_ONBOARDING_BASE,
+  usernameAvailability: `${USER_ONBOARDING_BASE}/username-availability`,
   profile: '/api/v1/users/me/profile',
   publicProfile: (userId) => `/api/v1/users/${encodeURIComponent(userId)}`,
   avatar: '/api/v1/users/me/avatar',
@@ -41,6 +42,7 @@ export const USER_ENDPOINTS = Object.freeze({
   blockedUsers: '/api/v1/users/me/blocked-users',
   restriction: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/restriction`,
   restrictedUsers: '/api/v1/users/me/restricted-users',
+  profileReports: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/profile-reports`,
   posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
   reposts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/reposts`,
 });
@@ -79,6 +81,8 @@ export const ADMIN_ENDPOINTS = Object.freeze({
   blockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/block`,
   unblockUser: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/unblock`,
   posts: '/api/v1/admin/posts',
+  hashtags: '/api/v1/admin/hashtags',
+  hashtag: (hashtagId) => `/api/v1/admin/hashtags/${encodeURIComponent(hashtagId)}`,
   post: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}`,
   hidePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/hide`,
   restorePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/restore`,
@@ -86,8 +90,13 @@ export const ADMIN_ENDPOINTS = Object.freeze({
   moderationCase: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}`,
   resolveCaseNoViolation: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-no-violation`,
   resolveCaseAction: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-action`,
+  profileReports: '/api/v1/admin/profile-reports',
+  profileReport: (caseId) => `/api/v1/admin/profile-reports/${encodeURIComponent(caseId)}`,
+  rejectProfileReport: (caseId) => `/api/v1/admin/profile-reports/${encodeURIComponent(caseId)}/reject`,
+  resolveProfileReport: (caseId) => `/api/v1/admin/profile-reports/${encodeURIComponent(caseId)}/resolve`,
   actions: '/api/v1/admin/actions',
   action: (actionId) => `/api/v1/admin/actions/${encodeURIComponent(actionId)}`,
   userEngagementMonthly: '/api/v1/admin/analytics/user-engagement/monthly',
   userEngagementSummary: '/api/v1/admin/analytics/user-engagement/summary',
+  userEngagementDashboard: '/api/v1/admin/analytics/user-engagement/dashboard',
 });

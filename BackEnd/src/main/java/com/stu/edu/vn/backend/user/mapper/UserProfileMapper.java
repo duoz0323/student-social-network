@@ -14,10 +14,10 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface UserProfileMapper {
 
-    @Mapping(target = "profileCompleted", expression = "java(profile.getProfileCompletedAt() != null)")
+    @Mapping(target = "profileCompleted", expression = "java(profile.isCompleted())")
     UserProfileResponse toUserProfileResponse(UserProfile profile);
 
-    @Mapping(target = "profileCompleted", expression = "java(profile.getProfileCompletedAt() != null)")
+    @Mapping(target = "profileCompleted", expression = "java(profile.isCompleted())")
     @Mapping(target = "nextStep", source = "nextStep")
     OnboardingStatusResponse toOnboardingStatusResponse(UserProfile profile, String nextStep);
 

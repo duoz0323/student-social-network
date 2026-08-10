@@ -19,6 +19,7 @@ import com.stu.edu.vn.backend.post.enums.PostMediaType;
 import com.stu.edu.vn.backend.post.mapper.PostMapper;
 import com.stu.edu.vn.backend.post.repository.HashtagRepository;
 import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
+import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
 import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
@@ -69,6 +70,7 @@ public class PostServiceImpl implements PostService {
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
     private final PostRepostRepository postRepostRepository;
+    private final PostLikeRepository postLikeRepository;
     private final PostMediaRepository postMediaRepository;
     private final HashtagRepository hashtagRepository;
     private final PostHashtagRepository postHashtagRepository;
@@ -119,9 +121,11 @@ public class PostServiceImpl implements PostService {
         List<PostMedia> media = postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId());
         String hashtag = readSingleHashtag(post.getId());
         boolean owner = post.getAuthor().getId().equals(viewerId);
-
+        // Post Detail phải mang trạng thái Like theo đúng viewer để UI chọn Like hay Unlike chính xác.
+        boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
         boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
-        return postMapper.toDetailResponse(post, post.getAuthorProfile(), media, hashtag, owner, reposted);
+        return postMapper.toDetailResponse(
+                post, post.getAuthorProfile(), media, hashtag, owner, likedByCurrentUser, reposted);
     }
 
     @Override
@@ -141,12 +145,16 @@ public class PostServiceImpl implements PostService {
 
         UpdatedPostData updatedData = updatePostInDatabase(post, command, uploadedMedia);
         boolean owner = post.getAuthor().getId().equals(viewerId);
+        boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
+        boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
         return postMapper.toDetailResponse(
                 post,
                 post.getAuthorProfile(),
                 updatedData.media(),
                 updatedData.hashtag(),
-                owner
+                owner,
+                likedByCurrentUser,
+                reposted
         );
     }
 

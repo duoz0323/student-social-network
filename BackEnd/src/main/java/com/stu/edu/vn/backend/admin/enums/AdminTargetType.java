@@ -6,6 +6,8 @@ package com.stu.edu.vn.backend.admin.enums;
 public enum AdminTargetType {
     USER,
     POST,
+    HASHTAG,
     REPORT,
-    MODERATION_CASE
+    MODERATION_CASE,
+    PROFILE_REPORT
 }

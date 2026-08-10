@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.stu.edu.vn.backend.analytics.repository.DailyInteractionCount;
+import com.stu.edu.vn.backend.analytics.repository.FeaturedUserEngagement;
 import com.stu.edu.vn.backend.analytics.repository.MonthlyUserEngagementCounts;
 import com.stu.edu.vn.backend.analytics.repository.UserEngagementAnalyticsRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
@@ -15,6 +17,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +52,34 @@ class UserEngagementAnalyticsServiceImplTest {
         assertThat(item.neverActiveRate()).isEqualByComparingTo(new BigDecimal("20.00"));
         assertThat(item.eligibleSystemUserCount())
                 .isEqualTo(item.activeUserCount() + item.inactiveUserCount());
+    }
+
+    @Test
+    void dashboardFillsMissingUtcDaysAndMapsFeaturedUsers() {
+        when(repository.findDailyInteractionCounts(
+                LocalDate.of(2026, 6, 13), LocalDate.of(2026, 6, 15)))
+                .thenReturn(List.of(
+                        new DailyInteractionCount(LocalDate.of(2026, 6, 13), 4),
+                        new DailyInteractionCount(LocalDate.of(2026, 6, 15), 9)
+                ));
+        when(repository.findFeaturedUsers(
+                LocalDate.of(2026, 6, 15),
+                LocalDateTime.of(2026, 6, 15, 0, 0),
+                LocalDateTime.of(2026, 6, 16, 0, 0),
+                5
+        )).thenReturn(List.of(new FeaturedUserEngagement(7L, "Mai", "avatar", 3, 9)));
+
+        var dashboard = service.getDashboard(3);
+
+        assertThat(dashboard.fromDate()).isEqualTo(LocalDate.of(2026, 6, 13));
+        assertThat(dashboard.toDate()).isEqualTo(LocalDate.of(2026, 6, 15));
+        assertThat(dashboard.dailyInteractions()).extracting(item -> item.interactionCount())
+                .containsExactly(4L, 0L, 9L);
+        assertThat(dashboard.featuredUsers()).singleElement().satisfies(user -> {
+            assertThat(user.userId()).isEqualTo(7L);
+            assertThat(user.postCount()).isEqualTo(3L);
+            assertThat(user.interactionCount()).isEqualTo(9L);
+        });
     }
 
     @Test
@@ -86,6 +118,8 @@ class UserEngagementAnalyticsServiceImplTest {
         assertError(() -> service.getMonthly("2026-06", "2026-07", 15), ErrorCode.ANALYTICS_FUTURE_MONTH);
         assertError(() -> service.getMonthly("2024-07", "2026-06", 0), ErrorCode.ANALYTICS_INACTIVE_DAYS_INVALID);
         assertError(() -> service.getMonthly("2024-05", "2026-05", 15), ErrorCode.ANALYTICS_MONTH_RANGE_TOO_LARGE);
+        assertError(() -> service.getDashboard(0), ErrorCode.ANALYTICS_DASHBOARD_DAYS_INVALID);
+        assertError(() -> service.getDashboard(91), ErrorCode.ANALYTICS_DASHBOARD_DAYS_INVALID);
     }
 
     private void assertError(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable, ErrorCode code) {

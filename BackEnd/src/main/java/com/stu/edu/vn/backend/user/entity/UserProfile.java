@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -36,6 +37,9 @@ public class UserProfile extends BaseAuditEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "username", length = 30, unique = true)
+    private String username;
+
     @Column(name = "display_name", length = 100)
     private String displayName;
 
@@ -56,6 +60,13 @@ public class UserProfile extends BaseAuditEntity {
 
     public UserProfile(User user) {
         this.user = user;
+    }
+
+    /** Hồ sơ chỉ hoàn tất khi timestamp và toàn bộ dữ liệu onboarding bắt buộc cùng tồn tại. */
+    @Transient
+    public boolean isCompleted() {
+        return profileCompletedAt != null
+                && username != null;
     }
 
 }

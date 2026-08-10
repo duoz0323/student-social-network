@@ -10,6 +10,7 @@ import com.stu.edu.vn.backend.admin.dto.response.AdminReportStatusPostResponse;
 import com.stu.edu.vn.backend.admin.dto.response.ModerationReasonCountResponse;
 import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.enums.AdminActionType;
+import com.stu.edu.vn.backend.admin.enums.AdminBlockReason;
 import com.stu.edu.vn.backend.admin.enums.AdminTargetType;
 import com.stu.edu.vn.backend.admin.enums.ModerationCaseAction;
 import com.stu.edu.vn.backend.admin.mapper.AdminModerationCaseMapper;
@@ -19,6 +20,7 @@ import com.stu.edu.vn.backend.admin.repository.AdminPostRepository;
 import com.stu.edu.vn.backend.admin.repository.projection.AdminModerationCaseListProjection;
 import com.stu.edu.vn.backend.admin.repository.projection.ModerationReasonCountProjection;
 import com.stu.edu.vn.backend.admin.service.AdminModerationCaseService;
+import com.stu.edu.vn.backend.admin.service.ModerationAccountBlockService;
 import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -58,6 +60,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
     private static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_KEYWORD_LENGTH = 100;
     private static final int MAX_RESOLUTION_NOTE_LENGTH = 1000;
+    private static final long POST_VIOLATION_BLOCK_THRESHOLD = 3L;
 
     private final AdminModerationCaseRepository adminCaseRepository;
     private final ModerationCaseRepository caseRepository;
@@ -66,6 +69,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
     private final AdminActionRepository adminActionRepository;
     private final AdminModerationCaseMapper mapper;
     private final NotificationService notificationService;
+    private final ModerationAccountBlockService accountBlockService;
     private final CurrentUserProvider currentUserProvider;
     private final EntityManager entityManager;
     private final Clock clock;
@@ -78,6 +82,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
             AdminActionRepository adminActionRepository,
             AdminModerationCaseMapper mapper,
             NotificationService notificationService,
+            ModerationAccountBlockService accountBlockService,
             CurrentUserProvider currentUserProvider,
             EntityManager entityManager,
             Clock clock
@@ -89,6 +94,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
         this.adminActionRepository = adminActionRepository;
         this.mapper = mapper;
         this.notificationService = notificationService;
+        this.accountBlockService = accountBlockService;
         this.currentUserProvider = currentUserProvider;
         this.entityManager = entityManager;
         this.clock = clock;
@@ -158,7 +164,7 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
         adminActionRepository.save(new AdminAction(admin, AdminActionType.REJECT_MODERATION_CASE,
                 AdminTargetType.MODERATION_CASE, caseId, note));
         entityManager.flush();
-        return toStatusResponse(moderationCase, moderationCase.getPost(), principal.getUserId());
+        return toStatusResponse(moderationCase, moderationCase.getPost(), principal.getUserId(), 0L, false);
     }
 
     @Override
@@ -199,8 +205,17 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
         adminActionRepository.save(new AdminAction(admin, AdminActionType.HIDE_POST,
                 AdminTargetType.POST, post.getId(), request.reasonCode().name()));
         notificationService.createPostHiddenByAdminNotification(post.getAuthor().getId(), post.getId());
+        // Flush case hiện tại trước khi đếm để lần vi phạm vừa kết luận được tính đúng là một strike.
         entityManager.flush();
-        return toStatusResponse(moderationCase, post, principal.getUserId());
+        long violationCount = caseRepository.countByPost_Author_IdAndStatus(
+                post.getAuthor().getId(), ModerationCaseStatus.RESOLVED_ACTION_TAKEN);
+        boolean accountBlocked = false;
+        if (violationCount >= POST_VIOLATION_BLOCK_THRESHOLD) {
+            accountBlocked = accountBlockService.blockIfActive(
+                    post.getAuthor().getId(), admin, now, AdminBlockReason.REPEATED_VIOLATION);
+        }
+        entityManager.flush();
+        return toStatusResponse(moderationCase, post, principal.getUserId(), violationCount, accountBlocked);
     }
 
     private ModerationCase lockOpenCase(Long caseId) {
@@ -228,14 +243,17 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
     private AdminModerationCaseStatusResponse toStatusResponse(
             ModerationCase moderationCase,
             Post post,
-            Long adminId
+            Long adminId,
+            long authorViolationCount,
+            boolean accountBlocked
     ) {
         String displayName = adminPostRepository.findAdminDisplayName(adminId).orElse(null);
         return new AdminModerationCaseStatusResponse(
                 moderationCase.getId(), moderationCase.getStatus(), moderationCase.getResolvedAt(),
                 moderationCase.getResolutionNote(), new AdminReportResolvedByResponse(adminId, displayName),
                 new AdminReportStatusPostResponse(
-                        post.getId(), post.getStatus(), post.getHiddenAt(), post.getHiddenReason()));
+                        post.getId(), post.getStatus(), post.getHiddenAt(), post.getHiddenReason()),
+                authorViolationCount, accountBlocked);
     }
 // kiểm tra là admin và hoạt động
     private CustomUserPrincipal requireActiveAdmin() {

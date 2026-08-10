@@ -23,6 +23,7 @@
 Phải có unique constraint cho:
 
 - `users.email`.
+- `user_profiles.username` (nullable trước onboarding, duy nhất khi có giá trị).
 - `follows(follower_id, following_id)`.
 - `post_likes(user_id, post_id)`.
 - `saved_posts(user_id, post_id)`.
@@ -36,6 +37,7 @@ Báo cáo cần chống trùng báo cáo `PENDING` cùng người dùng và cùn
 - Phân biệt constraint có thể cưỡng chế tại database với quy tắc phải bảo đảm bằng transaction/service.
 - Với Auth, phải kiểm tra tính duy nhất, vòng đời pending, dữ liệu hash, nullable, foreign key, concurrency và cleanup theo README.
 - Với onboarding và các module khác, kiểm tra constraint theo đúng trạng thái đích trong README.
+- Legacy profile thiếu username phải được đưa về trạng thái chưa hoàn tất mà không xóa display name, ngày sinh, bio hoặc avatar hiện có.
 - Không thay đổi SQL/DBML hoặc đề xuất migration chỉ để giữ tương thích với source cũ.
 
 ## 5. Index đề xuất

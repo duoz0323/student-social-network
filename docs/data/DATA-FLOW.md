@@ -53,14 +53,16 @@ Challenge liên kết email không dùng `pending_registrations`. User đích lu
 ```text
 Onboarding Page
 → GET /api/v1/users/me/onboarding
-→ Nhập tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
-→ Backend kiểm tra ngày sinh hợp lệ và người dùng đủ 18 tuổi
+→ Hydrate username/displayName/dateOfBirth/bio hiện có cho cả legacy user
+→ Nhập username, tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
+→ GET username-availability hỗ trợ UX; Frontend debounce và bỏ response cũ
 → PUT /api/v1/users/me/onboarding
-→ Backend cập nhật user_profiles.profile_completed_at
+→ Backend kiểm tra lại username format/reserved/unique, ngày sinh và tuổi tối thiểu
+→ Backend lưu username không có @ và cập nhật user_profiles.profile_completed_at
 → Frontend cho phép vào Feed
 ```
 
-Nếu `profile_completed_at` còn `NULL`, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding. Login và refresh vẫn được phép, không trả lỗi này.
+Nếu `profile_completed_at` còn `NULL` hoặc profile thiếu username, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding. Login và refresh vẫn được phép, không trả lỗi này. Migration legacy chỉ reset completion, không xóa displayName, ngày sinh, bio hoặc avatar hiện có.
 
 ## 5. Đăng nhập local
 
@@ -170,5 +172,34 @@ Admin Case Detail → PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-*
 → Kiểm tra ADMIN
 → Khóa case OPEN và Post khi cần
 → Chuyển case sang kết quả cuối, cập nhật mọi Report, audit/notification và có thể ẩn Post
+
+Profile người khác → POST /api/v1/users/{userId}/profile-reports
+→ Lấy reporter từ JWT, kiểm tra onboarding/Block/tự báo cáo
+→ Khóa target, lấy hoặc tạo profile_report_cases duy nhất theo target
+→ Chụp snapshot hồ sơ, tạo profile_reports PENDING và tăng report_count của case
+→ Unique generated key chống hai PENDING cùng reporter/target
+
+Admin Reports / tab Trang cá nhân → GET /api/v1/admin/profile-reports
+→ Mỗi dòng là một case, không phải từng reporter
+→ Chi tiết trả danh sách toàn bộ lượt báo cáo thuộc case
+→ Admin kết luận đồng thời mọi lượt PENDING; báo cáo mới sẽ mở lại case
+→ Nếu xác nhận vi phạm và blockUser=true: khóa USER, revoke Refresh Token, ghi lịch sử/Admin Action/Notification
+
+Admin xác nhận Moderation Case bài viết có vi phạm
+→ Ẩn Post và chuyển case sang RESOLVED_ACTION_TAKEN
+→ Đếm số case RESOLVED_ACTION_TAKEN của tác giả; mỗi case chỉ tính một lần
+→ Nếu tổng >= 3 và USER đang ACTIVE: khóa tài khoản với REPEATED_VIOLATION và revoke mọi phiên
+→ Mở chi tiết, tải hồ sơ hiện tại và phân trang bài viết theo authorId
+→ PATCH resolve/reject để kết luận; không tự khóa, sửa hồ sơ hoặc ẩn bài
+```
+
+## 13. Admin chỉnh sửa hồ sơ USER
+
+```text
+Admin User Detail → PUT /api/v1/admin/users/{userId}/profile
+→ Kiểm tra ADMIN đang hoạt động và target có role USER
+→ Khóa users/user_profiles và cập nhật hồ sơ cùng audit
+→ Tạo Notification hệ thống PROFILE_UPDATED_BY_ADMIN trong cùng transaction
+→ Sau commit phát NOTIFICATION_CREATED best-effort tới USER
 ```
 

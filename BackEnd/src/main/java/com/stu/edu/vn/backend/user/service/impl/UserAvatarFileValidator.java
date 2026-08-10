@@ -12,13 +12,13 @@ import org.springframework.web.multipart.MultipartFile;
  * Kiểm tra file avatar tại Backend, không tin validation từ Frontend.
  */
 @Component
-class UserAvatarFileValidator {
+public class UserAvatarFileValidator {
 
     private static final long MAX_AVATAR_SIZE_BYTES = 10L * 1024L * 1024L;
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
-    void validate(MultipartFile file) {
+    public void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.AVATAR_FILE_REQUIRED);
         }

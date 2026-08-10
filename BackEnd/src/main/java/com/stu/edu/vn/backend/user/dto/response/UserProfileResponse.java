@@ -6,6 +6,7 @@ import java.time.LocalDate;
  * Response hồ sơ cá nhân sau onboarding; không chứa email hoặc token xác thực.
  */
 public record UserProfileResponse(
+        String username,
         String displayName,
         String avatarUrl,
         LocalDate dateOfBirth,

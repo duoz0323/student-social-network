@@ -339,7 +339,9 @@ Quy tắc:
 ### 6.10. Onboarding
 
 - Sau khi tài khoản thật được tạo, Frontend điều hướng tới onboarding.
-- Tên hiển thị và ngày sinh là bắt buộc theo `README.md` hiện tại.
+- Username, tên hiển thị và ngày sinh là bắt buộc theo `README.md` hiện tại.
+- Username là định danh public duy nhất: dài 3–30 ký tự, chỉ gồm `a-z`, `0-9`, `_`, `.`, normalize lowercase và không lưu ký tự `@`.
+- API availability chỉ hỗ trợ UX; Backend phải kiểm tra lại reserved/unique/format khi hoàn tất và unique constraint là hàng rào cuối cùng cho race condition.
 - Người dùng phải đủ 18 tuổi tại thời điểm Backend xử lý.
 - Avatar và bio là tùy chọn.
 - `user_profiles.profile_completed_at` chỉ được cập nhật khi dữ liệu bắt buộc hợp lệ và người dùng xác nhận hoàn tất.
@@ -359,6 +361,8 @@ Quy tắc:
 ### 7.1. Hồ sơ người dùng
 
 - Hồ sơ công khai trong MVP.
+- API hồ sơ current/other trả username không có `@`; Frontend tự thêm `@` khi hiển thị và route vẫn dùng `userId`.
+- Không triển khai đổi username, tìm kiếm theo username hoặc username trong Post/Comment/Follow nếu `README.md` và task hiện tại chưa mở phạm vi.
 - Không trả email hoặc dữ liệu xác thực trong API hồ sơ công khai.
 - Chỉ chủ tài khoản được cập nhật hồ sơ.
 - Ngày sinh không được ở tương lai.

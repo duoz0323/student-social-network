@@ -18,10 +18,10 @@ AUTH-02 Đăng ký
 → Có thể resend sau cooldown hoặc recovery pending
 → OTP hợp lệ mới tạo user, profile và session JWT hệ thống
 → /onboarding/profile
-→ AUTH-03 Onboarding bước 1: nhập tên hiển thị bắt buộc
+→ AUTH-03 Onboarding bước 1: nhập tên hiển thị và username bắt buộc; kiểm tra username availability
 → AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
 → AUTH-05 Onboarding bước 3: nhập ngày sinh bắt buộc, kiểm tra đủ 18 tuổi; bio có thể bỏ qua
-→ Cập nhật profileCompletedAt
+→ PUT onboarding kiểm tra lại username và cập nhật profileCompletedAt
 → AUTH-06 /onboarding/success
 → Hiển thị tạo tài khoản thành công
 → Người dùng chọn Vào trang chủ
@@ -45,7 +45,7 @@ Bấm nút Google hoặc Facebook
 
 Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Email social trùng user `ACTIVE` chưa link provider không được tự link hay tạo user thứ hai. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
 
-Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Login và refresh không trả lỗi này.
+Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Frontend tải lại dữ liệu onboarding hiện có để legacy user chỉ bổ sung username mà không mất displayName, ngày sinh hoặc bio. Login và refresh không trả lỗi này.
 
 ### 1.2 Đăng nhập
 
@@ -128,6 +128,9 @@ PostCard trong Feed/Profile/Saved
 → Nhập bình luận mới
 ```
 
+Nếu request danh sách bình luận lỗi, Post Detail hợp lệ vẫn phải hiển thị; lỗi được giới hạn trong
+khu vực bình luận và không được chuyển toàn màn hình sang trạng thái không tìm thấy bài viết.
+
 ### 1.6 Chỉnh sửa và xóa bài viết của mình
 
 Chỉnh sửa:
@@ -186,7 +189,7 @@ Bình luận:
 ```text
 POST-01
 → Nhập nội dung bình luận
-→ Gửi bình luận
+→ Nhấn Enter hoặc nút Đăng để gửi; Shift+Enter để xuống dòng
 → Bình luận xuất hiện trong danh sách
 → Chủ bình luận có thể xóa bình luận của mình
 ```
@@ -221,6 +224,8 @@ Chọn avatar/tên hiển thị từ Feed/Search/Comment
 → PROFILE-02 Hồ sơ người khác
 → Xem thông tin công khai và bài viết
 → Follow hoặc Unfollow
+→ Menu thêm có Hạn chế, Báo cáo và Chặn
+→ Báo cáo mở modal sáu lý do rồi gửi tới Admin
 ```
 
 Quy tắc: `/profile/me` active mục Trang cá nhân. `/profile/:userId` không active mục Trang cá nhân. Nút Nhắn tin gọi REST mở conversation và chỉ điều hướng khi Backend cho phép.
@@ -263,8 +268,12 @@ PostCard của người khác hoặc POST-01
 → POST-10 Gửi báo cáo thành công
 ```
 
-Quy tắc: chỉ báo cáo bài viết; mỗi lần gửi giữ một Report độc lập và gắn vào Moderation Case `OPEN`
+Quy tắc báo cáo bài viết: mỗi lần gửi giữ một Report độc lập và gắn vào Moderation Case `OPEN`
 của bài. Một người không có nhiều Report trong cùng case `OPEN`; gửi Report không tự động ẩn bài.
+
+Báo cáo trang cá nhân là luồng riêng từ PROFILE-02. Một người không được tự báo cáo và chỉ có một
+Profile Report `PENDING` cho cùng target; modal chỉ hiển thị sáu lý do cố định trong README. Các lượt
+báo cáo từ nhiều người được gom vào một Profile Report Case duy nhất theo target.
 
 ### 1.12 Admin quản lý người dùng
 
@@ -273,6 +282,7 @@ Admin đăng nhập
 → ADMIN-02 Quản lý người dùng
 → Tìm kiếm/lọc người dùng
 → Click một dòng để mở ADMIN-03 Chi tiết người dùng
+→ Mở form sửa hồ sơ để xem trước, thay hoặc xóa avatar và cập nhật thông tin
 → Khóa hoặc mở khóa tài khoản trong chi tiết
 → Danh sách cập nhật trạng thái ACTIVE/BLOCKED
 → Biểu đồ trạng thái tài khoản tự làm mới
@@ -302,8 +312,15 @@ Admin đăng nhập
 → Mở ADMIN-06 Chi tiết hồ sơ kiểm duyệt
 → Xem bài, thống kê lý do và danh sách Report rút gọn theo người gửi, lý do, mô tả, thời gian
 → Chọn trực tiếp Không vi phạm hoặc Có vi phạm / Ẩn bài
+
+Tab Trang cá nhân
+→ Danh sách Profile Report Case, mỗi target chỉ một dòng và có tổng số người báo cáo
+→ Mở chi tiết gồm mọi reporter/lý do, snapshot, hồ sơ hiện tại và vùng cuộn bài viết của target
+→ Kết luận mọi lượt PENDING là Không vi phạm, Xác nhận vi phạm, hoặc Vi phạm & khóa tài khoản
+→ Lựa chọn khóa cập nhật USER, thu hồi phiên và ghi lịch sử trong cùng transaction
 → Nếu có vi phạm, chọn một lý do ẩn bài thuộc enum Backend trong modal
 → Backend cập nhật case, toàn bộ Report, Admin Action và Notification trong một transaction
+→ Với báo cáo bài viết, mỗi case có vi phạm tính một lần; lần thứ ba Backend tự động khóa tác giả
 ```
 
 Không có bước tiếp nhận, trạng thái đang xử lý hoặc trạng thái đóng riêng. Case đã giải quyết chỉ hiển
@@ -320,10 +337,27 @@ Admin đăng nhập
 → Khi lỗi có thể thử lại; khi không có USER đủ điều kiện hiển thị Empty State
 ```
 
-Luồng dùng ngày UTC và route `/admin/user-analytics`. Đây là module Analytics riêng, không thêm widget vào
-ADMIN-01 Dashboard và không thay đổi phạm vi Dashboard nâng cao thuộc phát triển tương lai.
+Luồng dùng ngày UTC và route `/admin/user-analytics`. Ngoài module riêng, ADMIN-01 Dashboard hiển thị widget
+30 ngày tổng tương tác, danh sách tối đa 5 USER nổi bật theo bài viết/tương tác của ngày hiện tại và không có
+khối “Hoạt động gần đây”.
 
-### 1.16 Trạng thái hệ thống
+### 1.16 Admin quản lý hashtag
+
+```text
+Admin đăng nhập
+→ Chọn Hashtag trên sidebar
+→ ADMIN-09 tải trang đầu của danh sách hashtag
+→ Xem tên, số bài viết, ngày tạo và ngày sử dụng mới nhất
+→ Nhập từ khóa để tìm theo tên; thay trang hoặc số dòng mỗi trang khi cần
+→ Chọn Tạo hashtag, nhập tên và lưu; Backend chuẩn hóa và từ chối tên trùng
+→ Hoặc chọn Sửa trên một dòng, nhập tên mới và lưu; các bài liên quan giữ nguyên hashtag_id
+→ Hoặc chọn Xóa trên một dòng, đọc số bài bị ảnh hưởng và xác nhận
+→ Sau khi xóa, danh sách làm mới; bài liên quan vẫn tồn tại nhưng không có hashtag
+```
+
+Luồng tại route `/admin/hashtags`; mọi thao tác ghi yêu cầu ADMIN và được lưu lịch sử quản trị.
+
+### 1.17 Trạng thái hệ thống
 
 ```text
 Không có quyền → SYS-01
@@ -405,5 +439,5 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 - Trích dẫn bài viết.
 - Video hoặc tài liệu trong bài viết.
 - Elasticsearch.
-- Dashboard nâng cao.
+- Các Dashboard nâng cao khác ngoài biểu đồ tương tác và USER nổi bật.
 

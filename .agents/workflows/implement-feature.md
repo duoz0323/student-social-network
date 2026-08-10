@@ -34,6 +34,7 @@ Nếu chức năng thuộc Auth hoặc hồ sơ, phải xác định rõ:
 - Dữ liệu do Backend tự xác minh và dữ liệu không được tin từ Frontend.
 - Transaction, external provider call, concurrency, recovery, linking và revocation.
 - Khoảng chênh lệch giữa README với SQL/DBML, source và test hiện tại.
+- Nếu liên quan username: phân biệt registration, onboarding, profile display, route `userId`, legacy data và các module chưa được mở rộng.
 
 ## Bước 3: Lập kế hoạch
 

@@ -50,6 +50,7 @@ Thư mục `enums/` chỉ tạo khi module có enum nghiệp vụ. Các trạng 
 - Không gọi dịch vụ bên ngoài trong transaction database.
 - Không tin dữ liệu danh tính, trạng thái verified hoặc user đích do Frontend tự khai báo.
 - Mọi validation, quyền, token và state transition phải truy ngược được tới README hoặc API contract đã đồng bộ.
+- Username availability chỉ là read model cho UX; complete onboarding phải normalize và kiểm tra lại format/reserved/unique trong transaction phù hợp, đồng thời xử lý vi phạm unique do race.
 - Khi source hiện tại khác README, xem source là implementation cũ cần thay thế; không làm ngược lại.
 
 ## 5. Kiểm tra

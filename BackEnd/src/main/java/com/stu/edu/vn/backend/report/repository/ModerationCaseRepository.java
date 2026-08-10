@@ -14,6 +14,8 @@ public interface ModerationCaseRepository extends JpaRepository<ModerationCase, 
 
     Optional<ModerationCase> findByPost_IdAndStatus(Long postId, ModerationCaseStatus status);
 
+    long countByPost_Author_IdAndStatus(Long authorId, ModerationCaseStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select mc from ModerationCase mc where mc.id = :caseId")
     Optional<ModerationCase> findByIdForUpdate(@Param("caseId") Long caseId);

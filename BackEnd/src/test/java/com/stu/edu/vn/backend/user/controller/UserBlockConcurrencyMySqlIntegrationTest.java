@@ -371,6 +371,7 @@ class UserBlockConcurrencyMySqlIntegrationTest {
         user.setEmailVerifiedAt(LocalDateTime.now());
         user = userRepository.saveAndFlush(user);
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("block_user_" + user.getId());
         profile.setDisplayName(email.substring(0, email.indexOf('@')));
         profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(LocalDateTime.now());

@@ -1,5 +1,8 @@
 package com.stu.edu.vn.backend.analytics.service;
 
+import com.stu.edu.vn.backend.analytics.dto.DailyInteractionResponse;
+import com.stu.edu.vn.backend.analytics.dto.DashboardUserEngagementResponse;
+import com.stu.edu.vn.backend.analytics.dto.FeaturedUserResponse;
 import com.stu.edu.vn.backend.analytics.dto.MonthlyUserEngagementItemResponse;
 import com.stu.edu.vn.backend.analytics.dto.MonthlyUserEngagementResponse;
 import com.stu.edu.vn.backend.analytics.repository.MonthlyUserEngagementCounts;
@@ -16,6 +19,8 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +32,46 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserEngagementAnalyticsServiceImpl implements UserEngagementAnalyticsService {
 
     static final int MAX_MONTHS = 24;
+    static final int MAX_DASHBOARD_DAYS = 90;
+    static final int FEATURED_USER_LIMIT = 5;
     private final UserEngagementAnalyticsRepository repository;
     private final Clock clock;
 
     public UserEngagementAnalyticsServiceImpl(UserEngagementAnalyticsRepository repository, Clock clock) {
         this.repository = repository;
         this.clock = clock;
+    }
+
+    @Override
+    public DashboardUserEngagementResponse getDashboard(int days) {
+        if (days < 1 || days > MAX_DASHBOARD_DAYS) {
+            throw new BusinessException(ErrorCode.ANALYTICS_DASHBOARD_DAYS_INVALID);
+        }
+
+        LocalDate toDate = LocalDate.now(clock);
+        LocalDate fromDate = toDate.minusDays(days - 1L);
+        Map<LocalDate, Long> countsByDate = repository.findDailyInteractionCounts(fromDate, toDate).stream()
+                .collect(Collectors.toMap(
+                        dailyCount -> dailyCount.date(),
+                        dailyCount -> dailyCount.interactionCount(),
+                        Long::sum
+                ));
+        List<DailyInteractionResponse> dailyInteractions = new ArrayList<>(days);
+        for (LocalDate date = fromDate; !date.isAfter(toDate); date = date.plusDays(1)) {
+            dailyInteractions.add(new DailyInteractionResponse(date, countsByDate.getOrDefault(date, 0L)));
+        }
+
+        LocalDateTime dayStart = toDate.atStartOfDay();
+        List<FeaturedUserResponse> featuredUsers = repository.findFeaturedUsers(
+                        toDate, dayStart, dayStart.plusDays(1), FEATURED_USER_LIMIT)
+                .stream()
+                .map(user -> new FeaturedUserResponse(
+                        user.userId(), user.displayName(), user.avatarUrl(),
+                        user.postCount(), user.interactionCount()))
+                .toList();
+
+        return new DashboardUserEngagementResponse(
+                fromDate, toDate, List.copyOf(dailyInteractions), featuredUsers);
     }
 
     @Override

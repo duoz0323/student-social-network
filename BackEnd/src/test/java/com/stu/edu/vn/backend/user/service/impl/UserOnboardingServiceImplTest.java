@@ -13,6 +13,7 @@ import com.stu.edu.vn.backend.user.dto.response.OnboardingStatusResponse;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
+import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,6 +27,8 @@ class UserOnboardingServiceImplTest {
 
     private final CurrentUserProfileProvider currentUserProfileProvider =
             org.mockito.Mockito.mock(CurrentUserProfileProvider.class);
+    private final UserProfileRepository userProfileRepository =
+            org.mockito.Mockito.mock(UserProfileRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-18T10:00:00Z"), ZoneOffset.UTC);
     private final UserProfileMapper mapper = Mappers.getMapper(UserProfileMapper.class);
 
@@ -36,6 +39,7 @@ class UserOnboardingServiceImplTest {
         service = new UserOnboardingServiceImpl(
                 currentUserProfileProvider,
                 new UserProfileValidationSupport(clock),
+                userProfileRepository,
                 mapper,
                 clock
         );
@@ -47,10 +51,12 @@ class UserOnboardingServiceImplTest {
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 
         CompleteOnboardingResponse response = service.completeOnboarding(
-                new CompleteOnboardingRequest("  Nguyễn Văn A  ", LocalDate.of(2008, 7, 18), "  Sinh viên  ")
+                new CompleteOnboardingRequest(
+                        "  DuOz_03  ", "  Nguyễn Văn A  ", LocalDate.of(2008, 7, 18), "  Sinh viên  ")
         );
 
         verify(currentUserProfileProvider).getCurrentProfileForUpdate();
+        assertThat(profile.getUsername()).isEqualTo("duoz_03");
         assertThat(profile.getDisplayName()).isEqualTo("Nguyễn Văn A");
         assertThat(profile.getDateOfBirth()).isEqualTo(LocalDate.of(2008, 7, 18));
         assertThat(profile.getBio()).isEqualTo("Sinh viên");
@@ -62,11 +68,12 @@ class UserOnboardingServiceImplTest {
     @Test
     void completeOnboardingRejectsAlreadyCompletedProfile() {
         UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
+        profile.setUsername("student_01");
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 
         assertThatThrownBy(() -> service.completeOnboarding(
-                new CompleteOnboardingRequest("Nguyễn Văn A", LocalDate.of(2000, 1, 1), null)
+                new CompleteOnboardingRequest("student_02", "Nguyễn Văn A", LocalDate.of(2000, 1, 1), null)
         ))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
@@ -82,5 +89,55 @@ class UserOnboardingServiceImplTest {
 
         assertThat(response.profileCompleted()).isFalse();
         assertThat(response.nextStep()).isEqualTo("ONBOARDING_PROFILE");
+    }
+
+    @Test
+    void getStatusTreatsLegacyTimestampWithoutUsernameAsIncomplete() {
+        UserProfile profile = new UserProfile(new User("legacy@example.com", "hash"));
+        profile.setProfileCompletedAt(LocalDateTime.now(clock));
+        when(currentUserProfileProvider.getCurrentProfile()).thenReturn(profile);
+
+        OnboardingStatusResponse response = service.getMyOnboardingStatus();
+
+        assertThat(response.profileCompleted()).isFalse();
+        assertThat(response.nextStep()).isEqualTo("ONBOARDING_PROFILE");
+    }
+
+    @Test
+    void availabilityReturnsNormalizedUsernameAndRepositoryResult() {
+        when(userProfileRepository.existsByUsername("duoz_03")).thenReturn(false);
+
+        var response = service.checkUsernameAvailability(" DuOz_03 ");
+
+        assertThat(response.username()).isEqualTo("duoz_03");
+        assertThat(response.available()).isTrue();
+    }
+
+    @Test
+    void completeOnboardingRejectsExistingUsername() {
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
+        when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
+        when(userProfileRepository.existsByUsername("duoz_03")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.completeOnboarding(new CompleteOnboardingRequest(
+                "duoz_03", "Nguyễn Văn A", LocalDate.of(2000, 1, 1), null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USERNAME_ALREADY_EXISTS);
+    }
+
+    @Test
+    void completeOnboardingMapsUniqueConstraintRaceToBusinessError() {
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
+        when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
+        when(userProfileRepository.saveAndFlush(profile)).thenThrow(
+                new org.springframework.dao.DataIntegrityViolationException(
+                        "Duplicate entry for key 'uq_user_profiles_username'"));
+
+        assertThatThrownBy(() -> service.completeOnboarding(new CompleteOnboardingRequest(
+                "duoz_03", "Nguyễn Văn A", LocalDate.of(2000, 1, 1), null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USERNAME_ALREADY_EXISTS);
     }
 }

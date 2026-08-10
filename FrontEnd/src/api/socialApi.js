@@ -26,6 +26,9 @@ export const socialApi = Object.freeze({
   getRestrictedUsers: (params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.restrictedUsers, { params: compactParams(params), signal }),
   ),
+  reportProfile: (userId, payload, signal) => requestData(
+    httpClient.post(USER_ENDPOINTS.profileReports(userId), payload, { signal }),
+  ),
   getUserPosts: (userId, params, signal) => requestData(
     httpClient.get(USER_ENDPOINTS.posts(userId), { params: compactParams(params), signal }),
   ),

@@ -69,8 +69,8 @@ DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `admin_id` bigint unsigned NOT NULL,
-  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE') NOT NULL,
-  `target_type` enum('USER','POST','REPORT','MODERATION_CASE') NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','CREATE_HASHTAG','UPDATE_HASHTAG','DELETE_HASHTAG','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE','RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT') NOT NULL,
+  `target_type` enum('USER','POST','HASHTAG','REPORT','MODERATION_CASE','PROFILE_REPORT') NOT NULL,
   `target_id` bigint unsigned NOT NULL,
   `note` varchar(1000) DEFAULT NULL,
   `old_data` json DEFAULT NULL,
@@ -91,6 +91,73 @@ LOCK TABLES `admin_actions` WRITE;
 /*!40000 ALTER TABLE `admin_actions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `admin_actions` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `profile_report_cases`
+--
+
+DROP TABLE IF EXISTS `profile_report_cases`;
+CREATE TABLE `profile_report_cases` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `reported_user_id` bigint unsigned NOT NULL,
+  `status` enum('PENDING','RESOLVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  `resolved_by` bigint unsigned DEFAULT NULL,
+  `resolved_at` datetime(6) DEFAULT NULL,
+  `resolution_note` varchar(1000) DEFAULT NULL,
+  `reported_display_name_snapshot` varchar(100) NOT NULL,
+  `reported_avatar_url_snapshot` varchar(1000) DEFAULT NULL,
+  `reported_bio_snapshot` varchar(500) DEFAULT NULL,
+  `reported_date_of_birth_snapshot` date DEFAULT NULL,
+  `report_count` int unsigned NOT NULL DEFAULT '0',
+  `latest_reported_at` datetime(6) NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_profile_report_cases_target` (`reported_user_id`),
+  KEY `idx_profile_report_cases_status_latest` (`status`,`latest_reported_at`,`id`),
+  KEY `idx_profile_report_cases_resolved_by` (`resolved_by`),
+  CONSTRAINT `fk_profile_report_cases_target` FOREIGN KEY (`reported_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_profile_report_cases_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_profile_report_cases_resolution_state` CHECK (((`status` = _utf8mb4'PENDING' and `resolved_by` is null and `resolved_at` is null) or (`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED') and `resolved_by` is not null and `resolved_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Table structure for table `profile_reports`
+--
+
+DROP TABLE IF EXISTS `profile_reports`;
+CREATE TABLE `profile_reports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `case_id` bigint unsigned NOT NULL,
+  `reporter_id` bigint unsigned NOT NULL,
+  `reported_user_id` bigint unsigned NOT NULL,
+  `reason` enum('PROHIBITED_CONTENT','IMPERSONATION','UNDER_MINIMUM_AGE','SCAM_OR_FRAUD','FALSE_INFORMATION','VIOLENCE_OR_DANGEROUS_ORGANIZATION') NOT NULL,
+  `status` enum('PENDING','RESOLVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  `resolved_by` bigint unsigned DEFAULT NULL,
+  `resolved_at` datetime(6) DEFAULT NULL,
+  `resolution_note` varchar(1000) DEFAULT NULL,
+  `reporter_display_name_snapshot` varchar(100) NOT NULL,
+  `reported_display_name_snapshot` varchar(100) NOT NULL,
+  `reported_avatar_url_snapshot` varchar(1000) DEFAULT NULL,
+  `reported_bio_snapshot` varchar(500) DEFAULT NULL,
+  `reported_date_of_birth_snapshot` date DEFAULT NULL,
+  `pending_report_key` varchar(100) GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'PENDING') then concat(`reporter_id`,_utf8mb3':',`reported_user_id`) else NULL end)) STORED,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_profile_reports_pending_key` (`pending_report_key`),
+  KEY `idx_profile_reports_status_created` (`status`,`created_at`,`id`),
+  KEY `idx_profile_reports_target_created` (`reported_user_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_profile_reports_reporter_created` (`reporter_id`,`created_at` DESC,`id` DESC),
+  KEY `idx_profile_reports_resolved_by` (`resolved_by`),
+  KEY `idx_profile_reports_case_created` (`case_id`,`created_at`,`id`),
+  CONSTRAINT `fk_profile_reports_case` FOREIGN KEY (`case_id`) REFERENCES `profile_report_cases` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_profile_reports_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_profile_reports_target` FOREIGN KEY (`reported_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_profile_reports_resolved_by` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_profile_reports_not_self` CHECK ((`reporter_id` <> `reported_user_id`)),
+  CONSTRAINT `chk_profile_reports_resolution_state` CHECK (((`status` = _utf8mb4'PENDING' and `resolved_by` is null and `resolved_at` is null) or (`status` in (_utf8mb4'RESOLVED',_utf8mb4'REJECTED') and `resolved_by` is not null and `resolved_at` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Table structure for table `comments`
@@ -846,7 +913,7 @@ CREATE TABLE `notifications` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `recipient_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned DEFAULT NULL,
-  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
+  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','PROFILE_UPDATED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
   `post_id` bigint unsigned DEFAULT NULL,
   `comment_id` bigint unsigned DEFAULT NULL,
   `report_id` bigint unsigned DEFAULT NULL,
@@ -950,6 +1017,7 @@ DROP TABLE IF EXISTS `user_profiles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_profiles` (
   `user_id` bigint unsigned NOT NULL,
+  `username` varchar(30) DEFAULT NULL,
   `display_name` varchar(100) DEFAULT NULL,
   `avatar_url` varchar(1000) DEFAULT NULL,
   `avatar_public_id` varchar(255) DEFAULT NULL,
@@ -959,9 +1027,10 @@ CREATE TABLE `user_profiles` (
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`user_id`),
+  UNIQUE KEY `uq_user_profiles_username` (`username`),
   FULLTEXT KEY `ftx_user_profiles_display_name` (`display_name`),
   CONSTRAINT `fk_user_profiles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
-  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))),
+  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))),
   CONSTRAINT `chk_user_profiles_completion_requires_birth_date` CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))),
   CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1346,6 +1415,7 @@ INSERT INTO users (
 
 INSERT INTO user_profiles (
     user_id,
+    username,
     display_name,
     avatar_url,
     avatar_public_id,
@@ -1355,14 +1425,14 @@ INSERT INTO user_profiles (
     created_at,
     updated_at
 ) VALUES
-    (1001, 'Admin Demo', NULL, NULL, 'Tài khoản quản trị demo', '1995-01-01', @seed_time, @seed_time, @seed_time),
-    (1002, 'Local Email Demo', NULL, NULL, NULL, '2000-02-02', @seed_time, @seed_time, @seed_time),
-    (1003, 'Local Student Demo', NULL, NULL, NULL, '2000-03-03', @seed_time, @seed_time, @seed_time),
-    (1004, 'Google Only Demo', NULL, NULL, NULL, '2000-04-04', @seed_time, @seed_time, @seed_time),
-    (1005, 'Facebook Only Demo', NULL, NULL, NULL, '2000-05-05', @seed_time, @seed_time, @seed_time),
-    (1006, 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
-    (1007, 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
-    (1008, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
+    (1001, 'admin_demo', 'Admin Demo', NULL, NULL, 'Tài khoản quản trị demo', '1995-01-01', @seed_time, @seed_time, @seed_time),
+    (1002, 'local_email_demo', 'Local Email Demo', NULL, NULL, NULL, '2000-02-02', @seed_time, @seed_time, @seed_time),
+    (1003, 'local_student_demo', 'Local Student Demo', NULL, NULL, NULL, '2000-03-03', @seed_time, @seed_time, @seed_time),
+    (1004, 'google_only_demo', 'Google Only Demo', NULL, NULL, NULL, '2000-04-04', @seed_time, @seed_time, @seed_time),
+    (1005, 'facebook_only_demo', 'Facebook Only Demo', NULL, NULL, NULL, '2000-05-05', @seed_time, @seed_time, @seed_time),
+    (1006, 'local_google_demo', 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
+    (1007, 'blocked_demo', 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
+    (1008, NULL, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
 
 INSERT INTO user_auth_providers (
     id,

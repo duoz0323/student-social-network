@@ -4,6 +4,7 @@ import com.stu.edu.vn.backend.common.api.ApiResponse;
 import com.stu.edu.vn.backend.user.dto.request.CompleteOnboardingRequest;
 import com.stu.edu.vn.backend.user.dto.response.CompleteOnboardingResponse;
 import com.stu.edu.vn.backend.user.dto.response.OnboardingStatusResponse;
+import com.stu.edu.vn.backend.user.dto.response.UsernameAvailabilityResponse;
 import com.stu.edu.vn.backend.user.service.UserOnboardingService;
 import org.springframework.http.ResponseEntity;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -27,6 +29,14 @@ public class UserOnboardingController {
     public ResponseEntity<ApiResponse<OnboardingStatusResponse>> getMyOnboardingStatus() {
         OnboardingStatusResponse response = userOnboardingService.getMyOnboardingStatus();
         return ResponseEntity.ok(ApiResponse.success("Lấy trạng thái onboarding thành công", response));
+    }
+
+    @GetMapping("/username-availability")
+    public ResponseEntity<ApiResponse<UsernameAvailabilityResponse>> checkUsernameAvailability(
+            @RequestParam String username
+    ) {
+        UsernameAvailabilityResponse response = userOnboardingService.checkUsernameAvailability(username);
+        return ResponseEntity.ok(ApiResponse.success("Kiểm tra username thành công", response));
     }
 
     @PutMapping
