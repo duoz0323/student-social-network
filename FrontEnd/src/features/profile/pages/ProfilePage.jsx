@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Ban, Flag, MoreHorizontal, Shield } from 'lucide-react';
+import { Ban, BookOpen, CalendarDays, Flag, GraduationCap, MoreHorizontal, Sparkles, Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
@@ -93,6 +93,83 @@ function ProfilePageSkeleton({ self, onBack }) {
         </div>
       </div>
     </ContentShell>
+  );
+}
+
+// Dùng chung cho hồ sơ của mình và hồ sơ người khác để toàn bộ thông tin công khai luôn hiển thị nhất quán.
+function ProfilePublicDetails({ profile, onOpenFollowers, onOpenFollowing }) {
+  const hasAcademic = Boolean(profile.school || profile.faculty || profile.major || profile.entryYear);
+  const schoolName = profile.school?.name || profile.school?.shortName;
+  const schoolShortName = profile.school?.shortName;
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-[var(--app-muted)]" aria-label="Thống kê theo dõi">
+        <button type="button" className="group inline-flex items-baseline gap-1.5" onClick={onOpenFollowers}>
+          <span className="text-[15px] font-bold tabular-nums text-[var(--app-text)]">{profile.followerCount}</span>
+          <span className="group-hover:underline">người theo dõi</span>
+        </button>
+        <button type="button" className="group inline-flex items-baseline gap-1.5" onClick={onOpenFollowing}>
+          <span className="text-[15px] font-bold tabular-nums text-[var(--app-text)]">{profile.followingCount}</span>
+          <span className="group-hover:underline">đang theo dõi</span>
+        </button>
+      </div>
+
+      {hasAcademic ? (
+        <section className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4" aria-labelledby="profile-education-title">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)]">
+              <GraduationCap size={21} strokeWidth={1.9} aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p id="profile-education-title" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--app-muted)]">Học vấn</p>
+              {schoolName ? (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-[15px] font-semibold leading-snug text-[var(--app-text)]">{schoolName}</p>
+                  {schoolShortName && schoolShortName !== schoolName ? (
+                    <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-0.5 text-[11px] font-semibold text-[var(--app-muted)]">
+                      {schoolShortName}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {profile.faculty || profile.major ? (
+                <div className="mt-2 flex items-start gap-2 text-[13px] leading-relaxed text-[var(--app-muted)]">
+                  <BookOpen size={15} className="mt-0.5 shrink-0" strokeWidth={1.9} aria-hidden="true" />
+                  <p>
+                    {[profile.faculty?.name, profile.major?.name].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+              ) : null}
+
+              {profile.entryYear ? (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--app-muted)]">
+                  <CalendarDays size={14} strokeWidth={1.9} aria-hidden="true" />
+                  Nhập học {profile.entryYear}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {profile.interests?.length ? (
+        <section aria-labelledby="profile-interests-title">
+          <div className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold text-[var(--app-text)]">
+            <Sparkles size={16} strokeWidth={1.9} aria-hidden="true" />
+            <h2 id="profile-interests-title">Sở thích</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {profile.interests.map((interest) => (
+              <span key={interest.id} className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1.5 text-[13px] leading-none text-[var(--app-text)]">
+                {interest.name}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
   );
 }
 
@@ -430,90 +507,11 @@ export default function ProfilePage({ self = false }) {
 
           <p className="mt-3 text-[15px] text-[var(--app-text)] leading-relaxed whitespace-pre-wrap">{profile.bio || 'Chưa có giới thiệu.'}</p>
 
-          {profile.school || profile.faculty || profile.major || profile.entryYear ? (
-            <div className="mt-4 space-y-1 text-[14px] text-[var(--app-muted)]">
-              {profile.school ? <p className="font-semibold text-[var(--app-text)]">{profile.school.shortName || profile.school.name}</p> : null}
-              {profile.faculty ? <p>{profile.faculty.name}</p> : null}
-              {profile.major ? <p>{profile.major.name}</p> : null}
-              {profile.entryYear ? <p>Khóa/Năm nhập học {profile.entryYear}</p> : null}
-            </div>
-          ) : null}
-
-          {profile.interests?.length ? (
-            <div className="mt-4 flex flex-wrap gap-2" aria-label="Sở thích">
-              {profile.interests.map((interest) => (
-                <span key={interest.id} className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1 text-[13px] text-[var(--app-text)]">
-                  {interest.name}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          
-          <div className="mt-4 flex items-center justify-between text-[15px] text-[var(--app-muted)]">
-            <div className="flex gap-4">
-              <button className="hover:underline flex gap-1.5" onClick={() => openFollowModal('followers')}>
-                <span className="font-semibold text-[var(--app-text)]">{profile.followerCount}</span> người theo dõi
-              </button>
-              <button className="hover:underline flex gap-1.5" onClick={() => openFollowModal('following')}>
-                <span className="font-semibold text-[var(--app-text)]">{profile.followingCount}</span> đang theo dõi
-              </button>
-            </div>
-            {!isSelf ? (
-              <div ref={profileOptionsRef} className="relative">
-                <button
-                  type="button"
-                  className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                    profileOptionsOpen
-                      ? 'border-[var(--app-text)] bg-[var(--app-surface-soft)]'
-                      : 'border-[var(--app-border-strong)] hover:bg-[var(--app-surface-soft)]'
-                  }`}
-                  aria-label="Tùy chọn tài khoản"
-                  aria-expanded={profileOptionsOpen}
-                  onClick={() => setProfileOptionsOpen((open) => !open)}
-                >
-                  <MoreHorizontal size={21} strokeWidth={2} />
-                </button>
-                {profileOptionsOpen ? (
-                  <div className="post-menu-dropdown !top-11 !z-50">
-                    {!profile.blockedByMe ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Đóng menu trước, modal Restrict độc lập vẫn được giữ tại cấp trang.
-                          setProfileOptionsOpen(false);
-                          setRestrictionConfirmOpen(true);
-                        }}
-                      >
-                        <span>{profile.restrictedByMe ? 'Bỏ hạn chế' : 'Hạn chế'}</span>
-                        <Shield size={16} strokeWidth={2} aria-hidden="true" />
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileOptionsOpen(false);
-                        setReportDialogOpen(true);
-                      }}
-                    >
-                      <span>Báo cáo</span>
-                      <Flag size={16} strokeWidth={2} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="danger-item"
-                      onClick={() => {
-                        setProfileOptionsOpen(false);
-                        setBlockConfirmOpen(true);
-                      }}
-                    >
-                      <span>Chặn</span>
-                      <Ban size={16} strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+          <ProfilePublicDetails
+            profile={profile}
+            onOpenFollowers={() => openFollowModal('followers')}
+            onOpenFollowing={() => openFollowModal('following')}
+          />
 
           <div className="mt-6">
             {isSelf ? (
@@ -539,6 +537,59 @@ export default function ProfilePage({ self = false }) {
                 >
                   {startingMessage ? 'Đang mở...' : 'Nhắn tin'}
                 </Button>
+                <div ref={profileOptionsRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+                      profileOptionsOpen
+                        ? 'border-[var(--app-text)] bg-[var(--app-surface-soft)]'
+                        : 'border-[var(--app-border-strong)] hover:bg-[var(--app-surface-soft)]'
+                    }`}
+                    aria-label="Tùy chọn tài khoản"
+                    aria-expanded={profileOptionsOpen}
+                    onClick={() => setProfileOptionsOpen((open) => !open)}
+                  >
+                    <MoreHorizontal size={21} strokeWidth={2} />
+                  </button>
+                  {profileOptionsOpen ? (
+                    <div className="post-menu-dropdown !top-11 !z-50">
+                      {!profile.blockedByMe ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Đóng menu trước, modal Restrict độc lập vẫn được giữ tại cấp trang.
+                            setProfileOptionsOpen(false);
+                            setRestrictionConfirmOpen(true);
+                          }}
+                        >
+                          <span>{profile.restrictedByMe ? 'Bỏ hạn chế' : 'Hạn chế'}</span>
+                          <Shield size={16} strokeWidth={2} aria-hidden="true" />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileOptionsOpen(false);
+                          setReportDialogOpen(true);
+                        }}
+                      >
+                        <span>Báo cáo</span>
+                        <Flag size={16} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-item"
+                        onClick={() => {
+                          setProfileOptionsOpen(false);
+                          setBlockConfirmOpen(true);
+                        }}
+                      >
+                        <span>Chặn</span>
+                        <Ban size={16} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>
