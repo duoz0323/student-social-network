@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../../assets/brand/logo-dark.jpg';
 import { isRequestCanceled } from '../../../api/apiError.js';
+import { socialApi } from '../../../api/index.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { onboardingService } from '../services/onboardingService.js';
+import { uploadSelectedOnboardingAvatar } from '../utils/onboardingAvatarUpload.js';
 import {
   todayIsoDate,
   calcAge,
