@@ -6,6 +6,7 @@ import java.time.LocalDate;
  * Response trạng thái onboarding của người dùng hiện tại, không trả dữ liệu xác thực nhạy cảm.
  */
 public record OnboardingStatusResponse(
+        String username,
         String displayName,
         String avatarUrl,
         LocalDate dateOfBirth,

@@ -71,6 +71,8 @@ Không bắt buộc tạo đầy đủ các thư mục trên nếu chưa dùng.
 - Không tạo user, JWT hoặc session giả trước thời điểm contract cho phép.
 - Provider credential chỉ được gửi qua Auth service và không được dùng cho API nghiệp vụ.
 - Route guard, recovery, cooldown, conflict, error và onboarding phải bao phủ các trạng thái README yêu cầu.
+- Với username onboarding: giữ `@` ở lớp trình bày, debounce availability, chống stale response, map lỗi submit vào field và hydrate hồ sơ legacy trước khi cho sửa.
+- Chỉ profile current/other hiển thị `@username` trong phạm vi hiện tại; route vẫn dùng `userId`, không tự mở rộng sang Post/Comment/Follow/Search.
 - Không lấy hành vi mock hoặc giao diện cũ làm nguồn nghiệp vụ.
 
 ## 6. Kiểm tra

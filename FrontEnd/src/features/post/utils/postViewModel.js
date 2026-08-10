@@ -48,7 +48,11 @@ export function toPostEditDraft(postDetail = {}) {
 }
 
 /** Tạo và sao chép permalink của bài viết tại một điểm duy nhất. */
-export function copyPostLink(postId) {
+export async function copyPostLink(postId) {
   const url = new URL(`/posts/${encodeURIComponent(postId)}`, window.location.origin).toString();
-  return navigator.clipboard?.writeText(url);
+  if (!navigator.clipboard?.writeText) {
+    throw new Error('Trình duyệt không hỗ trợ sao chép tự động.');
+  }
+  await navigator.clipboard.writeText(url);
+  return url;
 }

@@ -9,6 +9,8 @@
 - Kiểm tra hash-at-rest, expiry, revocation, replay, rate limit, concurrency và log redaction theo README.
 - Backend phải tự xác minh dữ liệu danh tính từ provider; không tin dữ liệu do Frontend tự khai báo.
 - Kiểm tra trạng thái tài khoản và trạng thái onboarding tại Backend cho mọi đường xác thực và API liên quan.
+- Trạng thái hoàn tất phải kiểm tra cả invariant username và `profile_completed_at`; không chỉ tin snapshot phía Frontend.
+- Availability username không được tiết lộ email, auth provider hoặc dữ liệu tài khoản khác; submit luôn kiểm tra lại để chống race condition.
 - Không dùng hành vi source cũ để nới lỏng yêu cầu bảo mật đã được README chốt.
 
 ## 2. Phân quyền

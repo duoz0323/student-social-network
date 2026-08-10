@@ -5,7 +5,7 @@
 ## 1. Tài khoản
 
 - Email duy nhất nếu có giá trị.
-- Không dùng username hoặc email công khai tương tự trong MVP.
+- Username chỉ được nhập trong onboarding, không thuộc request đăng ký và không thay `users.id` trong quan hệ nội bộ.
 - Đăng ký bằng đúng một phương thức email: email.
 - Form đăng ký chỉ gồm phương thức email, mật khẩu và xác nhận mật khẩu.
 - Request đăng ký chỉ nhận một giá trị email tại một thời điểm.
@@ -30,12 +30,13 @@
 - Email không hiển thị công khai.
 - Chỉ chủ tài khoản cập nhật hồ sơ.
 - Backend chỉ tạo `user_profiles` cùng `users` sau khi OTP hoặc social identity hợp lệ theo README.
-- `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
+- `user_profiles.username`, `user_profiles.display_name`, `user_profiles.date_of_birth` và `user_profiles.profile_completed_at` ban đầu phải `NULL` trong hồ sơ rỗng.
 - Tên hiển thị thuộc `user_profiles`, không thuộc `users`.
-- Tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ ban đầu.
+- Username duy nhất, tên hiển thị và ngày sinh bắt buộc để hoàn tất hồ sơ ban đầu.
+- Username dài 3–30 ký tự, chỉ gồm `a-z`, `0-9`, `_`, `.`, normalize lowercase và không lưu ký tự `@`.
 - Người dùng phải đủ 18 tuổi tại ngày Backend xử lý onboarding hoặc cập nhật hồ sơ.
-- Avatar và bio là tùy chọn; tên hiển thị và ngày sinh không được bỏ qua khi hoàn tất onboarding.
-- Hồ sơ chỉ hoàn tất khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
+- Avatar và bio là tùy chọn; username, tên hiển thị và ngày sinh không được bỏ qua khi hoàn tất onboarding.
+- Hồ sơ chỉ hoàn tất khi username duy nhất, tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, người dùng xác nhận hoàn tất và Backend cập nhật `profile_completed_at`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép API xác thực cần thiết, Refresh Token, đăng xuất và onboarding.
 - API mạng xã hội chính phải trả lỗi nghiệp vụ `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.

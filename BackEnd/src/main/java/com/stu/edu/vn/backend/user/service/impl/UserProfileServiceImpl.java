@@ -58,7 +58,7 @@ public class UserProfileServiceImpl implements UserProfileService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
         UserProfile profile = currentUserProfileProvider.getCurrentProfileForUpdate();
-        if (profile.getProfileCompletedAt() == null) {
+        if (!profile.isCompleted()) {
             throw new BusinessException(ErrorCode.PROFILE_NOT_COMPLETED);
         }
 
@@ -85,13 +85,14 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
         UserProfile profile = userProfileRepository.findById(profileUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
-        if (profile.getUser().getStatus() != UserStatus.ACTIVE || profile.getProfileCompletedAt() == null) {
+        if (profile.getUser().getStatus() != UserStatus.ACTIVE || !profile.isCompleted()) {
             // Không tiết lộ trạng thái khóa hoặc onboarding của tài khoản qua API hồ sơ công khai.
             throw new BusinessException(ErrorCode.PROFILE_NOT_FOUND);
         }
 
         return new UserProfileViewResponse(
                 profile.getUserId(),
+                profile.getUsername(),
                 profile.getDisplayName(),
                 profile.getAvatarUrl(),
                 // Ngày sinh chỉ cần cho chủ tài khoản chỉnh sửa, không trả ở hồ sơ người khác.

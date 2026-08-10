@@ -37,6 +37,38 @@ class UserProfileValidationSupportTest {
     }
 
     @Test
+    void normalizeAndValidateUsernameTrimsAndLowercasesValidValue() {
+        assertThat(validationSupport.normalizeAndValidateUsername("  DuOz_03  ")).isEqualTo("duoz_03");
+    }
+
+    @Test
+    void normalizeAndValidateUsernameRejectsInvalidFormats() {
+        for (String username : java.util.List.of(
+                "ab", "a".repeat(31), "duong 03", "@duoz_03", "hoàngduong")) {
+            assertThatThrownBy(() -> validationSupport.normalizeAndValidateUsername(username))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.USERNAME_INVALID);
+        }
+    }
+
+    @Test
+    void normalizeAndValidateUsernameRejectsMissingValue() {
+        assertThatThrownBy(() -> validationSupport.normalizeAndValidateUsername("   "))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USERNAME_REQUIRED);
+    }
+
+    @Test
+    void normalizeAndValidateUsernameRejectsReservedValueAfterNormalization() {
+        assertThatThrownBy(() -> validationSupport.normalizeAndValidateUsername(" ADMIN "))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USERNAME_RESERVED);
+    }
+
+    @Test
     void validateDateOfBirthAcceptsUserExactlyEighteenToday() {
         LocalDate dateOfBirth = validationSupport.validateDateOfBirth(LocalDate.of(2008, 7, 2));
 

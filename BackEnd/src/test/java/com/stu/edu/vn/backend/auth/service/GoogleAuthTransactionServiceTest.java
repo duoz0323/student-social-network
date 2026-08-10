@@ -68,6 +68,7 @@ class GoogleAuthTransactionServiceTest {
     void linkedProviderLogsInBySubjectWithoutLookingUpGoogleEmail() {
         User user = user(10L, "old-email@example.com");
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("google_user");
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         UserAuthProvider link = new UserAuthProvider(user, AuthProvider.GOOGLE, "google-sub", "old-email@example.com", true);
         when(providerRepository.findByProviderAndProviderUserIdForUpdate(AuthProvider.GOOGLE, "google-sub"))

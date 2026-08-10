@@ -34,6 +34,7 @@ Với màn hình Auth MVP:
 - Không tạo session hoặc user mock trước thời điểm contract cho phép.
 - Không lưu provider credential lâu dài hoặc dùng provider credential gọi API nghiệp vụ.
 - Route guard và xử lý lỗi phải bao phủ các trạng thái README quy định.
+- Username onboarding phải có state checking/available/exists/invalid/reserved, chống stale response và giữ dữ liệu legacy; `@` chỉ là prefix UI.
 
 ## Bước 3: Dựng bằng mock data
 

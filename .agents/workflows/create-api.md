@@ -23,6 +23,7 @@ Với API Auth MVP:
 - Mô hình hóa state transition, actor, authentication, authorization và error code cho từng nhánh.
 - Xác định rõ token nào được nhận, phát hành, lưu hash, thu hồi và được phép dùng ở endpoint nào.
 - Xác định transaction, external call, idempotency, concurrency và recovery trước khi thiết kế DTO.
+- Với username, ghi rõ availability không giữ chỗ; complete onboarding phải kiểm tra lại và map race unique thành lỗi nghiệp vụ ổn định.
 
 ## Bước 2: Xác định tầng
 

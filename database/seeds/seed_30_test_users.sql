@@ -92,6 +92,7 @@ INSERT INTO users (
 -- Ho so 01-27 va 30 da hoan tat; 28-29 giu rong de test PROFILE_NOT_COMPLETED.
 INSERT INTO user_profiles (
     user_id,
+    username,
     display_name,
     avatar_url,
     avatar_public_id,
@@ -103,6 +104,7 @@ INSERT INTO user_profiles (
 )
 SELECT
     u.id,
+    CASE WHEN p.profile_completed_at IS NULL THEN NULL ELSE SUBSTRING_INDEX(u.email, '@', 1) END,
     p.display_name,
     NULL,
     NULL,

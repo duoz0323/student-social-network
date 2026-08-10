@@ -63,15 +63,6 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
             <span>Chọn ảnh từ thiết bị</span>
           </SecondaryBtn>
         </div>
-
-        {/* Link bỏ qua bước này */}
-        <button
-          type="button"
-          onClick={onNext}
-          className="mt-3 text-sm font-medium text-zinc-600 hover:text-zinc-950 hover:underline transition-colors"
-        >
-          Bỏ qua bước này
-        </button>
       </div>
 
       {/* Hàng 2 nút dưới cùng: Quay lại + Tiếp tục theo đúng mockup */}

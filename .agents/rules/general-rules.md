@@ -22,6 +22,7 @@
 - Đọc các mục Auth, API, Security, Database và tiêu chí nghiệm thu trong README.
 - Kiểm tra đầy đủ vòng đời đăng ký, xác minh, social authentication, liên kết phương thức, JWT và onboarding theo README.
 - Không sao chép contract Auth vào rule này; test case và implementation phải được dẫn xuất từ README cùng tài liệu API đã đồng bộ.
+- Khi task liên quan username, phải tách đúng phạm vi: registration/login không nhận username; onboarding bắt buộc username; profile chỉ hiển thị `@username`; route và quan hệ nội bộ vẫn dùng `users.id`.
 
 ## 4. Nguyên tắc làm việc
 

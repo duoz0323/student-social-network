@@ -281,6 +281,7 @@ class AuthServiceImplTest {
         User user = new User("student@example.com", "bcrypt-hash");
         ReflectionTestUtils.setField(user, "id", 30L);
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("student_30");
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         String rawRefreshToken = "raw-refresh-token";
         String tokenHash = tokenHashService.sha256Hex(rawRefreshToken);

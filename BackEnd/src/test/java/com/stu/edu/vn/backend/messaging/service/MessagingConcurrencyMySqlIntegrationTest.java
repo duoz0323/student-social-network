@@ -57,8 +57,8 @@ class MessagingConcurrencyMySqlIntegrationTest {
                 "messaging-b-" + suffix + "@example.com");
         Long b = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class,
                 "messaging-b-" + suffix + "@example.com");
-        jdbc.update("INSERT INTO user_profiles(user_id,display_name,date_of_birth,profile_completed_at) VALUES (?, 'A', '2000-01-01', CURRENT_TIMESTAMP(6))", a);
-        jdbc.update("INSERT INTO user_profiles(user_id,display_name,date_of_birth,profile_completed_at) VALUES (?, 'B', '2000-01-01', CURRENT_TIMESTAMP(6))", b);
+        jdbc.update("INSERT INTO user_profiles(user_id,username,display_name,date_of_birth,profile_completed_at) VALUES (?, ?, 'A', '2000-01-01', CURRENT_TIMESTAMP(6))", a, "msg_" + a);
+        jdbc.update("INSERT INTO user_profiles(user_id,username,display_name,date_of_birth,profile_completed_at) VALUES (?, ?, 'B', '2000-01-01', CURRENT_TIMESTAMP(6))", b, "msg_" + b);
         // B Follow A là đúng hướng để A bắt đầu conversation với B.
         jdbc.update("INSERT INTO follows(follower_id,following_id) VALUES (?,?)", b, a);
         fixture = new Fixture(a, b);

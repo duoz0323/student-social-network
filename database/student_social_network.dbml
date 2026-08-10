@@ -601,6 +601,7 @@ Table user_auth_providers {
 
 Table user_profiles {
   user_id bigint [pk, not null, note: "UNSIGNED"]
+  username varchar(30)
   display_name varchar(100)
   avatar_url varchar(1000)
   avatar_public_id varchar(255)
@@ -611,10 +612,11 @@ Table user_profiles {
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
 
   Indexes {
+    (username) [unique, name: "uq_user_profiles_username"]
     (display_name) [name: "ftx_user_profiles_display_name"]
   }
 
-  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
+  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))"
 }
 
 Table users {

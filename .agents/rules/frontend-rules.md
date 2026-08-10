@@ -148,6 +148,9 @@ Form phải:
 - Không tạo user hoặc session giả trước thời điểm README/API contract cho phép.
 - Provider credential chỉ được chuyển tới Auth service phù hợp; không lưu lâu dài hoặc dùng cho API nghiệp vụ.
 - Validation phía Frontend phục vụ trải nghiệm; Backend vẫn là nơi quyết định cuối cùng.
+- Username onboarding không lưu `@` trong state/request; availability phải debounce, hủy hoặc bỏ qua response cũ và map lỗi Backend về đúng field.
+- Legacy user phải hydrate dữ liệu từ onboarding status trước khi submit để không ghi đè displayName, ngày sinh hoặc bio bằng rỗng.
+- Profile current/other tự thêm `@` khi render username; không đổi route `userId` và không mở rộng username sang Post/Comment/Follow ngoài phạm vi đã chốt.
 - Mọi màn hình phải xử lý loading, resend/cooldown, error, recovery, conflict và navigation theo contract đã đồng bộ.
 - Không sao chép danh sách field hoặc state Auth vào rule này; lấy chúng từ README và tài liệu API/UI tương ứng.
 

@@ -473,16 +473,16 @@ sequenceDiagram
 | Mục | Diễn giải |
 |---|---|
 | A | User thật nhưng chưa đủ hồ sơ chỉ dùng Auth/onboarding. |
-| B | Sau login/social/OTP, nhập display name, ngày sinh và thông tin tùy chọn. |
+| B | Sau login/social/OTP, nhập username duy nhất, display name, ngày sinh và thông tin tùy chọn. |
 | C | `routeGuards` → `OnboardingProfilePage` → onboarding service; hoàn tất gọi `AuthContext.updateProfileCompletion`. |
-| D | `GET/PUT /api/v1/users/me/onboarding` với JWT. |
+| D | `GET/PUT /api/v1/users/me/onboarding` và `GET .../username-availability` với JWT. |
 | E | `UserOnboardingController`. |
 | F | `UserOnboardingServiceImpl`. |
 | G | User/Profile repositories và avatar service nếu có. |
-| H | Đọc/ghi `user_profiles.profile_completed_at`. |
+| H | Đọc/ghi `user_profiles.username`, dữ liệu hồ sơ và `profile_completed_at`; username không lưu `@`. |
 | I | Trạng thái/profile đã hoàn tất. |
 | J | Snapshot đổi thành completed, chuyển `/onboarding/success` rồi home. |
-| K | Dưới 18 tuổi, thiếu field, token/session lỗi, `PROFILE_NOT_COMPLETED`. |
+| K | Dưới 18 tuổi, thiếu field, username invalid/reserved/duplicate/race, token/session lỗi, `PROFILE_NOT_COMPLETED`. |
 | L | Breakpoint: `ProfileCompletionRoute`, `OnboardingProfilePage`, `UserOnboardingServiceImpl.completeOnboarding`. |
 
 ```mermaid
@@ -494,9 +494,12 @@ sequenceDiagram
     participant DB as user_profiles
     Guard->>Guard: authenticated && !profileCompleted
     Guard->>Page: Redirect /onboarding/profile
-    Page->>C: PUT /users/me/onboarding
+    Page->>C: GET onboarding để hydrate legacy data
+    Page->>C: GET username-availability (debounce)
+    C-->>Page: available chỉ phục vụ UX
+    Page->>C: PUT /users/me/onboarding (username không có @)
     C->>S: completeOnboarding(currentUser)
-    S->>DB: Validate age + update profile_completed_at
+    S->>DB: Validate username/age + unique + update profile_completed_at
     C-->>Page: completed=true
     Page->>Guard: updateProfileCompletion(true)
     Guard->>Page: Cho phép home/feed
