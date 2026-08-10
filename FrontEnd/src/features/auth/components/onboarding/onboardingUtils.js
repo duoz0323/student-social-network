@@ -1,6 +1,37 @@
-// Tiện ích dùng chung cho các bước onboarding
+// Tiện ích dùng chung cho các bước onboarding.
 
-// Trả về ngày hôm nay dạng YYYY-MM-DD để giới hạn input date
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 30;
+
+const USERNAME_PATTERN = /^[a-z0-9._]+$/;
+
+// State và request không lưu ký tự @; Backend sẽ normalize và validate lại khi submit.
+export function normalizeUsernameInput(value) {
+  return String(value ?? '').replaceAll('@', '').toLowerCase();
+}
+
+export function getUsernameValidationMessage(username) {
+  if (!username) return 'Vui lòng nhập tên người dùng.';
+  if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
+    return 'Tên người dùng phải có từ 3 đến 30 ký tự.';
+  }
+  if (!USERNAME_PATTERN.test(username)) {
+    return 'Tên người dùng chỉ gồm chữ thường, số, dấu chấm và gạch dưới.';
+  }
+  return '';
+}
+
+export function mapUsernameErrorCode(code) {
+  const messages = {
+    USERNAME_REQUIRED: 'Vui lòng nhập tên người dùng.',
+    USERNAME_INVALID: 'Tên người dùng không đúng định dạng.',
+    USERNAME_ALREADY_EXISTS: 'Tên người dùng đã tồn tại.',
+    USERNAME_RESERVED: 'Tên người dùng này được dành riêng.',
+  };
+  return messages[code] ?? '';
+}
+
+// Trả về ngày hôm nay dạng YYYY-MM-DD để giới hạn input date.
 export function todayIsoDate() {
   const today = new Date();
   const year = today.getFullYear();
@@ -9,7 +40,7 @@ export function todayIsoDate() {
   return `${year}-${month}-${day}`;
 }
 
-// Tính tuổi chính xác từ ngày sinh (YYYY-MM-DD)
+// Tính tuổi chính xác từ ngày sinh dạng YYYY-MM-DD.
 export function calcAge(dateOfBirth) {
   const [birthYear, birthMonth, birthDay] = dateOfBirth.split('-').map(Number);
   const today = new Date();

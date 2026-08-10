@@ -27,6 +27,7 @@
 - Không để request từ Frontend quyết định danh tính hoặc quyền mà Backend phải xác minh.
 - Xác định rõ API public, API yêu cầu JWT và API bị giới hạn bởi onboarding.
 - Thiết kế test từ tiêu chí nghiệm thu trong README, không từ hành vi implementation cũ.
+- Contract username phải nêu rõ không có `@`, availability không bảo đảm giữ chỗ, error code required/invalid/reserved/already-exists và profile route vẫn dùng `userId`.
 
 ## 4. Response lỗi
 

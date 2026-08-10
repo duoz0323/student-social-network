@@ -48,7 +48,7 @@ Không được sử dụng chức năng mạng xã hội.
 
 - Đã đăng nhập.
 - Tài khoản ở trạng thái ACTIVE.
-- Hồ sơ đã hoàn tất, tức `user_profiles.profile_completed_at` khác `NULL`.
+- Hồ sơ đã hoàn tất, tức `user_profiles.profile_completed_at` khác `NULL` và profile có username.
 
 Được phép:
 
@@ -136,10 +136,11 @@ Tất cả hồ sơ công khai trong MVP.
 
 Hoàn tất hồ sơ ban đầu:
 
-- Tên hiển thị và ngày sinh là bắt buộc.
+- Username, tên hiển thị và ngày sinh là bắt buộc.
+- Username là định danh public duy nhất, dài 3–30 ký tự, chỉ gồm chữ ASCII thường, số, `_`, `.`, không lưu ký tự `@` và được normalize lowercase.
 - Người dùng phải đủ 18 tuổi tại ngày hoàn tất hoặc cập nhật hồ sơ.
 - Avatar và bio là tùy chọn.
-- Hồ sơ chỉ hoàn tất sau khi tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, sau đó người dùng xác nhận hoàn tất.
+- Hồ sơ chỉ hoàn tất sau khi username duy nhất, tên hiển thị hợp lệ và ngày sinh hợp lệ của người dùng đủ 18 tuổi đã được lưu, sau đó người dùng xác nhận hoàn tất.
 - Backend cập nhật `user_profiles.profile_completed_at` khi hoàn tất.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 

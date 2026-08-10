@@ -120,6 +120,7 @@ class AdminUserRepositoryIntegrationTest {
 
     private void saveProfile(User user, String displayName, boolean completed) {
         UserProfile profile = new UserProfile(user);
+        profile.setUsername(completed ? "admin_user_" + user.getId() : null);
         profile.setDisplayName(displayName);
         // Chỉ hồ sơ đã hoàn tất mới cần ngày sinh theo check constraint hiện hành.
         profile.setDateOfBirth(completed ? LocalDate.of(2000, 1, 1) : null);

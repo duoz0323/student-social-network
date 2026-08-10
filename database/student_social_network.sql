@@ -1017,6 +1017,7 @@ DROP TABLE IF EXISTS `user_profiles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_profiles` (
   `user_id` bigint unsigned NOT NULL,
+  `username` varchar(30) DEFAULT NULL,
   `display_name` varchar(100) DEFAULT NULL,
   `avatar_url` varchar(1000) DEFAULT NULL,
   `avatar_public_id` varchar(255) DEFAULT NULL,
@@ -1026,9 +1027,10 @@ CREATE TABLE `user_profiles` (
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`user_id`),
+  UNIQUE KEY `uq_user_profiles_username` (`username`),
   FULLTEXT KEY `ftx_user_profiles_display_name` (`display_name`),
   CONSTRAINT `fk_user_profiles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
-  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`display_name` is not null) and (`date_of_birth` is not null)))),
+  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))),
   CONSTRAINT `chk_user_profiles_completion_requires_birth_date` CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))),
   CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1413,6 +1415,7 @@ INSERT INTO users (
 
 INSERT INTO user_profiles (
     user_id,
+    username,
     display_name,
     avatar_url,
     avatar_public_id,
@@ -1422,14 +1425,14 @@ INSERT INTO user_profiles (
     created_at,
     updated_at
 ) VALUES
-    (1001, 'Admin Demo', NULL, NULL, 'Tài khoản quản trị demo', '1995-01-01', @seed_time, @seed_time, @seed_time),
-    (1002, 'Local Email Demo', NULL, NULL, NULL, '2000-02-02', @seed_time, @seed_time, @seed_time),
-    (1003, 'Local Student Demo', NULL, NULL, NULL, '2000-03-03', @seed_time, @seed_time, @seed_time),
-    (1004, 'Google Only Demo', NULL, NULL, NULL, '2000-04-04', @seed_time, @seed_time, @seed_time),
-    (1005, 'Facebook Only Demo', NULL, NULL, NULL, '2000-05-05', @seed_time, @seed_time, @seed_time),
-    (1006, 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
-    (1007, 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
-    (1008, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
+    (1001, 'admin_demo', 'Admin Demo', NULL, NULL, 'Tài khoản quản trị demo', '1995-01-01', @seed_time, @seed_time, @seed_time),
+    (1002, 'local_email_demo', 'Local Email Demo', NULL, NULL, NULL, '2000-02-02', @seed_time, @seed_time, @seed_time),
+    (1003, 'local_student_demo', 'Local Student Demo', NULL, NULL, NULL, '2000-03-03', @seed_time, @seed_time, @seed_time),
+    (1004, 'google_only_demo', 'Google Only Demo', NULL, NULL, NULL, '2000-04-04', @seed_time, @seed_time, @seed_time),
+    (1005, 'facebook_only_demo', 'Facebook Only Demo', NULL, NULL, NULL, '2000-05-05', @seed_time, @seed_time, @seed_time),
+    (1006, 'local_google_demo', 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
+    (1007, 'blocked_demo', 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
+    (1008, NULL, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
 
 INSERT INTO user_auth_providers (
     id,

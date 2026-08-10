@@ -145,6 +145,7 @@ class AdminReportRepositoryIntegrationTest {
 
     private void saveProfile(User user, String displayName) {
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("ar_" + user.getId());
         profile.setDisplayName(displayName);
         // Hồ sơ hoàn tất phải có ngày sinh để phản ánh đúng contract database.
         profile.setDateOfBirth(LocalDate.of(2000, 1, 1));

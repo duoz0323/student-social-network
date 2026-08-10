@@ -164,15 +164,17 @@ Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
 ## 11. Rebuild dev/demo
 
-Database hiện tại chỉ được giả định là dev/demo. Trước rebuild bắt buộc chạy `database/audit_auth_before_rebuild.sql`, lưu kết quả, backup và xác nhận không có dữ liệu thật cần bảo tồn.
+Chỉ rebuild khi đã xác nhận database đích là local/test, đã xem thống kê dữ liệu hiện có và đã tạo backup khi cần bảo tồn.
 
-File import được khuyến nghị là `database/student_social_network_full.sql`. File này tự drop và tạo lại database `student_social_network`, nạp toàn bộ schema hiện tại rồi nạp dữ liệu DEV/DEMO trong một lần import. Khi sử dụng phải đặt `APP_BOOTSTRAP_ADMIN_ENABLED=false`.
+File `database/student_social_network.sql` tự drop và tạo lại database `student_social_network`, nạp schema, trigger và dữ liệu demo tối thiểu. Sau đó có thể chạy `database/seeds/seed_1000_website_cases.sql` để thay dữ liệu tối thiểu bằng đúng 1.000 users, 1.000 posts có ảnh cùng các quan hệ phục vụ kiểm thử website. Khi sử dụng phải đặt `BOOTSTRAP_ADMIN_ENABLED=false`.
 
 ```bash
-mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network_full.sql
+mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
+mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/seeds/seed_1000_website_cases.sql
+mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/seeds/verify_1000_website_cases.sql
 ```
 
-Sau rebuild, chạy `database/audit_auth_after_rebuild.sql` và integration/concurrency test bằng MySQL/Testcontainers. Hai file `student_social_network_db.sql` và `seed_data.sql` vẫn là nguồn thành phần để bảo trì schema và seed; người dùng thông thường không cần import riêng từng file.
+Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.
 
 Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc rebuild database thật.
 

@@ -31,6 +31,7 @@ export const AUTH_ENDPOINTS = Object.freeze({
 
 export const USER_ENDPOINTS = Object.freeze({
   onboarding: USER_ONBOARDING_BASE,
+  usernameAvailability: `${USER_ONBOARDING_BASE}/username-availability`,
   profile: '/api/v1/users/me/profile',
   publicProfile: (userId) => `/api/v1/users/${encodeURIComponent(userId)}`,
   avatar: '/api/v1/users/me/avatar',

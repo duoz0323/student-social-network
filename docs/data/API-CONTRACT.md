@@ -855,6 +855,7 @@ Response 200:
 ```json
 {
   "profileCompleted": false,
+  "username": null,
   "displayName": null,
   "avatarUrl": null,
   "dateOfBirth": null,
@@ -862,12 +863,26 @@ Response 200:
 }
 ```
 
+### GET `/api/v1/users/me/onboarding/username-availability?username=duoz_03`
+
+Response 200 trả username đã normalize và trạng thái khả dụng trong response envelope chung:
+
+```json
+{
+  "username": "duoz_03",
+  "available": true
+}
+```
+
+API này chỉ phục vụ UX; `PUT` onboarding luôn kiểm tra lại và unique constraint database là hàng rào cuối cùng.
+
 ### PUT `/api/v1/users/me/onboarding`
 
 Request:
 
 ```json
 {
+  "username": "duoz_03",
   "displayName": "Nguyễn Hoàng Minh",
   "dateOfBirth": "2000-01-01",
   "bio": null
@@ -876,12 +891,14 @@ Request:
 
 Quy tắc:
 
-- `displayName` và `dateOfBirth` bắt buộc để hoàn tất hồ sơ.
+- `username`, `displayName` và `dateOfBirth` bắt buộc để hoàn tất hồ sơ.
+- Username được trim, normalize lowercase, dài 3–30 ký tự, chỉ gồm `a-z`, `0-9`, `_`, `.`, không chứa `@` và không thuộc danh sách reserved.
+- Username trùng trả `USERNAME_ALREADY_EXISTS`, kể cả khi hai request cạnh tranh sau lần kiểm tra availability.
 - `bio` là tùy chọn; avatar được quản lý qua API multipart riêng.
 - `dateOfBirth` không được nằm trong tương lai và người dùng phải đủ 18 tuổi tại ngày Backend xử lý.
 - API này vừa lưu dữ liệu hợp lệ vừa cập nhật `profile_completed_at` trong cùng transaction.
 - `users.status = ACTIVE` không đồng nghĩa hồ sơ đã hoàn tất.
-- API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` khi `profile_completed_at` còn `NULL`.
+- API mạng xã hội chính phải trả lỗi `PROFILE_NOT_COMPLETED` khi `profile_completed_at` còn `NULL` hoặc username chưa có.
 
 Ví dụ lỗi:
 
@@ -895,6 +912,8 @@ Ví dụ lỗi:
 ```
 
 ### GET `/api/v1/users/{userId}`
+
+Response hồ sơ trả `username` đã normalize, không kèm ký tự `@`; Frontend tự thêm `@` khi hiển thị.
 
 ### PUT `/api/v1/users/me/profile`
 

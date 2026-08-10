@@ -29,9 +29,9 @@ export default function AdminToastProvider({ children }) {
   return (
     <AdminToastContext.Provider value={contextValue}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-4 z-[100] flex flex-col items-end gap-2 sm:right-6 sm:top-5">
+      <div className="pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 sm:bottom-6">
         {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto animate-[admin-toast-in_180ms_ease-out]">
+          <div key={toast.id} className="pointer-events-auto">
             <Toast
               message={toast.message}
               type={toast.type}

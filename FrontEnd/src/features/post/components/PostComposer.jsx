@@ -39,7 +39,7 @@ function readVideoDuration(url) {
 }
 
 export default function PostComposer({ mode, onClose }) {
-  const { createPost, currentUser } = useApp();
+  const { createPost, currentUser, showToast } = useApp();
   const [content, setContent] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [mediaPreviews, setMediaPreviews] = useState([]);
@@ -98,6 +98,7 @@ export default function PostComposer({ mode, onClose }) {
       // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.
       resetForm();
       onClose();
+      showToast('Đã đăng bài viết.');
     } finally {
       submitInFlightRef.current = false;
       setIsSubmitting(false);

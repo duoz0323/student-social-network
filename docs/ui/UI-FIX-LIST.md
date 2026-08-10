@@ -230,11 +230,11 @@ Không đưa vào `UI-DEMO.html` và Frontend MVP hiện tại:
 
 ---
 
-## UI-008 - Loại bỏ username khỏi MVP
+## UI-008 - Giới hạn phạm vi username trong MVP
 
 ### Hiện trạng
 
-Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặc chuỗi dạng `@...`.
+Username đã được đưa vào onboarding và hồ sơ; các ảnh Stitch cũ có thể mô tả username ở module ngoài phạm vi hiện tại.
 
 ### Kết quả mong muốn
 
@@ -242,14 +242,15 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 - Đăng ký không nhập tên hiển thị.
 - Đăng nhập không dùng username.
 - Search không tìm theo username.
-- Profile và PostCard hiển thị displayName.
+- Onboarding bắt buộc username duy nhất; profile hiển thị displayName và `@username`.
+- PostCard, Comment và Follow UI chưa hiển thị username trong phạm vi hiện tại.
 - Quan hệ dữ liệu dùng userId.
-- Không tạo trường thay thế như handle, userSlug hoặc publicUsername.
+- Không dùng username làm route và không tạo trường thay thế như handle, userSlug hoặc publicUsername.
 
 ### Ghi chú onboarding
 
 - Sau đăng ký phải chuyển người dùng đến onboarding hồ sơ.
-- Onboarding yêu cầu tên hiển thị và ngày sinh; người dùng phải đủ 18 tuổi; avatar và bio có thể bỏ qua.
+- Onboarding yêu cầu username, tên hiển thị và ngày sinh; người dùng phải đủ 18 tuổi; avatar và bio có thể bỏ qua.
 - Người chưa hoàn tất hồ sơ không được vào Feed hoặc các chức năng mạng xã hội chính.
 
 ### Trạng thái
@@ -303,7 +304,7 @@ Một số ảnh Stitch và tài liệu cũ còn dùng tên người dùng hoặ
 - Người dùng chọn tài khoản từ danh sách gợi ý.
 - Lưu liên kết bằng `mentionedUserId`.
 - Khi nhấn mention, điều hướng `/profile/:userId`.
-- Không dùng `@username`.
+- Mention chưa dùng `@username`; username chỉ hiển thị ở profile trong phạm vi hiện tại.
 - Không dùng displayName làm khóa liên kết.
 
 ### Trạng thái

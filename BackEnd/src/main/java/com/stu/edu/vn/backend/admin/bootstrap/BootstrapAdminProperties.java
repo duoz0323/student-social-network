@@ -12,6 +12,7 @@ public class BootstrapAdminProperties {
     private boolean enabled;
     private String email;
     private String password;
+    private String username = "system_admin";
     private String displayName = "Quản trị viên";
     private LocalDate dateOfBirth = LocalDate.of(2000, 1, 1);
 
@@ -37,6 +38,14 @@ public class BootstrapAdminProperties {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getDisplayName() {

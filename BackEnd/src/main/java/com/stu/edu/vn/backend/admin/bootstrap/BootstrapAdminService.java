@@ -26,6 +26,7 @@ public class BootstrapAdminService {
     private static final int MAX_PASSWORD_LENGTH = 72;
     private static final int MIN_DISPLAY_NAME_LENGTH = 2;
     private static final int MAX_DISPLAY_NAME_LENGTH = 100;
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9._]{3,30}$");
     private static final int MINIMUM_AGE = 18;
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$"
@@ -59,6 +60,7 @@ public class BootstrapAdminService {
 
         String normalizedEmail = normalizeAndValidateEmail(properties.getEmail());
         String password = validatePassword(properties.getPassword());
+        String username = normalizeAndValidateUsername(properties.getUsername());
         String displayName = normalizeAndValidateDisplayName(properties.getDisplayName());
         LocalDate dateOfBirth = validateDateOfBirth(properties.getDateOfBirth());
 
@@ -76,6 +78,7 @@ public class BootstrapAdminService {
         User savedAdmin = userRepository.saveAndFlush(admin);
 
         UserProfile profile = new UserProfile(savedAdmin);
+        profile.setUsername(username);
         profile.setDisplayName(displayName);
         profile.setAvatarUrl(null);
         profile.setAvatarPublicId(null);
@@ -113,6 +116,14 @@ public class BootstrapAdminService {
             throw invalidConfiguration("BOOTSTRAP_ADMIN_DISPLAY_NAME");
         }
         return displayName;
+    }
+
+    private String normalizeAndValidateUsername(String rawUsername) {
+        String username = rawUsername == null ? "" : rawUsername.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!USERNAME_PATTERN.matcher(username).matches()) {
+            throw invalidConfiguration("BOOTSTRAP_ADMIN_USERNAME");
+        }
+        return username;
     }
 
     private LocalDate validateDateOfBirth(LocalDate dateOfBirth) {

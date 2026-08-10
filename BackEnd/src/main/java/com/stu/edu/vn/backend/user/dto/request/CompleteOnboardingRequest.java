@@ -6,6 +6,7 @@ import java.time.LocalDate;
  * Request hoàn tất hồ sơ ban đầu; không nhận userId hay avatar để tránh Client cập nhật sai chủ sở hữu.
  */
 public record CompleteOnboardingRequest(
+        String username,
         String displayName,
         LocalDate dateOfBirth,
         String bio

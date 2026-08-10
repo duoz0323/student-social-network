@@ -7,6 +7,7 @@ import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,10 +97,14 @@ class NotificationMarkAllReadMySqlIntegrationTest {
     }
 
     private User saveCompletedUser(String prefix) {
-        User user = userRepository.saveAndFlush(
-                new User(prefix + "-" + UUID.randomUUID() + "@example.com", "hash"));
+        User user = new User(prefix + "-" + UUID.randomUUID() + "@example.com", "hash");
+        // Tài khoản local có mật khẩu phải xác minh email trước khi lưu theo constraint Auth.
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        user = userRepository.saveAndFlush(user);
         UserProfile profile = new UserProfile(user);
+        profile.setUsername("nt_" + user.getId());
         profile.setDisplayName(prefix);
+        profile.setDateOfBirth(LocalDate.of(2000, 1, 1));
         profile.setProfileCompletedAt(LocalDateTime.now());
         userProfileRepository.saveAndFlush(profile);
         userIds.add(user.getId());

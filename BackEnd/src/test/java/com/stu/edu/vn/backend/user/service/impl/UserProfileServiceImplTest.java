@@ -67,8 +67,10 @@ class UserProfileServiceImplTest {
         when(profile.getUser()).thenReturn(user);
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(profile.getUserId()).thenReturn(10L);
+        when(profile.getUsername()).thenReturn("nguyenvana");
         when(profile.getDisplayName()).thenReturn("Nguyễn Văn A");
         when(profile.getProfileCompletedAt()).thenReturn(LocalDateTime.now(clock));
+        when(profile.isCompleted()).thenReturn(true);
         when(followRepository.countByIdFollowingId(10L)).thenReturn(4L);
         when(followRepository.countByIdFollowerId(10L)).thenReturn(3L);
 
@@ -112,6 +114,7 @@ class UserProfileServiceImplTest {
     @Test
     void updateProfileUsesMapperAndKeepsCompletionState() {
         UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
+        profile.setUsername("nguyenvanb");
         profile.setProfileCompletedAt(LocalDateTime.now(clock).minusDays(1));
         when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
 

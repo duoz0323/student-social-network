@@ -189,7 +189,7 @@ public class SocialAuthenticationTransactionService {
         UserProfile profile = profileRepository.findById(user.getId()).orElseThrow(() -> new BusinessException(
                 provider == AuthProvider.FACEBOOK ? ErrorCode.AUTH_FACEBOOK_AUTHENTICATION_FAILED : ErrorCode.AUTH_GOOGLE_AUTHENTICATION_FAILED));
         IssuedRefreshToken refresh = refreshTokenIssuer.issue(user, deviceId, deviceInfo, ipAddress);
-        boolean completed = profile.getProfileCompletedAt() != null;
+        boolean completed = profile.isCompleted();
         return sessionResult(user, provider, refresh, completed);
     }
 

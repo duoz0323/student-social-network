@@ -41,12 +41,12 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `AuthMethodList` | Hiển thị các phương thức đăng nhập và điều phối link/unlink. | AUTH-METHOD-01. | `methods`, `loading`, `onLink`, `onUnlink`. | Module security/auth; UI last-method guard chỉ hỗ trợ UX, Backend quyết định cuối. |
 | `LinkLocalMethodForm` | Khởi tạo challenge link email riêng trước khi chuyển sang OTP. | AUTH-METHOD-02. | `methodType`, `email`, `submitting`, `onInitiate`. | Module security/auth; không dùng pending registration. |
 | `ReauthenticationDialog` | Thu thập proof cho thao tác bảo mật nhạy cảm như unlink. | AUTH-REAUTH-01. | `availableMethods`, `selectedMethod`, `submitting`, `onReauthenticate`. | Module security/auth; token ngắn hạn không lưu localStorage. |
-| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; tên hiển thị và ngày sinh bắt buộc, ngày sinh phải cho thấy người dùng đủ 18 tuổi; avatar và bio có thể bỏ qua. | Module auth/profile. |
+| `OnboardingProfilePage` | Page quản lý ba bước hoàn tất hồ sơ sau đăng ký. | AUTH-03, AUTH-04, AUTH-05. | State nội bộ gồm `username`, `displayName`, `avatarUrl`, `dateOfBirth`, `bio`; hydrate status cho legacy user; username availability debounce/chống stale; username, tên hiển thị và ngày sinh bắt buộc. | Module auth/profile; `@` chỉ là prefix UI, Backend validate cuối. |
 | `OnboardingProgress` | Chỉ báo bước onboarding 1/3, 2/3, 3/3 nếu tách riêng khi cần. | AUTH-03 đến AUTH-05. | `currentStep`, `totalSteps`. | Module auth, tùy chọn. |
 | `OnboardingSuccessPage` | Màn hình xác nhận tài khoản và hồ sơ đã sẵn sàng sau khi `profileCompletedAt` được cập nhật. | AUTH-06. | Nút chính giữ phiên đăng nhập và điều hướng `/feed/for-you`. | Module auth/profile. |
 | `PasswordResetCodeForm` | Nhập mã xác minh đặt lại mật khẩu. | AUTH-P2-02. | `email`, `codeLength`, `submitting`, `onSubmit`, `onResend`. | Module auth, đã tích hợp với Password Recovery API. |
 | `SetPasswordForm` | Nhập mật khẩu mới và xác nhận. | AUTH-P2-03. | `errors`, `submitting`, `onSubmit`. | Module auth, đã tích hợp với Password Recovery API. |
-| `RouteGuard` | Phân loại khách, user chưa hoàn tất hồ sơ và user đã hoàn tất hồ sơ. | Router Auth/Onboarding/User/Admin. | `currentUser.status`, `currentUser.profile.profileCompletedAt`, `role`. | Router. |
+| `RouteGuard` | Phân loại khách, user chưa hoàn tất hồ sơ và user đã hoàn tất hồ sơ. | Router Auth/Onboarding/User/Admin. | Auth snapshot `profileCompleted`, trạng thái account và `role`; Backend kiểm tra invariant username + completion. | Router. |
 | `Toast` hoặc inline message | Hiển thị lỗi form và thông báo nghiệp vụ. | AUTH-01, AUTH-02, OTP, Social conflict, Onboarding. | `message`, `type`. | Có thể dùng inline trong MVP. |
 
 `AuthFlowContext`/`useAuthFlow` có thể giữ flow token trong memory và đồng bộ có kiểm soát với `sessionStorage`; tuyệt đối không dùng `localStorage`, query parameter hoặc props xuyên nhiều tầng. Mọi request flow token dùng header thống nhất `X-Auth-Flow-Token`. Response chứa token phải được xử lý theo `Cache-Control: no-store`. Không đặt gọi API trực tiếp trong component trình bày.
@@ -74,8 +74,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 
 | Component | Trách nhiệm | Màn hình sử dụng | Dữ liệu/props dự kiến | Phạm vi |
 |---|---|---|---|---|
-| `ProfileHeader` | Hiển thị thông tin hồ sơ, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `userId` hoặc `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`. | Module profile. |
-| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh bắt buộc. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`. Không nhận username; không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi. | Module profile. |
+| `ProfileHeader` | Hiển thị displayName, `@username`, avatar, thống kê và nút hành động. | PROFILE-01, PROFILE-02. | `userId` hoặc `profile`, `isSelf`, `isFollowing`, `onFollowToggle`, `onEditProfile`; Backend trả username không có `@`. | Module profile; route vẫn dùng `userId`. |
+| `EditProfileModal` | Cập nhật avatar, tên hiển thị, bio và ngày sinh bắt buộc; username chỉ đọc. | PROFILE-03. | `profile`, `errors`, `submitting`, `onSave`; không cho xóa ngày sinh hoặc lưu khi người dùng chưa đủ 18 tuổi. | Module profile; chưa hỗ trợ đổi username. |
 | `ProfileTabs` | Chuyển nhóm nội dung trong hồ sơ. | PROFILE-01, PROFILE-02. | `activeTab`, `tabs`, `onChange`. | Module profile. |
 | `FollowListModal` | Danh sách follower/following có thao tác theo dõi. | PROFILE-04. | `type`, `users`, `pagination`, `currentUser`, `onFollowToggle`, `onOpenProfile(userId)`. | Module follow/profile. |
 | `FollowButton` | Theo dõi hoặc bỏ theo dõi. | PROFILE-02, PROFILE-04, SEARCH-01. | `isFollowing`, `loading`, `onClick`. | Dùng chung profile/search. |

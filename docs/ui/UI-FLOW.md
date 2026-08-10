@@ -18,10 +18,10 @@ AUTH-02 Đăng ký
 → Có thể resend sau cooldown hoặc recovery pending
 → OTP hợp lệ mới tạo user, profile và session JWT hệ thống
 → /onboarding/profile
-→ AUTH-03 Onboarding bước 1: nhập tên hiển thị bắt buộc
+→ AUTH-03 Onboarding bước 1: nhập tên hiển thị và username bắt buộc; kiểm tra username availability
 → AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
 → AUTH-05 Onboarding bước 3: nhập ngày sinh bắt buộc, kiểm tra đủ 18 tuổi; bio có thể bỏ qua
-→ Cập nhật profileCompletedAt
+→ PUT onboarding kiểm tra lại username và cập nhật profileCompletedAt
 → AUTH-06 /onboarding/success
 → Hiển thị tạo tài khoản thành công
 → Người dùng chọn Vào trang chủ
@@ -45,7 +45,7 @@ Bấm nút Google hoặc Facebook
 
 Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Email social trùng user `ACTIVE` chưa link provider không được tự link hay tạo user thứ hai. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
 
-Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Login và refresh không trả lỗi này.
+Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Frontend tải lại dữ liệu onboarding hiện có để legacy user chỉ bổ sung username mà không mất displayName, ngày sinh hoặc bio. Login và refresh không trả lỗi này.
 
 ### 1.2 Đăng nhập
 

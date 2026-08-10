@@ -111,10 +111,10 @@ class UserEngagementAnalyticsRepositoryMySqlIntegrationTest {
         Long id = jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
         jdbcTemplate.update("""
                 INSERT INTO user_profiles (
-                    user_id, display_name, date_of_birth, profile_completed_at, created_at, updated_at
-                ) VALUES (?, ?, '2000-01-01', '2026-01-01 00:00:00',
+                    user_id, username, display_name, date_of_birth, profile_completed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, '2000-01-01', '2026-01-01 00:00:00',
                           '2026-01-01 00:00:00', '2026-01-01 00:00:00')
-                """, id, label);
+                """, id, "analytics_" + id, label);
         return id;
     }
 

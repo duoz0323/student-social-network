@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../../assets/brand/logo-dark.jpg';
-import { socialApi } from '../../../api/index.js';
+import { isRequestCanceled } from '../../../api/apiError.js';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import { onboardingService } from '../services/onboardingService.js';
-import { uploadSelectedOnboardingAvatar } from '../utils/onboardingAvatarUpload.js';
-import { todayIsoDate, calcAge } from '../components/onboarding/onboardingUtils.js';
+import {
+  todayIsoDate,
+  calcAge,
+  getUsernameValidationMessage,
+  mapUsernameErrorCode,
+  normalizeUsernameInput,
+} from '../components/onboarding/onboardingUtils.js';
 import { StepIndicator } from '../components/onboarding/OnboardingShared.jsx';
 import OnboardingStep1Name from '../components/onboarding/OnboardingStep1Name.jsx';
 import OnboardingStep2Avatar from '../components/onboarding/OnboardingStep2Avatar.jsx';
@@ -91,19 +96,106 @@ export default function OnboardingProfilePage() {
   // State form chia sẻ giữa cả 3 bước
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    displayName: currentUser?.profile?.displayName ?? '',
-    avatarUrl: currentUser?.profile?.avatarUrl ?? '',
-    avatarFile: null,
-    dateOfBirth: currentUser?.profile?.dateOfBirth ?? '',
-    bio: currentUser?.profile?.bio ?? '',
+    username: '',
+    displayName: currentUser?.displayName ?? '',
+    avatarUrl: currentUser?.avatarUrl ?? '',
+    dateOfBirth: currentUser?.birthDate ?? '',
+    bio: currentUser?.bio ?? '',
   });
   const [error, setError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [availabilityStatus, setAvailabilityStatus] = useState('idle');
+  const [isHydrating, setIsHydrating] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const availabilityRequestRef = useRef(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    onboardingService.getStatus(controller.signal)
+      .then((status) => {
+        // GET onboarding là nguồn dữ liệu cho legacy user, tránh ghi đè displayName/dateOfBirth/bio bằng rỗng.
+        setForm({
+          username: status.username ?? '',
+          displayName: status.displayName ?? '',
+          avatarUrl: status.avatarUrl ?? '',
+          dateOfBirth: status.dateOfBirth ?? '',
+          bio: status.bio ?? '',
+        });
+        const hydratedUsernameError = getUsernameValidationMessage(status.username ?? '');
+        setAvailabilityStatus(status.username
+          ? (hydratedUsernameError ? 'invalid' : 'checking')
+          : 'idle');
+        setError('');
+      })
+      .catch((requestError) => {
+        if (!isRequestCanceled(requestError)) {
+          setError(requestError.message || 'Không thể tải dữ liệu hồ sơ hiện tại. Vui lòng thử lại.');
+        }
+      })
+      .finally(() => setIsHydrating(false));
+    return () => controller.abort();
+  }, []);
+
+  const localUsernameError = useMemo(
+    () => getUsernameValidationMessage(form.username),
+    [form.username],
+  );
+
+  useEffect(() => {
+    const requestId = availabilityRequestRef.current + 1;
+    availabilityRequestRef.current = requestId;
+
+    if (!form.username) {
+      return undefined;
+    }
+    if (localUsernameError) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const result = await onboardingService.checkUsernameAvailability(form.username, controller.signal);
+        if (availabilityRequestRef.current !== requestId) return;
+        setAvailabilityStatus(result.available ? 'available' : 'exists');
+        setUsernameError(result.available ? '' : mapUsernameErrorCode('USERNAME_ALREADY_EXISTS'));
+      } catch (requestError) {
+        if (isRequestCanceled(requestError) || availabilityRequestRef.current !== requestId) return;
+        const mappedError = mapUsernameErrorCode(requestError.code);
+        setAvailabilityStatus(
+          requestError.code === 'USERNAME_RESERVED' ? 'reserved'
+            : requestError.code === 'USERNAME_ALREADY_EXISTS' ? 'exists'
+              : requestError.code === 'USERNAME_INVALID' || requestError.code === 'USERNAME_REQUIRED' ? 'invalid'
+                : 'error',
+        );
+        setUsernameError(mappedError);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [form.username, localUsernameError]);
+
+  const canContinue = form.displayName.trim().length >= 2
+    && !localUsernameError
+    && availabilityStatus === 'available';
+  const dateIsValid = Boolean(form.dateOfBirth)
+    && form.dateOfBirth <= todayIsoDate()
+    && calcAge(form.dateOfBirth) >= 18;
+  const canFinish = canContinue && dateIsValid;
 
   // Helper: cập nhật một field, xóa lỗi hiện tại
   function setField(field) {
     return (value) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
+      const nextValue = field === 'username' ? normalizeUsernameInput(value) : value;
+      setForm((prev) => ({ ...prev, [field]: nextValue }));
+      if (field === 'username') {
+        setUsernameError('');
+        const nextUsernameError = getUsernameValidationMessage(nextValue);
+        setAvailabilityStatus(nextValue ? (nextUsernameError ? 'invalid' : 'checking') : 'idle');
+      }
       setError('');
     };
   }
@@ -123,6 +215,14 @@ export default function OnboardingProfilePage() {
       setError('Tên hiển thị phải có ít nhất 2 ký tự.');
       return;
     }
+    if (localUsernameError) {
+      setUsernameError(localUsernameError);
+      return;
+    }
+    if (availabilityStatus !== 'available') {
+      setUsernameError('Vui lòng chọn tên người dùng có thể sử dụng.');
+      return;
+    }
     setError('');
     setStep(2);
   }
@@ -135,7 +235,7 @@ export default function OnboardingProfilePage() {
 
   // ── Validate bước 3: ngày sinh bắt buộc + ≥18 tuổi ──
   async function handleFinish() {
-    if (isSubmitting) return;
+    if (isSubmitting || !canFinish) return;
     if (!form.dateOfBirth) {
       setError('Ngày sinh là bắt buộc để hoàn tất hồ sơ.');
       return;
@@ -169,7 +269,18 @@ export default function OnboardingProfilePage() {
         state: { onboardingJustCompleted: true },
       });
     } catch (submitError) {
-      setError(submitError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+      const mappedUsernameError = mapUsernameErrorCode(submitError.code);
+      if (mappedUsernameError) {
+        // Availability chỉ hỗ trợ UX; lỗi submit, kể cả race unique, luôn quay về đúng field.
+        setUsernameError(mappedUsernameError);
+        setAvailabilityStatus(
+          submitError.code === 'USERNAME_RESERVED' ? 'reserved'
+            : submitError.code === 'USERNAME_ALREADY_EXISTS' ? 'exists' : 'invalid',
+        );
+        setStep(1);
+      } else {
+        setError(submitError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -271,13 +382,25 @@ export default function OnboardingProfilePage() {
 
             {/* Nội dung form theo bước */}
             <div className="mt-10">
+              {isHydrating ? (
+                <div className="py-12 text-center" role="status" aria-live="polite">
+                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-[3px] border-zinc-200 border-t-zinc-900" />
+                  <p className="mt-4 text-sm text-zinc-500">Đang tải thông tin hồ sơ...</p>
+                </div>
+              ) : (
+                <>
               {/* Bước 1 – Tên hiển thị */}
               {step === 1 && (
                 <OnboardingStep1Name
                   displayName={form.displayName}
-                  onChange={setField('displayName')}
+                  username={form.username}
+                  onDisplayNameChange={setField('displayName')}
+                  onUsernameChange={setField('username')}
                   onNext={handleNextFromStep1}
                   error={error}
+                  usernameError={usernameError}
+                  availabilityStatus={availabilityStatus}
+                  canContinue={canContinue}
                 />
               )}
 
@@ -303,7 +426,10 @@ export default function OnboardingProfilePage() {
                   onBack={goBack}
                   error={error}
                   isSubmitting={isSubmitting}
+                  canFinish={canFinish}
                 />
+              )}
+                </>
               )}
             </div>
           </div>

@@ -64,7 +64,6 @@ export default function OnboardingStep2Avatar({ avatarUrl, onAvatarChange, onNex
             <span>Chọn ảnh từ thiết bị</span>
           </SecondaryBtn>
         </div>
-
       </div>
 
       {/* Hàng 2 nút dưới cùng: Quay lại + Tiếp tục theo đúng mockup */}

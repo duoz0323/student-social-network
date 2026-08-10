@@ -53,14 +53,16 @@ Challenge liên kết email không dùng `pending_registrations`. User đích lu
 ```text
 Onboarding Page
 → GET /api/v1/users/me/onboarding
-→ Nhập tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
-→ Backend kiểm tra ngày sinh hợp lệ và người dùng đủ 18 tuổi
+→ Hydrate username/displayName/dateOfBirth/bio hiện có cho cả legacy user
+→ Nhập username, tên hiển thị và ngày sinh bắt buộc, avatar/bio tùy chọn
+→ GET username-availability hỗ trợ UX; Frontend debounce và bỏ response cũ
 → PUT /api/v1/users/me/onboarding
-→ Backend cập nhật user_profiles.profile_completed_at
+→ Backend kiểm tra lại username format/reserved/unique, ngày sinh và tuổi tối thiểu
+→ Backend lưu username không có @ và cập nhật user_profiles.profile_completed_at
 → Frontend cho phép vào Feed
 ```
 
-Nếu `profile_completed_at` còn `NULL`, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding. Login và refresh vẫn được phép, không trả lỗi này.
+Nếu `profile_completed_at` còn `NULL` hoặc profile thiếu username, các API mạng xã hội chính trả `PROFILE_NOT_COMPLETED` và Frontend điều hướng về onboarding. Login và refresh vẫn được phép, không trả lỗi này. Migration legacy chỉ reset completion, không xóa displayName, ngày sinh, bio hoặc avatar hiện có.
 
 ## 5. Đăng nhập local
 

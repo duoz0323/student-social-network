@@ -44,6 +44,8 @@ Không đặt enum của một module vào package chung. Chỉ dùng `common/en
 - Xác định transaction boundary, concurrency control, idempotency, dữ liệu nhạy cảm và rollback cho từng luồng.
 - Không dùng endpoint, DTO hoặc hành vi Auth cũ làm chuẩn khi khác README.
 - Không sao chép nghiệp vụ Auth vào rule này; mọi validation và state transition phải truy ngược được tới README hoặc API contract đã đồng bộ.
+- Với username onboarding, normalize/format/reserved/unique phải do Service kiểm tra lại khi submit; availability không thay thế validation cuối hoặc unique constraint database.
+- Response onboarding/profile trả username không có `@`; không dùng username thay `users.id` để phân quyền, liên kết hoặc route nội bộ.
 
 ## 4. Controller
 

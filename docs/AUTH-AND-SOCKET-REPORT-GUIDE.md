@@ -27,7 +27,7 @@ Hệ thống dùng kiến trúc ReactJS → REST API Spring Boot → MySQL. Auth
 
 Đăng ký email không tạo user ngay. Backend chỉ tạo `pending_registrations`, trong đó mật khẩu đã được BCrypt, OTP và flow token chỉ lưu dạng HMAC hash. Khi OTP hợp lệ, Backend khóa bản ghi pending và trong một transaction tạo `users`, `user_profiles`, Refresh Token, chuyển pending sang `COMPLETED`; sau đó cấp JWT Access Token.
 
-Access Token là JWT ngắn hạn dùng gọi API. Refresh Token dài hạn hơn, DB chỉ lưu hash và token được rotate khi refresh. Logout thu hồi Refresh Token hiện tại. Tài khoản `ACTIVE` nhưng chưa có `profile_completed_at` vẫn chưa được dùng chức năng mạng xã hội.
+Access Token là JWT ngắn hạn dùng gọi API. Refresh Token dài hạn hơn, DB chỉ lưu hash và token được rotate khi refresh. Logout thu hồi Refresh Token hiện tại. Tài khoản `ACTIVE` nhưng chưa có username hoặc `profile_completed_at` vẫn chưa được dùng chức năng mạng xã hội.
 
 Realtime dùng một native WebSocket/STOMP connection duy nhất trên mỗi tab tại `/ws`. JWT được gửi ở STOMP `CONNECT`, không nằm trong URL. Frontend subscribe hai user queue: `/user/queue/notifications` và `/user/queue/messaging`. Gửi tin nhắn, đánh dấu đã đọc và mọi dữ liệu bền vững vẫn đi bằng REST; Socket chỉ nhận event sau khi transaction MySQL đã commit. Riêng typing indicator là dữ liệu tạm thời nên được phép gửi STOMP đến `/app/messaging/typing`, không lưu database.
 
@@ -292,7 +292,7 @@ Frontend gửi Refresh Token tới `/auth/logout`. Backend hash, lock và set `r
 
 ### 4.6 Onboarding và quyền truy cập
 
-`users.status = ACTIVE` chỉ có nghĩa account không bị Admin khóa. Quyền dùng mạng xã hội phụ thuộc thêm `user_profiles.profile_completed_at`.
+`users.status = ACTIVE` chỉ có nghĩa account không bị Admin khóa. Quyền dùng mạng xã hội phụ thuộc thêm username hợp lệ và `user_profiles.profile_completed_at`. Username được nhập ở onboarding, lưu lowercase không có `@`; availability chỉ hỗ trợ UX và Backend kiểm tra lại khi complete.
 
 ```text
 JWT hợp lệ

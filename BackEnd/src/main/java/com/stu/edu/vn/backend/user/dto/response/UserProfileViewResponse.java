@@ -7,6 +7,7 @@ import java.time.LocalDate;
  */
 public record UserProfileViewResponse(
         Long userId,
+        String username,
         String displayName,
         String avatarUrl,
         LocalDate dateOfBirth,

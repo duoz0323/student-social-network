@@ -74,7 +74,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfile profile = userProfileRepository.findById(user.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_LOGIN_FAILED));
-        boolean profileCompleted = profile.getProfileCompletedAt() != null;
+        boolean profileCompleted = profile.isCompleted();
         IssuedRefreshToken refreshToken = issueRefreshToken(user, request, ipAddress);
         String accessToken = generateAccessToken(user);
 
@@ -142,7 +142,7 @@ public class AuthServiceImpl implements AuthService {
                 RefreshTokenResponse.BEARER_TOKEN_TYPE,
                 accessTokenExpiresInSeconds(),
                 newRefreshToken.expiresInSeconds(),
-                profile.getProfileCompletedAt() != null
+                profile.isCompleted()
         );
     }
 

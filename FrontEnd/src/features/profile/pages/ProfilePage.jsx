@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Ban, Flag, MoreHorizontal } from 'lucide-react';
+import { Ban, MoreHorizontal, Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
@@ -104,7 +104,7 @@ export default function ProfilePage({ self = false }) {
   const [unfollowTarget, setUnfollowTarget] = useState(null);
   const [followPendingId, setFollowPendingId] = useState(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [restrictionConfirmOpen, setRestrictionConfirmOpen] = useState(false);
   const [startingMessage, setStartingMessage] = useState(false);
 
   async function handleMessageClick() {
@@ -210,8 +210,8 @@ export default function ProfilePage({ self = false }) {
   const isSelf = String(profile.id) === String(currentUserId);
   const isFollowing = profile.followedByCurrentUser;
 
-  // Hồ sơ công khai chỉ hiển thị tên hiển thị, không suy diễn username từ email hoặc userId.
-  const handle = profile.displayName;
+  // Backend trả username không có @; prefix chỉ được thêm tại lớp trình bày.
+  const handle = profile.username ? `@${profile.username}` : '';
 
   function openEdit() {
     setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl, dateOfBirth: profile.birthDate ?? '' });
@@ -379,7 +379,7 @@ export default function ProfilePage({ self = false }) {
             </svg>
           </button>
         )}
-        <h2 className="text-[17px] font-bold text-[var(--app-text)]">{!isSelf ? handle.replace('@', '') : profile.displayName}</h2>
+        <h2 className="text-[17px] font-bold text-[var(--app-text)]">{profile.displayName}</h2>
       </div>
       <div className="flex items-center gap-4 text-[var(--app-text)]">
         <button aria-label="Tìm kiếm" onClick={() => navigate('/search')}>
@@ -396,7 +396,7 @@ export default function ProfilePage({ self = false }) {
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
               <h1 className="text-2xl font-bold text-[var(--app-text)]">{profile.displayName}</h1>
-              <p className="text-[15px] text-[var(--app-muted)] mt-0.5">{handle}</p>
+              {handle ? <p className="mt-0.5 text-[15px] text-[var(--app-muted)]">{handle}</p> : null}
             </div>
             <div className="shrink-0">
               <Avatar src={profile.avatarUrl} name={profile.displayName} size="lg" viewable className="!w-[84px] !h-[84px] text-3xl" />
@@ -431,14 +431,19 @@ export default function ProfilePage({ self = false }) {
                 </button>
                 {profileOptionsOpen ? (
                   <div className="post-menu-dropdown !top-11 !z-50">
-                    <UserRestrictionAction
-                      userId={profile.id}
-                      displayName={profile.displayName}
-                      initialRestricted={profile.restrictedByMe}
-                      blocked={profile.blockedByMe}
-                      onTrigger={() => setProfileOptionsOpen(false)}
-                      onChanged={(restrictedByMe) => setProfile((current) => ({ ...current, restrictedByMe }))}
-                    />
+                    {!profile.blockedByMe ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Đóng menu trước, modal Restrict độc lập vẫn được giữ tại cấp trang.
+                          setProfileOptionsOpen(false);
+                          setRestrictionConfirmOpen(true);
+                        }}
+                      >
+                        <span>{profile.restrictedByMe ? 'Bỏ hạn chế' : 'Hạn chế'}</span>
+                        <Shield size={16} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -555,6 +560,15 @@ export default function ProfilePage({ self = false }) {
         </div>
       </ContentShell>
 
+      <UserRestrictionAction
+        open={restrictionConfirmOpen}
+        userId={profile.id}
+        displayName={profile.displayName}
+        restricted={profile.restrictedByMe}
+        onClose={() => setRestrictionConfirmOpen(false)}
+        onChanged={(restrictedByMe) => setProfile((current) => ({ ...current, restrictedByMe }))}
+      />
+
       <Modal
         open={blockConfirmOpen}
         title="Chặn người dùng này?"
@@ -639,7 +653,7 @@ export default function ProfilePage({ self = false }) {
           <label className="text-[15px] font-semibold text-[var(--app-text)] mb-1.5 block">Tên người dùng</label>
           <input 
             className="w-full rounded-xl border border-transparent bg-[var(--app-surface-soft)] text-[var(--app-muted)] px-3.5 py-3 text-[15px] outline-none cursor-not-allowed" 
-            value={handle.replace('@', '')} 
+            value={profile.username ?? ''}
             disabled 
           />
           <p className="text-[var(--app-muted)] text-[13px] mt-1.5">Tên người dùng hiện chưa thể chỉnh sửa</p>

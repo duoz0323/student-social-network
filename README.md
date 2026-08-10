@@ -240,13 +240,16 @@ Quy tắc:
 #### Hoàn tất hồ sơ ban đầu
 
 - Sau khi tài khoản thật được tạo, Frontend điều hướng đến onboarding.
-- Tên hiển thị và ngày sinh là thông tin bắt buộc.
+- Username, tên hiển thị và ngày sinh là thông tin bắt buộc.
+- Username là định danh public duy nhất, dài 3–30 ký tự, chỉ gồm `a-z`, `0-9`, `_`, `.`, được trim và chuẩn hóa lowercase trước khi lưu; ký tự `@` chỉ do Frontend thêm khi hiển thị.
 - Người dùng phải đủ 18 tuổi tại thời điểm Backend xử lý.
 - Ảnh đại diện và giới thiệu cá nhân là tùy chọn.
-- Hồ sơ chỉ được đánh dấu hoàn tất khi dữ liệu bắt buộc hợp lệ và người dùng xác nhận.
+- Hồ sơ chỉ được đánh dấu hoàn tất khi username, tên hiển thị và ngày sinh hợp lệ, đồng thời người dùng xác nhận.
 - Trạng thái hoàn tất được lưu tại `user_profiles.profile_completed_at`.
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa.
 - Khi `profile_completed_at` còn `NULL`, Backend chỉ cho phép các API xác thực, token, đăng xuất và onboarding.
+
+Trạng thái feature username: Backend và Frontend `IMPLEMENTED`; unit test, lint và build `TESTED`. Manual local đã xác minh availability, validation, race-condition, legacy hydration và hiển thị profile current/other. Chưa đánh dấu `INTEGRATED` cho toàn bộ feature cho đến khi hoàn tất manual E2E đăng ký local qua OTP và tạo user mới bằng Google/Facebook với credential thật.
 - Các API mạng xã hội chính trả lỗi `PROFILE_NOT_COMPLETED` nếu hồ sơ chưa hoàn tất.
 
 ### 👤 2. Hồ sơ người dùng
@@ -263,6 +266,7 @@ Quy tắc:
 - Xem danh sách bài viết đã đăng.
 
 Tất cả hồ sơ trong MVP đều công khai. Email và dữ liệu xác thực không được trả trong API hồ sơ công khai.
+Username được trả không kèm ký tự `@`, không được trùng giữa các hồ sơ và không được dùng thay `users.id` trong quan hệ nội bộ.
 
 ### 👥 3. Theo dõi người dùng
 
@@ -815,10 +819,12 @@ student-social-network/
 │   └── pom.xml
 │
 ├── database/
-│   ├── student_social_network_full.sql
-│   ├── student_social_network_db.sql
-│   ├── student_social_network_db.dbml
-│   └── seed_data.sql
+│   ├── student_social_network.sql
+│   ├── student_social_network.dbml
+│   ├── migrations/
+│   ├── seeds/
+│   │   └── seed_1000_website_cases.sql
+│   └── triggers/
 │
 ├── docs/
 │   ├── api/
@@ -1066,6 +1072,14 @@ Các API trên yêu cầu JWT, luôn lấy người thực hiện từ Security 
 /api/v1/admin
 ```
 
+API onboarding và kiểm tra username:
+
+```http
+GET /api/v1/users/me/onboarding
+GET /api/v1/users/me/onboarding/username-availability?username=duoz_03
+PUT /api/v1/users/me/onboarding
+```
+
 API Repost đã triển khai:
 
 ```http
@@ -1168,16 +1182,22 @@ cd student-social-network
 
 ### 3. Khởi tạo cơ sở dữ liệu
 
-File `student_social_network_full.sql` tự động drop database test hiện tại, tạo lại schema và nạp dữ liệu demo. Từ Command Prompt hoặc Git Bash:
+File `student_social_network.sql` tự động drop database test hiện tại, tạo lại schema và nạp dữ liệu demo tối thiểu. Từ Command Prompt hoặc Git Bash:
 
 ```bash
-mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network_full.sql
+mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
 ```
 
 Từ PowerShell:
 
 ```powershell
-cmd /c "mysql --default-character-set=utf8mb4 -u root -p < database\student_social_network_full.sql"
+cmd /c "mysql --default-character-set=utf8mb4 -u root -p < database\student_social_network.sql"
+```
+
+Để thay dữ liệu demo tối thiểu bằng bộ dữ liệu kiểm thử website gồm đúng 1.000 users và 1.000 posts có từ 1–4 ảnh:
+
+```powershell
+cmd /c "mysql --default-character-set=utf8mb4 -u root -p student_social_network < database\seeds\seed_1000_website_cases.sql"
 ```
 
 ### 4. Cấu hình Backend
@@ -1298,7 +1318,7 @@ npm run preview
 
 ### Hồ sơ và chức năng mạng xã hội
 
-16. Người dùng hoàn tất onboarding hợp lệ trước khi truy cập chức năng chính.
+16. Người dùng hoàn tất onboarding bằng username duy nhất, tên hiển thị và ngày sinh hợp lệ trước khi truy cập chức năng chính.
 17. Người dùng cập nhật và xem hồ sơ thành công.
 18. Follow và Unfollow hoạt động đúng, không tạo quan hệ trùng.
 18a. Block hoạt động idempotent, xóa Follow hai chiều; Unblock không khôi phục Follow.

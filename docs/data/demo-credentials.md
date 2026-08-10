@@ -1,34 +1,30 @@
 # Tài khoản demo
 
-## Người dùng
+Bộ dữ liệu được tạo bởi `database/seeds/seed_1000_website_cases.sql`.
 
-- Email: `minh.demo@example.com`
-- Email: chưa bổ sung trong tài khoản demo này
-- Password mô phỏng: `DemoUser123!`
-- Role: `USER`
-- Status: `ACTIVE`
+## Mật khẩu dùng chung
 
-## Admin
+- Các tài khoản local dùng mật khẩu test: `TestUser01@2026`.
+- Chỉ dùng cho local/test; không dùng credential này trong production.
 
-- Email: chưa bổ sung trong tài khoản demo này
-- Email: `+84907654321`
-- Password mô phỏng: `DemoAdmin123!`
-- Role: `ADMIN`
-- Status: `ACTIVE`
+## Tài khoản chính
 
-## Tài khoản bị khóa
+| Trường hợp | Email | Username | Trạng thái |
+| --- | --- | --- | --- |
+| Admin | `demo.user0001@example.test` | `student_0001` | `ADMIN / ACTIVE` |
+| User thường | `demo.user0002@example.test` | `student_0002` | `USER / ACTIVE` |
+| Local + Google | `demo.user0005@example.test` | `student_0005` | `USER / ACTIVE` |
+| User bị khóa | `demo.user0006@example.test` | `student_0006` | `USER / BLOCKED` |
+| Chưa onboarding | `demo.user0991@example.test` | `NULL` | `USER / ACTIVE` |
 
-- Email: `blocked.demo@example.com`
-- Email: `+84909998877`
-- Password mô phỏng: `DemoBlocked123!`
-- Role: `USER`
-- Status: `BLOCKED`
+## Tài khoản social-only
 
-## Lưu ý
+- `demo.user0003@example.test`: Google-only, không có mật khẩu local.
+- `demo.user0004@example.test`: Facebook-only, không có mật khẩu local.
 
-- Chỉ dùng cho demo.
-- Không dùng trong production.
-- Không lưu password thật.
-- Không lưu token thật.
-- Tài khoản demo có thể có email là `null` để phản ánh request đăng ký MVP chỉ dùng một phương thức email.
+## Quy luật dữ liệu
 
+- Email từ `demo.user0001@example.test` đến `demo.user1000@example.test`.
+- Username từ `student_0001` đến `student_0990`.
+- User 991–1000 chưa hoàn tất onboarding và chưa có username.
+- User 6 và các user có ID chia hết cho 100 ở trạng thái `BLOCKED`.

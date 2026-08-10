@@ -47,6 +47,7 @@ class UserProfileControllerTest {
     private UserProfileViewResponse profile(Long userId, boolean followed) {
         return new UserProfileViewResponse(
                 userId,
+                "nguyenvana",
                 "Nguyễn Văn A",
                 null,
                 LocalDate.of(2000, 1, 1),
