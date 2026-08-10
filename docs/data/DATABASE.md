@@ -174,11 +174,10 @@ Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
 Chỉ rebuild khi đã xác nhận database đích là local/test, đã xem thống kê dữ liệu hiện có và đã tạo backup khi cần bảo tồn.
 
-File `database/student_social_network.sql` tự drop và tạo lại database `student_social_network`, nạp schema, trigger và dữ liệu demo tối thiểu. Sau đó có thể chạy `database/seeds/seed_1000_website_cases.sql` để thay dữ liệu tối thiểu bằng đúng 1.000 users, 1.000 posts có ảnh cùng các quan hệ phục vụ kiểm thử website. Khi sử dụng phải đặt `BOOTSTRAP_ADMIN_ENABLED=false`.
+File `database/student_social_network.sql` là file import duy nhất: tự drop và tạo lại database `student_social_network`, nạp đầy đủ schema, trigger, đúng 1.000 users, 1.000 posts có ảnh cùng các quan hệ phục vụ kiểm thử website. Khi sử dụng phải đặt `BOOTSTRAP_ADMIN_ENABLED=false`.
 
 ```bash
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
-mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/seeds/seed_1000_website_cases.sql
 ```
 
 Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.

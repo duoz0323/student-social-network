@@ -1454,24 +1454,6 @@ BEGIN
 END;;
 DELIMITER ;
 
-
--- DEV/DEMO SEED DATA
-
--- Seed Auth DEV/DEMO sau khi rebuild database.
--- Không chạy trên môi trường có dữ liệu cần bảo tồn.
--- File cố ý không idempotent: chạy lần hai phải lỗi unique/primary key thay vì tạo Admin trùng.
--- Khi dùng file này phải đặt APP_BOOTSTRAP_ADMIN_ENABLED=false.
-
-SET NAMES utf8mb4;
-SET time_zone = '+00:00';
-
-START TRANSACTION;
-
--- BCrypt cost 10 cho mật khẩu demo DEV: Demo@12345
--- Không sử dụng credential này ngoài môi trường local/demo.
-SET @demo_password_hash = '$2a$10$OZDWQo86Ao3A2cbcPxTzUOhaV4At2WuPcQMXK6xSRCfdVVnzSsXAy';
-SET @seed_time = '2026-07-19 03:00:00.000000';
-
 -- Master data Academic DEV/DEMO; không phải danh mục chính thức hoặc đầy đủ của Việt Nam.
 INSERT INTO schools (id, name, short_name, status) VALUES
     (1, 'Trường Đại học Công Nghệ Sài Gòn', 'STU', 'ACTIVE'),
@@ -1512,320 +1494,646 @@ INSERT INTO interest_categories (id, name, status) VALUES
     (13, 'Tình nguyện', 'ACTIVE'), (14, 'Nghiên cứu khoa học', 'ACTIVE'),
     (15, 'Kỹ năng mềm', 'ACTIVE'), (16, 'Cơ hội thực tập', 'ACTIVE');
 
-INSERT INTO users (
-    id,
-    email,
-    email_verified_at,
-    password_hash,
-    role,
-    status,
-    blocked_at,
-    blocked_reason,
-    created_at,
-    updated_at
-) VALUES
-    (1001, 'admin.demo@example.test', @seed_time, @demo_password_hash, 'ADMIN', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1002, 'local.email@example.test', @seed_time, @demo_password_hash, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1003, 'local.student@example.test', @seed_time, @demo_password_hash, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1004, NULL, NULL, NULL, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1005, NULL, NULL, NULL, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1006, 'local.google@example.test', @seed_time, @demo_password_hash, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time),
-    (1007, 'blocked.demo@example.test', @seed_time, @demo_password_hash, 'USER', 'BLOCKED', @seed_time, 'Tài khoản demo dùng để kiểm thử BLOCKED', @seed_time, @seed_time),
-    (1008, 'onboarding.pending@example.test', @seed_time, @demo_password_hash, 'USER', 'ACTIVE', NULL, NULL, @seed_time, @seed_time);
 
-INSERT INTO user_profiles (
-    user_id,
-    username,
-    display_name,
-    avatar_url,
-    avatar_public_id,
-    bio,
-    date_of_birth,
-    profile_completed_at,
-    created_at,
-    updated_at
-) VALUES
-    (1001, 'admin_demo', 'Admin Demo', NULL, NULL, 'Tài khoản quản trị demo', '1995-01-01', @seed_time, @seed_time, @seed_time),
-    (1002, 'local_email_demo', 'Local Email Demo', NULL, NULL, NULL, '2000-02-02', @seed_time, @seed_time, @seed_time),
-    (1003, 'local_student_demo', 'Local Student Demo', NULL, NULL, NULL, '2000-03-03', @seed_time, @seed_time, @seed_time),
-    (1004, 'google_only_demo', 'Google Only Demo', NULL, NULL, NULL, '2000-04-04', @seed_time, @seed_time, @seed_time),
-    (1005, 'facebook_only_demo', 'Facebook Only Demo', NULL, NULL, NULL, '2000-05-05', @seed_time, @seed_time, @seed_time),
-    (1006, 'local_google_demo', 'Local Google Demo', NULL, NULL, NULL, '2000-06-06', @seed_time, @seed_time, @seed_time),
-    (1007, 'blocked_demo', 'Blocked Demo', NULL, NULL, NULL, '2000-07-07', @seed_time, @seed_time, @seed_time),
-    (1008, NULL, NULL, NULL, NULL, NULL, NULL, NULL, @seed_time, @seed_time);
+-- =============================================================================
+-- CANONICAL DEMO DATASET: EXACTLY 1,000 USERS AND 1,000 POSTS
+-- This section is embedded so another machine only imports this one SQL file.
+-- =============================================================================
+-- =============================================================================
+-- SEED 1.000 USER VA 1.000 POST CHO MOI TRUONG LOCAL/TEST
+-- =============================================================================
+-- Chi chay tren database student_social_network dung cho local/test.
+-- Script xoa toan bo du lieu nghiep vu hien co, giu nguyen schema va trigger.
+-- Tat ca tai khoan local dung chung mat khau test: TestUser01@2026
+-- Anh demo dung URL seed on dinh cua Lorem Picsum, khong luu file dang BLOB.
 
-UPDATE user_profiles
-SET school_id = 1, faculty_id = 1, major_id = 1, entry_year = 2022
-WHERE user_id IN (1002, 1003, 1006);
+USE `student_social_network`;
+SET NAMES utf8mb4;
+SET time_zone = '+07:00';
 
-INSERT INTO user_interests (user_id, interest_id) VALUES
-    (1002, 1), (1002, 8), (1002, 13),
-    (1003, 1), (1003, 3), (1003, 11),
-    (1006, 1), (1006, 2), (1006, 16);
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE `media_cleanup_tasks`;
+TRUNCATE TABLE `message_attachments`;
+TRUNCATE TABLE `conversation_members`;
+TRUNCATE TABLE `messages`;
+TRUNCATE TABLE `conversations`;
+TRUNCATE TABLE `notifications`;
+TRUNCATE TABLE `admin_actions`;
+TRUNCATE TABLE `account_status_histories`;
+TRUNCATE TABLE `reports`;
+TRUNCATE TABLE `moderation_cases`;
+TRUNCATE TABLE `saved_posts`;
+TRUNCATE TABLE `post_reposts`;
+TRUNCATE TABLE `comments`;
+TRUNCATE TABLE `post_likes`;
+TRUNCATE TABLE `post_hashtags`;
+TRUNCATE TABLE `hashtags`;
+TRUNCATE TABLE `post_media`;
+TRUNCATE TABLE `posts`;
+TRUNCATE TABLE `locations`;
+TRUNCATE TABLE `user_restrictions`;
+TRUNCATE TABLE `user_blocks`;
+TRUNCATE TABLE `follows`;
+TRUNCATE TABLE `user_daily_activities`;
+TRUNCATE TABLE `password_reset_tokens`;
+TRUNCATE TABLE `password_recovery_challenges`;
+TRUNCATE TABLE `reauthentication_challenges`;
+TRUNCATE TABLE `social_auth_challenges`;
+TRUNCATE TABLE `auth_method_link_challenges`;
+TRUNCATE TABLE `pending_registrations`;
+TRUNCATE TABLE `refresh_tokens`;
+TRUNCATE TABLE `user_auth_providers`;
+TRUNCATE TABLE `user_interests`;
+TRUNCATE TABLE `user_profiles`;
+TRUNCATE TABLE `users`;
+SET FOREIGN_KEY_CHECKS = 1;
 
-INSERT INTO user_auth_providers (
-    id,
-    user_id,
-    provider,
-    provider_user_id,
-    provider_email,
-    provider_email_verified,
-    created_at,
-    updated_at
-) VALUES
-    (2001, 1004, 'GOOGLE', 'demo-google-only-1004', 'google.only@example.test', 1, @seed_time, @seed_time),
-    (2002, 1005, 'FACEBOOK', 'demo-facebook-only-1005', NULL, NULL, @seed_time, @seed_time),
-    (2003, 1006, 'GOOGLE', 'demo-local-google-1006', 'local.google@example.test', 1, @seed_time, @seed_time);
+INSERT INTO `locations`
+    (`google_place_id`, `display_name`, `formatted_address`, `latitude`, `longitude`)
+VALUES
+    ('demo-hcmute', 'Trường Đại học Sư phạm Kỹ thuật TP.HCM', '1 Võ Văn Ngân, Thủ Đức, TP.HCM', 10.8506000, 106.7719000),
+    ('demo-uit', 'Trường Đại học Công nghệ Thông tin', 'Khu phố 6, Thủ Đức, TP.HCM', 10.8700000, 106.8030000),
+    ('demo-vnuhcm', 'Đại học Quốc gia TP.HCM', 'Linh Trung, Thủ Đức, TP.HCM', 10.8799000, 106.8033000),
+    ('demo-book-street', 'Đường sách Nguyễn Văn Bình', 'Quận 1, TP.HCM', 10.7802000, 106.7005000),
+    ('demo-youth-house', 'Nhà Văn hóa Thanh niên', '4 Phạm Ngọc Thạch, Quận 1, TP.HCM', 10.7831000, 106.6959000),
+    ('demo-library', 'Thư viện Khoa học Tổng hợp', '69 Lý Tự Trọng, Quận 1, TP.HCM', 10.7757000, 106.6990000),
+    ('demo-independence', 'Dinh Độc Lập', '135 Nam Kỳ Khởi Nghĩa, Quận 1, TP.HCM', 10.7770000, 106.6953000),
+    ('demo-central-park', 'Công viên Trung tâm', 'Bình Thạnh, TP.HCM', 10.7944000, 106.7218000),
+    ('demo-dormitory-a', 'Ký túc xá Khu A', 'Đông Hòa, Dĩ An, Bình Dương', 10.8778000, 106.8002000),
+    ('demo-dormitory-b', 'Ký túc xá Khu B', 'Đông Hòa, Dĩ An, Bình Dương', 10.8831000, 106.7827000),
+    ('demo-cafe-study', 'Không gian học tập cộng đồng', 'Thủ Đức, TP.HCM', 10.8498000, 106.7711000),
+    ('demo-stadium', 'Sân vận động sinh viên', 'Thủ Đức, TP.HCM', 10.8752000, 106.8011000);
 
--- Hồ sơ demo có avatar công khai để các màn hình Feed, Search, Follow và Comment hiển thị sát dữ liệu thật.
-UPDATE user_profiles SET
-    avatar_url = CASE user_id
-        WHEN 1001 THEN 'https://i.pravatar.cc/300?img=12'
-        WHEN 1002 THEN 'https://i.pravatar.cc/300?img=32'
-        WHEN 1003 THEN 'https://i.pravatar.cc/300?img=47'
-        WHEN 1004 THEN 'https://i.pravatar.cc/300?img=15'
-        WHEN 1005 THEN 'https://i.pravatar.cc/300?img=25'
-        WHEN 1006 THEN 'https://i.pravatar.cc/300?img=53'
-        ELSE avatar_url
-    END,
-    avatar_public_id = CASE WHEN user_id BETWEEN 1001 AND 1006 THEN CONCAT('demo/avatar-', user_id) ELSE avatar_public_id END,
-    bio = CASE user_id
-        WHEN 1002 THEN 'Sinh viên yêu thích nhiếp ảnh và các hoạt động trong trường.'
-        WHEN 1003 THEN 'Chia sẻ tài liệu, kinh nghiệm học tập và cuộc sống sinh viên.'
-        WHEN 1004 THEN 'Thích công nghệ, cà phê và khám phá những góc đẹp trong khuôn viên.'
-        WHEN 1005 THEN 'Quan tâm cơ hội thực tập, kỹ năng nghề nghiệp và thiết kế.'
-        WHEN 1006 THEN 'Lập trình viên tập sự, đang học Spring Boot và React.'
-        ELSE bio
-    END
-WHERE user_id BETWEEN 1001 AND 1006;
+INSERT INTO `hashtags` (`normalized_name`, `display_name`) VALUES
+    ('hoc tap', 'Học tập'),
+    ('cong nghe', 'Công nghệ'),
+    ('do an', 'Đồ án'),
+    ('thuc tap', 'Thực tập'),
+    ('viec lam', 'Việc làm'),
+    ('an uong', 'Ăn uống'),
+    ('du lich', 'Du lịch'),
+    ('the thao', 'Thể thao'),
+    ('am nhac', 'Âm nhạc'),
+    ('nhiep anh', 'Nhiếp ảnh'),
+    ('tinh nguyen', 'Tình nguyện'),
+    ('doi song sinh vien', 'Đời sống sinh viên');
 
-INSERT INTO follows (follower_id, following_id, created_at) VALUES
-    (1002, 1003, '2026-07-20 01:00:00.000000'),
-    (1002, 1004, '2026-07-20 01:05:00.000000'),
-    (1003, 1002, '2026-07-20 01:10:00.000000'),
-    (1003, 1006, '2026-07-20 01:15:00.000000'),
-    (1004, 1002, '2026-07-20 01:20:00.000000'),
-    (1005, 1002, '2026-07-20 01:25:00.000000'),
-    (1006, 1003, '2026-07-20 01:30:00.000000');
+DROP PROCEDURE IF EXISTS `seed_website_cases`;
+DELIMITER $$
+CREATE PROCEDURE `seed_website_cases`()
+BEGIN
+    DECLARE user_no INT DEFAULT 1;
+    DECLARE post_no INT DEFAULT 1;
+    DECLARE media_no INT DEFAULT 0;
+    DECLARE relation_no INT DEFAULT 1;
+    DECLARE conversation_no INT DEFAULT 1;
+    DECLARE current_post_id BIGINT UNSIGNED;
+    DECLARE current_case_id BIGINT UNSIGNED;
+    DECLARE current_conversation_id BIGINT UNSIGNED;
+    DECLARE first_message_id BIGINT UNSIGNED;
+    DECLARE second_message_id BIGINT UNSIGNED;
+    DECLARE current_author_id BIGINT UNSIGNED;
+    DECLARE current_user_id BIGINT UNSIGNED;
+    DECLARE current_target_id BIGINT UNSIGNED;
+    DECLARE current_status VARCHAR(16);
+    DECLARE seed_time_value DATETIME(6);
+    DECLARE seed_post_status VARCHAR(16);
+    DECLARE seed_post_author_id BIGINT UNSIGNED;
+    DECLARE seed_published_at DATETIME(6);
 
-INSERT INTO posts (
-    id, author_id, content, status, is_edited, like_count, comment_count,
-    published_at, created_at, updated_at
-) VALUES
-    (3001, 1002, 'Ngày đầu quay lại trường, khuôn viên vẫn luôn là nơi mang lại nhiều năng lượng nhất.', 'PUBLISHED', 0, 0, 0, '2026-07-20 02:00:00.000000', '2026-07-20 02:00:00.000000', '2026-07-20 02:00:00.000000'),
-    (3002, 1003, 'Mình đang tìm thêm hai bạn lập nhóm ôn môn Cơ sở dữ liệu. Nhóm học vào tối thứ ba và thứ năm.', 'PUBLISHED', 0, 0, 0, '2026-07-20 04:30:00.000000', '2026-07-20 04:30:00.000000', '2026-07-20 04:30:00.000000'),
-    (3003, 1004, 'Một góc yên tĩnh trong thư viện rất phù hợp để hoàn thành đồ án cuối kỳ.', 'PUBLISHED', 0, 0, 0, '2026-07-21 01:15:00.000000', '2026-07-21 01:15:00.000000', '2026-07-21 01:15:00.000000'),
-    (3004, 1005, 'Có bạn nào đang chuẩn bị CV xin thực tập không? Mình vừa tổng hợp một số lưu ý từ buổi workshop nghề nghiệp.', 'PUBLISHED', 1, 0, 0, '2026-07-21 03:00:00.000000', '2026-07-21 02:45:00.000000', '2026-07-21 03:00:00.000000'),
-    (3005, 1006, 'Cuối cùng API tạo bài viết bằng Spring Boot và giao diện React cũng đã kết nối thành công!', 'PUBLISHED', 0, 0, 0, '2026-07-21 06:20:00.000000', '2026-07-21 06:20:00.000000', '2026-07-21 06:20:00.000000'),
-    (3006, 1002, 'Gợi ý một quán cà phê học bài gần trường: nhiều ổ cắm, khá yên tĩnh và có ánh sáng đẹp.', 'PUBLISHED', 0, 0, 0, '2026-07-22 01:00:00.000000', '2026-07-22 01:00:00.000000', '2026-07-22 01:00:00.000000'),
-    (3007, 1003, 'Câu lạc bộ tình nguyện đang tuyển thành viên cho chương trình Chào tân sinh viên.', 'PUBLISHED', 0, 0, 0, '2026-07-22 03:30:00.000000', '2026-07-22 03:30:00.000000', '2026-07-22 03:30:00.000000'),
-    (3008, 1004, NULL, 'PUBLISHED', 0, 0, 0, '2026-07-22 05:00:00.000000', '2026-07-22 05:00:00.000000', '2026-07-22 05:00:00.000000'),
-    (3009, 1002, 'Một buổi chiều hoàn thành đồ án ở thư viện. Góc học tập này vừa yên tĩnh vừa có nhiều ánh sáng tự nhiên.', 'PUBLISHED', 0, 0, 0, '2026-07-22 07:15:00.000000', '2026-07-22 07:15:00.000000', '2026-07-22 07:15:00.000000'),
-    (3010, 1003, 'Một đoạn video ngắn ghi lại hoạt động ngoại khóa cuối tuần của câu lạc bộ.', 'PUBLISHED', 0, 0, 0, '2026-07-22 09:20:00.000000', '2026-07-22 09:20:00.000000', '2026-07-22 09:20:00.000000'),
-    (3011, 1004, 'Campus tour phiên bản buổi sáng: sân trường, giảng đường và khu tự học.', 'PUBLISHED', 0, 0, 0, '2026-07-23 01:10:00.000000', '2026-07-23 01:10:00.000000', '2026-07-23 01:10:00.000000'),
-    (3012, 1005, 'Workshop kỹ năng phỏng vấn hôm nay có rất nhiều chia sẻ thực tế từ anh chị cựu sinh viên.', 'PUBLISHED', 0, 0, 0, '2026-07-23 02:35:00.000000', '2026-07-23 02:35:00.000000', '2026-07-23 02:35:00.000000'),
-    (3013, 1006, 'Góc làm việc của nhóm trong buổi chạy nước rút cuối cùng trước ngày demo sản phẩm.', 'PUBLISHED', 0, 0, 0, '2026-07-23 04:00:00.000000', '2026-07-23 04:00:00.000000', '2026-07-23 04:00:00.000000'),
-    (3014, 1002, 'Video demo nhanh giao diện mới sau khi nhóm hoàn thành kết nối Feed với Backend.', 'PUBLISHED', 0, 0, 0, '2026-07-23 06:25:00.000000', '2026-07-23 06:25:00.000000', '2026-07-23 06:25:00.000000'),
-    (3015, 1003, 'Một vài tài liệu mình dùng để ôn tập môn Cơ sở dữ liệu. Hy vọng hữu ích cho các bạn.', 'PUBLISHED', 0, 0, 0, '2026-07-23 08:40:00.000000', '2026-07-23 08:40:00.000000', '2026-07-23 08:40:00.000000'),
-    (3016, 1004, 'Buổi sinh hoạt câu lạc bộ đầu tiên của học kỳ mới đã có rất nhiều thành viên tham gia.', 'PUBLISHED', 0, 0, 0, '2026-07-24 00:30:00.000000', '2026-07-24 00:30:00.000000', '2026-07-24 00:30:00.000000'),
-    (3017, 1005, 'Hai góc nhỏ rất phù hợp để học nhóm và trao đổi bài sau giờ học.', 'PUBLISHED', 0, 0, 0, '2026-07-24 02:05:00.000000', '2026-07-24 02:05:00.000000', '2026-07-24 02:05:00.000000'),
-    (3018, 1006, 'Chia sẻ nhanh checklist chuẩn bị CV và portfolio trước khi ứng tuyển thực tập.', 'PUBLISHED', 0, 0, 0, '2026-07-24 03:45:00.000000', '2026-07-24 03:45:00.000000', '2026-07-24 03:45:00.000000'),
-    (3019, 1002, 'Hôm nay mọi người đang tập trung hoàn thành môn học hay chuẩn bị cho kỳ thực tập?', 'PUBLISHED', 0, 0, 0, '2026-07-24 05:10:00.000000', '2026-07-24 05:10:00.000000', '2026-07-24 05:10:00.000000'),
-    (3020, 1003, 'Tổng hợp một vài khoảnh khắc trong ngày hội sinh viên tại trường.', 'PUBLISHED', 0, 0, 0, '2026-07-24 06:50:00.000000', '2026-07-24 06:50:00.000000', '2026-07-24 06:50:00.000000'),
-    (3021, 1004, 'Bắt đầu ngày mới bằng một buổi đọc sách ở khuôn viên trường.', 'PUBLISHED', 0, 0, 0, '2026-07-24 07:20:00.000000', '2026-07-24 07:20:00.000000', '2026-07-24 07:20:00.000000'),
-    (3022, 1005, 'Video ngắn về không khí chuẩn bị trước giờ thuyết trình đồ án.', 'PUBLISHED', 0, 0, 0, '2026-07-24 07:40:00.000000', '2026-07-24 07:40:00.000000', '2026-07-24 07:40:00.000000'),
-    (3023, 1006, 'Buổi mentoring đầu tiên giúp mình xác định rõ hơn lộ trình nghề nghiệp.', 'PUBLISHED', 0, 0, 0, '2026-07-24 08:00:00.000000', '2026-07-24 08:00:00.000000', '2026-07-24 08:00:00.000000'),
-    (3024, 1002, 'Một vòng tham quan phòng thực hành và không gian học tập mới.', 'PUBLISHED', 0, 0, 0, '2026-07-24 08:20:00.000000', '2026-07-24 08:20:00.000000', '2026-07-24 08:20:00.000000'),
-    (3025, 1003, 'Mọi người thường dùng công cụ nào để quản lý tiến độ bài tập nhóm?', 'PUBLISHED', 0, 0, 0, '2026-07-24 08:40:00.000000', '2026-07-24 08:40:00.000000', '2026-07-24 08:40:00.000000'),
-    (3026, 1004, 'Tổng kết buổi học kỹ năng làm việc nhóm với rất nhiều hoạt động thú vị.', 'PUBLISHED', 0, 0, 0, '2026-07-24 09:00:00.000000', '2026-07-24 09:00:00.000000', '2026-07-24 09:00:00.000000'),
-    (3027, 1005, 'Ba khoảnh khắc đáng nhớ trong chuyến tham quan doanh nghiệp tuần này.', 'PUBLISHED', 0, 0, 0, '2026-07-24 09:20:00.000000', '2026-07-24 09:20:00.000000', '2026-07-24 09:20:00.000000'),
-    (3028, 1006, 'Một phút thư giãn sau khi hoàn thành sprint cuối cùng của dự án.', 'PUBLISHED', 0, 0, 0, '2026-07-24 09:40:00.000000', '2026-07-24 09:40:00.000000', '2026-07-24 09:40:00.000000'),
-    (3029, 1002, 'Ghi chú nhanh từ buổi chia sẻ kinh nghiệm tìm nơi thực tập phù hợp.', 'PUBLISHED', 0, 0, 0, '2026-07-24 10:00:00.000000', '2026-07-24 10:00:00.000000', '2026-07-24 10:00:00.000000'),
-    (3030, 1003, 'Góc máy tính quen thuộc trong những ngày chạy deadline.', 'PUBLISHED', 0, 0, 0, '2026-07-24 10:20:00.000000', '2026-07-24 10:20:00.000000', '2026-07-24 10:20:00.000000'),
-    (3031, 1004, 'Một buổi học nhóm hiệu quả cần không gian tốt và mục tiêu thật rõ ràng.', 'PUBLISHED', 0, 0, 0, '2026-07-24 10:40:00.000000', '2026-07-24 10:40:00.000000', '2026-07-24 10:40:00.000000'),
-    (3032, 1005, 'Có ai đang tìm đồng đội tham gia cuộc thi lập trình sắp tới không?', 'PUBLISHED', 0, 0, 0, '2026-07-24 11:00:00.000000', '2026-07-24 11:00:00.000000', '2026-07-24 11:00:00.000000'),
-    (3033, 1006, 'Bảng kế hoạch cho tuần mới đã sẵn sàng, cố gắng hoàn thành từng mục nhỏ.', 'PUBLISHED', 0, 0, 0, '2026-07-24 11:20:00.000000', '2026-07-24 11:20:00.000000', '2026-07-24 11:20:00.000000'),
-    (3034, 1002, 'Video tổng hợp một vài khoảnh khắc vui trong buổi sinh hoạt nhóm.', 'PUBLISHED', 0, 0, 0, '2026-07-24 11:40:00.000000', '2026-07-24 11:40:00.000000', '2026-07-24 11:40:00.000000'),
-    (3035, 1003, 'Một góc xanh trong khuôn viên để nghỉ ngơi giữa hai tiết học.', 'PUBLISHED', 0, 0, 0, '2026-07-24 12:00:00.000000', '2026-07-24 12:00:00.000000', '2026-07-24 12:00:00.000000'),
-    (3036, 1004, 'Hai món ăn quen thuộc trong danh sách ăn trưa của sinh viên.', 'PUBLISHED', 0, 0, 0, '2026-07-24 12:20:00.000000', '2026-07-24 12:20:00.000000', '2026-07-24 12:20:00.000000'),
-    (3037, 1005, 'Tài liệu và cà phê, bộ đôi đồng hành trong mùa thi.', 'PUBLISHED', 0, 0, 0, '2026-07-24 12:40:00.000000', '2026-07-24 12:40:00.000000', '2026-07-24 12:40:00.000000'),
-    (3038, 1006, 'Kết quả sau một tuần cùng nhau hoàn thiện giao diện sản phẩm.', 'PUBLISHED', 0, 0, 0, '2026-07-24 13:00:00.000000', '2026-07-24 13:00:00.000000', '2026-07-24 13:00:00.000000'),
-    (3039, 1002, 'Album nhỏ về hoạt động tình nguyện cùng các bạn trong câu lạc bộ.', 'PUBLISHED', 0, 0, 0, '2026-07-24 13:20:00.000000', '2026-07-24 13:20:00.000000', '2026-07-24 13:20:00.000000'),
-    (3040, 1003, 'Khép lại một ngày học tập bằng khung cảnh hoàng hôn ở sân trường.', 'PUBLISHED', 0, 0, 0, '2026-07-24 13:40:00.000000', '2026-07-24 13:40:00.000000', '2026-07-24 13:40:00.000000'),
-    (3041, 1004, 'Một góc đọc sách mới vừa được bố trí ở khu tự học.', 'PUBLISHED', 0, 0, 0, '2026-07-24 14:00:00.000000', '2026-07-24 14:00:00.000000', '2026-07-24 14:00:00.000000'),
-    (3042, 1005, 'Chia sẻ hai khoảnh khắc trong buổi hướng dẫn tân sinh viên hôm nay.', 'PUBLISHED', 0, 0, 0, '2026-07-24 14:20:00.000000', '2026-07-24 14:20:00.000000', '2026-07-24 14:20:00.000000'),
-    (3043, 1006, 'Video ngắn ghi lại phần trình bày sản phẩm của nhóm.', 'PUBLISHED', 0, 0, 0, '2026-07-24 14:40:00.000000', '2026-07-24 14:40:00.000000', '2026-07-24 14:40:00.000000'),
-    (3044, 1002, 'Một ngày nhiều deadline nhưng cuối cùng mọi việc cũng hoàn thành đúng kế hoạch.', 'PUBLISHED', 0, 0, 0, '2026-07-24 15:00:00.000000', '2026-07-24 15:00:00.000000', '2026-07-24 15:00:00.000000'),
-    (3045, 1003, 'Cùng nhau chuẩn bị không gian cho sự kiện câu lạc bộ cuối tuần.', 'PUBLISHED', 0, 0, 0, '2026-07-24 15:20:00.000000', '2026-07-24 15:20:00.000000', '2026-07-24 15:20:00.000000');
+    START TRANSACTION;
 
--- Chỉ lưu URL và metadata ảnh/video; ứng dụng không lưu file nhị phân trong MySQL.
-INSERT INTO post_media (
-    id, post_id, media_url, storage_public_id, media_type, mime_type,
-    file_size_bytes, width_px, height_px, duration_seconds, thumbnail_url, display_order, created_at
-) VALUES
-    (4001, 3001, 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80', 'demo/posts/campus-3001', 'IMAGE', 'image/jpeg', 384512, 1200, 800, NULL, NULL, 0, '2026-07-20 02:00:00.000000'),
-    (4002, 3003, 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80', 'demo/posts/library-3003', 'IMAGE', 'image/jpeg', 412208, 1200, 800, NULL, NULL, 0, '2026-07-21 01:15:00.000000'),
-    (4003, 3005, 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', 'demo/posts/coding-3005', 'IMAGE', 'image/jpeg', 356740, 1200, 800, NULL, NULL, 0, '2026-07-21 06:20:00.000000'),
-    (4004, 3006, 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80', 'demo/posts/coffee-3006', 'IMAGE', 'image/jpeg', 298340, 1200, 800, NULL, NULL, 0, '2026-07-22 01:00:00.000000'),
-    (4005, 3007, 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80', 'demo/posts/club-3007-1', 'IMAGE', 'image/jpeg', 445670, 1200, 800, NULL, NULL, 0, '2026-07-22 03:30:00.000000'),
-    (4006, 3007, 'https://images.unsplash.com/photo-1529390079861-591de354faf5?auto=format&fit=crop&w=1200&q=80', 'demo/posts/club-3007-2', 'IMAGE', 'image/jpeg', 421850, 1200, 800, NULL, NULL, 1, '2026-07-22 03:30:00.000000'),
-    (4007, 3008, 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80', 'demo/posts/students-3008-1', 'IMAGE', 'image/jpeg', 478920, 1200, 800, NULL, NULL, 0, '2026-07-22 05:00:00.000000'),
-    (4008, 3008, 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80', 'demo/posts/students-3008-2', 'IMAGE', 'image/jpeg', 463110, 1200, 800, NULL, NULL, 1, '2026-07-22 05:00:00.000000'),
-    (4009, 3009, 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80', 'demo/posts/library-3009', 'IMAGE', 'image/jpeg', 392410, 1200, 800, NULL, NULL, 0, '2026-07-22 07:15:00.000000'),
-    (4010, 3010, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', 'demo/posts/club-video-3010', 'VIDEO', 'video/mp4', 2498125, 1280, 720, 15, 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-22 09:20:00.000000'),
-    (4011, 3011, 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80', 'demo/posts/campus-3011-1', 'IMAGE', 'image/jpeg', 421560, 1200, 800, NULL, NULL, 0, '2026-07-23 01:10:00.000000'),
-    (4012, 3011, 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80', 'demo/posts/campus-3011-2', 'IMAGE', 'image/jpeg', 405210, 1200, 800, NULL, NULL, 1, '2026-07-23 01:10:00.000000'),
-    (4013, 3012, 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80', 'demo/posts/workshop-3012', 'IMAGE', 'image/jpeg', 387420, 1200, 800, NULL, NULL, 0, '2026-07-23 02:35:00.000000'),
-    (4014, 3013, 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80', 'demo/posts/teamwork-3013', 'IMAGE', 'image/jpeg', 433890, 1200, 800, NULL, NULL, 0, '2026-07-23 04:00:00.000000'),
-    (4015, 3014, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', 'demo/posts/product-video-3014', 'VIDEO', 'video/mp4', 15648210, 1280, 720, 15, 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-23 06:25:00.000000'),
-    (4016, 3015, 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80', 'demo/posts/study-3015', 'IMAGE', 'image/jpeg', 365720, 1200, 800, NULL, NULL, 0, '2026-07-23 08:40:00.000000'),
-    (4017, 3016, 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1200&q=80', 'demo/posts/club-3016', 'IMAGE', 'image/jpeg', 447610, 1200, 800, NULL, NULL, 0, '2026-07-24 00:30:00.000000'),
-    (4018, 3017, 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80', 'demo/posts/study-space-3017-1', 'IMAGE', 'image/jpeg', 408330, 1200, 800, NULL, NULL, 0, '2026-07-24 02:05:00.000000'),
-    (4019, 3017, 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80', 'demo/posts/study-space-3017-2', 'IMAGE', 'image/jpeg', 419820, 1200, 800, NULL, NULL, 1, '2026-07-24 02:05:00.000000'),
-    (4020, 3018, 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1200&q=80', 'demo/posts/cv-3018', 'IMAGE', 'image/jpeg', 376440, 1200, 800, NULL, NULL, 0, '2026-07-24 03:45:00.000000'),
-    (4021, 3020, 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1200&q=80', 'demo/posts/student-day-3020-1', 'IMAGE', 'image/jpeg', 451230, 1200, 800, NULL, NULL, 0, '2026-07-24 06:50:00.000000'),
-    (4022, 3020, 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80', 'demo/posts/student-day-3020-2', 'IMAGE', 'image/jpeg', 438760, 1200, 800, NULL, NULL, 1, '2026-07-24 06:50:00.000000'),
-    (4023, 3020, 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80', 'demo/posts/student-day-3020-3', 'IMAGE', 'image/jpeg', 462190, 1200, 800, NULL, NULL, 2, '2026-07-24 06:50:00.000000'),
-    (4024, 3021, 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1200&q=80', 'demo/posts/reading-3021', 'IMAGE', 'image/jpeg', 398220, 1200, 800, NULL, NULL, 0, '2026-07-24 07:20:00.000000'),
-    (4025, 3022, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', 'demo/posts/presentation-video-3022', 'VIDEO', 'video/mp4', 1018253, 1280, 720, 60, 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-24 07:40:00.000000'),
-    (4026, 3023, 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80', 'demo/posts/mentoring-3023', 'IMAGE', 'image/jpeg', 423510, 1200, 800, NULL, NULL, 0, '2026-07-24 08:00:00.000000'),
-    (4027, 3024, 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1200&q=80', 'demo/posts/lab-3024-1', 'IMAGE', 'image/jpeg', 406820, 1200, 800, NULL, NULL, 0, '2026-07-24 08:20:00.000000'),
-    (4028, 3024, 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80', 'demo/posts/lab-3024-2', 'IMAGE', 'image/jpeg', 418760, 1200, 800, NULL, NULL, 1, '2026-07-24 08:20:00.000000'),
-    (4029, 3026, 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80', 'demo/posts/team-skill-3026', 'IMAGE', 'image/jpeg', 391440, 1200, 800, NULL, NULL, 0, '2026-07-24 09:00:00.000000'),
-    (4030, 3027, 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80', 'demo/posts/company-3027-1', 'IMAGE', 'image/jpeg', 445120, 1200, 800, NULL, NULL, 0, '2026-07-24 09:20:00.000000'),
-    (4031, 3027, 'https://images.unsplash.com/photo-1497366412874-3415097a27e7?auto=format&fit=crop&w=1200&q=80', 'demo/posts/company-3027-2', 'IMAGE', 'image/jpeg', 432810, 1200, 800, NULL, NULL, 1, '2026-07-24 09:20:00.000000'),
-    (4032, 3027, 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80', 'demo/posts/company-3027-3', 'IMAGE', 'image/jpeg', 429630, 1200, 800, NULL, NULL, 2, '2026-07-24 09:20:00.000000'),
-    (4033, 3028, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', 'demo/posts/sprint-video-3028', 'VIDEO', 'video/mp4', 2372821, 1280, 720, 15, 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-24 09:40:00.000000'),
-    (4034, 3029, 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80', 'demo/posts/internship-3029', 'IMAGE', 'image/jpeg', 386520, 1200, 800, NULL, NULL, 0, '2026-07-24 10:00:00.000000'),
-    (4035, 3030, 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', 'demo/posts/computer-3030', 'IMAGE', 'image/jpeg', 414230, 1200, 800, NULL, NULL, 0, '2026-07-24 10:20:00.000000'),
-    (4036, 3031, 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80', 'demo/posts/study-group-3031-1', 'IMAGE', 'image/jpeg', 437210, 1200, 800, NULL, NULL, 0, '2026-07-24 10:40:00.000000'),
-    (4037, 3031, 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80', 'demo/posts/study-group-3031-2', 'IMAGE', 'image/jpeg', 448720, 1200, 800, NULL, NULL, 1, '2026-07-24 10:40:00.000000'),
-    (4038, 3033, 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=1200&q=80', 'demo/posts/planning-3033', 'IMAGE', 'image/jpeg', 362410, 1200, 800, NULL, NULL, 0, '2026-07-24 11:20:00.000000'),
-    (4039, 3034, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', 'demo/posts/group-video-3034', 'VIDEO', 'video/mp4', 3173828, 1280, 720, 15, 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-24 11:40:00.000000'),
-    (4040, 3035, 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80', 'demo/posts/green-campus-3035', 'IMAGE', 'image/jpeg', 439510, 1200, 800, NULL, NULL, 0, '2026-07-24 12:00:00.000000'),
-    (4041, 3036, 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1200&q=80', 'demo/posts/lunch-3036-1', 'IMAGE', 'image/jpeg', 395640, 1200, 800, NULL, NULL, 0, '2026-07-24 12:20:00.000000'),
-    (4042, 3036, 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=80', 'demo/posts/lunch-3036-2', 'IMAGE', 'image/jpeg', 401230, 1200, 800, NULL, NULL, 1, '2026-07-24 12:20:00.000000'),
-    (4043, 3037, 'https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&fit=crop&w=1200&q=80', 'demo/posts/exam-3037', 'IMAGE', 'image/jpeg', 374890, 1200, 800, NULL, NULL, 0, '2026-07-24 12:40:00.000000'),
-    (4044, 3038, 'https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=1200&q=80', 'demo/posts/interface-3038', 'IMAGE', 'image/jpeg', 426710, 1200, 800, NULL, NULL, 0, '2026-07-24 13:00:00.000000'),
-    (4045, 3039, 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80', 'demo/posts/volunteer-3039-1', 'IMAGE', 'image/jpeg', 447850, 1200, 800, NULL, NULL, 0, '2026-07-24 13:20:00.000000'),
-    (4046, 3039, 'https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=80', 'demo/posts/volunteer-3039-2', 'IMAGE', 'image/jpeg', 452340, 1200, 800, NULL, NULL, 1, '2026-07-24 13:20:00.000000'),
-    (4047, 3039, 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=80', 'demo/posts/volunteer-3039-3', 'IMAGE', 'image/jpeg', 461920, 1200, 800, NULL, NULL, 2, '2026-07-24 13:20:00.000000'),
-    (4048, 3040, 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', 'demo/posts/sunset-3040', 'IMAGE', 'image/jpeg', 443610, 1200, 800, NULL, NULL, 0, '2026-07-24 13:40:00.000000'),
-    (4049, 3041, 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1200&q=80', 'demo/posts/reading-corner-3041', 'IMAGE', 'image/jpeg', 397810, 1200, 800, NULL, NULL, 0, '2026-07-24 14:00:00.000000'),
-    (4050, 3042, 'https://images.unsplash.com/photo-1529390079861-591de354faf5?auto=format&fit=crop&w=1200&q=80', 'demo/posts/orientation-3042-1', 'IMAGE', 'image/jpeg', 438210, 1200, 800, NULL, NULL, 0, '2026-07-24 14:20:00.000000'),
-    (4051, 3042, 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80', 'demo/posts/orientation-3042-2', 'IMAGE', 'image/jpeg', 445620, 1200, 800, NULL, NULL, 1, '2026-07-24 14:20:00.000000'),
-    (4052, 3043, 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMobsters.mp4', 'demo/posts/presentation-video-3043', 'VIDEO', 'video/mp4', 1283941, 1280, 720, 15, 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=1200&q=80', 0, '2026-07-24 14:40:00.000000'),
-    (4053, 3044, 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80', 'demo/posts/deadline-3044', 'IMAGE', 'image/jpeg', 416730, 1200, 800, NULL, NULL, 0, '2026-07-24 15:00:00.000000'),
-    (4054, 3045, 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=1200&q=80', 'demo/posts/event-3045', 'IMAGE', 'image/jpeg', 452180, 1200, 800, NULL, NULL, 0, '2026-07-24 15:20:00.000000');
+    -- Tao dung 1.000 tai khoan, trong do 10 tai khoan cuoi dang cho onboarding.
+    WHILE user_no <= 1000 DO
+        SET seed_time_value = TIMESTAMP('2026-01-01 08:00:00') + INTERVAL MOD(user_no * 13, 210) DAY;
+        SET current_status = IF(user_no = 6 OR MOD(user_no, 100) = 0, 'BLOCKED', 'ACTIVE');
 
-INSERT INTO hashtags (id, normalized_name, display_name, post_count, created_at, updated_at) VALUES
-    (5001, 'đời sống sinh viên', 'đời sống sinh viên', 0, @seed_time, @seed_time),
-    (5002, 'học tập', 'học tập', 0, @seed_time, @seed_time),
-    (5003, 'thực tập', 'thực tập', 0, @seed_time, @seed_time),
-    (5004, 'lập trình', 'lập trình', 0, @seed_time, @seed_time),
-    (5005, 'câu lạc bộ', 'câu lạc bộ', 0, @seed_time, @seed_time);
+        INSERT INTO `users` (
+            `email`, `email_verified_at`, `password_hash`, `role`, `status`,
+            `blocked_at`, `blocked_reason`, `first_active_at`, `last_active_at`,
+            `created_at`, `updated_at`
+        ) VALUES (
+            CONCAT('demo.user', LPAD(user_no, 4, '0'), '@example.test'),
+            seed_time_value,
+            IF(user_no IN (3, 4), NULL, '$2y$10$aGQDqcH5qK7jLRKAt2hCZexSlVNmKdDODA57Njo/EWGgrlaEIJXI.'),
+            IF(user_no = 1, 'ADMIN', 'USER'),
+            current_status,
+            IF(current_status = 'BLOCKED', seed_time_value + INTERVAL 30 DAY, NULL),
+            IF(current_status = 'BLOCKED', 'Tài khoản test bị khóa để kiểm tra giao diện quản trị', NULL),
+            IF(user_no <= 990, seed_time_value + INTERVAL 1 HOUR, NULL),
+            IF(user_no <= 990, seed_time_value + INTERVAL MOD(user_no, 72) HOUR, NULL),
+            seed_time_value,
+            seed_time_value
+        );
 
-INSERT INTO post_hashtags (post_id, hashtag_id, created_at) VALUES
-    (3001, 5001, '2026-07-20 02:00:00.000000'),
-    (3002, 5002, '2026-07-20 04:30:00.000000'),
-    (3003, 5002, '2026-07-21 01:15:00.000000'),
-    (3004, 5003, '2026-07-21 03:00:00.000000'),
-    (3005, 5004, '2026-07-21 06:20:00.000000'),
-    (3006, 5001, '2026-07-22 01:00:00.000000'),
-    (3007, 5005, '2026-07-22 03:30:00.000000'),
-    (3008, 5001, '2026-07-22 05:00:00.000000'),
-    (3009, 5002, '2026-07-22 07:15:00.000000'),
-    (3010, 5005, '2026-07-22 09:20:00.000000'),
-    (3011, 5001, '2026-07-23 01:10:00.000000'),
-    (3012, 5003, '2026-07-23 02:35:00.000000'),
-    (3013, 5004, '2026-07-23 04:00:00.000000'),
-    (3014, 5004, '2026-07-23 06:25:00.000000'),
-    (3015, 5002, '2026-07-23 08:40:00.000000'),
-    (3016, 5005, '2026-07-24 00:30:00.000000'),
-    (3017, 5001, '2026-07-24 02:05:00.000000'),
-    (3018, 5003, '2026-07-24 03:45:00.000000'),
-    (3020, 5001, '2026-07-24 06:50:00.000000'),
-    (3021, 5002, '2026-07-24 07:20:00.000000'),
-    (3022, 5004, '2026-07-24 07:40:00.000000'),
-    (3023, 5003, '2026-07-24 08:00:00.000000'),
-    (3024, 5001, '2026-07-24 08:20:00.000000'),
-    (3025, 5002, '2026-07-24 08:40:00.000000'),
-    (3026, 5005, '2026-07-24 09:00:00.000000'),
-    (3027, 5003, '2026-07-24 09:20:00.000000'),
-    (3028, 5004, '2026-07-24 09:40:00.000000'),
-    (3029, 5003, '2026-07-24 10:00:00.000000'),
-    (3030, 5004, '2026-07-24 10:20:00.000000'),
-    (3031, 5002, '2026-07-24 10:40:00.000000'),
-    (3032, 5004, '2026-07-24 11:00:00.000000'),
-    (3033, 5002, '2026-07-24 11:20:00.000000'),
-    (3034, 5005, '2026-07-24 11:40:00.000000'),
-    (3035, 5001, '2026-07-24 12:00:00.000000'),
-    (3036, 5001, '2026-07-24 12:20:00.000000'),
-    (3037, 5002, '2026-07-24 12:40:00.000000'),
-    (3038, 5004, '2026-07-24 13:00:00.000000'),
-    (3039, 5005, '2026-07-24 13:20:00.000000'),
-    (3040, 5001, '2026-07-24 13:40:00.000000'),
-    (3041, 5002, '2026-07-24 14:00:00.000000'),
-    (3042, 5005, '2026-07-24 14:20:00.000000'),
-    (3043, 5004, '2026-07-24 14:40:00.000000'),
-    (3044, 5002, '2026-07-24 15:00:00.000000'),
-    (3045, 5005, '2026-07-24 15:20:00.000000');
+        SET current_user_id = LAST_INSERT_ID();
 
-INSERT INTO post_likes (user_id, post_id, created_at) VALUES
-    (1003, 3001, '2026-07-20 03:00:00.000000'), (1004, 3001, '2026-07-20 03:05:00.000000'),
-    (1005, 3001, '2026-07-20 03:10:00.000000'), (1002, 3002, '2026-07-20 05:00:00.000000'),
-    (1004, 3002, '2026-07-20 05:10:00.000000'), (1002, 3003, '2026-07-21 02:00:00.000000'),
-    (1003, 3003, '2026-07-21 02:05:00.000000'), (1006, 3003, '2026-07-21 02:10:00.000000'),
-    (1002, 3004, '2026-07-21 04:00:00.000000'), (1003, 3004, '2026-07-21 04:05:00.000000'),
-    (1004, 3005, '2026-07-21 07:00:00.000000'), (1005, 3005, '2026-07-21 07:05:00.000000'),
-    (1006, 3006, '2026-07-22 02:00:00.000000'), (1002, 3007, '2026-07-22 04:00:00.000000'),
-    (1005, 3007, '2026-07-22 04:05:00.000000'), (1006, 3008, '2026-07-22 05:30:00.000000');
+        INSERT INTO `user_profiles` (
+            `user_id`, `username`, `display_name`, `avatar_url`, `avatar_public_id`,
+            `bio`, `date_of_birth`, `school_id`, `faculty_id`, `major_id`, `entry_year`,
+            `profile_completed_at`, `created_at`, `updated_at`
+        ) VALUES (
+            current_user_id,
+            IF(user_no <= 990, CONCAT('student_', LPAD(user_no, 4, '0')), NULL),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE
+                    WHEN user_no = 1 THEN 'Quản trị viên Demo'
+                    WHEN user_no = 2 THEN 'Nguyễn Minh Anh'
+                    WHEN MOD(user_no, 5) = 0 THEN CONCAT('Trần Gia Bảo ', LPAD(user_no, 4, '0'))
+                    WHEN MOD(user_no, 5) = 1 THEN CONCAT('Lê Hoài An ', LPAD(user_no, 4, '0'))
+                    WHEN MOD(user_no, 5) = 2 THEN CONCAT('Phạm Khánh Linh ', LPAD(user_no, 4, '0'))
+                    WHEN MOD(user_no, 5) = 3 THEN CONCAT('Võ Minh Khang ', LPAD(user_no, 4, '0'))
+                    ELSE CONCAT('Đặng Thảo Vy ', LPAD(user_no, 4, '0'))
+                END
+            ),
+            IF(user_no <= 990 AND MOD(user_no, 5) <> 0,
+                CONCAT('https://i.pravatar.cc/300?img=', 1 + MOD(user_no, 70)), NULL),
+            IF(user_no <= 990 AND MOD(user_no, 5) <> 0,
+                CONCAT('demo/avatars/student-', LPAD(user_no, 4, '0')), NULL),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE MOD(user_no, 6)
+                    WHEN 0 THEN 'Sinh viên yêu thích công nghệ, lập trình và các dự án mã nguồn mở.'
+                    WHEN 1 THEN 'Chia sẻ kinh nghiệm học tập, ôn thi và cuộc sống sinh viên.'
+                    WHEN 2 THEN 'Quan tâm đến thiết kế, nhiếp ảnh và sáng tạo nội dung.'
+                    WHEN 3 THEN 'Đang tìm cơ hội thực tập và kết nối với các bạn cùng ngành.'
+                    WHEN 4 THEN 'Yêu thích thể thao, hoạt động ngoại khóa và tình nguyện.'
+                    ELSE 'Khám phá địa điểm ăn uống, học nhóm và vui chơi quanh thành phố.'
+                END
+            ),
+            IF(user_no <= 990, DATE('1998-01-01') + INTERVAL MOD(user_no * 29, 2555) DAY, NULL),
+            IF(user_no <= 990, 1 + MOD(user_no - 1, 5), NULL),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE MOD(user_no - 1, 5)
+                    WHEN 0 THEN 1 + MOD(user_no, 6)
+                    WHEN 1 THEN 7
+                    WHEN 2 THEN 8
+                    WHEN 3 THEN 9
+                    ELSE 10
+                END
+            ),
+            IF(
+                user_no > 990,
+                NULL,
+                CASE MOD(user_no - 1, 5)
+                    WHEN 0 THEN (2 * (1 + MOD(user_no, 6)) - 1) + MOD(user_no, 2)
+                    WHEN 1 THEN 13
+                    WHEN 2 THEN 14
+                    WHEN 3 THEN 15
+                    ELSE 16
+                END
+            ),
+            IF(user_no <= 990, 2018 + MOD(user_no, 9), NULL),
+            IF(user_no <= 990, seed_time_value + INTERVAL 30 MINUTE, NULL),
+            seed_time_value,
+            seed_time_value
+        );
 
-INSERT INTO comments (id, post_id, user_id, parent_comment_id, content, status, deleted_at, created_at, updated_at) VALUES
-    (6001, 3001, 1003, NULL, 'Ảnh đẹp quá, nhìn là muốn quay lại trường ngay!', 'PUBLISHED', NULL, '2026-07-20 03:20:00.000000', '2026-07-20 03:20:00.000000'),
-    (6002, 3001, 1002, 6001, 'Cảm ơn bạn, hôm đó thời tiết cũng rất đẹp.', 'PUBLISHED', NULL, '2026-07-20 03:30:00.000000', '2026-07-20 03:30:00.000000'),
-    (6003, 3002, 1006, NULL, 'Nhóm còn chỗ không? Mình muốn tham gia cùng.', 'PUBLISHED', NULL, '2026-07-20 05:20:00.000000', '2026-07-20 05:20:00.000000'),
-    (6004, 3003, 1002, NULL, 'Góc này ở tầng mấy vậy bạn?', 'PUBLISHED', NULL, '2026-07-21 02:20:00.000000', '2026-07-21 02:20:00.000000'),
-    (6005, 3003, 1004, 6004, 'Ở tầng ba, gần khu tài liệu tham khảo nhé.', 'PUBLISHED', NULL, '2026-07-21 02:30:00.000000', '2026-07-21 02:30:00.000000'),
-    (6006, 3004, 1003, NULL, 'Bạn chia sẻ tài liệu workshop giúp mình với nhé.', 'PUBLISHED', NULL, '2026-07-21 04:20:00.000000', '2026-07-21 04:20:00.000000'),
-    (6007, 3005, 1003, NULL, 'Chúc mừng! Nhớ chia sẻ kinh nghiệm tích hợp API nha.', 'PUBLISHED', NULL, '2026-07-21 07:20:00.000000', '2026-07-21 07:20:00.000000'),
-    (6008, 3006, 1005, NULL, 'Quán này có mở cuối tuần không?', 'PUBLISHED', NULL, '2026-07-22 02:15:00.000000', '2026-07-22 02:15:00.000000');
+        -- Gan hai so thich khac nhau cho profile da hoan tat de demo loc/goi y sau nay.
+        IF user_no <= 990 THEN
+            INSERT INTO `user_interests` (`user_id`, `interest_id`) VALUES
+                (current_user_id, 1 + MOD(user_no - 1, 16)),
+                (current_user_id, 1 + MOD(user_no + 4, 16));
+        END IF;
 
-INSERT INTO saved_posts (user_id, post_id, created_at) VALUES
-    (1002, 3004, '2026-07-21 04:10:00.000000'),
-    (1003, 3005, '2026-07-21 07:10:00.000000'),
-    (1004, 3006, '2026-07-22 02:10:00.000000'),
-    (1005, 3002, '2026-07-20 05:15:00.000000'),
-    (1006, 3003, '2026-07-21 02:15:00.000000');
+        SET user_no = user_no + 1;
+    END WHILE;
 
-INSERT INTO reports (
-    id, reporter_id, post_id, reason, description, status, resolved_by, resolved_at,
-    resolution_note, post_content_snapshot, post_media_snapshot, created_at, updated_at
-) VALUES
-    (7001, 1005, 3002, 'OTHER', 'Dữ liệu demo cho màn hình quản trị báo cáo.', 'PENDING', NULL, NULL, NULL,
-     'Mình đang tìm thêm hai bạn lập nhóm ôn môn Cơ sở dữ liệu.', JSON_ARRAY(), '2026-07-22 05:40:00.000000', '2026-07-22 05:40:00.000000'),
-    (7002, 1004, 3004, 'SPAM', 'Báo cáo demo đã được quản trị viên xem xét.', 'REJECTED', 1001, '2026-07-22 06:00:00.000000',
-     'Nội dung không vi phạm tiêu chuẩn cộng đồng.', 'Có bạn nào đang chuẩn bị CV xin thực tập không?', JSON_ARRAY(), '2026-07-22 05:45:00.000000', '2026-07-22 06:00:00.000000');
+    -- Social-only va linked-provider de test cac nhanh xac thuc.
+    INSERT INTO `user_auth_providers`
+        (`user_id`, `provider`, `provider_user_id`, `provider_email`, `provider_email_verified`)
+    VALUES
+        (3, 'GOOGLE', 'demo-google-0003', 'demo.user0003@example.test', 1),
+        (4, 'FACEBOOK', 'demo-facebook-0004', 'demo.user0004@example.test', 1),
+        (5, 'GOOGLE', 'demo-google-0005', 'demo.user0005@example.test', 1),
+        (5, 'FACEBOOK', 'demo-facebook-0005', 'demo.user0005@example.test', 1);
 
-INSERT INTO notifications (
-    id, recipient_id, actor_id, type, post_id, comment_id, report_id, read_at, deleted_at, created_at, updated_at
-) VALUES
-    (8001, 1002, 1003, 'FOLLOW', NULL, NULL, NULL, NULL, NULL, '2026-07-20 01:10:00.000000', '2026-07-20 01:10:00.000000'),
-    (8002, 1002, 1003, 'POST_LIKE', 3001, NULL, NULL, NULL, NULL, '2026-07-20 03:00:00.000000', '2026-07-20 03:00:00.000000'),
-    (8003, 1002, 1003, 'POST_COMMENT', 3001, 6001, NULL, NULL, NULL, '2026-07-20 03:20:00.000000', '2026-07-20 03:20:00.000000'),
-    (8004, 1003, 1002, 'COMMENT_REPLY', 3001, 6002, NULL, NULL, NULL, '2026-07-20 03:30:00.000000', '2026-07-20 03:30:00.000000'),
-    (8005, 1004, 1002, 'POST_COMMENT', 3003, 6004, NULL, '2026-07-21 03:00:00.000000', NULL, '2026-07-21 02:20:00.000000', '2026-07-21 03:00:00.000000'),
-    (8006, 1005, 1001, 'REPORT_REJECTED', 3004, NULL, 7002, NULL, NULL, '2026-07-22 06:00:00.000000', '2026-07-22 06:00:00.000000');
+    SET user_no = 10;
+    WHILE user_no <= 200 DO
+        INSERT IGNORE INTO `user_auth_providers`
+            (`user_id`, `provider`, `provider_user_id`, `provider_email`, `provider_email_verified`)
+        VALUES (
+            user_no,
+            IF(MOD(user_no, 2) = 0, 'GOOGLE', 'FACEBOOK'),
+            CONCAT(IF(MOD(user_no, 2) = 0, 'demo-google-', 'demo-facebook-'), LPAD(user_no, 4, '0')),
+            CONCAT('demo.user', LPAD(user_no, 4, '0'), '@example.test'),
+            1
+        );
+        SET user_no = user_no + 1;
+    END WHILE;
 
-COMMIT;
+    -- Tao dung 1.000 bai viet; moi bai co tu 1 den 4 anh.
+    WHILE post_no <= 1000 DO
+        SET current_author_id = 2 + MOD(post_no * 37, 989);
+        SET seed_time_value = TIMESTAMP('2026-08-08 10:00:00') - INTERVAL MOD(post_no * 17, 180) DAY
+            - INTERVAL MOD(post_no * 43, 86400) SECOND;
+        SET current_status = CASE
+            WHEN MOD(post_no, 20) = 0 THEN 'DELETED'
+            WHEN MOD(post_no, 20) = 1 THEN 'HIDDEN'
+            ELSE 'PUBLISHED'
+        END;
 
--- Hậu kiểm nhanh cho cả Auth và dữ liệu mạng xã hội demo.
-SELECT COUNT(*) AS seeded_users FROM users WHERE id BETWEEN 1001 AND 1008;
-SELECT COUNT(*) AS seeded_profiles FROM user_profiles WHERE user_id BETWEEN 1001 AND 1008;
-SELECT COUNT(*) AS seeded_provider_links FROM user_auth_providers WHERE id BETWEEN 2001 AND 2003;
-SELECT COUNT(*) AS seeded_admins FROM users WHERE role = 'ADMIN' AND id BETWEEN 1001 AND 1008;
-SELECT COUNT(*) AS seeded_posts FROM posts WHERE id BETWEEN 3001 AND 3045;
-SELECT COUNT(*) AS seeded_post_media FROM post_media WHERE id BETWEEN 4001 AND 4054;
-SELECT COUNT(*) AS seeded_comments FROM comments WHERE id BETWEEN 6001 AND 6008;
-SELECT COUNT(*) AS seeded_notifications FROM notifications WHERE id BETWEEN 8001 AND 8006;
-SELECT id, like_count, comment_count FROM posts WHERE id BETWEEN 3001 AND 3045 ORDER BY id;
+        INSERT INTO `posts` (
+            `author_id`, `content`, `status`, `is_edited`, `published_at`,
+            `hidden_by`, `hidden_at`, `hidden_reason`, `deleted_at`,
+            `created_at`, `updated_at`, `location_id`
+        ) VALUES (
+            current_author_id,
+            IF(
+                MOD(post_no, 25) = 0,
+                NULL,
+                CASE MOD(post_no, 10)
+                    WHEN 0 THEN CONCAT('Chia sẻ tài liệu ôn tập hữu ích cho kỳ thi sắp tới. Bài số ', post_no, '.')
+                    WHEN 1 THEN CONCAT('Một góc học tập yên tĩnh dành cho sinh viên hôm nay. Bài số ', post_no, '.')
+                    WHEN 2 THEN CONCAT('Nhật ký làm đồ án: thêm một ngày sửa lỗi và học được nhiều điều mới. #', post_no)
+                    WHEN 3 THEN CONCAT('Có bạn nào đang tìm nhóm học Spring Boot và React không? Bài số ', post_no, '.')
+                    WHEN 4 THEN CONCAT('Gợi ý địa điểm ăn uống giá sinh viên, không gian thoải mái. Bài số ', post_no, '.')
+                    WHEN 5 THEN CONCAT('Khoảnh khắc đáng nhớ trong hoạt động tình nguyện cuối tuần. Bài số ', post_no, '.')
+                    WHEN 6 THEN CONCAT('Kinh nghiệm chuẩn bị CV và phỏng vấn thực tập cho sinh viên. Bài số ', post_no, '.')
+                    WHEN 7 THEN CONCAT('Một buổi chiều thể thao cùng câu lạc bộ của trường. Bài số ', post_no, '.')
+                    WHEN 8 THEN CONCAT('Ảnh chụp quanh thành phố sau giờ học. Bài số ', post_no, '.')
+                    ELSE CONCAT('Cùng trao đổi cách quản lý thời gian học tập hiệu quả. Bài số ', post_no, '.')
+                END
+            ),
+            current_status,
+            IF(MOD(post_no, 9) = 0, 1, 0),
+            seed_time_value,
+            IF(current_status = 'HIDDEN', 1, NULL),
+            IF(current_status = 'HIDDEN', seed_time_value + INTERVAL 2 HOUR, NULL),
+            IF(current_status = 'HIDDEN', 'Nội dung demo được ẩn để kiểm tra màn hình quản trị', NULL),
+            IF(current_status = 'DELETED', seed_time_value + INTERVAL 3 HOUR, NULL),
+            seed_time_value,
+            IF(MOD(post_no, 9) = 0, seed_time_value + INTERVAL 10 MINUTE, seed_time_value),
+            IF(MOD(post_no, 3) = 0, 1 + MOD(post_no, 12), NULL)
+        );
+
+        SET current_post_id = LAST_INSERT_ID();
+        SET media_no = 0;
+        WHILE media_no < 1 + MOD(post_no, 4) DO
+            INSERT INTO `post_media` (
+                `post_id`, `media_url`, `storage_public_id`, `media_type`, `mime_type`,
+                `file_size_bytes`, `width_px`, `height_px`, `duration_seconds`,
+                `thumbnail_url`, `display_order`, `created_at`
+            ) VALUES (
+                current_post_id,
+                CONCAT('https://picsum.photos/seed/unishare-post-', LPAD(post_no, 4, '0'), '-', media_no, '/1200/800'),
+                CONCAT('demo/posts/post-', LPAD(post_no, 4, '0'), '-image-', media_no),
+                'IMAGE',
+                'image/jpeg',
+                180000 + MOD(post_no * 7919 + media_no * 3571, 2200000),
+                1200,
+                800,
+                NULL,
+                NULL,
+                media_no,
+                seed_time_value
+            );
+            SET media_no = media_no + 1;
+        END WHILE;
+
+        IF MOD(post_no, 5) <> 0 THEN
+            INSERT INTO `post_hashtags` (`post_id`, `hashtag_id`, `created_at`)
+            VALUES (current_post_id, 1 + MOD(post_no, 12), seed_time_value);
+        END IF;
+
+        SET post_no = post_no + 1;
+    END WHILE;
+
+    -- Follow phuc vu Following Feed va thong ke profile.
+    SET relation_no = 1;
+    WHILE relation_no <= 6000 DO
+        SET current_user_id = 2 + MOD(FLOOR((relation_no - 1) / 6), 989);
+        SET current_target_id = 2 + MOD(
+            current_user_id - 2 + (1 + MOD(relation_no - 1, 6)) * 37,
+            989
+        );
+        IF current_user_id <> current_target_id THEN
+            INSERT IGNORE INTO `follows` (`follower_id`, `following_id`, `created_at`)
+            VALUES (current_user_id, current_target_id, TIMESTAMP('2026-03-01 09:00:00') + INTERVAL MOD(relation_no, 150) DAY);
+        END IF;
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- Like chi gan vao bai PUBLISHED va khong tu like bai cua minh.
+    SET relation_no = 1;
+    WHILE relation_no <= 12000 DO
+        SET current_user_id = 2 + MOD(relation_no * 23, 989);
+        SET current_post_id = 1 + MOD(relation_no * 47, 1000);
+        SELECT `status`, `author_id`, `published_at`
+        INTO seed_post_status, seed_post_author_id, seed_published_at
+        FROM `posts`
+        WHERE `id` = current_post_id;
+        IF seed_post_status = 'PUBLISHED' AND seed_post_author_id <> current_user_id THEN
+            INSERT IGNORE INTO `post_likes` (`user_id`, `post_id`, `created_at`)
+            VALUES (current_user_id, current_post_id, seed_published_at + INTERVAL 1 DAY);
+        END IF;
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- Comment gom ca comment thuong va comment da xoa de test state UI.
+    SET relation_no = 1;
+    WHILE relation_no <= 3000 DO
+        SET current_user_id = 2 + MOD(relation_no * 29, 989);
+        SET current_post_id = 1 + MOD(relation_no * 41, 1000);
+        SELECT `status`, `published_at`
+        INTO seed_post_status, seed_published_at
+        FROM `posts`
+        WHERE `id` = current_post_id;
+        IF seed_post_status = 'PUBLISHED' THEN
+            INSERT INTO `comments` (
+                `post_id`, `user_id`, `parent_comment_id`, `content`, `status`,
+                `deleted_at`, `created_at`, `updated_at`
+            ) VALUES (
+                current_post_id,
+                current_user_id,
+                NULL,
+                CASE MOD(relation_no, 5)
+                    WHEN 0 THEN 'Cảm ơn bạn đã chia sẻ thông tin hữu ích!'
+                    WHEN 1 THEN 'Mình cũng đang quan tâm chủ đề này.'
+                    WHEN 2 THEN 'Hình ảnh đẹp và nội dung rất gần gũi.'
+                    WHEN 3 THEN 'Bạn có thể chia sẻ thêm tài liệu không?'
+                    ELSE 'Chúc bạn có một ngày học tập hiệu quả.'
+                END,
+                IF(MOD(relation_no, 20) = 0, 'DELETED', 'PUBLISHED'),
+                IF(MOD(relation_no, 20) = 0, seed_published_at + INTERVAL 2 DAY, NULL),
+                seed_published_at + INTERVAL 1 DAY,
+                seed_published_at + INTERVAL 1 DAY
+            );
+        END IF;
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    SET relation_no = 1;
+    WHILE relation_no <= 4000 DO
+        SET current_user_id = 2 + MOD(relation_no * 19, 989);
+        SET current_post_id = 1 + MOD(relation_no * 53, 1000);
+        INSERT IGNORE INTO `saved_posts` (`user_id`, `post_id`, `created_at`)
+        SELECT current_user_id, p.id, p.published_at + INTERVAL 3 DAY
+        FROM `posts` p
+        WHERE p.id = current_post_id AND p.status = 'PUBLISHED';
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    SET relation_no = 1;
+    WHILE relation_no <= 3000 DO
+        SET current_user_id = 2 + MOD(relation_no * 11, 989);
+        SET current_post_id = 1 + MOD(relation_no * 59, 1000);
+        SELECT `status`, `author_id`, `published_at`
+        INTO seed_post_status, seed_post_author_id, seed_published_at
+        FROM `posts`
+        WHERE `id` = current_post_id;
+        IF seed_post_status = 'PUBLISHED' AND seed_post_author_id <> current_user_id THEN
+            INSERT IGNORE INTO `post_reposts` (`user_id`, `post_id`, `created_at`)
+            VALUES (current_user_id, current_post_id, seed_published_at + INTERVAL 4 DAY);
+        END IF;
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- Quan he block/restrict co huong de test an profile, post va interaction.
+    SET relation_no = 1;
+    WHILE relation_no <= 30 DO
+        INSERT IGNORE INTO `user_blocks` (`blocker_id`, `blocked_id`, `created_at`)
+        VALUES (1 + relation_no, 101 + relation_no, TIMESTAMP('2026-07-01 08:00:00') + INTERVAL relation_no DAY);
+        INSERT IGNORE INTO `user_restrictions` (`restrictor_id`, `restricted_id`, `created_at`)
+        VALUES (201 + relation_no, 301 + relation_no, TIMESTAMP('2026-07-01 09:00:00') + INTERVAL relation_no DAY);
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- Moderation Case phu ca OPEN, khong vi pham va da xu ly co hanh dong.
+    SET relation_no = 1;
+    WHILE relation_no <= 30 DO
+        SET current_post_id = relation_no * 20 + 2;
+        SET seed_time_value = TIMESTAMP('2026-07-01 10:00:00') + INTERVAL relation_no DAY;
+        INSERT INTO `moderation_cases` (
+            `post_id`, `status`, `report_count`, `resolved_by`, `resolution_note`,
+            `first_reported_at`, `latest_reported_at`, `resolved_at`, `created_at`, `updated_at`
+        ) VALUES (
+            current_post_id,
+            CASE MOD(relation_no, 3)
+                WHEN 0 THEN 'OPEN'
+                WHEN 1 THEN 'RESOLVED_NO_VIOLATION'
+                ELSE 'RESOLVED_ACTION_TAKEN'
+            END,
+            1,
+            IF(MOD(relation_no, 3) = 0, NULL, 1),
+            IF(MOD(relation_no, 3) = 0, NULL, 'Ghi chú xử lý moderation dành cho dữ liệu demo'),
+            seed_time_value,
+            seed_time_value,
+            IF(MOD(relation_no, 3) = 0, NULL, seed_time_value + INTERVAL 1 DAY),
+            seed_time_value,
+            seed_time_value
+        );
+        SET current_case_id = LAST_INSERT_ID();
+        SET current_user_id = 700 + relation_no;
+
+        INSERT INTO `reports` (
+            `reporter_id`, `post_id`, `moderation_case_id`, `reason`, `description`,
+            `status`, `resolved_by`, `resolved_at`, `resolution_note`,
+            `post_content_snapshot`, `post_media_snapshot`, `created_at`, `updated_at`
+        )
+        SELECT
+            current_user_id,
+            p.id,
+            current_case_id,
+            CASE MOD(relation_no, 7)
+                WHEN 0 THEN 'SPAM'
+                WHEN 1 THEN 'HARASSMENT'
+                WHEN 2 THEN 'HARMFUL_CONTENT'
+                WHEN 3 THEN 'VIOLENCE'
+                WHEN 4 THEN 'MISINFORMATION'
+                WHEN 5 THEN 'INAPPROPRIATE'
+                ELSE 'OTHER'
+            END,
+            'Báo cáo demo để kiểm tra luồng quản trị nội dung.',
+            CASE MOD(relation_no, 3)
+                WHEN 0 THEN 'PENDING'
+                WHEN 1 THEN 'REJECTED'
+                ELSE 'RESOLVED'
+            END,
+            IF(MOD(relation_no, 3) = 0, NULL, 1),
+            IF(MOD(relation_no, 3) = 0, NULL, seed_time_value + INTERVAL 1 DAY),
+            IF(MOD(relation_no, 3) = 0, NULL, 'Kết quả xử lý report demo'),
+            p.content,
+            JSON_ARRAY(JSON_OBJECT(
+                'mediaUrl', CONCAT('https://picsum.photos/seed/unishare-post-', LPAD(p.id, 4, '0'), '-0/1200/800'),
+                'mediaType', 'IMAGE'
+            )),
+            seed_time_value,
+            seed_time_value
+        FROM `posts` p
+        WHERE p.id = current_post_id;
+
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- Lich su va notification tao du lieu cho dashboard/notification center.
+    INSERT INTO `account_status_histories`
+        (`user_id`, `old_status`, `new_status`, `changed_by`, `reason`, `created_at`)
+    SELECT
+        u.id, 'ACTIVE', 'BLOCKED', 1,
+        'Khóa tài khoản demo để kiểm tra lịch sử quản trị',
+        u.blocked_at
+    FROM `users` u
+    WHERE u.status = 'BLOCKED';
+
+    INSERT INTO `admin_actions`
+        (`admin_id`, `action_type`, `target_type`, `target_id`, `note`, `old_data`, `new_data`, `created_at`)
+    SELECT
+        1, 'BLOCK_USER', 'USER', u.id,
+        'Thao tác quản trị demo',
+        JSON_OBJECT('status', 'ACTIVE'),
+        JSON_OBJECT('status', 'BLOCKED'),
+        u.blocked_at
+    FROM `users` u
+    WHERE u.status = 'BLOCKED';
+
+    SET relation_no = 1;
+    WHILE relation_no <= 300 DO
+        INSERT INTO `notifications` (
+            `recipient_id`, `actor_id`, `type`, `post_id`, `comment_id`,
+            `report_id`, `read_at`, `deleted_at`, `created_at`, `updated_at`
+        ) VALUES (
+            2 + MOD(relation_no, 100),
+            102 + MOD(relation_no * 7, 500),
+            CASE MOD(relation_no, 5)
+                WHEN 0 THEN 'FOLLOW'
+                WHEN 1 THEN 'POST_LIKE'
+                WHEN 2 THEN 'POST_COMMENT'
+                WHEN 3 THEN 'POST_REPOST'
+                ELSE 'COMMENT_REPLY'
+            END,
+            IF(MOD(relation_no, 5) = 0, NULL, 2 + MOD(relation_no * 13, 998)),
+            NULL,
+            NULL,
+            IF(MOD(relation_no, 3) = 0, TIMESTAMP('2026-08-01 08:00:00') + INTERVAL relation_no MINUTE, NULL),
+            NULL,
+            TIMESTAMP('2026-08-01 07:00:00') + INTERVAL relation_no MINUTE,
+            TIMESTAMP('2026-08-01 07:00:00') + INTERVAL relation_no MINUTE
+        );
+        SET relation_no = relation_no + 1;
+    END WHILE;
+
+    -- 50 hoi thoai, moi hoi thoai co hai tin nhan de man hinh Inbox co du lieu.
+    SET conversation_no = 1;
+    WHILE conversation_no <= 50 DO
+        SET current_target_id = 2 + conversation_no;
+        SET seed_time_value = TIMESTAMP('2026-08-07 08:00:00') + INTERVAL conversation_no MINUTE;
+
+        INSERT INTO `conversations`
+            (`participant_low_id`, `participant_high_id`, `created_at`, `updated_at`)
+        VALUES (2, current_target_id, seed_time_value, seed_time_value);
+        SET current_conversation_id = LAST_INSERT_ID();
+
+        INSERT INTO `conversation_members`
+            (`conversation_id`, `user_id`, `created_at`, `updated_at`)
+        VALUES
+            (current_conversation_id, 2, seed_time_value, seed_time_value),
+            (current_conversation_id, current_target_id, seed_time_value, seed_time_value);
+
+        INSERT INTO `messages` (
+            `conversation_id`, `sender_id`, `client_message_id`, `type`,
+            `content`, `payload_fingerprint`, `created_at`, `updated_at`
+        ) VALUES (
+            current_conversation_id,
+            current_target_id,
+            UUID(),
+            'TEXT',
+            CONCAT('Xin chào, mình muốn trao đổi về bài viết số ', conversation_no, '.'),
+            SHA2(CONCAT('demo-message-a-', conversation_no), 256),
+            seed_time_value,
+            seed_time_value
+        );
+        SET first_message_id = LAST_INSERT_ID();
+
+        INSERT INTO `messages` (
+            `conversation_id`, `sender_id`, `client_message_id`, `type`,
+            `content`, `payload_fingerprint`, `created_at`, `updated_at`
+        ) VALUES (
+            current_conversation_id,
+            2,
+            UUID(),
+            'TEXT',
+            'Chào bạn, mình sẵn sàng trao đổi thêm nhé!',
+            SHA2(CONCAT('demo-message-b-', conversation_no), 256),
+            seed_time_value + INTERVAL 1 MINUTE,
+            seed_time_value + INTERVAL 1 MINUTE
+        );
+        SET second_message_id = LAST_INSERT_ID();
+
+        UPDATE `conversations`
+        SET `last_message_id` = second_message_id,
+            `last_message_at` = seed_time_value + INTERVAL 1 MINUTE,
+            `updated_at` = seed_time_value + INTERVAL 1 MINUTE
+        WHERE `id` = current_conversation_id;
+
+        UPDATE `conversation_members`
+        SET `last_read_message_id` = IF(`user_id` = 2, first_message_id, second_message_id),
+            `last_read_at` = seed_time_value + INTERVAL 1 MINUTE
+        WHERE `conversation_id` = current_conversation_id;
+
+        SET conversation_no = conversation_no + 1;
+    END WHILE;
+
+    -- Du lieu activity phuc vu dashboard analytics.
+    SET user_no = 1;
+    WHILE user_no <= 500 DO
+        INSERT INTO `user_daily_activities`
+            (`user_id`, `activity_date`, `first_active_at`, `last_active_at`, `activity_count`)
+        VALUES (
+            user_no,
+            DATE('2026-08-01') + INTERVAL MOD(user_no, 7) DAY,
+            TIMESTAMP('2026-08-01 07:00:00') + INTERVAL MOD(user_no, 7) DAY,
+            TIMESTAMP('2026-08-01 09:00:00') + INTERVAL MOD(user_no, 7) DAY,
+            1 + MOD(user_no, 20)
+        );
+        SET user_no = user_no + 1;
+    END WHILE;
+
+    COMMIT;
+END$$
+DELIMITER ;
+
+CALL `seed_website_cases`();
+DROP PROCEDURE `seed_website_cases`;
+
+-- Ket qua mong doi: 1.000 users, 1.000 profiles, 1.000 posts va 2.500 post media.
+SELECT
+    (SELECT COUNT(*) FROM `users`) AS users_count,
+    (SELECT COUNT(*) FROM `user_profiles`) AS profiles_count,
+    (SELECT COUNT(*) FROM `user_profiles` WHERE `username` IS NOT NULL) AS completed_usernames,
+    (SELECT COUNT(*) FROM `user_profiles` WHERE `profile_completed_at` IS NULL) AS onboarding_profiles,
+    (SELECT COUNT(*) FROM `user_profiles` WHERE `school_id` IS NOT NULL) AS academic_profiles,
+    (SELECT COUNT(*) FROM `user_interests`) AS user_interests_count,
+    (SELECT COUNT(*) FROM `posts`) AS posts_count,
+    (SELECT COUNT(*) FROM `post_media`) AS post_media_count;
+
+-- Moi dong vi pham phai tra ve 0; giu verify cung seed de thu muc database gon hon.
+SELECT 'invalid_demo_counts' AS check_name, COUNT(*) AS violations
+FROM (SELECT 1) AS expected
+WHERE (SELECT COUNT(*) FROM `users`) <> 1000
+   OR (SELECT COUNT(*) FROM `user_profiles`) <> 1000
+   OR (SELECT COUNT(*) FROM `posts`) <> 1000
+   OR (SELECT COUNT(*) FROM `user_profiles` WHERE `profile_completed_at` IS NULL) <> 10
+UNION ALL
+SELECT 'invalid_academic_hierarchy', COUNT(*)
+FROM `user_profiles` profile
+LEFT JOIN `faculties` faculty ON faculty.id = profile.faculty_id
+LEFT JOIN `majors` major ON major.id = profile.major_id
+WHERE profile.school_id IS NOT NULL
+  AND (faculty.school_id <> profile.school_id OR major.faculty_id <> profile.faculty_id)
+UNION ALL
+SELECT 'counter_mismatch', COUNT(*)
+FROM `posts` post
+WHERE post.like_count <> (SELECT COUNT(*) FROM `post_likes` item WHERE item.post_id = post.id)
+   OR post.comment_count <> (SELECT COUNT(*) FROM `comments` item WHERE item.post_id = post.id AND item.status <> 'DELETED')
+   OR post.repost_count <> (SELECT COUNT(*) FROM `post_reposts` item WHERE item.post_id = post.id);
+
+SELECT `status`, COUNT(*) AS total
+FROM `posts`
+GROUP BY `status`
+ORDER BY `status`;

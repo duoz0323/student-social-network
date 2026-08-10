@@ -7,11 +7,11 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Bảo vệ bộ ba file database tối thiểu và dữ liệu demo 1.000 tài khoản. */
+/** Bảo vệ hai artifact database canonical và dữ liệu demo 1.000 tài khoản trong file import duy nhất. */
 class DemoSeedContractTest {
 
     @Test
-    void databaseDirectoryKeepsOnlyCanonicalSchemaDbmlAndOneDemoSeed() throws Exception {
+    void databaseDirectoryKeepsOnlyCanonicalSqlAndDbml() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -24,14 +24,13 @@ class DemoSeedContractTest {
         }
 
         assertThat(files).containsExactly(
-                "seeds/seed_1000_website_cases.sql",
                 "student_social_network.dbml",
                 "student_social_network.sql");
     }
 
     @Test
     void demoSeedCoversUsersAcademicProfilesPostsAndSelfVerification() throws Exception {
-        String seed = Files.readString(databaseDirectory().resolve("seeds/seed_1000_website_cases.sql"));
+        String seed = Files.readString(databaseDirectory().resolve("student_social_network.sql"));
 
         assertThat(seed)
                 .contains("WHILE user_no <= 1000 DO")

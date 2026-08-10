@@ -832,9 +832,7 @@ student-social-network/
 │
 ├── database/
 │   ├── student_social_network.sql
-│   ├── student_social_network.dbml
-│   └── seeds/
-│       └── seed_1000_website_cases.sql
+│   └── student_social_network.dbml
 │
 ├── docs/
 │   ├── api/
@@ -1210,7 +1208,7 @@ cd student-social-network
 
 ### 3. Khởi tạo cơ sở dữ liệu
 
-File `student_social_network.sql` tự động drop database test hiện tại, tạo lại schema và nạp dữ liệu demo tối thiểu. Từ Command Prompt hoặc Git Bash:
+File `student_social_network.sql` là file import duy nhất: tự động drop database test hiện tại, tạo lại toàn bộ schema/trigger và nạp đúng 1.000 users cùng 1.000 posts demo. Từ Command Prompt hoặc Git Bash:
 
 ```bash
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
@@ -1220,12 +1218,6 @@ Từ PowerShell:
 
 ```powershell
 cmd /c "mysql --default-character-set=utf8mb4 -u root -p < database\student_social_network.sql"
-```
-
-Để thay dữ liệu demo tối thiểu bằng bộ dữ liệu kiểm thử website gồm đúng 1.000 users và 1.000 posts có từ 1–4 ảnh:
-
-```powershell
-cmd /c "mysql --default-character-set=utf8mb4 -u root -p student_social_network < database\seeds\seed_1000_website_cases.sql"
 ```
 
 ### 4. Cấu hình Backend

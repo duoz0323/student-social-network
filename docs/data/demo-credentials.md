@@ -1,6 +1,6 @@
 # Tài khoản demo
 
-Bộ dữ liệu được tạo bởi `database/seeds/seed_1000_website_cases.sql`.
+Bộ dữ liệu được tạo trực tiếp khi import file duy nhất `database/student_social_network.sql`.
 
 ## Mật khẩu dùng chung
 

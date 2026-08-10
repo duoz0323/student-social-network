@@ -24,7 +24,7 @@ FLUSH PRIVILEGES;
 Tạo schema ứng dụng trên database test từ `database/student_social_network.sql`, nhưng phải:
 
 1. Thay đúng tên database `student_social_network` thành `student_social_network_test` trong một bản tạm.
-2. Nếu cần schema sạch, bỏ phần bắt đầu từ marker `-- DEV/DEMO SEED DATA`.
+2. Nếu cần schema sạch, bỏ phần bắt đầu từ marker `-- CANONICAL DEMO DATASET`.
 3. Không sửa file canonical chỉ để chạy test.
 4. Dùng lại full rebuild canonical nếu schema test chưa có `user_blocks`; repo demo không giữ migration rời.
 
