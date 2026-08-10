@@ -26,18 +26,6 @@ class UserActivityAnalyticsSchemaContractTest {
                 .contains("Ref fk_user_daily_activities_user: user_daily_activities.user_id > users.id");
     }
 
-    @Test
-    void additiveMigrationUsesAtomicUniquenessWithoutDuplicateIndex() throws Exception {
-        String migration = Files.readString(databasePath("migrations", "V005__add_user_activity_analytics.sql"));
-
-        assertThat(migration)
-                .contains("ADD COLUMN first_active_at")
-                .contains("ADD COLUMN last_active_at")
-                .contains("UNIQUE KEY uq_user_daily_activities_user_date (user_id, activity_date)")
-                .contains("KEY idx_user_daily_activities_date_user (activity_date, user_id)")
-                .doesNotContain("DROP TABLE", "DROP COLUMN");
-    }
-
     private Path databasePath(String first, String... more) {
         Path current = Path.of("").toAbsolutePath().normalize();
         Path database = Files.isDirectory(current.resolve("database"))

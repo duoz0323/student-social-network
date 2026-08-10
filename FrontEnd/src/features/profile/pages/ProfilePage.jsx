@@ -22,6 +22,13 @@ import {
   sameUserId,
   updateFollowStateInLists,
 } from '../utils/followListState.js';
+import AcademicProfileFields from '../components/AcademicProfileFields.jsx';
+import InterestSelector from '../components/InterestSelector.jsx';
+import {
+  buildProfileUpdatePayload,
+  createAcademicSelection,
+  mapAcademicProfileError,
+} from '../utils/academicProfileUtils.js';
 
 function ProfilePageSkeleton({ self, onBack }) {
   // Skeleton giữ nguyên khung trang thật để chuyển route không bị co giãn hoặc nhảy bố cục.
@@ -150,7 +157,10 @@ export default function ProfilePage({ self = false }) {
     enabled: Boolean(profileUserId),
     active: activeTab === 'reposts',
   });
-  const [draft, setDraft] = useState({ displayName: '', bio: '', avatarUrl: '', dateOfBirth: '' });
+  const [draft, setDraft] = useState({
+    displayName: '', bio: '', avatarUrl: '', dateOfBirth: '',
+    academic: createAcademicSelection(), interestIds: [],
+  });
   const profileOptionsRef = useRef(null);
 
   useEffect(() => {
@@ -186,6 +196,8 @@ export default function ProfilePage({ self = false }) {
           bio: loadedProfile.bio ?? '',
           avatarUrl: loadedProfile.avatarUrl ?? '',
           dateOfBirth: loadedProfile.birthDate ?? '',
+          academic: createAcademicSelection(loadedProfile),
+          interestIds: (loadedProfile.interests ?? []).map((interest) => Number(interest.id)),
         });
       })
       .catch((requestError) => {
@@ -214,7 +226,14 @@ export default function ProfilePage({ self = false }) {
   const handle = profile.username ? `@${profile.username}` : '';
 
   function openEdit() {
-    setDraft({ displayName: profile.displayName, bio: profile.bio, avatarUrl: profile.avatarUrl, dateOfBirth: profile.birthDate ?? '' });
+    setDraft({
+      displayName: profile.displayName,
+      bio: profile.bio,
+      avatarUrl: profile.avatarUrl,
+      dateOfBirth: profile.birthDate ?? '',
+      academic: createAcademicSelection(profile),
+      interestIds: (profile.interests ?? []).map((interest) => Number(interest.id)),
+    });
     setError('');
     setEditing(true);
   }
@@ -224,18 +243,23 @@ export default function ProfilePage({ self = false }) {
     setSavingProfile(true);
     setError('');
     try {
-      await updateProfile(draft);
+      const response = await updateProfile(buildProfileUpdatePayload({
+        basic: draft,
+        academic: draft.academic,
+        interestIds: draft.interestIds,
+        includeAcademic: true,
+        includeInterests: true,
+      }));
       setProfile((current) => ({
         ...current,
-        displayName: draft.displayName.trim(),
-        bio: draft.bio?.trim() ?? '',
-        birthDate: draft.dateOfBirth,
-        dateOfBirth: draft.dateOfBirth,
+        ...response,
+        id: current.id,
+        birthDate: response.dateOfBirth ?? draft.dateOfBirth,
       }));
       setEditing(false);
       showToast('Đã chỉnh sửa thông tin người dùng thành công.');
     } catch (requestError) {
-      setError(requestError.message);
+      setError(mapAcademicProfileError(requestError));
     } finally {
       setSavingProfile(false);
     }
@@ -404,6 +428,25 @@ export default function ProfilePage({ self = false }) {
           </div>
 
           <p className="mt-3 text-[15px] text-[var(--app-text)] leading-relaxed whitespace-pre-wrap">{profile.bio || 'Chưa có giới thiệu.'}</p>
+
+          {profile.school || profile.faculty || profile.major || profile.entryYear ? (
+            <div className="mt-4 space-y-1 text-[14px] text-[var(--app-muted)]">
+              {profile.school ? <p className="font-semibold text-[var(--app-text)]">{profile.school.shortName || profile.school.name}</p> : null}
+              {profile.faculty ? <p>{profile.faculty.name}</p> : null}
+              {profile.major ? <p>{profile.major.name}</p> : null}
+              {profile.entryYear ? <p>Khóa/Năm nhập học {profile.entryYear}</p> : null}
+            </div>
+          ) : null}
+
+          {profile.interests?.length ? (
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Sở thích">
+              {profile.interests.map((interest) => (
+                <span key={interest.id} className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1 text-[13px] text-[var(--app-text)]">
+                  {interest.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
           
           <div className="mt-4 flex items-center justify-between text-[15px] text-[var(--app-muted)]">
             <div className="flex gap-4">
@@ -671,6 +714,28 @@ export default function ProfilePage({ self = false }) {
             maxLength={160}
             disabled={savingProfile}
             onChange={(e) => setDraft({ ...draft, bio: e.target.value })} 
+          />
+        </div>
+
+        <div className="mb-6 border-t border-[var(--app-border)] pt-5">
+          <div className="mb-4">
+            <h3 className="text-[15px] font-semibold text-[var(--app-text)]">Thông tin học tập</h3>
+            <p className="mt-1 text-[13px] text-[var(--app-muted)]">Tùy chọn; khoa và ngành phụ thuộc lựa chọn phía trên.</p>
+          </div>
+          <AcademicProfileFields
+            value={draft.academic}
+            onChange={(academic) => setDraft((current) => ({ ...current, academic }))}
+            disabled={savingProfile}
+            idPrefix="edit-profile-academic"
+          />
+        </div>
+
+        <div className="mb-6 border-t border-[var(--app-border)] pt-5">
+          <h3 className="mb-3 text-[15px] font-semibold text-[var(--app-text)]">Sở thích</h3>
+          <InterestSelector
+            value={draft.interestIds}
+            onChange={(interestIds) => setDraft((current) => ({ ...current, interestIds }))}
+            disabled={savingProfile}
           />
         </div>
 

@@ -26,7 +26,7 @@ Tạo schema ứng dụng trên database test từ `database/student_social_netw
 1. Thay đúng tên database `student_social_network` thành `student_social_network_test` trong một bản tạm.
 2. Nếu cần schema sạch, bỏ phần bắt đầu từ marker `-- DEV/DEMO SEED DATA`.
 3. Không sửa file canonical chỉ để chạy test.
-4. Chạy `database/migrations/20260728_add_user_blocks.sql` nếu schema đích chưa có `user_blocks`.
+4. Dùng lại full rebuild canonical nếu schema test chưa có `user_blocks`; repo demo không giữ migration rời.
 
 ## Cách 2: Docker MySQL 8 cô lập
 

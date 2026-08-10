@@ -15,6 +15,10 @@ import org.mapstruct.ReportingPolicy;
 public interface UserProfileMapper {
 
     @Mapping(target = "profileCompleted", expression = "java(profile.isCompleted())")
+    @Mapping(target = "school", expression = "java(AcademicProfileResponseMapper.school(profile.getSchool()))")
+    @Mapping(target = "faculty", expression = "java(AcademicProfileResponseMapper.faculty(profile.getFaculty()))")
+    @Mapping(target = "major", expression = "java(AcademicProfileResponseMapper.major(profile.getMajor()))")
+    @Mapping(target = "interests", expression = "java(AcademicProfileResponseMapper.interests(profile.getInterests()))")
     UserProfileResponse toUserProfileResponse(UserProfile profile);
 
     @Mapping(target = "profileCompleted", expression = "java(profile.isCompleted())")

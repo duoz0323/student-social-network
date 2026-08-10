@@ -1,6 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { copyPostLink, toFeedItemView, toPostEditDraft } from '../src/features/post/utils/postViewModel.js';
+import {
+  copyPostLink,
+  resolvePostAuthor,
+  toFeedItemView,
+  toPostEditDraft,
+} from '../src/features/post/utils/postViewModel.js';
+
+test('ưu tiên avatar mới từ Feed thay vì avatar rỗng trong cache', () => {
+  const author = resolvePostAuthor({
+    authorId: 15,
+    author: {
+      id: 15,
+      displayName: 'Nguyễn Minh',
+      avatarUrl: 'https://cdn.example/avatar-moi.jpg',
+    },
+  }, {
+    id: 15,
+    displayName: 'Nguyễn Minh cũ',
+    avatarUrl: '',
+  });
+
+  assert.equal(author.id, 15);
+  assert.equal(author.displayName, 'Nguyễn Minh');
+  assert.equal(author.avatarUrl, 'https://cdn.example/avatar-moi.jpg');
+});
+
+test('dùng dữ liệu cache khi response Post không có thông tin tác giả', () => {
+  const author = resolvePostAuthor({ authorId: 16 }, {
+    id: 16,
+    displayName: 'Lan',
+    avatarUrl: '/avatar-lan.jpg',
+  });
+
+  assert.deepEqual(author, {
+    id: 16,
+    displayName: 'Lan',
+    avatarUrl: '/avatar-lan.jpg',
+  });
+});
 
 test('tạo draft sửa từ Post Detail và giữ đúng media cùng Location', () => {
   const location = { id: 7, placeId: 'ChIJ-detail', displayName: 'Cao Lỗ' };

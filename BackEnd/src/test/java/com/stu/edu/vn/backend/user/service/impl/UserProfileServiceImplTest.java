@@ -6,9 +6,17 @@ import static org.mockito.Mockito.when;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.academic.repository.FacultyRepository;
+import com.stu.edu.vn.backend.academic.repository.InterestCategoryRepository;
+import com.stu.edu.vn.backend.academic.repository.MajorRepository;
+import com.stu.edu.vn.backend.academic.repository.SchoolRepository;
+import com.stu.edu.vn.backend.academic.entity.School;
+import com.stu.edu.vn.backend.academic.entity.InterestCategory;
+import com.stu.edu.vn.backend.academic.enums.AcademicStatus;
 import com.stu.edu.vn.backend.follow.repository.FollowRepository;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.dto.request.UpdateUserProfileRequest;
+import com.stu.edu.vn.backend.user.dto.request.AcademicProfileRequest;
 import com.stu.edu.vn.backend.user.dto.response.UserProfileResponse;
 import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -24,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -40,6 +49,11 @@ class UserProfileServiceImplTest {
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
     private final UserRestrictionRepository userRestrictionRepository =
             org.mockito.Mockito.mock(UserRestrictionRepository.class);
+    private final SchoolRepository schoolRepository = org.mockito.Mockito.mock(SchoolRepository.class);
+    private final FacultyRepository facultyRepository = org.mockito.Mockito.mock(FacultyRepository.class);
+    private final MajorRepository majorRepository = org.mockito.Mockito.mock(MajorRepository.class);
+    private final InterestCategoryRepository interestRepository =
+            org.mockito.Mockito.mock(InterestCategoryRepository.class);
 
     private UserProfileServiceImpl service;
 
@@ -54,7 +68,9 @@ class UserProfileServiceImplTest {
                 new UserProfileValidationSupport(clock),
                 mapper,
                 relationshipPolicyService,
-                userRestrictionRepository
+                userRestrictionRepository,
+                new AcademicProfileValidationSupport(
+                        schoolRepository, facultyRepository, majorRepository, interestRepository, clock)
         );
     }
 
@@ -126,5 +142,40 @@ class UserProfileServiceImplTest {
         assertThat(response.bio()).isEqualTo("Bio mới");
         assertThat(response.profileCompleted()).isTrue();
         assertThat(profile.getProfileCompletedAt()).isEqualTo(LocalDateTime.now(clock).minusDays(1));
+    }
+
+    @Test
+    void updateAcademicProfileAndInterestsSucceedsWithoutChangingCompletion() {
+        UserProfile profile = new UserProfile(new User("student@example.com", "hash"));
+        LocalDateTime completedAt = LocalDateTime.now(clock).minusDays(1);
+        profile.setUsername("academic_student");
+        profile.setProfileCompletedAt(completedAt);
+        when(currentUserProfileProvider.getCurrentProfileForUpdate()).thenReturn(profile);
+
+        School school = org.mockito.Mockito.mock(School.class);
+        when(school.getId()).thenReturn(1L);
+        when(school.getName()).thenReturn("Trường Đại học Công Nghệ Sài Gòn");
+        when(school.getShortName()).thenReturn("STU");
+        InterestCategory interest = org.mockito.Mockito.mock(InterestCategory.class);
+        when(interest.getId()).thenReturn(2L);
+        when(interest.getName()).thenReturn("Lập trình");
+        when(schoolRepository.findByIdAndStatus(1L, AcademicStatus.ACTIVE)).thenReturn(Optional.of(school));
+        when(interestRepository.findAllByIdInAndStatus(
+                org.mockito.ArgumentMatchers.anyCollection(),
+                org.mockito.ArgumentMatchers.eq(AcademicStatus.ACTIVE)
+        )).thenReturn(List.of(interest));
+
+        UserProfileResponse response = service.updateMyProfile(new UpdateUserProfileRequest(
+                "Sinh viên STU",
+                LocalDate.of(2000, 1, 1),
+                null,
+                new AcademicProfileRequest(1L, null, null, 2022),
+                List.of(2L)
+        ));
+
+        assertThat(response.school().shortName()).isEqualTo("STU");
+        assertThat(response.entryYear()).isEqualTo(2022);
+        assertThat(response.interests()).extracting("id").containsExactly(2L);
+        assertThat(profile.getProfileCompletedAt()).isEqualTo(completedAt);
     }
 }

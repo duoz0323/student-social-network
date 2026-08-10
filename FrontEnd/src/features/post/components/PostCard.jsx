@@ -12,7 +12,7 @@ import ReportPostFlow from './ReportPostFlow.jsx';
 import UserRestrictionAction from '../../profile/components/UserRestrictionAction.jsx';
 import EditPostMedia from './EditPostMedia.jsx';
 import PostHashtagPicker from './PostHashtagPicker.jsx';
-import { copyPostLink, toPostEditDraft, toPostView } from '../utils/postViewModel.js';
+import { copyPostLink, resolvePostAuthor, toPostEditDraft, toPostView } from '../utils/postViewModel.js';
 import { formatPostEditCountdown, postEditRemainingSeconds } from '../utils/postEditWindow.js';
 import LocationPicker from '../locations/LocationPicker.jsx';
 import SelectedLocation from '../locations/SelectedLocation.jsx';
@@ -157,7 +157,7 @@ export default function PostCard({
   const menuRef = useRef(null);
   const editRequestRef = useRef(null);
   const syncRequestRef = useRef(null);
-  const author = getUserById(post.authorId) ?? post.author;
+  const author = resolvePostAuthor(post, getUserById(post.authorId));
   const isOwner = post.authorId === currentUserId;
   const initialLiked = post.likedByCurrentUser
     ?? data.likes.some((like) => String(like.postId) === String(post.id) && String(like.userId) === String(currentUserId));

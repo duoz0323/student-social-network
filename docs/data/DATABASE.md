@@ -17,8 +17,7 @@
   điểm retry cho file upload đã thành rác; scheduler khóa/xử lý từng task trong transaction riêng.
 - Composite FK bảo đảm sender là member. Service bảo đảm hai member khớp participant và các marker
   last/read thuộc đúng conversation.
-- Migration nền: `database/migrations/20260801_add_direct_messaging.sql`.
-- Migration ảnh: `database/migrations/20260803_add_messaging_images.sql`; backfill fingerprint cho text cũ, không sửa migration đã chạy.
+- Schema Messaging hiện hành nằm trực tiếp trong SQL canonical và DBML; dự án không tự chạy migration khi Backend khởi động.
 
 ## Repost
 
@@ -164,6 +163,15 @@ Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 
 ## 11. Rebuild dev/demo
 
+### Academic Profile & Interests
+
+- SQL canonical tạo `schools`, `faculties`, `majors`, `interest_categories`, `user_interests` và bốn cột nullable trên `user_profiles`.
+- `faculties.school_id` và `majors.faculty_id` tạo hierarchy chuẩn hóa; Service kiểm tra lại toàn bộ hierarchy và trạng thái `ACTIVE` trước khi lưu profile.
+- `user_interests` dùng primary key `(user_id, interest_id)` và index đảo `(interest_id, user_id)` để chống trùng và chuẩn bị query theo sở thích ở phase sau.
+- `school_id`, `faculty_id`, `major_id` có foreign key/index riêng; `entry_year` có check tĩnh `1900..9999`, còn giới hạn không vượt năm hiện tại được Service kiểm tra bằng UTC `Clock`.
+- Academic fields không tham gia `chk_user_profiles_completion_consistency`, do đó không làm thay đổi username hoặc `profile_completed_at`.
+- Master data trong SQL canonical có STU, một số trường TP.HCM và 16 interest categories; chỉ dùng development/demo, không phải danh mục chính thức toàn quốc.
+
 Chỉ rebuild khi đã xác nhận database đích là local/test, đã xem thống kê dữ liệu hiện có và đã tạo backup khi cần bảo tồn.
 
 File `database/student_social_network.sql` tự drop và tạo lại database `student_social_network`, nạp schema, trigger và dữ liệu demo tối thiểu. Sau đó có thể chạy `database/seeds/seed_1000_website_cases.sql` để thay dữ liệu tối thiểu bằng đúng 1.000 users, 1.000 posts có ảnh cùng các quan hệ phục vụ kiểm thử website. Khi sử dụng phải đặt `BOOTSTRAP_ADMIN_ENABLED=false`.
@@ -171,7 +179,6 @@ File `database/student_social_network.sql` tự drop và tạo lại database `s
 ```bash
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
 mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/seeds/seed_1000_website_cases.sql
-mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/seeds/verify_1000_website_cases.sql
 ```
 
 Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.
@@ -183,8 +190,8 @@ Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc r
 - `moderation_cases` có quan hệ N-1 với `posts`; `reports.moderation_case_id` tham chiếu case.
 - Generated key `open_post_key` cùng unique index bảo đảm tối đa một case `OPEN` mỗi Post.
 - `report_count`, `first_reported_at`, `latest_reported_at` được cập nhật trong cùng transaction tạo Report.
-- Migration `V003__add_moderation_cases.sql` dừng trước khi backfill nếu Report legacy không thể map an toàn.
-- Backfill giữ nguyên reporter, reason, description và snapshot; không gộp dữ liệu thành CSV/JSON.
+- Khi nâng cấp database có dữ liệu, phải tự xây dựng và kiểm tra script chuyển đổi riêng; repo demo chỉ giữ SQL canonical rebuild.
+- Dữ liệu Report giữ nguyên reporter, reason, description và snapshot; không gộp dữ liệu thành CSV/JSON.
 - Report `PENDING` thuộc case `OPEN`; case không vi phạm chuyển Report sang `REJECTED`, case có hành động chuyển sang `RESOLVED`.
 
 ## 13. Báo cáo trang cá nhân

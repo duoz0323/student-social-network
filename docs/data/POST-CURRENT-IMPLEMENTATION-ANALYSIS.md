@@ -555,7 +555,7 @@ Hai view chỉ lọc Post/tác giả hợp lệ; chưa chứa logic Following ho
 
 ### Thiếu
 
-- SQL và DBML đã đồng bộ `locations`, `posts.location_id`, unique Google Place ID, index và khóa ngoại `ON DELETE SET NULL`. Migration thủ công `V001__add_post_locations.sql` dành cho database hiện hữu và không tự chạy lúc Backend khởi động.
+- SQL canonical và DBML đã đồng bộ `locations`, `posts.location_id`, unique Google Place ID, index và khóa ngoại `ON DELETE SET NULL`. Repo demo không giữ migration rời và Backend không tự thay đổi schema lúc khởi động.
 
 ## 19. Frontend hiện đã tích hợp API thật đến đâu
 

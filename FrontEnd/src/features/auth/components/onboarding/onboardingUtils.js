@@ -31,6 +31,16 @@ export function mapUsernameErrorCode(code) {
   return messages[code] ?? '';
 }
 
+// Upload file thật trong onboarding và chỉ dùng URL bền vững do Backend trả về.
+export async function uploadOnboardingAvatar(file, uploadAvatar) {
+  if (!file) return '';
+  const response = await uploadAvatar(file);
+  if (!response?.avatarUrl) {
+    throw new Error('Backend không trả về URL ảnh đại diện sau khi upload.');
+  }
+  return response.avatarUrl;
+}
+
 // Trả về ngày hôm nay dạng YYYY-MM-DD để giới hạn input date.
 export function todayIsoDate() {
   const today = new Date();

@@ -57,11 +57,13 @@ class ProfileCompletionFilterTest {
         for (String path : java.util.List.of(
                 "/api/v1/users/me/onboarding",
                 "/api/v1/users/me/avatar",
-                "/api/v1/users/me/auth-providers")) {
+                "/api/v1/users/me/auth-providers",
+                "/api/v1/academic/schools",
+                "/api/v1/interests")) {
             MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
             filter.doFilter(request, new MockHttpServletResponse(), chain);
         }
-        verify(chain, org.mockito.Mockito.times(3)).doFilter(
+        verify(chain, org.mockito.Mockito.times(5)).doFilter(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         verify(profiles, never()).existsByUserIdAndProfileCompletedAtIsNotNull(7L);
     }

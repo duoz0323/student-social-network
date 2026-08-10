@@ -144,7 +144,7 @@ Không được chỉ kiểm tra `A -> B`, vì hiệu lực nghiệp vụ là ha
 
 ### 4.4. Lưu ý migration
 
-Repository không có Flyway/Liquibase. SQL canonical là một file dump đầy đủ và migration không phá hủy dành cho schema đang có dữ liệu nằm tại `database/migrations/20260728_add_user_blocks.sql`.
+Repository không có Flyway/Liquibase. Repo demo hiện chỉ giữ SQL canonical full rebuild; nâng cấp schema đang có dữ liệu cần script chuyển đổi được xây dựng và kiểm tra riêng cho lần triển khai đó.
 
 Do đó:
 

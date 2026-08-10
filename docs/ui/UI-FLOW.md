@@ -18,10 +18,11 @@ AUTH-02 Đăng ký
 → Có thể resend sau cooldown hoặc recovery pending
 → OTP hợp lệ mới tạo user, profile và session JWT hệ thống
 → /onboarding/profile
-→ AUTH-03 Onboarding bước 1: nhập tên hiển thị và username bắt buộc; kiểm tra username availability
-→ AUTH-04 Onboarding bước 2: chọn hoặc bỏ qua avatar
-→ AUTH-05 Onboarding bước 3: nhập ngày sinh bắt buộc, kiểm tra đủ 18 tuổi; bio có thể bỏ qua
-→ PUT onboarding kiểm tra lại username và cập nhật profileCompletedAt
+→ AUTH-03 Onboarding bước lớn 1: giữ luồng cơ bản hiện có gồm username, tên hiển thị, avatar, ngày sinh và bio
+→ PUT onboarding kiểm tra lại username/ngày sinh và cập nhật profileCompletedAt
+→ AUTH-04 Bước lớn 2 tùy chọn: tìm/chọn School → Faculty → Major và Entry Year hoặc bỏ qua
+→ AUTH-05 Bước lớn 3 tùy chọn: chọn tối đa 10 Interests hoặc bỏ qua
+→ PUT profile chỉ gửi phần Academic/Interests người dùng chủ động lưu; hai bước này không đổi profileCompletedAt
 → AUTH-06 /onboarding/success
 → Hiển thị tạo tài khoản thành công
 → Người dùng chọn Vào trang chủ
@@ -45,7 +46,7 @@ Bấm nút Google hoặc Facebook
 
 Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Email social trùng user `ACTIVE` chưa link provider không được tự link hay tạo user thứ hai. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
 
-Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Frontend tải lại dữ liệu onboarding hiện có để legacy user chỉ bổ sung username mà không mất displayName, ngày sinh hoặc bio. Login và refresh không trả lỗi này.
+Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Frontend tải lại dữ liệu onboarding hiện có để legacy user chỉ bổ sung username mà không mất displayName, ngày sinh hoặc bio. Sau khi dữ liệu cơ bản hoàn tất, route onboarding vẫn cho phép tiếp tục hai bước tùy chọn và đọc current profile để prefill khi refresh; login và refresh không trả lỗi `PROFILE_NOT_COMPLETED`.
 
 ### 1.2 Đăng nhập
 
@@ -213,7 +214,8 @@ Sidebar Trang cá nhân
 → Xem thông tin cá nhân, số follower/following, bài đã đăng
 → Chọn Chỉnh sửa trang cá nhân
 → PROFILE-03 Modal chỉnh sửa hồ sơ
-→ Lưu thay đổi
+→ Sửa thông tin cơ bản, Academic Profile và tối đa 10 Interests
+→ Lưu thay đổi trong một request profile update
 ```
 
 Hồ sơ người khác:

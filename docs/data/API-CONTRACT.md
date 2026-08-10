@@ -848,6 +848,23 @@ Complete thu hồi toàn bộ Refresh Token trong cùng transaction. Access Toke
 
 ## 2. User
 
+### Academic master data
+
+Các endpoint sau yêu cầu JWT nhưng được phép gọi khi `profile_completed_at` còn `NULL`, để Frontend có thể dùng trong onboarding phase tiếp theo:
+
+```http
+GET /api/v1/academic/schools?keyword=Cong&limit=10
+GET /api/v1/academic/schools/{schoolId}/faculties?keyword=Cong&limit=10
+GET /api/v1/academic/faculties/{facultyId}/majors?keyword=Cong&limit=10
+GET /api/v1/interests
+```
+
+- School/Faculty/Major chỉ trả bản ghi `ACTIVE`, tìm prefix không phân biệt hoa thường tại MySQL, sắp xếp theo tên và giới hạn ngay ở query.
+- `limit` mặc định 10, hợp lệ từ 1 đến 20; `keyword` nullable, tối đa 100 ký tự.
+- Faculty endpoint chỉ trả khoa thuộc `schoolId`; Major endpoint chỉ trả ngành thuộc `facultyId`.
+- `GET /interests` trả toàn bộ danh mục sở thích `ACTIVE` đã chuẩn hóa vì danh mục hiện được giới hạn ở quy mô nhỏ.
+- Đây là read-only master API; không có School Suggestion hoặc Admin Academic Management API trong phase này.
+
 ### GET `/api/v1/users/me/onboarding`
 
 Response 200:
@@ -923,7 +940,14 @@ Request:
 {
   "displayName": "Nguyễn Hoàng Minh",
   "dateOfBirth": "2000-01-01",
-  "bio": "Sinh viên CNTT"
+  "bio": "Sinh viên CNTT",
+  "academic": {
+    "schoolId": 1,
+    "facultyId": 1,
+    "majorId": 1,
+    "entryYear": 2022
+  },
+  "interestIds": [1, 3, 11]
 }
 ```
 
@@ -932,6 +956,13 @@ Quy tắc:
 - Chỉ dùng sau khi onboarding hoàn tất.
 - `displayName` và `dateOfBirth` bắt buộc; ngày sinh vẫn phải thỏa điều kiện đủ 18 tuổi tại ngày cập nhật.
 - Avatar không cập nhật qua JSON.
+- Bỏ `academic` hoặc `interestIds` nghĩa là giữ nguyên phần dữ liệu tương ứng, giúp client cũ không vô tình xóa Academic Profile.
+- Gửi object `academic` với các ID `null` để xóa liên kết tương ứng; Faculty cần School, Major cần Faculty và hierarchy phải khớp.
+- `entryYear` nullable, nếu có phải từ 1900 đến năm hiện tại theo UTC.
+- `interestIds` chỉ nhận ID `ACTIVE` hợp lệ, tối đa 10 ID khác nhau; ID lặp trong request được chuẩn hóa thành một quan hệ. Danh sách rỗng xóa toàn bộ interests.
+- Update profile, ba khóa ngoại học thuật và `user_interests` nằm trong cùng transaction đã khóa hồ sơ; không thay đổi `profile_completed_at`.
+
+Response hồ sơ current/other bổ sung `school`, `faculty`, `major`, `entryYear`, `interests`. `school` gồm `id`, `name`, `shortName`; khoa/ngành/sở thích gồm `id`, `name`. Các field academic nullable và `interests` mặc định là danh sách rỗng.
 
 ### POST `/api/v1/users/me/avatar`
 

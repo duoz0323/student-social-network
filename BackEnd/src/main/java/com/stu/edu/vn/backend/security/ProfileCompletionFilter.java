@@ -23,7 +23,9 @@ public class ProfileCompletionFilter extends OncePerRequestFilter {
             "/api/v1/auth/",
             "/api/v1/users/me/onboarding",
             "/api/v1/users/me/avatar",
-            "/api/v1/users/me/auth-providers"
+            "/api/v1/users/me/auth-providers",
+            "/api/v1/academic/",
+            "/api/v1/interests"
     );
 
     private final UserProfileRepository userProfileRepository;

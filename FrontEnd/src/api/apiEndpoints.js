@@ -1,6 +1,7 @@
 const AUTH_BASE = '/api/v1/auth';
 const AUTH_PROVIDERS_BASE = '/api/v1/users/me/auth-providers';
 const USER_ONBOARDING_BASE = '/api/v1/users/me/onboarding';
+const ACADEMIC_BASE = '/api/v1/academic';
 
 // CÃ¡c path dÆ°á»›i Ä‘Ã¢y Ä‘Æ°á»£c Ä‘á»‘i chiáº¿u trá»±c tiáº¿p vá»›i AuthController hiá»‡n hÃ nh.
 export const AUTH_ENDPOINTS = Object.freeze({
@@ -45,6 +46,13 @@ export const USER_ENDPOINTS = Object.freeze({
   profileReports: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/profile-reports`,
   posts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/posts`,
   reposts: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/reposts`,
+});
+
+export const ACADEMIC_ENDPOINTS = Object.freeze({
+  schools: `${ACADEMIC_BASE}/schools`,
+  faculties: (schoolId) => `${ACADEMIC_BASE}/schools/${encodeURIComponent(schoolId)}/faculties`,
+  majors: (facultyId) => `${ACADEMIC_BASE}/faculties/${encodeURIComponent(facultyId)}/majors`,
+  interests: '/api/v1/interests',
 });
 
 export const POST_ENDPOINTS = Object.freeze({
