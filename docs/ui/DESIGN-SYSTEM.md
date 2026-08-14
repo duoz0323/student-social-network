@@ -7,6 +7,8 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 - Giao diện người dùng chính theo kiểu mạng xã hội tối giản: sidebar trái cố định, vùng nội dung chính ở giữa.
 - Màu giao diện tự động theo `prefers-color-scheme` của hệ điều hành/trình duyệt; light và dark dùng chung cấu trúc, token và component.
 - Vùng Feed/Profile/Post Detail có chiều rộng trung tâm vừa phải để tập trung vào nội dung bài viết.
+- Feed, Search, Notification, Profile và Saved Posts dùng chung một trục bắt đầu nội dung sau sidebar; panel phụ không được làm dịch riêng trục của Feed.
+- Student Recommendation trên desktop là một card phụ cố định bên phải, mặc định hiển thị 4 gợi ý. “Xem thêm” mở thêm tối đa 3 người trong vùng danh sách cuộn ẩn scrollbar nhưng không tăng chiều cao card; sau đó đổi thành “Thu gọn”. Card dùng icon kết nối người dùng thay cho biểu tượng gợi liên tưởng AI, căn mép trên với viền trên vùng Feed và giữ nhãn Follow trên một dòng.
 - Các modal xuất hiện trên nền mờ hoặc nền trung tính, ưu tiên thao tác ngắn và rõ ràng.
 - Admin dùng layout dashboard riêng: sidebar trái, vùng nội dung rộng, bảng dữ liệu và thẻ thống kê.
 - `UI-DEMO.html` dùng grid desktop gồm sidebar trái, feed giữa và panel phải; ảnh Stitch hiện tại chủ yếu thể hiện sidebar trái và nội dung giữa.
@@ -22,15 +24,16 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 ## 3. Sidebar Admin
 
 - Sidebar admin dùng brand `UniShare`, nhãn khu vực "Trang quản trị" và danh mục quản trị.
-- Danh mục quan sát được: Tổng quan, Người dùng, Bài viết, Báo cáo, Cài đặt, Quay lại ứng dụng.
-- Các mục thuộc MVP: Người dùng, Bài viết, Báo cáo, Quay lại ứng dụng.
+- Danh mục hiện hành gồm Tổng quan, Người dùng, Bài viết, Báo cáo, Hashtag, Dữ liệu học thuật, Analytics và Quay lại ứng dụng.
+- `Dữ liệu học thuật` dùng icon học thuật, điều hướng tới `/admin/academic` và giữ cùng visual state active/hover với các mục Admin khác.
 - `Tổng quan` hiển thị chỉ số tóm tắt, biểu đồ tổng tương tác 30 ngày và USER nổi bật; các dashboard nâng cao khác ngoài MVP.
 - `Cài đặt` CẦN XÁC NHẬN và không nằm trong luồng MVP đã chốt.
 
 ## 4. Vùng nội dung
 
-- Feed dùng tab ngang ở đầu vùng nội dung cho `Dành cho bạn` và `Đang theo dõi`.
+- Feed dùng tab ngang responsive ở đầu vùng nội dung cho `Dành cho bạn`, `Đang theo dõi` và `Gần bạn`.
 - Composer tạo bài nhanh nằm phía trên danh sách bài trong Feed.
+- Tab `Gần bạn` đặt bộ chọn radius và nút cập nhật vị trí phía trên danh sách; khoảng cách hiển thị cùng dòng Location bằng đơn vị m/km, không hiển thị tọa độ chi tiết.
 - Profile dùng header thông tin cá nhân, chỉ số follower/following, nút hành động và tab nội dung.
 - Search dùng thanh tìm kiếm lớn ở đầu, bên dưới là nhóm gợi ý/tìm kiếm phổ biến.
 - Admin dùng tiêu đề trang lớn, mô tả ngắn, bộ lọc/tìm kiếm và bảng dữ liệu.

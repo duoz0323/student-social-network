@@ -29,10 +29,10 @@ export default function AdminDashboardPage() {
     ])
       .then(([users, blocked, posts, reports, engagement]) => setDashboard({
         cards: [
-          { label: 'Người dùng', value: users.totalElements, icon: Users, theme: 'border-sky-100 from-sky-50 to-white text-sky-700', iconTheme: 'bg-sky-100' },
-          { label: 'Bài viết', value: posts.totalElements, icon: FileText, theme: 'border-violet-100 from-violet-50 to-white text-violet-700', iconTheme: 'bg-violet-100' },
-          { label: 'Báo cáo đang chờ', value: reports.totalElements, icon: AlertTriangle, theme: 'border-amber-100 from-amber-50 to-white text-amber-700', iconTheme: 'bg-amber-100' },
-          { label: 'Tài khoản khóa', value: blocked.totalElements, icon: Ban, theme: 'border-rose-100 from-rose-50 to-white text-rose-700', iconTheme: 'bg-rose-100' },
+          { label: 'Tổng người dùng', value: users.totalElements, icon: Users, accent: 'border-t-sky-500', iconTone: 'bg-sky-50 text-sky-700' },
+          { label: 'Tổng bài viết', value: posts.totalElements, icon: FileText, accent: 'border-t-violet-500', iconTone: 'bg-violet-50 text-violet-700' },
+          { label: 'Báo cáo chờ xử lý', value: reports.totalElements, icon: AlertTriangle, accent: 'border-t-amber-500', iconTone: 'bg-amber-50 text-amber-700' },
+          { label: 'Tài khoản bị khóa', value: blocked.totalElements, icon: Ban, accent: 'border-t-rose-500', iconTone: 'bg-rose-50 text-rose-700' },
         ],
         engagement: normalizeDashboardUserEngagement(engagement),
       }))
@@ -47,18 +47,18 @@ export default function AdminDashboardPage() {
   if (!dashboard && !error) return <LoadingState />;
   if (error) return <EmptyState title="Không thể tải Dashboard" description={error} />;
 
-  return <section className="space-y-7">
+  return <section className="space-y-6">
     <div>
-      <h1 className="text-5xl font-bold">Bảng điều khiển</h1>
-      <p className="mt-3 text-base text-zinc-500">Tổng quan và mức tương tác trong 30 ngày gần nhất.</p>
+      <h1 className="text-3xl font-semibold tracking-tight sm:text-[32px]">Tổng quan</h1>
+      <p className="mt-2 text-sm text-zinc-500 sm:text-base">Tình hình hoạt động của UniShare trong 30 ngày qua.</p>
     </div>
 
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {dashboard.cards.map(({ label, value, icon: Icon, theme, iconTheme }) => (
-        <div key={label} className={`min-h-40 rounded-2xl border bg-gradient-to-br p-7 shadow-sm ${theme}`}>
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconTheme}`}><Icon size={24} /></div>
-          <p className="mt-5 text-base text-gray-500">{label}</p>
-          <p className="text-4xl font-bold text-zinc-950">{formatDashboardCount(value)}</p>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {dashboard.cards.map(({ label, value, icon: Icon, accent, iconTone }) => (
+        <div key={label} className={`min-h-32 rounded-xl border border-t-2 border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] ${accent}`}>
+          <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconTone}`}><Icon size={19} strokeWidth={1.8} /></div>
+          <p className="mt-4 text-sm font-medium text-zinc-500">{label}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-zinc-950">{formatDashboardCount(value)}</p>
         </div>
       ))}
     </div>
@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
 }
 
 function DashboardEngagement({ engagement }) {
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,0.9fr)]">
+  return <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,0.9fr)]">
     <DailyInteractionChart items={engagement.dailyInteractions} fromDate={engagement.fromDate} toDate={engagement.toDate} />
     <FeaturedUsers users={engagement.featuredUsers} date={engagement.toDate} />
   </div>;
@@ -79,20 +79,20 @@ function DailyInteractionChart({ items, fromDate, toDate }) {
   const maximum = Math.max(...items.map((item) => item.interactionCount), 1);
   const baseline = CHART.height - CHART.bottom;
 
-  return <section className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-sky-50/60 p-6 shadow-sm">
+  return <section className="rounded-xl border border-zinc-200 bg-white p-5">
     <div className="flex items-start justify-between gap-4">
       <div>
-        <h2 className="text-xl font-bold">Xu hướng tương tác</h2>
-        <p className="mt-2 text-sm text-zinc-500">Tổng request nghiệp vụ hợp lệ của USER theo ngày UTC.</p>
+        <h2 className="text-xl font-bold">Hoạt động 30 ngày qua</h2>
+        <p className="mt-2 text-sm text-zinc-500">Số lượt hoạt động của người dùng theo từng ngày.</p>
       </div>
-      <span className="flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-sm font-semibold text-indigo-700"><Activity size={17} /> Tương tác</span>
+      <span className="flex items-center gap-2 rounded-md bg-violet-50 px-2.5 py-1.5 text-xs font-medium text-violet-700"><Activity size={15} /> Lượt hoạt động</span>
     </div>
     <div className="mt-6 overflow-x-auto">
       <svg viewBox={`0 0 ${CHART.width} ${CHART.height}`} className="min-w-[700px] w-full" role="img" aria-label={`Biểu đồ tổng tương tác từ ${fromDate} đến ${toDate}`}>
         <defs>
           <linearGradient id="dashboard-interaction-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.26" />
-            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.01" />
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -103,9 +103,9 @@ function DailyInteractionChart({ items, fromDate, toDate }) {
           </g>;
         })}
         {path ? <path d={`${path} L ${points.at(-1).x} ${baseline} L ${points[0].x} ${baseline} Z`} fill="url(#dashboard-interaction-area)" /> : null}
-        {path ? <path d={path} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /> : null}
+        {path ? <path d={path} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
         {points.map((point, index) => <g key={items[index].date}>
-          <circle cx={point.x} cy={point.y} r="4" fill="#6366f1">
+          <circle cx={point.x} cy={point.y} r="4" fill="#7c3aed">
             <title>{`${formatDashboardDate(items[index].date)}: ${formatDashboardCount(items[index].interactionCount)} tương tác`}</title>
           </circle>
           {showAxisLabel(index, items.length) ? <text x={point.x} y={CHART.height - 18} textAnchor="middle" className="fill-zinc-500 text-[12px]">{formatDashboardDate(items[index].date)}</text> : null}
@@ -116,27 +116,27 @@ function DailyInteractionChart({ items, fromDate, toDate }) {
 }
 
 function FeaturedUsers({ users, date }) {
-  return <section className="min-h-[440px] rounded-2xl border border-violet-100 bg-white shadow-sm">
-    <div className="border-b border-violet-100 bg-violet-50/70 px-6 py-5">
-      <h2 className="text-xl font-bold text-violet-950">Người dùng nổi bật</h2>
-      <p className="mt-2 text-sm text-zinc-500">Xếp hạng ngày {formatDashboardDate(date, { day: '2-digit', month: '2-digit', year: 'numeric' })} (UTC).</p>
+  return <section className="min-h-[440px] rounded-xl border border-zinc-200 bg-white">
+    <div className="border-b border-violet-100 bg-violet-50/60 px-6 py-5">
+      <h2 className="text-xl font-semibold text-zinc-950">Người dùng hoạt động nhiều</h2>
+      <p className="mt-2 text-sm text-zinc-500">Hôm nay, {formatDashboardDate(date, { day: '2-digit', month: '2-digit', year: 'numeric' })}.</p>
     </div>
     {users.length ? <div className="divide-y">
-      {users.map((user, index) => <article key={user.userId} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-violet-50/50">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">{index + 1}</span>
+      {users.map((user, index) => <article key={user.userId} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-zinc-50">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700">{index + 1}</span>
         <Avatar user={user} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold">{user.displayName}</p>
-          <p className="mt-1 text-sm text-zinc-500">{formatDashboardCount(user.postCount)} bài viết · {formatDashboardCount(user.interactionCount)} tương tác</p>
+          <p className="mt-1 text-sm text-zinc-500">{formatDashboardCount(user.postCount)} bài · {formatDashboardCount(user.interactionCount)} lượt hoạt động</p>
         </div>
       </article>)}
-    </div> : <div className="px-6 py-16 text-center text-base text-zinc-500">Chưa có dữ liệu tương tác hôm nay.</div>}
+    </div> : <div className="px-6 py-16 text-center text-base text-zinc-500">Hôm nay chưa có hoạt động nào.</div>}
   </section>;
 }
 
 function Avatar({ user }) {
-  if (user.avatarUrl) return <img src={user.avatarUrl} alt="" className="h-11 w-11 rounded-full border-2 border-sky-200 object-cover" />;
-  return <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100 text-base font-bold text-sky-700">{user.displayName.charAt(0).toUpperCase()}</div>;
+  if (user.avatarUrl) return <img src={user.avatarUrl} alt="" className="h-11 w-11 rounded-full border border-zinc-200 object-cover" />;
+  return <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-base font-semibold text-zinc-700">{user.displayName.charAt(0).toUpperCase()}</div>;
 }
 
 function createChartPoints(items) {

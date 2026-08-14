@@ -35,34 +35,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(value = """
                     SELECT p.*
                     FROM posts p
-                    JOIN users u ON u.id = p.author_id
-                    JOIN user_profiles up ON up.user_id = p.author_id
-                    WHERE p.status = 'PUBLISHED'
-                      AND u.status = 'ACTIVE'
-                      AND up.profile_completed_at IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM user_blocks ub
-                          WHERE (ub.blocker_id = :viewerId AND ub.blocked_id = p.author_id)
-                             OR (ub.blocker_id = p.author_id AND ub.blocked_id = :viewerId)
-                      )
-                      AND (
-                          (p.like_count + p.comment_count) < :cursorScore
-                          OR ((p.like_count + p.comment_count) = :cursorScore AND p.published_at < :cursorTime)
-                          OR ((p.like_count + p.comment_count) = :cursorScore AND p.published_at = :cursorTime AND p.id < :cursorPostId)
-                      )
-                    ORDER BY (p.like_count + p.comment_count) DESC, p.published_at DESC, p.id DESC
-                    """, nativeQuery = true)
-    List<Post> findForYouFeed(
-            @Param("viewerId") Long viewerId,
-            @Param("cursorScore") int cursorScore,
-            @Param("cursorTime") LocalDateTime cursorTime,
-            @Param("cursorPostId") Long cursorPostId,
-            Pageable limit
-    );
-
-    @Query(value = """
-                    SELECT p.*
-                    FROM posts p
                     JOIN follows f ON f.following_id = p.author_id
                     JOIN users u ON u.id = p.author_id
                     JOIN user_profiles up ON up.user_id = p.author_id
@@ -282,6 +254,29 @@ public interface PostRepository extends JpaRepository<Post, Long> {
               and p.status = com.stu.edu.vn.backend.post.enums.PostStatus.PUBLISHED
             """)
     List<Post> findFeedHeadersByIds(@Param("postIds") Collection<Long> postIds);
+
+    // Batch-load láº¡i PostCard sau ranking vÃ  tÃ¡i kiá»ƒm tra access Ä‘á»ƒ race Block/status khÃ´ng lÃ m lá»™ bÃ i.
+    @EntityGraph(attributePaths = {"author", "location"})
+    @Query("""
+            select distinct p
+            from Post p
+            join p.author author
+            join p.authorProfile authorProfile
+            where p.id in :postIds
+              and p.status = com.stu.edu.vn.backend.post.enums.PostStatus.PUBLISHED
+              and author.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              and authorProfile.profileCompletedAt is not null
+              and not exists (
+                  select blockRelation.id
+                  from UserBlock blockRelation
+                  where (blockRelation.id.blockerId = :viewerId and blockRelation.id.blockedId = p.author.id)
+                     or (blockRelation.id.blockerId = p.author.id and blockRelation.id.blockedId = :viewerId)
+              )
+            """)
+    List<Post> findAccessibleFeedHeadersByIds(
+            @Param("viewerId") Long viewerId,
+            @Param("postIds") Collection<Long> postIds
+    );
 
     // Kiểm tra quyền sở hữu bài viết trước khi cho phép tác giả sửa hoặc xóa mềm.
     boolean existsByIdAndAuthor_Id(Long id, Long authorId);

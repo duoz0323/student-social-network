@@ -270,14 +270,27 @@ Username được trả không kèm ký tự `@`, không được trùng giữa 
 
 #### Academic Profile & Interests
 
-Academic Profile & Interests có trạng thái Backend/Database/API/Frontend `IMPLEMENTED` và test tự động `TESTED`. Onboarding, Edit Profile và Profile Display đã tích hợp master API; kiểm thử E2E với Backend/MySQL thật vẫn phụ thuộc môi trường local.
+Academic Profile & Interests có trạng thái Backend/Database/API/Frontend `IMPLEMENTED`, test tự động `TESTED` và đã manual test end-to-end thành công cho Onboarding, Edit Profile cùng Profile Display. Admin Academic Management V1 cũng đã tích hợp từ API đến giao diện quản trị.
 
 - `schools`, `faculties`, `majors` và `interest_categories` là master data chuẩn hóa; profile chỉ lưu khóa ngoại, không lưu tên trường/khoa/ngành hoặc sở thích dạng text tự do.
 - `user_profiles` có `school_id`, `faculty_id`, `major_id`, `entry_year` nullable; `user_interests` dùng khóa chính kép để chống trùng.
-- School → Faculty → Major phải đúng hierarchy và toàn bộ master data được chọn phải ở trạng thái `ACTIVE`.
+- School → Faculty → Major phải đúng hierarchy và toàn bộ master data được chọn phải ở trạng thái `ACTIVE`; School inactive ẩn toàn bộ Faculty/Major con khỏi public API, Faculty inactive ẩn toàn bộ Major con mà không cascade trạng thái xuống child.
 - `entry_year` nếu có phải từ 1900 đến năm hiện tại theo UTC. Mỗi profile chọn tối đa 10 sở thích ACTIVE hợp lệ.
 - Academic data vẫn là tùy chọn, không thay đổi username hoặc điều kiện cập nhật `profile_completed_at`.
-- Đây chỉ là nền dữ liệu cho personalization và Smart Student Match ở phase sau; Recommendation, AI/ML, Location Recommendation, School Suggestion và Admin Academic Management UI chưa được triển khai.
+- Admin Academic Management V1 cho phép ADMIN list/search/create/update/chuyển `ACTIVE`/`INACTIVE` đối với School, Faculty, Major và Interest Category; không hard delete và không làm mất reference hiện có của profile/user interests.
+- Đây là nền dữ liệu cho Student Recommendation V1 dạng rule-based. AI/ML Recommendation, Location Recommendation và School Suggestion chưa được triển khai.
+
+#### Student Recommendation V1 – “Có thể bạn biết”
+
+Student Recommendation V1 có trạng thái Backend/API/Frontend `IMPLEMENTED`, test tự động `TESTED` và manual E2E `INTEGRATED`. Đây là thuật toán deterministic rule-based, không phải AI/ML.
+
+- `GET /api/v1/recommendations/students?page=0&size=10` chỉ dành cho tài khoản role `USER`, `ACTIVE`, đã hoàn tất profile; current user luôn lấy từ JWT.
+- Candidate phải là USER `ACTIVE`, đã hoàn tất profile, không phải current user, chưa được current user Follow và không có Block ở bất kỳ chiều nào. Restrict không loại candidate.
+- Signal Academic dùng cùng School `+40`, Faculty `+25`, Major `+20`, Entry Year `+10`; chỉ master data `ACTIVE` tạo signal và việc so khớp dùng ID ổn định.
+- Mỗi Interest `ACTIVE` chung cộng `+5`, tối đa `+25`. Mỗi tài khoản `ACTIVE` đã hoàn tất profile mà cả hai cùng Follow cộng `+3`, tối đa `+15`.
+- Candidate phải có `score > 0`; không có random fallback. Thứ tự ổn định là score giảm dần, số Interest chung giảm dần, số kết nối chung giảm dần rồi `userId` tăng dần.
+- Lọc, tính điểm, sắp xếp và phân trang chạy tại MySQL bằng projection; không lưu recommendation, score hoặc history vào database.
+- Frontend hiển thị rail “Có thể bạn biết” dạng card nhỏ cố định bên phải trên các trang Feed ở desktop rộng, mặc định 4 candidate. Nút “Xem thêm” mở thêm tối đa 3 candidate trong vùng danh sách cuộn ẩn scrollbar mà không làm tăng chiều cao card; sau khi mở, nút đổi thành “Thu gọn” để trở về 4 candidate. Mỗi candidate hiển thị lý do semantic nổi bật, không hiển thị raw score; Follow thành công loại candidate khỏi danh sách hiện tại và lần fetch tiếp theo. Feed, Search, Notification, Profile và Saved Posts dùng chung một trục bắt đầu nội dung sau sidebar.
 
 ### 👥 3. Theo dõi người dùng
 
@@ -393,7 +406,7 @@ Trạng thái bài viết:
 - Soft delete hoặc hard delete Post không xóa Location. Không cascade remove, không dùng `orphanRemoval` và không tự động xóa Location không còn được tham chiếu.
 - Location hoặc `null` phải xuất hiện nhất quán trong response tạo bài, chi tiết bài, Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu, bài đã thích, kết quả tìm kiếm Post và chi tiết Post dành cho Admin.
 - Admin Post Detail hiển thị Location hiện tại. Report snapshot chưa lưu Location trong đợt này.
-- Discovery Map, tìm theo bán kính, Feed theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places không thuộc phạm vi P1 này.
+- Nearby Discovery V1 dùng dữ liệu Location hiện có để tìm Post theo bán kính; Discovery Map, Feed tùy chỉnh theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places vẫn ngoài phạm vi.
 
 ### ❤️ 5. Tương tác bài viết
 
@@ -433,20 +446,44 @@ Quy tắc:
 
 #### Feed For You
 
-- Hiển thị các bài viết hợp lệ trong hệ thống.
-- Ưu tiên bài viết mới.
-- Có thể xếp hạng theo số lượt Like và số lượng bình luận.
-- Không sử dụng Machine Learning trong MVP.
-- Hạn chế hiển thị liên tiếp quá nhiều bài viết của cùng một tác giả.
+- Personalized For You V1 là ranking deterministic rule-based, trạng thái Backend `IMPLEMENTED`, automated test `TESTED`; chưa đánh dấu `INTEGRATED` cho đến khi hoàn tất manual E2E.
+- Candidate là bài `PUBLISHED` của tác giả `ACTIVE`, đã hoàn tất profile và không có Block ở bất kỳ chiều nào với viewer. Restrict không lọc Feed; bài của chính viewer tiếp tục giữ behavior hiện hành.
+- Feed xếp hạng theo độ mới, engagement của Post, quan hệ Follow, Academic affinity, common active Interests, lịch sử viewer tương tác với các bài khác của cùng tác giả và lịch sử tương tác với đúng cùng hashtag ID.
+- Academic và Interest chỉ là ranking bonus, không phải hard filter. Cold start vẫn nhận Feed bằng độ mới và engagement.
+- Chỉ master data Academic/Interest `ACTIVE` tạo positive signal; so khớp Academic bằng ID ổn định, không bằng tên.
+- For You chỉ rank Post gốc; Repost activity tiếp tục chỉ thuộc Following Feed.
+- Không sử dụng AI, Machine Learning, embedding, collaborative filtering, cache recommendation hoặc background recommendation job.
 
-Công thức xếp hạng tham khảo:
+Công thức V1:
 
 ```text
-Điểm bài viết =
-    Điểm độ mới
-    + Số lượt Like × Trọng số Like
-    + Số bình luận × Trọng số bình luận
+FeedScore = RecencyScore
+          + min(likeCount, 20)
+          + min(commentCount, 10) × 2
+          + min(repostCount, 10) × 2
+          + FollowingAuthorScore
+          + AcademicAffinityScore
+          + CommonInterestScore
+          + HistoricalAuthorAffinityScore
+          + ExactHashtagBehaviorAffinityScore
 ```
+
+Recency dùng các bucket `60/50/35/20/10/0` tại các mốc `6 giờ/1 ngày/3 ngày/7 ngày/14 ngày`; Follow cộng `30`; Academic tối đa `28`; common Interests tối đa `10`; historical author tối đa `31`; exact hashtag behavior tối đa `17`. Candidate Post hiện tại bị loại khỏi lịch sử của chính nó.
+
+#### Location-aware Discovery V1 – Nearby
+
+Trạng thái Backend và Frontend `IMPLEMENTED`, automated test `TESTED`; chưa đánh dấu `INTEGRATED` cho đến khi hoàn tất manual E2E với MySQL, quyền Geolocation trình duyệt và dữ liệu Location thực tế.
+
+- Endpoint `GET /api/v1/discovery/nearby` chỉ dành cho USER `ACTIVE`, đã hoàn tất profile và luôn lấy viewer từ JWT.
+- Query bắt buộc `latitude`, `longitude`; `radiusKm` mặc định 5 và chỉ nhận `1`, `3`, `5`, `10`, `20`; `limit` mặc định 10, từ 1 đến 20; `cursor` là tùy chọn.
+- Candidate là Post gốc `PUBLISHED` có Location, tác giả role `USER`, trạng thái `ACTIVE`, đã hoàn tất profile và không có Block ở bất kỳ chiều nào với viewer. Restrict không loại candidate; Repost không tạo item riêng.
+- MySQL thực hiện bounding-box pre-filter, Haversine exact-radius filter, sắp xếp và keyset pagination; không dùng OFFSET, COUNT hoặc Java post-filter.
+- Khoảng cách exact quyết định inside/outside radius. `distanceMeters = ROUND(exactDistanceMeters)` được dùng thống nhất cho response, ORDER BY và cursor, sau đó tie-break bằng `publishedAt DESC`, `postId DESC`.
+- Cursor Base64URL versioned giữ `distanceMeters`, `publishedAt`, `postId` và SHA-256 fingerprint của tọa độ chuẩn hóa cùng radius; cursor khác tọa độ/radius hoặc malformed trả `INVALID_CURSOR`.
+- Tọa độ viewer chỉ tồn tại trong request/query processing; không lưu database, analytics payload, Notification, WebSocket hoặc log nghiệp vụ.
+- Nearby độc lập với Feed For You và không thay đổi score, candidate, `rankingAt` hoặc cursor của Personalized For You V1.
+- Frontend tích hợp tab `Gần bạn` trong Feed, chỉ gọi Geolocation khi mở tab hoặc bấm cập nhật vị trí; tọa độ chỉ giữ trong memory runtime. UI hỗ trợ năm radius đã khóa, state tường minh, AbortController/chống response cũ và Infinite Scroll giữ nguyên cursor opaque.
+- Canonical demo seed dành sáu Post `PUBLISHED` cho năm địa điểm công cộng quanh phường Bình Trị Đông. Có thể dùng tọa độ Chợ Bình Trị Đông trong seed (`10.7586500`, `106.6048500`) để kiểm thử radius 1/3/5 km; các `google_place_id` bắt đầu bằng `demo-binhtri-` và tọa độ chỉ là dữ liệu demo gần đúng, không giả làm định danh Google chính thức.
 
 Các danh sách bài viết dùng Infinite Scroll gồm Feed For You, Feed Following, bài trên hồ sơ,
 bài đã lưu, bài đã thích và kết quả Search bài viết/hashtag. Các API này dùng Cursor Pagination:
@@ -456,7 +493,7 @@ bài đã lưu, bài đã thích và kết quả Search bài viết/hashtag. Cá
 - `limit` mặc định 10, từ 1 đến 20.
 - Response dữ liệu: `{ "content": [], "nextCursor": null, "hasNext": false }`.
 - Cursor do Backend tạo dưới dạng Base64URL opaque; Client không tự tạo hoặc sửa cursor.
-- Feed For You giữ đủ khóa xếp hạng `score`, `publishedAt`, `postId`; các danh sách theo thời gian
+- Feed For You dùng cursor versioned giữ `rankingAt`, `score`, `publishedAt`, `postId`; mọi trang trong cùng phiên cuộn tái sử dụng `rankingAt` để recency không đổi bucket. Các danh sách theo thời gian
   giữ `createdAt`, `postId`.
 - Feed Following giữ đủ khóa activity `activityAt`, `itemRank`, `actorId`, `postId`.
 - Backend dùng keyset và lấy `limit + 1`, không dùng `page`, `offset` hoặc truy vấn tổng `COUNT(*)`.
@@ -661,10 +698,13 @@ hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 - Báo cáo bài viết và trang cá nhân.
 - Moderation Case và xử lý báo cáo theo nhóm bài viết.
 - Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
+- Location-aware Discovery V1 – Nearby theo bán kính, không lưu vị trí người dùng và không gồm Discovery Map.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
 - Hiển thị hoạt động quản trị cơ bản.
-- Academic Profile & Interests từ Database/API đến onboarding, Edit Profile và Profile Display; không gồm Recommendation.
+- Academic Profile & Interests từ Database/API đến onboarding, Edit Profile và Profile Display.
+- Student Recommendation V1 rule-based dựa trên Academic Profile, Interests và kết nối chung; không gồm AI/ML.
+- Admin Academic Management V1 cho School, Faculty, Major và Interest Category; không hard delete.
 
 ### P2 – Thực hiện nếu đủ tiến độ
 
@@ -1082,10 +1122,19 @@ Các API trên yêu cầu JWT, luôn lấy người thực hiện từ Security 
 /api/v1/follows
 /api/v1/posts
 /api/v1/feeds
+/api/v1/discovery
 /api/v1/search
 /api/v1/reports
 /api/v1/admin
 ```
+
+API Nearby Discovery V1 yêu cầu JWT của USER `ACTIVE` đã hoàn tất profile:
+
+```http
+GET /api/v1/discovery/nearby?latitude=10.8231&longitude=106.6297&radiusKm=5&limit=10&cursor=<opaque-optional>
+```
+
+Response `data` là `CursorPageResponse<NearbyPostItemResponse>`; mỗi item có `post` theo PostCard chuẩn hiện hành và `distanceMeters` kiểu số nguyên. Client phải gửi lại nguyên cursor opaque và reset cursor khi đổi tọa độ hoặc radius.
 
 API onboarding và kiểm tra username:
 
@@ -1104,7 +1153,26 @@ GET /api/v1/academic/faculties/{facultyId}/majors?keyword=Cong&limit=10
 GET /api/v1/interests
 ```
 
-Ba API autocomplete chỉ query master data `ACTIVE` tại MySQL, dùng `limit` mặc định 10 và tối đa 20. `PUT /api/v1/users/me/profile` nhận thêm khối `academic` và `interestIds`; bỏ các field này sẽ giữ nguyên dữ liệu hiện có.
+Ba API autocomplete chỉ query hierarchy đang selectable (`School ACTIVE AND Faculty ACTIVE AND Major ACTIVE`) tại MySQL, dùng `limit` mặc định 10 và tối đa 20. `PUT /api/v1/users/me/profile` nhận thêm khối `academic` và `interestIds`; bỏ các field này sẽ giữ nguyên dữ liệu hiện có.
+
+API Admin Academic Management V1 chỉ dành cho `ADMIN`:
+
+```http
+GET|POST  /api/v1/admin/academic/schools
+PUT       /api/v1/admin/academic/schools/{schoolId}
+PATCH     /api/v1/admin/academic/schools/{schoolId}/status
+GET|POST  /api/v1/admin/academic/schools/{schoolId}/faculties
+PUT       /api/v1/admin/academic/faculties/{facultyId}
+PATCH     /api/v1/admin/academic/faculties/{facultyId}/status
+GET|POST  /api/v1/admin/academic/faculties/{facultyId}/majors
+PUT       /api/v1/admin/academic/majors/{majorId}
+PATCH     /api/v1/admin/academic/majors/{majorId}/status
+GET|POST  /api/v1/admin/academic/interests
+PUT       /api/v1/admin/academic/interests/{interestId}
+PATCH     /api/v1/admin/academic/interests/{interestId}/status
+```
+
+Các API danh sách Admin dùng `keyword`, `page`, `size`; actor mutation lấy từ JWT, mọi create/update/status change đều ghi `admin_actions`. Chuyển inactive không cascade status và không xóa reference hiện hữu.
 
 API Repost đã triển khai:
 
@@ -1341,6 +1409,7 @@ npm run preview
 16. Người dùng hoàn tất onboarding bằng username duy nhất, tên hiển thị và ngày sinh hợp lệ trước khi truy cập chức năng chính.
 17. Người dùng cập nhật và xem hồ sơ thành công.
 17a. Người dùng cập nhật Academic Profile đúng hierarchy, năm nhập học hợp lệ và tối đa 10 sở thích không trùng; các field nullable không làm thay đổi trạng thái hoàn tất profile.
+17b. Public Academic API chỉ trả hierarchy selectable; School/Faculty/Interest inactive không xuất hiện trong lựa chọn mới nhưng reference Academic/Interest của hồ sơ cũ vẫn được bảo toàn.
 18. Follow và Unfollow hoạt động đúng, không tạo quan hệ trùng.
 18a. Block hoạt động idempotent, xóa Follow hai chiều; Unblock không khôi phục Follow.
 18b. Các query dành cho người dùng lọc Block hai chiều trực tiếp tại database mà không làm sai phân trang/cursor.
@@ -1363,7 +1432,7 @@ npm run preview
 24. Feed Following và Feed For You trả đúng dữ liệu hợp lệ, gồm Location object hoặc `null` cho từng Post.
 25. Tìm kiếm người dùng và bài viết hoạt động đúng; Search Post và Admin Post Detail trả Location nhất quán với các Post response khác.
 26. Người dùng gửi được báo cáo.
-27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER và USER nhận được thông báo hệ thống sau khi chỉnh sửa, quản lý bài viết và báo cáo.
+27. Admin quản lý được người dùng, chỉnh sửa nội dung hồ sơ USER và USER nhận được thông báo hệ thống sau khi chỉnh sửa, quản lý bài viết, báo cáo và Academic master data V1; mọi mutation Academic được ghi lịch sử quản trị.
 28. Backend từ chối thao tác không có quyền.
 29. Mật khẩu, OTP, flow token và Refresh Token không lưu dạng văn bản thuần.
 30. Backend không trả stack trace hoặc thông tin nhạy cảm cho Client.
@@ -1481,8 +1550,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Elasticsearch.
 - Message Request và Hidden Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
-- School Suggestion và giao diện quản trị trường, khoa, ngành hoặc sở thích.
-- Smart Student Match, Recommendation và AI/ML dựa trên Academic Profile & Interests.
+- School Suggestion và import/sync dữ liệu học thuật từ nguồn bên ngoài.
+- AI/ML Recommendation, collaborative filtering và Smart Student Match nâng cao dựa trên hành vi.
 - Dashboard thống kê nâng cao.
 - Machine Learning cho hệ thống gợi ý.
 - Ứng dụng mobile native.
@@ -1507,8 +1576,8 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Backend xác minh và đồng bộ định kỳ dữ liệu với Google Places.
 - Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.
-- School Suggestion và giao diện quản trị trường, khoa, ngành hoặc sở thích.
-- Smart Student Match và thuật toán Recommendation dựa trên Academic Profile & Interests.
+- School Suggestion và import/sync dữ liệu học thuật từ nguồn bên ngoài.
+- AI/ML Recommendation, collaborative filtering và thuật toán gợi ý nâng cao dựa trên hành vi.
 - Dashboard thống kê nâng cao.
 - Audit Log chi tiết.
 - Thuật toán gợi ý nâng cao.

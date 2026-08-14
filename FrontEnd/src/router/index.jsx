@@ -15,6 +15,7 @@ import ErrorPage from '../features/system/pages/ErrorPage.jsx';
 import { AdminRoute, GuestRoute, ProfileCompletionRoute, ProtectedRoute, RootRedirect } from './routeGuards.jsx';
 import {
   AdminActionsPage,
+  AdminAcademicPage,
   AdminDashboardPage,
   AdminHashtagsPage,
   AdminPostsPage,
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'user-analytics', element: <AdminUserAnalyticsPage /> },
       { path: 'posts', element: <AdminPostsPage /> },
       { path: 'hashtags', element: <AdminHashtagsPage /> },
+      { path: 'academic', element: <AdminAcademicPage /> },
       { path: 'posts/:postId', element: <AdminPostDetailPage /> },
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'reports/:caseId', element: <AdminReportDetailPage /> },

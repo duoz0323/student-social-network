@@ -859,11 +859,11 @@ GET /api/v1/academic/faculties/{facultyId}/majors?keyword=Cong&limit=10
 GET /api/v1/interests
 ```
 
-- School/Faculty/Major chỉ trả bản ghi `ACTIVE`, tìm prefix không phân biệt hoa thường tại MySQL, sắp xếp theo tên và giới hạn ngay ở query.
+- School/Faculty/Major chỉ trả hierarchy selectable: School `ACTIVE`; Faculty và School cha cùng `ACTIVE`; Major, Faculty cha và School ông cùng `ACTIVE`. Tìm prefix không phân biệt hoa thường tại MySQL, sắp xếp theo tên và giới hạn ngay ở query.
 - `limit` mặc định 10, hợp lệ từ 1 đến 20; `keyword` nullable, tối đa 100 ký tự.
 - Faculty endpoint chỉ trả khoa thuộc `schoolId`; Major endpoint chỉ trả ngành thuộc `facultyId`.
 - `GET /interests` trả toàn bộ danh mục sở thích `ACTIVE` đã chuẩn hóa vì danh mục hiện được giới hạn ở quy mô nhỏ.
-- Đây là read-only master API; không có School Suggestion hoặc Admin Academic Management API trong phase này.
+- Đây là read-only master API cho user; không có School Suggestion, Recommendation hoặc AI/ML. Mutation master data dùng Admin Academic API tại mục 9.
 
 ### GET `/api/v1/users/me/onboarding`
 
@@ -991,7 +991,7 @@ Route UI tương ứng:
 
 ## 4. Post
 
-> Location trên Post thuộc P1 và đã được tích hợp từ schema/JPA tới request/response API, resolver, Service và Frontend. Discovery Map cùng các API khám phá theo Location vẫn là FUTURE.
+> Location trên Post thuộc P1 và đã được tích hợp từ schema/JPA tới request/response API, resolver, Service và Frontend. Nearby Discovery V1 đã được triển khai ở Backend và Frontend; Discovery Map và Feed tùy chỉnh theo Location vẫn là FUTURE.
 
 ### Location object
 
@@ -1111,7 +1111,36 @@ Trường `location` phải được trả nhất quán trong:
 - Search Posts.
 - Admin Post Detail.
 
-Report snapshot chưa chứa Location trong P1 này. Không có API quản trị Location, trang Location, Feed theo Location, tìm kiếm bán kính hoặc Discovery Map.
+Report snapshot chưa chứa Location trong P1 này. Không có API quản trị Location, trang Location, Feed tùy chỉnh theo Location hoặc Discovery Map; Nearby Discovery V1 là API read-only độc lập.
+
+### GET `/api/v1/discovery/nearby`
+
+API yêu cầu JWT của USER `ACTIVE` đã hoàn tất profile. Viewer luôn lấy từ Security Context, không nhận `viewerUserId` hoặc `currentUserId` từ request.
+
+Query:
+
+- `latitude`: bắt buộc, từ `-90` đến `90`.
+- `longitude`: bắt buộc, từ `-180` đến `180`.
+- `radiusKm`: tùy chọn, mặc định `5`, chỉ nhận `1`, `3`, `5`, `10`, `20`.
+- `limit`: tùy chọn, mặc định `10`, từ `1` đến `20`.
+- `cursor`: Base64URL opaque, tùy chọn; cursor bị bind với tọa độ chuẩn hóa và radius.
+
+Response `data`:
+
+```json
+{
+  "content": [
+    {
+      "post": { "postId": 15 },
+      "distanceMeters": 850
+    }
+  ],
+  "nextCursor": "opaque-or-null",
+  "hasNext": true
+}
+```
+
+Candidate là Post gốc `PUBLISHED` có Location của tác giả USER `ACTIVE` đã hoàn tất profile, không có Block hai chiều; Restrict không loại candidate và Repost không tạo item riêng. Order là `distanceMeters ASC`, `publishedAt DESC`, `postId DESC`. Cursor malformed, sai version hoặc khác tọa độ/radius trả `INVALID_CURSOR`. Backend không lưu hoặc trả tọa độ viewer.
 
 ## 5. Interaction
 
@@ -1147,6 +1176,13 @@ Request:
 
 ### GET `/api/v1/feeds/for-you?limit=10&cursor=<opaque-cursor>`
 
+- Yêu cầu JWT, account `ACTIVE` và profile hoàn tất; viewer lấy từ principal, không nhận `viewerId`.
+- Response Post giữ nguyên contract hiện tại và không trả score/reason nội bộ.
+- Ranking rule-based tại MySQL gồm recency, capped Like/Comment/Repost engagement, Follow, Academic ACTIVE theo ID, common Interests ACTIVE, lịch sử tương tác với các Post khác của author và exact same hashtag-ID history.
+- Candidate phải `PUBLISHED`, author `ACTIVE`, profile hoàn tất và không có Block hai chiều. Restrict không lọc; For You không trả Repost activity.
+- Cursor versioned Base64URL opaque giữ nội bộ `rankingAt`, `score`, `publishedAt`, `postId`; trang sau tái sử dụng `rankingAt`. Cursor phiên bản cũ hoặc payload sai trả `INVALID_CURSOR`.
+- Dataset tĩnh có thứ tự `score DESC, publishedAt DESC, postId DESC`; tương tác concurrent chỉ được bảo đảm best-effort, refresh tạo phiên ranking mới.
+
 ### GET `/api/v1/feeds/following?limit=10&cursor=<opaque-cursor>`
 
 - Trả activity `ORIGINAL` hoặc `REPOST`; Repost có `activityAt`, `repostedAt`, `repostedBy` và `post`.
@@ -1179,6 +1215,18 @@ Các endpoint danh sách bài viết ở trên dùng cùng response:
 - Không dùng `page`, `size`, `offset`, `totalElements` hoặc `totalPages` cho các endpoint này.
 - Search bài viết/hashtag, bình luận, Follow và Admin vẫn dùng PageResponse vì cần phân trang
   truyền thống hoặc metadata tổng số.
+
+## 6.1 Student Recommendation V1
+
+### GET `/api/v1/recommendations/students?page=0&size=10`
+
+- Yêu cầu JWT của role `USER`, account `ACTIVE` và profile đã hoàn tất. Không nhận `currentUserId` hoặc tiêu chí Academic từ Client.
+- Trả `PageResponse`; mặc định `size=10`, tối đa 100 theo convention user-list hiện hành.
+- Backend loại self, account không hợp lệ, profile incomplete, Block hai chiều và candidate current user đã Follow. Restrict không tham gia lọc.
+- Ranking rule-based: School `+40`, Faculty `+25`, Major `+20`, Entry Year `+10`, mỗi Interest ACTIVE chung `+5` cap `25`, mỗi common-follow `+3` cap `15`.
+- Academic/Interest `INACTIVE` vẫn được bảo toàn trên profile nhưng không tạo signal mới. Candidate `score=0` không được trả; không random fallback.
+- `matchReasons` chỉ gồm `SAME_SCHOOL`, `SAME_FACULTY`, `SAME_MAJOR`, `SAME_ENTRY_YEAR`, `COMMON_INTERESTS`, `MUTUAL_CONNECTIONS` thực sự match.
+- Response không chứa email, ngày sinh, auth provider, Block/Restrict chiều ngược hoặc dữ liệu bảo mật. `matchScore` chỉ dành cho ranking/debug/test và Frontend không hiển thị như confidence.
 
 ## 7. Search
 
@@ -1217,6 +1265,38 @@ cáo, quan hệ Block hai chiều, target không khả dụng và báo cáo `PEN
 `reportId`, `reportedUserId`, `reason`, `status`, `createdAt`.
 
 ## 9. Admin
+
+### Admin Academic Management V1
+
+Toàn bộ endpoint dưới đây yêu cầu JWT của tài khoản `ACTIVE` có role `ADMIN`; không token trả `401`, role `USER` trả `403`. Request không nhận `adminId`; actor luôn lấy từ authenticated principal. List dùng `keyword` tối đa 100 ký tự, `page` bắt đầu từ 0 và `size` từ 1 đến 100; response list dùng `PageResponse`.
+
+```http
+GET  /api/v1/admin/academic/schools?keyword=&page=0&size=20
+POST /api/v1/admin/academic/schools
+PUT  /api/v1/admin/academic/schools/{schoolId}
+PATCH /api/v1/admin/academic/schools/{schoolId}/status
+
+GET  /api/v1/admin/academic/schools/{schoolId}/faculties?keyword=&page=0&size=20
+POST /api/v1/admin/academic/schools/{schoolId}/faculties
+PUT  /api/v1/admin/academic/faculties/{facultyId}
+PATCH /api/v1/admin/academic/faculties/{facultyId}/status
+
+GET  /api/v1/admin/academic/faculties/{facultyId}/majors?keyword=&page=0&size=20
+POST /api/v1/admin/academic/faculties/{facultyId}/majors
+PUT  /api/v1/admin/academic/majors/{majorId}
+PATCH /api/v1/admin/academic/majors/{majorId}/status
+
+GET  /api/v1/admin/academic/interests?keyword=&page=0&size=20
+POST /api/v1/admin/academic/interests
+PUT  /api/v1/admin/academic/interests/{interestId}
+PATCH /api/v1/admin/academic/interests/{interestId}/status
+```
+
+School create/update nhận `{ "name": "...", "shortName": "..." }`; Faculty, Major và Interest nhận `{ "name": "..." }`; status endpoint nhận `{ "status": "ACTIVE|INACTIVE" }`. Create trả `201`, các mutation khác trả `200`. Tên được Unicode NFC, trim và gộp khoảng trắng; duplicate được kiểm tra theo tên School toàn cục, tên Faculty trong School, tên Major trong Faculty và tên Interest toàn cục.
+
+Faculty phải tham chiếu School tồn tại; Major phải tham chiếu Faculty tồn tại. Chuyển parent sang `INACTIVE` không cascade trạng thái child, không hard delete và không xóa reference trong `user_profiles`/`user_interests`. Mọi create/update/status change ghi `admin_actions` với target `ACADEMIC_DATA`.
+
+Các lỗi nghiệp vụ chính: `ADMIN_ACADEMIC_SCHOOL_NOT_FOUND`, `ADMIN_ACADEMIC_FACULTY_NOT_FOUND`, `ADMIN_ACADEMIC_MAJOR_NOT_FOUND`, `ADMIN_ACADEMIC_INTEREST_NOT_FOUND` và các mã `*_ALREADY_EXISTS` tương ứng.
 
 ### GET `/api/v1/admin/hashtags?keyword=&page=0&size=20`
 

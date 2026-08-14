@@ -23,4 +23,18 @@ public class InterestCategory extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private AcademicStatus status;
+
+    /** Interest mới mặc định ACTIVE để xuất hiện trong lựa chọn mới của người dùng. */
+    public InterestCategory(String name) {
+        this.name = name;
+        this.status = AcademicStatus.ACTIVE;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void changeStatus(AcademicStatus status) {
+        this.status = status;
+    }
 }

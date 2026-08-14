@@ -64,7 +64,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin chính. | Sidebar, tab Dành cho bạn/Đang theo dõi, composer nhanh, danh sách PostCard, like, comment, Repost, lưu, menu bài viết. | Tạo bài mở POST-02; tab Following hiển thị ORIGINAL/REPOST; vào chi tiết POST-01; tìm kiếm SEARCH-01; hồ sơ cá nhân `/profile/me`; hồ sơ tác giả `/profile/:userId`; saved POST-07. | Phạm vi triển khai: MVP_CURRENT. Quote Post, share nâng cao và dữ liệu dạng @ trong ảnh chỉ là tham chiếu visual. |
+| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin và khám phá bài gần vị trí hiện tại. | Sidebar, tab Dành cho bạn/Đang theo dõi/Gần bạn, card “Có thể bạn biết” cố định bên phải trên desktop rộng, composer nhanh, danh sách PostCard, like, comment, Repost, lưu, menu bài viết. | Suggestion mở `/profile/:userId`; tab Following hiển thị ORIGINAL/REPOST; tab Nearby dùng `/feed/nearby`, Geolocation chủ động, radius và cursor; vào chi tiết POST-01. | Nearby chỉ giữ tọa độ trong runtime, hiển thị distance cạnh Location và có state permission/loading/empty/error/end. Student Recommendation V1 vẫn độc lập và không hiện raw score. Trục trái của Feed đồng nhất với các trang người dùng. |
 
 ## Post
 
@@ -118,6 +118,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | ADMIN-07 | Thống kê hoạt động người dùng | Ảnh tham chiếu do người dùng cung cấp | Admin | Theo dõi mức độ hoạt động và quay lại của USER theo tháng. | Bộ lọc tối đa 24 tháng, ngưỡng không hoạt động, bốn KPI, biểu đồ hai trục `returningUserCount`/`returnRate` và bảng snapshot các chỉ số tháng kết thúc. | Route `/admin/user-analytics`, mở từ sidebar Admin. | Module Analytics độc lập, không nằm trên ADMIN-01 Dashboard; chỉ hiển thị count/rate có trong API monthly/summary và dùng ngày UTC. |
 | ADMIN-08 | Chi tiết báo cáo trang cá nhân | Chưa có ảnh chuẩn | Admin | Xem xét một Profile Report Case. | Tất cả reporter/lý do, snapshot, hồ sơ hiện tại, bài viết và ba lựa chọn: không vi phạm, vi phạm, vi phạm & khóa. | `/admin/profile-reports/:caseId`. | Khóa ngay thu hồi phiên và ghi đầy đủ lịch sử; không tự sửa hồ sơ hoặc ẩn Post. |
 | ADMIN-09 | Quản lý hashtag | Chưa có ảnh chuẩn | Admin | Quản lý hashtag đang có trong hệ thống. | Tìm kiếm, phân trang, tạo mới và bảng gồm tên, số bài viết, ngày tạo, ngày sử dụng mới nhất cùng thao tác sửa/xóa. | Route `/admin/hashtags`, mở từ sidebar Admin. | Sửa tên giữ nguyên liên kết bài; xóa có xác nhận và nêu số bài bị ảnh hưởng. |
+| ADMIN-10 | Dữ liệu học thuật | Chưa có ảnh chuẩn | Admin | Quản lý School, Faculty, Major và Interest Category. | Tab hierarchy School → Faculty → Major và tab Interest; tìm kiếm, phân trang, tạo, sửa, đổi ACTIVE/INACTIVE, loading/empty/error. | Route `/admin/academic`, mở từ sidebar Admin. | Không hard delete/cascade status; inactive không selectable cho lựa chọn mới nhưng reference hồ sơ cũ được bảo toàn. |
 
 ## System States
 

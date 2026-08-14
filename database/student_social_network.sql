@@ -69,8 +69,8 @@ DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `admin_id` bigint unsigned NOT NULL,
-  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','CREATE_HASHTAG','UPDATE_HASHTAG','DELETE_HASHTAG','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE','RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT') NOT NULL,
-  `target_type` enum('USER','POST','HASHTAG','REPORT','MODERATION_CASE','PROFILE_REPORT') NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','CREATE_HASHTAG','UPDATE_HASHTAG','DELETE_HASHTAG','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE','RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT','CREATE_ACADEMIC_DATA','UPDATE_ACADEMIC_DATA','CHANGE_ACADEMIC_STATUS') NOT NULL,
+  `target_type` enum('USER','POST','HASHTAG','REPORT','MODERATION_CASE','PROFILE_REPORT','ACADEMIC_DATA') NOT NULL,
   `target_id` bigint unsigned NOT NULL,
   `note` varchar(1000) DEFAULT NULL,
   `old_data` json DEFAULT NULL,
@@ -1562,7 +1562,13 @@ VALUES
     ('demo-dormitory-a', 'Ký túc xá Khu A', 'Đông Hòa, Dĩ An, Bình Dương', 10.8778000, 106.8002000),
     ('demo-dormitory-b', 'Ký túc xá Khu B', 'Đông Hòa, Dĩ An, Bình Dương', 10.8831000, 106.7827000),
     ('demo-cafe-study', 'Không gian học tập cộng đồng', 'Thủ Đức, TP.HCM', 10.8498000, 106.7711000),
-    ('demo-stadium', 'Sân vận động sinh viên', 'Thủ Đức, TP.HCM', 10.8752000, 106.8011000);
+    ('demo-stadium', 'Sân vận động sinh viên', 'Thủ Đức, TP.HCM', 10.8752000, 106.8011000),
+    -- Địa điểm công cộng thật quanh Bình Trị Đông; ID và tọa độ là dữ liệu demo, không phải Google Place ID chính thức.
+    ('demo-binhtri-aeon-mall', 'AEON Mall Bình Tân', '01 Đường số 17A, phường Bình Trị Đông, TP.HCM', 10.7429040, 106.6118400),
+    ('demo-binhtri-market', 'Chợ Bình Trị Đông', 'Đường Trương Phước Phan, phường Bình Trị Đông, TP.HCM', 10.7586500, 106.6048500),
+    ('demo-binhtri-nguyen-huu-canh', 'Trường THPT Nguyễn Hữu Cảnh', '845 Hương Lộ 2, phường Bình Trị Đông, TP.HCM', 10.7659000, 106.5989000),
+    ('demo-binhtri-ward-office', 'UBND phường Bình Trị Đông', '276/66 Tân Hòa Đông, phường Bình Trị Đông, TP.HCM', 10.7625000, 106.6143000),
+    ('demo-binhtri-tan-khai-temple', 'Đình Tân Khai', 'Phường Bình Trị Đông, TP.HCM', 10.7557000, 106.6019000);
 
 INSERT INTO `hashtags` (`normalized_name`, `display_name`) VALUES
     ('hoc tap', 'Học tập'),
@@ -1599,6 +1605,7 @@ BEGIN
     DECLARE seed_time_value DATETIME(6);
     DECLARE seed_post_status VARCHAR(16);
     DECLARE seed_post_author_id BIGINT UNSIGNED;
+    DECLARE seed_location_id BIGINT UNSIGNED;
     DECLARE seed_published_at DATETIME(6);
 
     START TRANSACTION;
@@ -1737,6 +1744,16 @@ BEGIN
             WHEN MOD(post_no, 20) = 1 THEN 'HIDDEN'
             ELSE 'PUBLISHED'
         END;
+        -- Sáu Post cố định phục vụ manual E2E Nearby quanh phường Bình Trị Đông.
+        SET seed_location_id = CASE post_no
+            WHEN 902 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-aeon-mall')
+            WHEN 903 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-aeon-mall')
+            WHEN 904 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-market')
+            WHEN 905 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-nguyen-huu-canh')
+            WHEN 906 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-ward-office')
+            WHEN 907 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-tan-khai-temple')
+            ELSE IF(MOD(post_no, 3) = 0, 1 + MOD(post_no, 12), NULL)
+        END;
 
         INSERT INTO `posts` (
             `author_id`, `content`, `status`, `is_edited`, `published_at`,
@@ -1744,22 +1761,30 @@ BEGIN
             `created_at`, `updated_at`, `location_id`
         ) VALUES (
             current_author_id,
-            IF(
-                MOD(post_no, 25) = 0,
-                NULL,
-                CASE MOD(post_no, 10)
-                    WHEN 0 THEN CONCAT('Chia sẻ tài liệu ôn tập hữu ích cho kỳ thi sắp tới. Bài số ', post_no, '.')
-                    WHEN 1 THEN CONCAT('Một góc học tập yên tĩnh dành cho sinh viên hôm nay. Bài số ', post_no, '.')
-                    WHEN 2 THEN CONCAT('Nhật ký làm đồ án: thêm một ngày sửa lỗi và học được nhiều điều mới. #', post_no)
-                    WHEN 3 THEN CONCAT('Có bạn nào đang tìm nhóm học Spring Boot và React không? Bài số ', post_no, '.')
-                    WHEN 4 THEN CONCAT('Gợi ý địa điểm ăn uống giá sinh viên, không gian thoải mái. Bài số ', post_no, '.')
-                    WHEN 5 THEN CONCAT('Khoảnh khắc đáng nhớ trong hoạt động tình nguyện cuối tuần. Bài số ', post_no, '.')
-                    WHEN 6 THEN CONCAT('Kinh nghiệm chuẩn bị CV và phỏng vấn thực tập cho sinh viên. Bài số ', post_no, '.')
-                    WHEN 7 THEN CONCAT('Một buổi chiều thể thao cùng câu lạc bộ của trường. Bài số ', post_no, '.')
-                    WHEN 8 THEN CONCAT('Ảnh chụp quanh thành phố sau giờ học. Bài số ', post_no, '.')
-                    ELSE CONCAT('Cùng trao đổi cách quản lý thời gian học tập hiệu quả. Bài số ', post_no, '.')
-                END
-            ),
+            CASE post_no
+                WHEN 902 THEN 'Cuối tuần ghé AEON Mall Bình Tân học nhóm rồi ăn trưa, khu bàn ngồi khá rộng và có nhiều lựa chọn giá sinh viên.'
+                WHEN 903 THEN 'Có bạn nào ở Bình Trị Đông muốn lập nhóm xem phim và trao đổi đồ án tại AEON Mall tối nay không?'
+                WHEN 904 THEN 'Sáng nay Chợ Bình Trị Đông có nhiều món ăn sáng ngon, đi sớm khá thoáng và dễ tìm món dưới 30 nghìn.'
+                WHEN 905 THEN 'Nhóm mình đang tìm thêm hai bạn ôn Toán và tiếng Anh gần THPT Nguyễn Hữu Cảnh vào chiều thứ bảy.'
+                WHEN 906 THEN 'Cuối tuần có hoạt động hỗ trợ người dân sử dụng dịch vụ công trực tuyến gần UBND phường Bình Trị Đông, bạn nào muốn tham gia tình nguyện không?'
+                WHEN 907 THEN 'Một góc kiến trúc và không gian yên tĩnh ở Đình Tân Khai, phù hợp cho các bạn thích chụp ảnh và tìm hiểu lịch sử địa phương.'
+                ELSE IF(
+                    MOD(post_no, 25) = 0,
+                    NULL,
+                    CASE MOD(post_no, 10)
+                        WHEN 0 THEN CONCAT('Chia sẻ tài liệu ôn tập hữu ích cho kỳ thi sắp tới. Bài số ', post_no, '.')
+                        WHEN 1 THEN CONCAT('Một góc học tập yên tĩnh dành cho sinh viên hôm nay. Bài số ', post_no, '.')
+                        WHEN 2 THEN CONCAT('Nhật ký làm đồ án: thêm một ngày sửa lỗi và học được nhiều điều mới. #', post_no)
+                        WHEN 3 THEN CONCAT('Có bạn nào đang tìm nhóm học Spring Boot và React không? Bài số ', post_no, '.')
+                        WHEN 4 THEN CONCAT('Gợi ý địa điểm ăn uống giá sinh viên, không gian thoải mái. Bài số ', post_no, '.')
+                        WHEN 5 THEN CONCAT('Khoảnh khắc đáng nhớ trong hoạt động tình nguyện cuối tuần. Bài số ', post_no, '.')
+                        WHEN 6 THEN CONCAT('Kinh nghiệm chuẩn bị CV và phỏng vấn thực tập cho sinh viên. Bài số ', post_no, '.')
+                        WHEN 7 THEN CONCAT('Một buổi chiều thể thao cùng câu lạc bộ của trường. Bài số ', post_no, '.')
+                        WHEN 8 THEN CONCAT('Ảnh chụp quanh thành phố sau giờ học. Bài số ', post_no, '.')
+                        ELSE CONCAT('Cùng trao đổi cách quản lý thời gian học tập hiệu quả. Bài số ', post_no, '.')
+                    END
+                )
+            END,
             current_status,
             IF(MOD(post_no, 9) = 0, 1, 0),
             seed_time_value,
@@ -1769,7 +1794,7 @@ BEGIN
             IF(current_status = 'DELETED', seed_time_value + INTERVAL 3 HOUR, NULL),
             seed_time_value,
             IF(MOD(post_no, 9) = 0, seed_time_value + INTERVAL 10 MINUTE, seed_time_value),
-            IF(MOD(post_no, 3) = 0, 1 + MOD(post_no, 12), NULL)
+            seed_location_id
         );
 
         SET current_post_id = LAST_INSERT_ID();
@@ -2131,7 +2156,17 @@ SELECT 'counter_mismatch', COUNT(*)
 FROM `posts` post
 WHERE post.like_count <> (SELECT COUNT(*) FROM `post_likes` item WHERE item.post_id = post.id)
    OR post.comment_count <> (SELECT COUNT(*) FROM `comments` item WHERE item.post_id = post.id AND item.status <> 'DELETED')
-   OR post.repost_count <> (SELECT COUNT(*) FROM `post_reposts` item WHERE item.post_id = post.id);
+   OR post.repost_count <> (SELECT COUNT(*) FROM `post_reposts` item WHERE item.post_id = post.id)
+UNION ALL
+SELECT 'invalid_binh_tri_dong_nearby_seed', COUNT(*)
+FROM (SELECT 1) AS expected
+WHERE (SELECT COUNT(*) FROM `locations` WHERE `google_place_id` LIKE 'demo-binhtri-%') <> 5
+   OR (SELECT COUNT(*)
+       FROM `posts` post
+       JOIN `locations` location ON location.id = post.location_id
+       WHERE location.google_place_id LIKE 'demo-binhtri-%'
+         AND post.id BETWEEN 902 AND 907
+         AND post.status = 'PUBLISHED') <> 6;
 
 SELECT `status`, COUNT(*) AS total
 FROM `posts`

@@ -27,7 +27,7 @@ export function validateAnalyticsFilters(filters, now = new Date()) {
   if (toIndex - fromIndex + 1 > 24) return 'Khoảng thống kê không được vượt quá 24 tháng.';
   const inactiveDays = Number(filters.inactiveDays);
   if (!Number.isInteger(inactiveDays) || inactiveDays < 1 || inactiveDays > 365) {
-    return 'Ngưỡng không hoạt động phải là số nguyên từ 1 đến 365 ngày.';
+    return 'Số ngày không hoạt động phải là số nguyên từ 1 đến 365.';
   }
   return '';
 }
@@ -65,7 +65,7 @@ export function formatCount(value) {
 export function formatRate(value) {
   const numericValue = toNullableNumber(value);
   return numericValue === null
-    ? 'Chưa đủ dữ liệu'
+    ? 'Chưa có dữ liệu'
     : `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(numericValue)}%`;
 }
 

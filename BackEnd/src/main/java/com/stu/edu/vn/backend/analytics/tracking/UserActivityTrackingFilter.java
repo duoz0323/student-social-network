@@ -78,7 +78,10 @@ public class UserActivityTrackingFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String path = request.getRequestURI();
         if ("GET".equals(method)) {
-            return path.startsWith("/api/v1/feeds/") || POST_DETAIL.matcher(path).matches();
+            // Nearby chỉ ghi nhận ngày hoạt động; tuyệt đối không đưa tọa độ hoặc radius vào analytics.
+            return path.startsWith("/api/v1/feeds/")
+                    || path.equals("/api/v1/discovery/nearby")
+                    || POST_DETAIL.matcher(path).matches();
         }
         if (!MUTATING_METHODS.contains(method)) {
             return false;

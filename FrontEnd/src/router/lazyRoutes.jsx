@@ -17,6 +17,7 @@ export const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUs
 export const AdminUserAnalyticsPage = lazy(() => import('../features/admin/pages/AdminUserAnalyticsPage.jsx'));
 export const AdminPostsPage = lazy(() => import('../features/admin/pages/AdminPostsPage.jsx'));
 export const AdminHashtagsPage = lazy(() => import('../features/admin/pages/AdminHashtagsPage.jsx'));
+export const AdminAcademicPage = lazy(() => import('../features/admin/pages/AdminAcademicPage.jsx'));
 export const AdminPostDetailPage = lazy(() => import('../features/admin/pages/AdminPostDetailPage.jsx'));
 export const AdminReportsPage = lazy(() => import('../features/admin/pages/AdminReportsPage.jsx'));
 export const AdminReportDetailPage = lazy(() => import('../features/admin/pages/AdminReportDetailPage.jsx'));

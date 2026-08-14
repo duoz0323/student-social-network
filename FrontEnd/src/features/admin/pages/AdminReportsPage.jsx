@@ -57,7 +57,7 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <section className="grid h-[calc(100vh-4rem)] min-h-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:w-[calc(100%+17.5rem)] 2xl:-translate-x-[8.75rem] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+    <section className="admin-page-with-analytics h-[calc(100dvh-2rem)] min-h-0 sm:h-[calc(100dvh-3rem)] lg:h-[calc(100dvh-4rem)] 2xl:h-[calc(100dvh-6rem)]">
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <div className="mb-3 flex shrink-0 gap-2 rounded-xl border bg-white p-2">
           {[
@@ -122,7 +122,7 @@ export default function AdminReportsPage() {
           />}
         </div>
       </div>
-      <div className="hidden h-full min-h-0 overflow-hidden 2xl:block">
+      <div className="admin-page-analytics h-full min-h-0 overflow-hidden">
         <AdminReportAnalytics />
       </div>
     </section>

@@ -18,23 +18,23 @@ import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
 import com.stu.edu.vn.backend.feed.service.FeedActivityAssembler;
-import com.stu.edu.vn.backend.feed.mapper.FeedPostMapper;
+import com.stu.edu.vn.backend.feed.repository.PersonalizedFeedRepository;
+import com.stu.edu.vn.backend.feed.repository.projection.PersonalizedPostRankProjection;
+import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
 import com.stu.edu.vn.backend.post.entity.Post;
-import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
-import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
-import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.projection.FeedActivityProjection;
-import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
-import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -53,15 +53,11 @@ class FeedServiceImplCursorTest {
     @Mock private UserRepository userRepository;
     @Mock private UserProfileRepository userProfileRepository;
     @Mock private PostRepository postRepository;
+    @Mock private PersonalizedFeedRepository personalizedFeedRepository;
     @Mock private PostRepostRepository postRepostRepository;
-    @Mock private PostMediaRepository postMediaRepository;
-    @Mock private PostHashtagRepository postHashtagRepository;
-    @Mock private PostLikeRepository postLikeRepository;
-    @Mock private SavedPostRepository savedPostRepository;
-    @Mock private FeedPostMapper feedPostMapper;
     @Mock private CursorCodec cursorCodec;
-    @Mock private PostLocationBatchLoader postLocationBatchLoader;
     @Mock private FeedActivityAssembler feedActivityAssembler;
+    @Mock private FeedPostBatchLoader feedPostBatchLoader;
 
     private FeedServiceImpl service;
     private User author;
@@ -70,10 +66,10 @@ class FeedServiceImplCursorTest {
     @BeforeEach
     void setUp() {
         service = new FeedServiceImpl(
-                currentUserProvider, userRepository, userProfileRepository, postRepository, postRepostRepository,
-                postMediaRepository, postHashtagRepository, postLikeRepository,
-                savedPostRepository, feedPostMapper, cursorCodec, postLocationBatchLoader, feedActivityAssembler);
-        lenient().when(postLocationBatchLoader.loadByPostId(anyList())).thenReturn(java.util.Map.of());
+                currentUserProvider, userRepository, userProfileRepository, postRepository,
+                personalizedFeedRepository, postRepostRepository, cursorCodec, feedActivityAssembler,
+                feedPostBatchLoader,
+                Clock.fixed(Instant.parse("2026-08-11T03:00:00Z"), ZoneOffset.UTC));
         author = org.mockito.Mockito.mock(User.class);
         profile = org.mockito.Mockito.mock(UserProfile.class);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7L);
@@ -126,6 +122,57 @@ class FeedServiceImplCursorTest {
         verify(cursorCodec, never()).encode(any());
     }
 
+    @Test
+    void forYouShouldFreezeRankingTimeAndEncodeTheCompleteRankKey() {
+        LocalDateTime rankingAt = LocalDateTime.of(2026, 8, 11, 3, 0);
+        List<PersonalizedPostRankProjection> ranks = ranks(11, rankingAt.minusHours(1));
+        List<Post> posts = new ArrayList<>();
+        for (int index = 0; index < 10; index++) {
+            Post post = org.mockito.Mockito.mock(Post.class);
+            when(post.getId()).thenReturn((long) index + 1);
+            posts.add(post);
+        }
+        when(personalizedFeedRepository.findRankedPosts(eq(7L), eq(rankingAt), eq(Integer.MAX_VALUE),
+                any(), eq(Long.MAX_VALUE), any())).thenReturn(ranks);
+        when(postRepository.findAccessibleFeedHeadersByIds(eq(7L), anyList())).thenReturn(posts);
+        when(feedPostBatchLoader.map(posts, 7L)).thenReturn(java.util.Collections.nCopies(10,
+                org.mockito.Mockito.mock(FeedPostResponse.class)));
+        when(cursorCodec.encode(any(ForYouCursor.class))).thenReturn("next");
+
+        var result = service.getForYou(null, 10);
+
+        assertThat(result.content()).hasSize(10);
+        assertThat(result.hasNext()).isTrue();
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(personalizedFeedRepository).findRankedPosts(eq(7L), eq(rankingAt), eq(Integer.MAX_VALUE),
+                any(), eq(Long.MAX_VALUE), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(11);
+        ArgumentCaptor<ForYouCursor> cursor = ArgumentCaptor.forClass(ForYouCursor.class);
+        verify(cursorCodec).encode(cursor.capture());
+        assertThat(cursor.getValue().version()).isEqualTo(ForYouCursor.CURRENT_VERSION);
+        assertThat(cursor.getValue().rankingAt()).isEqualTo(rankingAt);
+        assertThat(cursor.getValue().score()).isEqualTo(91);
+        assertThat(cursor.getValue().postId()).isEqualTo(10L);
+    }
+
+    @Test
+    void forYouNextPageShouldReuseRankingTimeFromCursor() {
+        LocalDateTime rankingAt = LocalDateTime.of(2026, 8, 10, 8, 30);
+        LocalDateTime publishedAt = rankingAt.minusDays(1);
+        ForYouCursor cursor = new ForYouCursor(
+                ForYouCursor.CURRENT_VERSION, rankingAt, 80, publishedAt, 50L);
+        when(cursorCodec.decode("valid", ForYouCursor.class)).thenReturn(cursor);
+        when(personalizedFeedRepository.findRankedPosts(eq(7L), eq(rankingAt), eq(80),
+                eq(publishedAt), eq(50L), any())).thenReturn(List.of());
+
+        var result = service.getForYou("valid", 10);
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        verify(personalizedFeedRepository).findRankedPosts(eq(7L), eq(rankingAt), eq(80),
+                eq(publishedAt), eq(50L), any());
+    }
+
     private List<FeedActivityProjection> activities(int count) {
         List<FeedActivityProjection> result = new ArrayList<>();
         for (int index = 1; index <= count; index++) {
@@ -140,47 +187,40 @@ class FeedServiceImplCursorTest {
         return result;
     }
 
-    @Test
-    void invalidCursorFieldsAndOutOfRangeLimitsShouldFailBeforeRepositoryQuery() {
-        when(cursorCodec.decode("missing", ForYouCursor.class))
-                .thenReturn(new ForYouCursor(null, LocalDateTime.now(), 1L));
-
-        assertBusinessError(() -> service.getForYou("missing", 10), ErrorCode.INVALID_CURSOR);
-        assertBusinessError(() -> service.getForYou(null, 0), ErrorCode.VALIDATION_ERROR);
-        assertBusinessError(() -> service.getForYou(null, 21), ErrorCode.VALIDATION_ERROR);
-        verify(postRepository, never()).findForYouFeed(any(), any(Integer.class), any(), any(), any());
-    }
-
-    private List<Post> posts(int count) {
-        List<Post> result = new ArrayList<>();
+    private List<PersonalizedPostRankProjection> ranks(int count, LocalDateTime firstPublishedAt) {
+        List<PersonalizedPostRankProjection> result = new ArrayList<>();
         for (int index = 1; index <= count; index++) {
-            Post post = org.mockito.Mockito.mock(Post.class);
-            lenient().when(post.getId()).thenReturn((long) index);
-            lenient().when(post.getAuthor()).thenReturn(author);
-            lenient().when(post.getPublishedAt())
-                    .thenReturn(LocalDateTime.of(2026, 7, 24, 12, 0).minusMinutes(index));
-            result.add(post);
+            PersonalizedPostRankProjection rank = org.mockito.Mockito.mock(PersonalizedPostRankProjection.class);
+            lenient().when(rank.getPostId()).thenReturn((long) index);
+            lenient().when(rank.getScore()).thenReturn(101 - index);
+            lenient().when(rank.getPublishedAt()).thenReturn(firstPublishedAt.minusMinutes(index));
+            result.add(rank);
         }
         return result;
     }
 
-    private void stubBatchMapping(List<Post> returnedPosts) {
-        when(author.getId()).thenReturn(7L);
-        when(userProfileRepository.findAllById(anyList())).thenReturn(List.of(profile));
-        when(profile.getUserId()).thenReturn(7L);
-        when(postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(anyList()))
-                .thenReturn(List.of());
-        when(postHashtagRepository.findWithHashtagByPostIds(anyList())).thenReturn(List.of());
-        when(postLikeRepository.findLikedPostIds(eq(7L), anyList())).thenReturn(List.of());
-        when(savedPostRepository.findSavedPostIds(eq(7L), anyList())).thenReturn(List.of());
-        for (Post post : returnedPosts) {
-            Long postId = post.getId();
-            LocalDateTime publishedAt = post.getPublishedAt();
-            when(feedPostMapper.toResponse(eq(post), eq(profile), anyList(), eq(null), eq(false), eq(false), eq(null)))
-                    .thenReturn(new FeedPostResponse(
-                            postId, null, false, 0, 0, publishedAt,
-                            null, List.of(), null, false, false));
-        }
+    @Test
+    void invalidCursorFieldsAndOutOfRangeLimitsShouldFailBeforeRepositoryQuery() {
+        when(cursorCodec.decode("missing", ForYouCursor.class))
+                .thenReturn(new ForYouCursor(ForYouCursor.CURRENT_VERSION, null, 10,
+                        LocalDateTime.now(), 1L));
+
+        assertBusinessError(() -> service.getForYou("missing", 10), ErrorCode.INVALID_CURSOR);
+        assertBusinessError(() -> service.getForYou(null, 0), ErrorCode.VALIDATION_ERROR);
+        assertBusinessError(() -> service.getForYou(null, 21), ErrorCode.VALIDATION_ERROR);
+        verify(personalizedFeedRepository, never()).findRankedPosts(any(), any(), any(Integer.class), any(), any(), any());
+    }
+
+    @Test
+    void blockedOrIncompleteViewerShouldBeRejectedBeforeRankingQuery() {
+        when(author.getStatus()).thenReturn(UserStatus.BLOCKED);
+        assertBusinessError(() -> service.getForYou(null, 10), ErrorCode.USER_BLOCKED);
+
+        when(author.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(profile.getProfileCompletedAt()).thenReturn(null);
+        assertBusinessError(() -> service.getForYou(null, 10), ErrorCode.PROFILE_NOT_COMPLETED);
+
+        verify(personalizedFeedRepository, never()).findRankedPosts(any(), any(), any(Integer.class), any(), any(), any());
     }
 
     private void assertBusinessError(Runnable action, ErrorCode errorCode) {

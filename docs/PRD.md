@@ -72,6 +72,8 @@ Có role `ADMIN`.
 
 Ngoài quyền người dùng, Admin được phép:
 
+- Quản lý School, Faculty, Major và Interest Category bằng list/search/create/update/ACTIVE-INACTIVE; không hard delete, không cascade status và có audit log.
+
 - Xem và tìm kiếm người dùng.
 - Xem và chỉnh sửa avatar, tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
 - Sau khi chỉnh sửa thành công, USER nhận thông báo hồ sơ đã bị điều chỉnh vì vi phạm Tiêu chuẩn hệ thống.
@@ -145,6 +147,8 @@ Hoàn tất hồ sơ ban đầu:
 - `users.status = ACTIVE` chỉ thể hiện tài khoản không bị khóa, không đồng nghĩa hồ sơ đã hoàn tất.
 
 ### 4.3 Theo dõi
+
+Student Recommendation V1 cung cấp section “Có thể bạn biết” cho USER `ACTIVE` đã hoàn tất profile. Candidate được tính động bằng deterministic rule-based score từ Academic Profile ACTIVE, Interests ACTIVE và số tài khoản chung mà hai bên cùng Follow. Backend loại self, Block hai chiều và candidate đã Follow trước khi phân trang; Restrict không loại candidate. Không có random fallback, AI/ML, cache table hoặc background job.
 
 - Follow có hiệu lực ngay.
 - Không có Follow Request.
@@ -236,14 +240,12 @@ Location gắn với Post thuộc P1 và có phạm vi độc lập với Discov
 
 #### For You
 
-- Gồm bài PUBLISHED.
-- Xếp hạng cơ bản theo:
-  - Độ mới.
-  - Số Like.
-  - Số bình luận.
-- Không dùng Machine Learning.
-- Hạn chế lặp liên tiếp cùng tác giả.
-- Dùng Cursor Pagination với cursor chứa đủ khóa xếp hạng `score`, `publishedAt`, `postId`.
+- Gồm bài `PUBLISHED` của author `ACTIVE`, profile hoàn tất và không có Block hai chiều; Restrict không lọc.
+- Personalized For You V1 là deterministic rule-based ranking gồm recency, Like/Comment/Repost engagement, Follow, Academic ACTIVE theo stable ID, common Interests ACTIVE, lịch sử tương tác với các bài khác của cùng author và exact same hashtag-ID behavior.
+- Academic/Interest là bonus, không phải hard filter; cold start dùng recency + engagement.
+- Không đưa Repost activity vào For You và không thay đổi Following Feed.
+- Không dùng AI/Machine Learning, embeddings, collaborative filtering, cache recommendation hoặc background job.
+- Dùng Cursor Pagination versioned chứa `rankingAt`, `score`, `publishedAt`, `postId`; `rankingAt` được giữ nguyên trong cùng phiên cuộn.
 
 ### 4.7 Hashtag
 
@@ -406,7 +408,7 @@ Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
 - Quote Post.
 - Chủ đề.
 - Discovery Map.
-- Tìm bài theo bán kính, Feed theo Location, trang Location riêng và địa điểm phổ biến.
+- Feed tùy chỉnh theo Location, trang Location riêng và địa điểm phổ biến; Nearby Discovery theo bán kính đã được triển khai ở Backend/Frontend V1.
 - Quản trị Location, xác minh Backend và đồng bộ định kỳ với Google Places.
 - Feed tùy chỉnh.
 - Elasticsearch.

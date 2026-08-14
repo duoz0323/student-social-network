@@ -86,12 +86,16 @@ API trả 401
 → AUTH-01 Đăng nhập
 ```
 
-### 1.3 Feed For You và Following
+### 1.3 Feed For You, Following và Nearby
 
 ```text
 FEED-01
+→ Các trang Feed tải rail “Có thể bạn biết” cố định bên phải trên desktop rộng bằng Student Recommendation V1
+→ Card hiển thị avatar, displayName, @username, tối đa hai lý do và nút Theo dõi
+→ Follow thành công loại card; Follow thất bại giữ card và hiển thị lỗi
 → Tab Dành cho bạn tải bài PUBLISHED hợp lệ
 → Tab Đang theo dõi tải bài của người đang follow
+→ Tab Gần bạn mới yêu cầu một snapshot Geolocation và tải Post có Location theo radius đã chọn
 → Hiển thị danh sách PostCard
 → Người dùng cuộn đến gần cuối danh sách
 → Frontend gửi lại nextCursor opaque để tải trang tiếp theo
@@ -104,6 +108,8 @@ Nếu Feed Following rỗng:
 Hiển thị empty state
 → Gợi ý người dùng tìm kiếm hoặc follow tài khoản khác
 ```
+
+Nearby chỉ gọi `getCurrentPosition` khi mở tab `Gần bạn` hoặc bấm `Cập nhật vị trí`; không dùng `watchPosition`, không lưu tọa độ vào storage/URL/analytics. Người dùng chọn radius `1/3/5/10/20 km`, mặc định 5 km. Đổi radius hoặc vị trí reset list/cursor và hủy request cũ; deny, unavailable, timeout, API error, empty, loading-more và end đều có trạng thái riêng. `INVALID_CURSOR` dừng phân trang và không tự retry.
 
 ### 1.4 Tạo bài viết
 
@@ -359,7 +365,23 @@ Admin đăng nhập
 
 Luồng tại route `/admin/hashtags`; mọi thao tác ghi yêu cầu ADMIN và được lưu lịch sử quản trị.
 
-### 1.17 Trạng thái hệ thống
+### 1.17 Admin quản lý dữ liệu học thuật
+
+```text
+Admin đăng nhập
+→ Chọn Dữ liệu học thuật trên sidebar
+→ ADMIN-10 mở tab Trường / Khoa / Ngành
+→ Tìm kiếm, phân trang, tạo, sửa hoặc đổi ACTIVE/INACTIVE cho School
+→ Chọn Xem khoa để đi sâu vào Faculty của School
+→ Chọn Xem ngành để đi sâu vào Major của Faculty
+→ Hoặc chuyển tab Sở thích để quản lý Interest Category độc lập
+→ Khi chuyển ACTIVE sang INACTIVE, đọc cảnh báo bảo toàn reference và xác nhận
+→ Backend không cascade status xuống child, không hard delete và ghi Admin Action
+```
+
+Public Academic API chỉ hiển thị hierarchy có toàn bộ ancestor `ACTIVE`; dữ liệu inactive đã gắn với hồ sơ cũ vẫn được bảo toàn. Luồng dùng route `/admin/academic` và không bao gồm Recommendation, Smart Student Match, School Suggestion hoặc AI/ML.
+
+### 1.18 Trạng thái hệ thống
 
 ```text
 Không có quyền → SYS-01
@@ -435,7 +457,7 @@ Quy tắc: Không dùng @username, không dùng displayName làm khóa liên k�
 
 ### 2.3 Các chức năng tương lai khác
 
-- Discovery Map, tìm bài theo bán kính, Feed theo Location và trang Location riêng.
+- Discovery Map, Feed tùy chỉnh theo Location và trang Location riêng.
 - Feed tùy chỉnh.
 - Follow Request.
 - Trích dẫn bài viết.

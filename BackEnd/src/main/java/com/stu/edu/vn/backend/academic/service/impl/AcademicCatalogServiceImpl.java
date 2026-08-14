@@ -60,7 +60,7 @@ public class AcademicCatalogServiceImpl implements AcademicCatalogService {
 
     @Override
     public List<AcademicItemResponse> searchMajors(Long facultyId, String keyword, Integer limit) {
-        facultyRepository.findByIdAndStatus(facultyId, AcademicStatus.ACTIVE)
+        facultyRepository.findSelectableById(facultyId, AcademicStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACADEMIC_FACULTY_INVALID));
         return majorRepository.searchActiveByFaculty(
                         facultyId,

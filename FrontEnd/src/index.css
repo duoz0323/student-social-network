@@ -57,6 +57,32 @@
   color-scheme: inherit;
 }
 
+/* Breakpoint của trang Admin dựa trên chiều rộng content thực tế sau khi sidebar thu/mở. */
+.admin-content-container {
+  container: admin-content / inline-size;
+}
+
+.admin-page-with-analytics {
+  display: grid;
+  align-items: start;
+  gap: 1.5rem;
+  overflow: hidden;
+}
+
+.admin-page-analytics {
+  display: none;
+}
+
+@container admin-content (min-width: 80rem) {
+  .admin-page-with-analytics {
+    grid-template-columns: minmax(0, 1fr) 16rem;
+  }
+
+  .admin-page-analytics {
+    display: block;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

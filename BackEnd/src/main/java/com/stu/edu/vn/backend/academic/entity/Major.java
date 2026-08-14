@@ -27,4 +27,19 @@ public class Major extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private AcademicStatus status;
+
+    /** Major được tạo trong đúng Faculty và giữ nguyên quan hệ cha trong phạm vi V1. */
+    public Major(Faculty faculty, String name) {
+        this.faculty = faculty;
+        this.name = name;
+        this.status = AcademicStatus.ACTIVE;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void changeStatus(AcademicStatus status) {
+        this.status = status;
+    }
 }

@@ -124,6 +124,7 @@ function LinkIcon() {
 export default function PostCard({
   post: initialPost,
   detail = false,
+  locationMeta = '',
   onSaveChange,
   onLikeChange,
   onRepostChange,
@@ -545,7 +546,10 @@ export default function PostCard({
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
             </span>
-            <span className="min-w-0 truncate font-medium">{post.location.displayName}</span>
+            <span className="min-w-0 truncate font-medium">
+              {post.location.displayName}
+              {locationMeta ? <span className="font-normal text-[var(--app-muted)]"> · {locationMeta}</span> : null}
+            </span>
           </a>
         )}
         {/* Media nằm ngoài nút điều hướng để controls của video có thể tương tác độc lập. */}

@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.post.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.feed.repository.PersonalizedFeedRepository;
 import java.time.LocalDateTime;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,8 @@ class PostRepositoryContractTest {
     @Test
     void cursorQueriesUseKeysetWithoutCountQuery() throws Exception {
         // Các danh sách cuộn vô hạn phải giới hạn bằng Pageable trang 0 nhưng không được sinh COUNT/OFFSET nghiệp vụ.
-        Method forYou = PostRepository.class.getMethod(
-                "findForYouFeed", Long.class, int.class, LocalDateTime.class, Long.class,
+        Method forYou = PersonalizedFeedRepository.class.getMethod(
+                "findRankedPosts", Long.class, LocalDateTime.class, int.class, LocalDateTime.class, Long.class,
                 org.springframework.data.domain.Pageable.class);
         Method following = PostRepository.class.getMethod(
                 "findFollowingFeed", Long.class, LocalDateTime.class, Long.class,
@@ -58,7 +59,7 @@ class PostRepositoryContractTest {
                 "findLikedPosts", Long.class, LocalDateTime.class, Long.class,
                 org.springframework.data.domain.Pageable.class);
 
-        for (Method method : new Method[]{forYou, following, profile, saved, liked}) {
+        for (Method method : new Method[]{following, profile, saved, liked}) {
             Query query = method.getAnnotation(Query.class);
             assertThat(method.getReturnType()).isEqualTo(java.util.List.class);
             assertThat(query.countQuery()).isBlank();
@@ -70,8 +71,22 @@ class PostRepositoryContractTest {
                     ":viewerId"
             );
         }
-        assertThat(forYou.getAnnotation(Query.class).value())
-                .contains("(p.like_count + p.comment_count)", "ORDER BY", "p.id DESC", "user_blocks");
+        Query personalizedQuery = forYou.getAnnotation(Query.class);
+        assertThat(personalizedQuery.countQuery()).isBlank();
+        assertThat(personalizedQuery.value())
+                .doesNotContainIgnoringCase("OFFSET", "COUNT(*) OVER")
+                .contains(
+                        "WITH viewer_profile",
+                        "candidate_posts",
+                        "common_interests",
+                        "liked_authors",
+                        "commented_authors",
+                        "saved_authors",
+                        "reposted_authors",
+                        "DATE_SUB(:rankingAt",
+                        "user_blocks",
+                        "ORDER BY score DESC, published_at DESC, post_id DESC"
+                );
         assertThat(following.getAnnotation(Query.class).value())
                 .contains("f.follower_id = :viewerId", "f.following_id = p.author_id", "user_blocks");
     }

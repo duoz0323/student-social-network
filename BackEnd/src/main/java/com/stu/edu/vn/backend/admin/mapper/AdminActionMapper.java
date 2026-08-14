@@ -76,6 +76,9 @@ public class AdminActionMapper {
             case REJECT_MODERATION_CASE -> "Kết luận hồ sơ kiểm duyệt không vi phạm";
             case RESOLVE_PROFILE_REPORT -> "Xác nhận báo cáo trang cá nhân";
             case REJECT_PROFILE_REPORT -> "Từ chối báo cáo trang cá nhân";
+            case CREATE_ACADEMIC_DATA -> "Tạo dữ liệu học thuật";
+            case UPDATE_ACADEMIC_DATA -> "Cập nhật dữ liệu học thuật";
+            case CHANGE_ACADEMIC_STATUS -> "Đổi trạng thái dữ liệu học thuật";
         };
     }
 // hàm kiểm tra dữ liệu đầu vào , biến json thành object

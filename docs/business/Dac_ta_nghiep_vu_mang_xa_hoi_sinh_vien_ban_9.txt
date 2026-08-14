@@ -1,0 +1,1466 @@
+================================================================================
+ĐẶC TẢ YÊU CẦU NGHIỆP VỤ VÀ ĐỊNH HƯỚNG THIẾT KẾ HỆ THỐNG
+DỰ ÁN STUDENT SOCIAL NETWORK – MẠNG XÃ HỘI TINH GỌN HƯỚNG ĐẾN SINH VIÊN
+PHIÊN BẢN 9 – BẢN CẬP NHẬT ĐỒNG BỘ TRẠNG THÁI HIỆN TẠI
+VÀ BỔ SUNG LOCATION-AWARE DISCOVERY V1
+Ngày cập nhật: 12/08/2026
+================================================================================
+
+MỤC ĐÍCH TÀI LIỆU
+
+Tài liệu này là bản cập nhật của Đặc tả nghiệp vụ V9, dùng để đồng bộ lại phạm vi,
+nghiệp vụ và định hướng kỹ thuật với trạng thái hiện tại của dự án Student Social
+Network sau các giai đoạn phát triển gần nhất.
+
+README.md tại thư mục gốc tiếp tục là nguồn sự thật có mức ưu tiên cao nhất.
+Nếu tài liệu này khác README.md thì áp dụng README.md, trừ quyết định mới nhất đã
+được người dùng chốt trực tiếp cho Location-aware Discovery V1 trong đợt cập nhật này.
+
+Bản cập nhật này có các mục tiêu chính:
+
+- Loại bỏ hoặc chuyển sang hướng phát triển các nghiệp vụ V9 cũ chưa thuộc phạm vi hiện tại,
+  ví dụ hồ sơ PRIVATE, Follow Request, Feed tùy chỉnh, Discovery Map đầy đủ,
+  Message Request, Elasticsearch, chủ đề nội dung, Location status và quản trị Location.
+- Đồng bộ các chức năng hiện đã triển khai: Username, Academic Profile & Interests,
+  Student Recommendation V1, Block, Restrict, Messaging một-một, Repost,
+  Personalized For You V1, báo cáo trang cá nhân và Analytics quản trị.
+- Khóa phạm vi Location-aware Discovery V1 theo hướng Nearby Discovery:
+  tìm bài viết gần tọa độ hiện tại theo bán kính, không lưu vị trí người dùng,
+  không triển khai Discovery Map trong V1.
+- Tiếp tục giữ kiến trúc Client – Server, ReactJS, Spring Boot, MySQL 8,
+  RESTful API, JWT và WebSocket/STOMP theo trạng thái hiện tại.
+
+Tài liệu gồm ba phần:
+
+- PHẦN A: ĐẶC TẢ NGHIỆP VỤ.
+- PHẦN B: YÊU CẦU CHỨC NĂNG, PHI CHỨC NĂNG VÀ TIÊU CHÍ NGHIỆM THU.
+- PHẦN C: ĐỊNH HƯỚNG THIẾT KẾ KỸ THUẬT.
+
+================================================================================
+PHẦN A: ĐẶC TẢ NGHIỆP VỤ
+================================================================================
+
+I. TỔNG QUAN DỰ ÁN
+
+1. Mục tiêu hệ thống
+
+Student Social Network là website mạng xã hội tinh gọn hướng đến cộng đồng sinh viên,
+cho phép người dùng chia sẻ nội dung ngắn, kết nối, tương tác và khám phá những trải
+nghiệm liên quan đến học tập, ăn uống, vui chơi và đời sống sinh viên.
+
+Các giá trị chính của hệ thống hiện tại:
+
+- Đăng ký và đăng nhập bằng email, Google hoặc Facebook.
+- Xác minh email bằng OTP và quản lý nhiều phương thức xác thực trên một users.id.
+- Quản lý hồ sơ cá nhân có username public duy nhất.
+- Lưu dữ liệu học thuật và sở thích dạng master data chuẩn hóa.
+- Gợi ý sinh viên có điểm chung bằng Student Recommendation V1 rule-based.
+- Follow, Block và Restrict.
+- Đăng bài viết ngắn, media, hashtag, Location và Repost.
+- Feed Following và Personalized For You V1.
+- Like, bình luận, Save, Notification.
+- Nhắn tin trực tiếp một-một bằng text và ảnh, realtime best-effort.
+- Tìm kiếm người dùng và bài viết.
+- Báo cáo bài viết và trang cá nhân.
+- Quản trị người dùng, bài viết, hashtag, báo cáo, dữ liệu học thuật và Analytics.
+- Mở rộng khám phá nội dung theo vị trí bằng Location-aware Discovery V1.
+
+2. Nguyên tắc phạm vi
+
+- Hệ thống hiện tập trung vào chức năng có thể kiểm thử, trình bày và bảo vệ luận văn.
+- Không sử dụng Machine Learning trong Student Recommendation V1 hoặc Personalized For You V1.
+- Các thuật toán gợi ý hiện tại là deterministic rule-based và thực thi trực tiếp trên MySQL.
+- Location-aware Discovery V1 cũng là deterministic query-based, không AI/ML.
+- README.md là nguồn sự thật đối với trạng thái implementation.
+
+3. Đối tượng sử dụng
+
+3.1 Khách chưa đăng nhập
+
+Khách chưa đăng nhập chỉ được sử dụng các luồng Auth cần thiết:
+
+- Bắt đầu đăng ký local bằng email.
+- Xác minh hoặc gửi lại OTP.
+- Tiếp tục đăng ký tạm còn hiệu lực.
+- Đăng ký hoặc đăng nhập bằng Google/Facebook.
+- Đăng nhập local.
+- Khôi phục mật khẩu đối với tài khoản local đủ điều kiện.
+
+Khách chưa đăng nhập không được sử dụng Feed, Search, Profile người khác,
+Recommendation, Messaging hoặc Location-aware Discovery.
+
+3.2 Người dùng
+
+Người dùng phải có:
+
+- role = USER.
+- users.status = ACTIVE.
+- user_profiles.profile_completed_at khác NULL đối với API mạng xã hội chính.
+
+Người dùng có thể:
+
+- Quản lý hồ sơ và dữ liệu học thuật/sở thích.
+- Follow, Block, Restrict người khác theo nghiệp vụ.
+- Đăng và quản lý bài viết.
+- Like, Comment, Save, Repost.
+- Xem Following Feed và Personalized For You.
+- Nhận gợi ý “Có thể bạn biết”.
+- Tìm kiếm người dùng/bài viết.
+- Nhắn tin trực tiếp một-một khi đáp ứng điều kiện.
+- Báo cáo bài viết hoặc trang cá nhân phù hợp.
+- Khám phá bài viết gần vị trí hiện tại qua Location-aware Discovery V1 khi chủ động cấp quyền vị trí.
+
+3.3 Quản trị viên
+
+ADMIN có thể:
+
+- Quản lý USER.
+- Chỉnh sửa một số thông tin hồ sơ USER theo nghiệp vụ kiểm duyệt hiện tại.
+- Khóa/mở khóa tài khoản.
+- Quản lý bài viết và ẩn/khôi phục bài.
+- Quản lý hashtag.
+- Quản lý báo cáo bài viết và trang cá nhân.
+- Quản lý School, Faculty, Major, Interest Category.
+- Xem Admin Action và Analytics theo phạm vi đã triển khai.
+
+ADMIN không sử dụng Messaging như tài khoản xã hội thông thường.
+
+4. Các chức năng chưa thuộc phạm vi hiện tại
+
+Các chức năng sau tiếp tục nằm ngoài phạm vi hiện tại nếu README.md chưa được cập nhật khác:
+
+- Hồ sơ PRIVATE.
+- Follow Request.
+- Bài viết nháp.
+- Mention.
+- Trích dẫn/Quote Post.
+- Chủ đề nội dung do Admin quản lý.
+- Feed tùy chỉnh do người dùng tạo.
+- Feed PUBLIC và lưu Feed.
+- Elasticsearch.
+- Discovery Map đầy đủ.
+- Location Detail Page, Popular Locations, Admin Location Management.
+- Backend xác minh và đồng bộ định kỳ Google Places.
+- Message Request và Hidden Message Request.
+- Tài liệu/video trong Messaging, online status, recall, report message.
+- AI/ML Recommendation, collaborative filtering, embedding.
+- Location Recommendation cho sinh viên.
+- School Suggestion và import/sync học thuật từ nguồn bên ngoài.
+- Mobile native, Group Chat, gọi thoại, gọi video, Livestream.
+
+II. PHÂN HỆ XÁC THỰC, TÀI KHOẢN VÀ HỒ SƠ
+
+1. Mô hình xác thực
+
+Hệ thống áp dụng mô hình:
+
+Một tài khoản nội bộ users.id
++
+Nhiều phương thức xác thực Email / Google / Facebook.
+
+Provider token chỉ được dùng tại endpoint Auth. API nghiệp vụ chỉ chấp nhận JWT do Backend cấp.
+
+2. Đăng ký local bằng email
+
+Form đăng ký local gồm:
+
+- email.
+- password.
+- confirmPassword.
+
+Quy tắc:
+
+- Email được trim và chuẩn hóa lowercase.
+- Khi gửi form đăng ký chỉ tạo pending_registrations, chưa tạo users/user_profiles/JWT.
+- OTP và flow token chỉ lưu dạng hash.
+- OTP có hiệu lực 10 phút.
+- Chỉ resend sau 60 giây.
+- Tối đa 5 lần nhập sai cho mỗi OTP.
+- Pending registration có hiệu lực 24 giờ.
+- Không có hai pending còn hiệu lực cho cùng một email.
+- OTP mới làm OTP cũ mất hiệu lực.
+- CANCELLED và EXPIRED được giữ tối đa 7 ngày trước khi xóa hoặc ẩn danh.
+
+3. Xác minh OTP
+
+Sau khi OTP hợp lệ, Backend thực hiện trong transaction phù hợp:
+
+- Kiểm tra pending.
+- Tạo users.
+- Tạo user_profiles.
+- Đánh dấu pending COMPLETED.
+- Tạo Refresh Token.
+- Cấp Access Token và Refresh Token.
+
+users và user_profiles phải được tạo trong cùng transaction. Không giữ transaction khi chờ SMTP.
+
+4. Google và Facebook
+
+- Backend tự xác minh token với provider.
+- Không tin provider user ID, email hoặc verified flag do Frontend tự khai báo.
+- Provider đã liên kết phải đăng nhập về đúng users.id.
+- Không tự động gộp hai tài khoản ACTIVE chỉ vì trùng email.
+- user_auth_providers(provider, provider_user_id) là duy nhất.
+- Tài khoản BLOCKED bị từ chối ở mọi phương thức đăng nhập.
+
+5. Liên kết phương thức đăng nhập
+
+- Email phải xác minh OTP trước khi liên kết.
+- Google/Facebook được xác minh trong phiên đang đăng nhập.
+- user_id đích lấy từ JWT hiện tại.
+- Không gỡ phương thức đăng nhập cuối cùng.
+- Social-only account có thể có password_hash = NULL.
+
+6. Khôi phục mật khẩu
+
+- Chỉ tài khoản ACTIVE có password_hash và phương thức EMAIL verified đủ điều kiện.
+- Tài khoản không đủ điều kiện nhận response khởi tạo trung tính và decoy challenge.
+- Challenge TTL 15 phút.
+- OTP TTL 10 phút, không vượt challenge expiry.
+- Cooldown resend 60 giây.
+- Tối đa 5 lần sai.
+- Reset-authorized token single-use có hiệu lực 5 phút.
+- OTP/flow/reset token chỉ lưu hash.
+- Đổi mật khẩu và thu hồi toàn bộ Refresh Token trong cùng transaction.
+- Không tự đăng nhập sau khi đổi mật khẩu.
+
+7. Username và onboarding
+
+Username là định danh public duy nhất của hồ sơ:
+
+- Bắt buộc để hoàn tất onboarding.
+- Dài 3–30 ký tự.
+- Chỉ gồm a-z, 0-9, dấu gạch dưới (_) và dấu chấm (.).
+- Trim và lowercase trước khi lưu.
+- Ký tự @ chỉ do Frontend thêm khi hiển thị.
+- API trả username không kèm @.
+- Không dùng username thay users.id trong quan hệ nội bộ.
+
+Điều kiện hoàn tất hồ sơ:
+
+- Username hợp lệ.
+- Display name hợp lệ.
+- Date of birth hợp lệ.
+- Người dùng đủ 18 tuổi tại thời điểm Backend xử lý.
+- Người dùng xác nhận hoàn tất.
+
+Avatar và bio là tùy chọn.
+Academic Profile & Interests không phải điều kiện để profile_completed_at được cập nhật.
+
+8. Hồ sơ người dùng
+
+Tất cả hồ sơ hiện tại là PUBLIC trong MVP.
+
+Người dùng có thể:
+
+- Xem hồ sơ hiện tại.
+- Xem hồ sơ USER khác nếu không bị Block.
+- Cập nhật username theo contract hiện tại.
+- Cập nhật display name.
+- Cập nhật avatar.
+- Cập nhật bio.
+- Cập nhật date of birth.
+- Xem follower/following.
+- Xem bài viết và Repost trên hồ sơ theo API hiện tại.
+
+Email và dữ liệu xác thực không được trả trong hồ sơ công khai.
+
+9. Academic Profile & Interests
+
+Trạng thái hiện tại: IMPLEMENTED/TESTED, manual E2E đã xác minh onboarding, edit và display.
+
+Master data:
+
+- schools.
+- faculties.
+- majors.
+- interest_categories.
+
+Quan hệ:
+
+- School 1 – N Faculty.
+- Faculty 1 – N Major.
+- User N – N Interest Category qua user_interests.
+
+Quy tắc:
+
+- Profile chỉ lưu ID, không lưu tên học thuật dạng text tự do.
+- school_id, faculty_id, major_id, entry_year nullable.
+- School -> Faculty -> Major phải đúng hierarchy.
+- Master data dùng để chọn phải ACTIVE.
+- School INACTIVE làm Faculty/Major con không xuất hiện qua public API nhưng không tự đổi trạng thái child.
+- Faculty INACTIVE làm Major con không xuất hiện qua public API nhưng không tự đổi trạng thái child.
+- entry_year từ 1900 đến năm hiện tại UTC nếu có.
+- Tối đa 10 sở thích ACTIVE.
+- Admin có thể list/search/create/update và chuyển ACTIVE/INACTIVE.
+- Không hard delete master data trong V1.
+
+10. Student Recommendation V1 – “Có thể bạn biết”
+
+Trạng thái hiện tại: IMPLEMENTED, TESTED, manual E2E INTEGRATED.
+
+Endpoint:
+
+GET /api/v1/recommendations/students?page=0&size=10
+
+Candidate:
+
+- role USER.
+- status ACTIVE.
+- profile_completed_at khác NULL.
+- Không phải current user.
+- Current user chưa Follow candidate.
+- Không có Block ở bất kỳ chiều nào.
+- Restrict không loại candidate.
+
+Điểm số:
+
+- Cùng School: +40.
+- Cùng Faculty: +25.
+- Cùng Major: +20.
+- Cùng Entry Year: +10.
+- Mỗi Interest ACTIVE chung: +5, tối đa +25.
+- Mỗi mutual connection hợp lệ: +3, tối đa +15.
+
+Chỉ master data ACTIVE tạo signal.
+Candidate phải score > 0.
+Không random fallback.
+
+Thứ tự:
+
+1. score giảm dần.
+2. số Interest chung giảm dần.
+3. số kết nối chung giảm dần.
+4. userId tăng dần.
+
+Lọc, tính điểm, sắp xếp và phân trang tại MySQL. Không lưu recommendation hoặc score vào DB.
+
+III. PHÂN HỆ FOLLOW, BLOCK VÀ RESTRICT
+
+1. Follow
+
+- Không Follow chính mình.
+- Mỗi cặp follower/following chỉ có một quan hệ.
+- Follow có hiệu lực ngay.
+- Chưa có Follow Request.
+
+2. Block
+
+User Block là quan hệ có hướng nhưng hiệu lực nhìn thấy và tương tác là hai chiều.
+
+Khi A Block B:
+
+- Hai bên không xem hồ sơ/bài viết/nội dung của nhau qua các luồng USER.
+- Không tạo Follow, Like/Unlike, Comment/Reply, Save/Unsave hoặc Notification mới liên quan.
+- Follow A -> B và B -> A bị xóa trong cùng transaction.
+- Like và Comment cũ không bị xóa khỏi DB và không giảm count.
+- Comment cũ bị ẩn động giữa hai bên; nếu comment cha bị ẩn thì cả nhánh reply bị ẩn.
+- Feed, Search, Profile, Liked, Saved, Comment, Notification phải lọc Block tại database.
+
+Unblock:
+
+- Không khôi phục Follow.
+- Không tạo Notification.
+- Like/Comment lịch sử có thể hiển thị lại nếu nội dung còn hợp lệ.
+
+3. Restrict
+
+Restrict là quan hệ một chiều.
+
+Khi A Restrict B:
+
+- A và B vẫn xem Feed, Search, Profile và tương tác bình thường nếu không có điều kiện khác.
+- Restrict không lọc Feed hoặc Search.
+- Restrict không hủy Follow.
+- Like/Save/Comment/Reply vẫn hoạt động.
+- Comment/Reply vẫn PUBLISHED trong phạm vi hiện tại.
+- Backend không tạo Notification POST_LIKE, POST_COMMENT, COMMENT_REPLY do B gửi tới A.
+- Follow Notification và Notification quản trị/hệ thống không bị suppress.
+- B không được biết rằng A đã Restrict mình.
+- Block ưu tiên cao hơn Restrict.
+- Restrict hiện không ảnh hưởng Messaging.
+
+IV. PHÂN HỆ NHẮN TIN TRỰC TIẾP MỘT-MỘT
+
+1. Trạng thái
+
+Messaging text/ảnh, REST Core, WebSocket realtime và Typing Indicator đã INTEGRATED/TESTED theo README hiện tại.
+
+2. Phạm vi nội dung
+
+Message hỗ trợ:
+
+- TEXT.
+- IMAGE.
+- Ảnh kèm chú thích.
+
+Giới hạn:
+
+- Text/chú thích tối đa 2.000 Unicode code point.
+- Tối đa 5 ảnh/message.
+- JPG/JPEG/PNG/WEBP.
+- Mỗi ảnh tối đa 10 MB.
+
+Chưa hỗ trợ tài liệu, video, Message Request, Hidden Message Request, online status,
+delivered status, recall, xóa conversation phía cá nhân và report message.
+
+3. Điều kiện sử dụng
+
+- Chỉ role USER.
+- status ACTIVE.
+- profile_completed_at khác NULL.
+- Không nhắn chính mình.
+- ADMIN không dùng Messaging như tài khoản xã hội.
+
+4. Conversation
+
+- Một cặp user chỉ có một conversation logic.
+- Chuẩn hóa participant_low_id và participant_high_id.
+- Conversation và đúng hai member tạo trong cùng transaction.
+- A chỉ được bắt đầu conversation với B khi B đang Follow A.
+- Conversation rỗng không xuất hiện Inbox.
+- Trước tin đầu phải kiểm tra lại Follow.
+- Sau tin đầu, Unfollow không đóng conversation.
+
+5. Cursor và idempotency
+
+- Conversation list và message history dùng opaque cursor Base64URL, keyset, không COUNT.
+- Gửi message dùng UUID v4 clientMessageId.
+- (sender_id, client_message_id) phải unique.
+- Replay đúng payload không upload hoặc phát event lại.
+- Reuse clientMessageId với payload khác trả IDEMPOTENCY_KEY_REUSED.
+
+6. Realtime
+
+- REST/MySQL là source of truth.
+- WebSocket/STOMP là best-effort.
+- Notification và Messaging dùng chung một connection /ws trên mỗi tab.
+- Messaging subscribe /user/queue/messaging.
+- Client chỉ SEND typing tại /app/messaging/typing.
+- MESSAGE_CREATED và MESSAGES_READ chỉ phát AFTER_COMMIT.
+- Broker lỗi không rollback transaction đã commit.
+
+7. Block và Messaging
+
+- Block bất kỳ chiều nào ẩn conversation.
+- Chặn history/send/read/unread/realtime.
+- Unblock làm dữ liệu cũ xuất hiện lại nếu còn hợp lệ.
+- Restrict không ảnh hưởng Messaging trong phạm vi hiện tại.
+
+V. PHÂN HỆ BÀI VIẾT VÀ TƯƠNG TÁC
+
+1. Bài viết
+
+Người dùng có thể:
+
+- Tạo Post.
+- Xem chi tiết.
+- Chỉnh sửa trong 15 phút sau khi đăng.
+- Xóa mềm.
+
+Nội dung:
+
+- Text tối đa 500 ký tự.
+- Tối đa 4 media.
+- Tối đa một video trong tổng 4 media.
+- Tối đa một hashtag.
+- Tối đa một Location tùy chọn.
+
+Định dạng media hiện tại:
+
+- Ảnh: JPG, JPEG, PNG, WEBP; tối đa 10 MB/file.
+- Video: MP4, WEBM; tối đa 100 MB và dài không quá 3 phút.
+
+Theo README hiện tại, bài phải có ít nhất nội dung văn bản hoặc hình ảnh.
+
+Trạng thái Post:
+
+- PUBLISHED.
+- HIDDEN.
+- DELETED.
+
+Không có Post privacy PUBLIC/FOLLOWERS trong phạm vi hiện tại.
+
+2. Chỉnh sửa Post
+
+- Chỉ tác giả.
+- Trong 15 phút sau publishedAt.
+- Backend tính deadline bằng UTC và là nguồn quyết định cuối cùng.
+- Có thể sửa content/hashtag.
+- Có thể giữ/gỡ/thêm media trong giới hạn hiện tại.
+- Location hỗ trợ KEEP/REPLACE/REMOVE.
+- updated_at được cập nhật và UI hiển thị trạng thái đã chỉnh sửa theo implementation.
+
+3. Location gắn với Post – nền dữ liệu hiện có
+
+Quan hệ:
+
+Location 1 – N Post.
+
+Dữ liệu Location hiện tại:
+
+- id nội bộ.
+- google_place_id: natural unique key.
+- display_name.
+- formatted_address nullable.
+- latitude.
+- longitude.
+- created_at.
+- updated_at.
+
+Quy tắc:
+
+- Frontend gửi placeId, displayName, formattedAddress, latitude, longitude.
+- Backend validate và chuẩn hóa dữ liệu.
+- Chỉ google_place_id dùng chống trùng Location.
+- Nếu đã tồn tại thì dùng lại Location.
+- Nếu chưa tồn tại thì tạo Location mới.
+- Backend chưa xác minh Google Places trong giai đoạn hiện tại.
+- posts.location_id nullable, FK ON DELETE SET NULL.
+- Không cascade remove Location khi xóa Post.
+- Không orphanRemoval.
+- Không tự xóa Location không còn Post tham chiếu.
+- Location hoặc null được trả nhất quán trong các Post response đã chốt.
+- Location hiện tại không có status ACTIVE/HIDDEN/DELETED.
+- Người dùng không có bảng lưu current location.
+
+4. Hashtag
+
+- Mỗi Post tối đa một hashtag.
+- Xóa toàn bộ ký tự # ở đầu.
+- Trim khoảng trắng Unicode.
+- Gộp khoảng trắng liên tiếp.
+- Unicode NFC.
+- Lowercase.
+- Hỗ trợ tiếng Việt có dấu và nhiều từ.
+- Tối đa 100 code point.
+- Hashtag không được tính là content của Post.
+- Có API gợi ý hashtag không phân trang.
+
+5. Like
+
+- Một user Like một Post tối đa một lần.
+- Không Like Post HIDDEN/DELETED.
+- Có Unlike.
+- Có danh sách bài đã thích của chính user.
+
+6. Comment và Reply
+
+- Người dùng có thể Comment.
+- Có Reply tối đa một cấp theo implementation hiện tại.
+- Chỉ tác giả comment được xóa comment của mình.
+- Không Comment trên Post HIDDEN/DELETED.
+- Block áp dụng dynamic visibility đối với comment lịch sử.
+- Restrict không chuyển comment sang trạng thái chờ duyệt trong phạm vi hiện tại.
+
+7. Save
+
+- Một user Save một Post tối đa một lần.
+- Có Unsave.
+- Saved list chỉ hiển thị với chính user.
+- Post HIDDEN/DELETED không khả dụng.
+
+8. Repost
+
+- Repost/Unrepost idempotent.
+- Không Repost bài của chính mình.
+- Chỉ Repost bài PUBLISHED có quyền xem.
+- Mỗi user tối đa một quan hệ Repost với một Post.
+- Repost chỉ lưu tham chiếu.
+- Không sao chép content, media, hashtag hoặc Location.
+- Post gốc HIDDEN/DELETED không hiển thị qua Repost.
+- Repost activity thuộc Following Feed.
+- Repost không tạo một điểm Location mới trong Location-aware Discovery.
+
+VI. PHÂN HỆ FEED, TÌM KIẾM VÀ KHUYẾN NGHỊ
+
+1. Feed Following
+
+Nguồn:
+
+- ORIGINAL Post của user đang Follow.
+- REPOST activity của user đang Follow.
+
+Sắp xếp giảm dần theo:
+
+- activityAt.
+- itemRank.
+- actorId.
+- postId.
+
+Dùng Cursor Pagination, keyset, limit + 1, không COUNT.
+
+2. Personalized For You V1
+
+Trạng thái hiện tại:
+
+- Backend IMPLEMENTED.
+- Automated test TESTED.
+- Chưa đánh dấu INTEGRATED cho đến khi hoàn tất manual E2E.
+
+Candidate:
+
+- Post PUBLISHED.
+- Author ACTIVE.
+- Author đã hoàn tất profile.
+- Không có Block bất kỳ chiều nào giữa viewer và author.
+- Restrict không lọc candidate.
+- For You chỉ rank Post gốc; Repost activity chỉ thuộc Following Feed.
+
+Công thức:
+
+FeedScore = RecencyScore
+          + min(likeCount, 20)
+          + min(commentCount, 10) × 2
+          + min(repostCount, 10) × 2
+          + FollowingAuthorScore
+          + AcademicAffinityScore
+          + CommonInterestScore
+          + HistoricalAuthorAffinityScore
+          + ExactHashtagBehaviorAffinityScore
+
+Chi tiết:
+
+- Recency bucket: 60/50/35/20/10/0 tại 6 giờ/1 ngày/3 ngày/7 ngày/14 ngày.
+- Follow: +30.
+- Academic: tối đa +28.
+- Common Interests: tối đa +10.
+- Historical Author Affinity: tối đa +31.
+- Exact Hashtag Behavior: tối đa +17.
+- Candidate hiện tại bị loại khỏi lịch sử tương tác của chính nó.
+- Chỉ Academic/Interest ACTIVE tạo positive signal.
+- So khớp Academic bằng ID, không bằng tên.
+- Không AI/ML, embedding, collaborative filtering, recommendation cache hoặc background job.
+
+Cursor For You:
+
+- Base64URL opaque.
+- Versioned.
+- Chứa rankingAt, score, publishedAt, postId.
+- rankingAt được giữ nguyên trong một phiên scroll để recency bucket ổn định.
+
+3. Tìm kiếm
+
+Hiện tại:
+
+- Tìm USER theo display name và các contract đang triển khai.
+- Tìm Post theo content.
+- Tìm Post theo hashtag.
+- Search USER dùng PageResponse.
+- Search Post/hashtag dùng Cursor Pagination và Infinite Scroll.
+- MySQL là nguồn tìm kiếm.
+- Elasticsearch chưa thuộc phạm vi hiện tại.
+
+VII. LOCATION-AWARE DISCOVERY V1 – NEARBY DISCOVERY
+
+1. Trạng thái và mục tiêu
+
+Trạng thái Backend và Frontend: IMPLEMENTED / TESTED sau Personalized For You V1; chưa INTEGRATED cho đến khi manual E2E với MySQL, quyền Geolocation trình duyệt và dữ liệu Location thực tế hoàn tất.
+
+Location-aware Discovery V1 là chức năng khám phá các Post có gắn Location gần tọa độ
+hiện tại mà người dùng chủ động cung cấp tại thời điểm sử dụng.
+
+V1 không phải Discovery Map và không phải Feed tùy chỉnh theo Location.
+
+Mục tiêu:
+
+- Giúp sinh viên xem các chia sẻ gần nơi mình đang đứng, ví dụ quán ăn, chỗ học,
+  nơi nghỉ, hoạt động hoặc trải nghiệm quanh khu vực.
+- Tận dụng locations.latitude/longitude đã có.
+- Không lưu lịch sử di chuyển hoặc current location của người dùng.
+- Có thể giải thích rõ ràng, deterministic và dễ kiểm thử.
+
+2. Điều kiện sử dụng
+
+- Người dùng đã đăng nhập.
+- role = USER.
+- status = ACTIVE.
+- profile_completed_at khác NULL.
+- Frontend được người dùng chủ động cấp quyền truy cập vị trí trình duyệt.
+
+Nếu người dùng từ chối quyền vị trí, các chức năng khác vẫn hoạt động bình thường;
+chỉ Nearby Discovery không thể tải theo tọa độ hiện tại.
+
+3. Thu thập vị trí phía Frontend
+
+- Chỉ gọi Geolocation khi người dùng mở Nearby hoặc chủ động bấm cập nhật vị trí.
+- Không watchPosition liên tục trong V1.
+- Không gửi vị trí qua WebSocket.
+- Không lưu vị trí vào local business data ở Backend.
+- Frontend xử lý các trạng thái:
+  + requesting permission.
+  + loading.
+  + permission denied.
+  + unavailable/timeout.
+  + empty.
+  + error.
+  + retry.
+  + success.
+
+4. Bán kính
+
+V1 khóa các lựa chọn UI:
+
+- 1 km.
+- 3 km.
+- 5 km.
+- 10 km.
+- 20 km.
+
+Mặc định: 5 km.
+
+Không tự động mở rộng bán kính âm thầm. Khi không có dữ liệu, UI cho phép user chủ động đổi bán kính.
+
+5. API dự kiến
+
+GET /api/v1/discovery/nearby
+    ?latitude=<lat>
+    &longitude=<lng>
+    &radiusKm=<1|3|5|10|20>
+    &limit=<1..20>
+    &cursor=<opaque-optional>
+
+Current user luôn lấy từ JWT.
+
+Validation:
+
+- latitude từ -90 đến 90.
+- longitude từ -180 đến 180.
+- radiusKm chỉ nhận tập giá trị V1 hoặc contract tương đương đã chốt ở Backend.
+- limit mặc định 10, tối thiểu 1, tối đa 20.
+- cursor invalid trả INVALID_CURSOR.
+
+6. Candidate Nearby
+
+Một Post là candidate khi đồng thời thỏa:
+
+- posts.status = PUBLISHED.
+- posts.location_id IS NOT NULL.
+- author.role = USER.
+- author.status = ACTIVE.
+- author profile_completed_at IS NOT NULL.
+- Không có Block ở bất kỳ chiều nào giữa viewer và author.
+- Khoảng cách thực tế từ query coordinate đến Location <= radiusKm.
+
+Restrict không loại Post.
+
+Không thêm các điều kiện không tồn tại trong nghiệp vụ hiện tại như:
+
+- Post privacy PUBLIC/FOLLOWERS.
+- Location status ACTIVE/HIDDEN/DELETED.
+- Location category.
+
+7. Repost trong Nearby
+
+- Nearby chỉ xếp Post gốc có Location.
+- Repost không tạo candidate riêng theo vị trí của người Repost.
+- Repost không tạo Location mới.
+- Một Post gốc chỉ xuất hiện một lần trong page kết quả Nearby.
+
+8. Xếp hạng Nearby V1
+
+Nearby V1 cố ý không sử dụng Personalized For You score.
+
+Thứ tự ổn định:
+
+1. distance ASC.
+2. publishedAt DESC.
+3. postId DESC.
+
+V1 không cộng điểm Like, Comment, Repost, Academic, Interest, Follow hoặc history.
+Mục đích là phân biệt rõ Nearby Discovery với Personalized For You.
+
+9. Distance
+
+- Backend tính khoảng cách dựa trên latitude/longitude của query và Location.
+- Query ưu tiên dùng bounding box để giảm tập ứng viên trước khi tính khoảng cách chính xác.
+- Lọc, tính distance, sắp xếp và phân trang thực hiện tại MySQL.
+- Không tải toàn bộ Location/Post lên Java rồi lọc khoảng cách.
+- Không bắt buộc đổi schema sang spatial POINT trong V1.
+- Chỉ bổ sung index mới nếu EXPLAIN và test dữ liệu cho thấy cần thiết.
+
+10. Cursor Nearby
+
+Cursor phải:
+
+- Base64URL opaque.
+- Versioned.
+- Chứa đủ khóa để keyset theo distance, publishedAt, postId.
+- Được bind với tham số truy vấn vị trí/bán kính bằng payload hoặc fingerprint tương đương.
+
+Mục tiêu:
+
+- Không dùng cursor 5 km cho request 10 km.
+- Không dùng cursor của tọa độ A cho tọa độ B.
+- Không trả trùng item khi tải trang tiếp theo.
+- Không dùng page/offset hoặc COUNT tổng.
+
+11. Response Nearby
+
+Không sửa PostResponse chung chỉ để mang distance nếu không cần thiết.
+Khuyến nghị wrapper:
+
+{
+  "content": [
+    {
+      "post": { ... Post response hiện tại ... },
+      "distanceMeters": 850
+    }
+  ],
+  "nextCursor": "...",
+  "hasNext": true
+}
+
+distanceMeters dùng đơn vị integer/long phù hợp. Frontend tự format:
+
+- dưới 1 km: ví dụ 850 m.
+- từ 1 km: ví dụ 2.4 km.
+
+12. Privacy Location-aware
+
+V1 bắt buộc tuân thủ:
+
+- Không tạo bảng current_user_locations hoặc user_location_history.
+- Không lưu tọa độ hiện tại của viewer vào DB.
+- Không lưu vào user_daily_activities payload.
+- Không gửi location qua Notification.
+- Không gửi location qua WebSocket.
+- Không công khai current coordinate của viewer cho user khác.
+- Không dùng current coordinate để tạo một public Location.
+- Không log trực tiếp tọa độ chi tiết trong application log nếu không thật sự cần cho debug; production phải tránh log dữ liệu location nhạy cảm.
+
+13. Các trạng thái UI Nearby
+
+- Initial/permission prompt.
+- Getting location.
+- Loading results.
+- Permission denied.
+- Geolocation unavailable.
+- Timeout.
+- No nearby posts.
+- API error.
+- Retry.
+- Infinite scroll success/loading-more/end.
+
+14. Không thuộc Nearby V1
+
+- Map rendering.
+- Marker.
+- Marker clustering.
+- Discovery Map.
+- Location detail page.
+- Popular locations.
+- Route/directions.
+- Geofencing.
+- Location push notification.
+- Background tracking.
+- Admin Location Management.
+- Location status/category.
+- Google Places server verification/sync.
+- Location-aware Student Recommendation.
+- LocationMatchScore trong Personalized For You.
+- ML-based proximity recommendation.
+
+15. Roadmap sau Nearby V1
+
+Sau khi Nearby V1 hoàn thành và manual E2E ổn định, có thể xem xét:
+
+1. Location boost cho Personalized For You V1.1.
+2. Location Detail Page.
+3. Popular Locations.
+4. Discovery Map V1.
+5. Backend verify/sync Google Places.
+
+Không tự động triển khai các bước sau nếu chưa được chốt riêng.
+
+VIII. PHÂN HỆ BÁO CÁO VÀ QUẢN TRỊ
+
+1. Báo cáo bài viết
+
+- Mỗi lần report tạo một reports riêng.
+- Report giữ reporter, reason, description, snapshot.
+- Nhiều Report cùng Post được gom vào Moderation Case OPEN hiện tại.
+- Một Post tối đa một Moderation Case OPEN tại một thời điểm.
+- Cùng reporter không report lại cùng Post khi còn Report thuộc case OPEN.
+- Khi case cũ giải quyết, có thể report lại nếu Post còn đủ điều kiện.
+
+Report status:
+
+- PENDING.
+- RESOLVED.
+- REJECTED.
+
+Moderation Case status:
+
+- OPEN.
+- RESOLVED_NO_VIOLATION.
+- RESOLVED_ACTION_TAKEN.
+
+Không có IN_REVIEW, CLOSED, assigned_admin_id hoặc closed_at trong nghiệp vụ hiện tại.
+
+2. Xử lý vi phạm bài viết
+
+- Gửi report không tự ẩn Post.
+- Admin quyết định cuối cùng.
+- Tạo Report khóa Post bằng PESSIMISTIC_WRITE theo implementation đã chốt.
+- Report, Case và report_count xử lý trong transaction phù hợp.
+- Chỉ một Admin được resolve case OPEN khi có cạnh tranh đồng thời.
+- Mỗi case RESOLVED_ACTION_TAKEN tính đúng một vi phạm bài viết cho author.
+- Khi author đạt 3 case vi phạm, Backend tự khóa bằng REPEATED_VIOLATION,
+  thu hồi Refresh Token, ghi history, admin action và notification.
+
+3. Báo cáo trang cá nhân
+
+Điều kiện:
+
+- Chỉ report USER khác.
+- Không tự report.
+- Không report khi hai bên đang Block.
+
+Sáu lý do cố định:
+
+- Nội dung không được phép.
+- Giả mạo.
+- Chưa đủ tuổi tối thiểu.
+- Lừa đảo/gian lận.
+- Thông tin sai sự thật.
+- Bạo lực/tổ chức nguy hiểm.
+
+Quy tắc:
+
+- Mỗi reporter tối đa một PENDING report cho cùng target profile.
+- Mỗi target có một profile_report_cases.
+- profile_reports giữ từng reporter/lý do/snapshot.
+- Report mới có thể mở lại case đã kết luận; lịch sử quyết định giữ trong admin_actions.
+- Admin resolve toàn bộ pending report trong case thành RESOLVED hoặc REJECTED.
+- Nếu xác nhận vi phạm, Admin có thể khóa target trong cùng transaction.
+
+4. Quản lý hashtag
+
+ADMIN có thể:
+
+- List/search phân trang.
+- Xem tên, số Post liên kết, created_at, last-used.
+- Tạo hashtag theo cùng normalization với Post.
+- Đổi tên mà giữ nguyên hashtag_id và liên kết Post.
+- Xóa hashtag bằng cách gỡ liên kết khỏi Post rồi xóa hashtag trong cùng transaction.
+- Tạo/xóa được ghi admin action theo implementation.
+
+5. Admin Academic Management V1
+
+ADMIN có thể list/search/create/update/chuyển ACTIVE/INACTIVE:
+
+- School.
+- Faculty.
+- Major.
+- Interest Category.
+
+Không hard delete.
+Không làm mất reference hiện có.
+Phải giữ đúng School -> Faculty -> Major hierarchy.
+
+6. Analytics hoạt động người dùng
+
+Trạng thái theo README hiện tại:
+
+- Backend/Frontend IMPLEMENTED.
+- Frontend TESTED.
+- Test MySQL CONDITIONAL.
+
+Một hoạt động hợp lệ là request nghiệp vụ thành công đại diện cho hành vi USER như:
+
+- Mở Feed.
+- Xem chi tiết Post.
+- Tạo/sửa Post.
+- Like/Save.
+- Comment.
+- Follow.
+
+Không ghi activity cho:
+
+- Refresh Token.
+- Auth/OTP.
+- Health check.
+- WebSocket heartbeat.
+- Admin request.
+- Background request.
+
+Ngày activity dùng UTC.
+Mỗi USER tối đa một user_daily_activities row/ngày nhờ unique (user_id, activity_date) và atomic UPSERT.
+
+Dashboard user engagement có thể lấy dữ liệu tối đa 90 ngày theo contract hiện tại,
+bao gồm chuỗi activity count theo ngày và tối đa 5 USER nổi bật của ngày UTC hiện tại.
+
+Phân loại tháng:
+
+- NEW.
+- REGULAR.
+- RETURNING.
+- RECENTLY_INACTIVE.
+- ELIGIBLE_INACTIVE_NOT_RETURNED.
+- NEVER_ACTIVE.
+
+Các nhóm không chồng lặp và tổng bằng Eligible System User.
+
+================================================================================
+PHẦN B: YÊU CẦU CHỨC NĂNG, PHI CHỨC NĂNG VÀ NGHIỆM THU
+================================================================================
+
+I. DANH SÁCH MODULE CHỨC NĂNG HIỆN TẠI
+
+1. Auth & Account
+
+- Local registration + OTP.
+- Social Auth Google/Facebook.
+- Login/Logout/Refresh Token.
+- Password Recovery.
+- Link/unlink auth providers.
+- Onboarding + Username.
+
+2. Profile
+
+- Current/other profile.
+- Update profile.
+- Academic Profile & Interests.
+- Student Recommendation V1.
+
+3. Social Relations
+
+- Follow/Unfollow.
+- Block/Unblock.
+- Restrict/Unrestrict.
+- Danh sách blocked/restricted theo contract.
+
+4. Post & Interaction
+
+- CRUD Post trong phạm vi hiện tại.
+- Media.
+- Hashtag.
+- Location gắn Post.
+- Like/Unlike.
+- Comment/Reply.
+- Save/Unsave.
+- Repost/Unrepost.
+
+5. Feed & Discovery
+
+- Following Feed.
+- Personalized For You V1.
+- Search User/Post/Hashtag.
+- Location-aware Discovery V1 – Nearby: Backend/Frontend IMPLEMENTED/TESTED; MySQL integration test có điều kiện và Frontend automated test đã được bổ sung, manual E2E chưa hoàn tất nên chưa INTEGRATED.
+
+6. Notification
+
+- REST source of truth.
+- Realtime best-effort qua STOMP.
+- Restrict suppress một số Notification interaction.
+- Block loại Notification liên quan giữa hai user.
+
+7. Messaging
+
+- One-to-one text/image.
+- REST send.
+- WebSocket receive.
+- Read marker.
+- Typing Indicator.
+
+8. Report/Admin
+
+- Report Post.
+- Moderation Case.
+- Report Profile.
+- Admin User/Post/Hashtag/Academic/Report.
+- Admin Action.
+- User Analytics.
+
+II. QUY TẮC PHÂN TRANG
+
+1. Cursor Pagination
+
+Áp dụng cho các danh sách đã chuyển theo README, bao gồm:
+
+- For You.
+- Following.
+- Profile Posts.
+- Profile Reposts.
+- Saved Posts.
+- Liked Posts.
+- Search Posts.
+- Conversation list/message history theo contract Messaging.
+- Nearby Discovery V1 đã triển khai Backend/Frontend; cần chạy MySQL integration test và manual E2E Geolocation trên môi trường test được cấu hình.
+
+Quy tắc:
+
+- Cursor Base64URL opaque.
+- Client gửi lại nguyên nextCursor.
+- Keyset Pagination.
+- Lấy limit + 1.
+- Không page/offset.
+- Không COUNT tổng.
+- INVALID_CURSOR khi cursor không hợp lệ.
+
+2. PageResponse
+
+Tiếp tục dùng khi phù hợp với UI/contract hiện tại, ví dụ:
+
+- Student Recommendation V1.
+- Search User.
+- Comment.
+- Follow list.
+- Admin list.
+
+III. YÊU CẦU BẢO MẬT
+
+- Mật khẩu không lưu plaintext.
+- OTP/flow/Refresh Token không lưu plaintext.
+- Provider Token chỉ dùng Auth endpoint.
+- Backend verify social token.
+- API USER lấy current user từ JWT.
+- API Admin yêu cầu ADMIN.
+- Entity không trả trực tiếp ra API.
+- Không trả secret/token trong response thông thường.
+- Không log password, OTP, provider token, Refresh Token.
+- Block phải được kiểm tra tại Backend.
+- Profile chưa hoàn tất bị chặn khỏi API mạng xã hội chính.
+- Chat media chống IDOR và dùng signed URL ngắn hạn.
+- Location-aware Discovery không lưu current location của user.
+
+IV. YÊU CẦU HIỆU NĂNG
+
+- Query list phải phân trang phù hợp.
+- Không filter Block bằng Java sau khi load page.
+- Recommendation/Feed/Nearby phải lọc và sort tại DB.
+- Tránh N+1.
+- Không COUNT cho cursor endpoint.
+- Nearby ưu tiên bounding box trước distance calculation.
+- Chỉ thêm index khi có căn cứ từ EXPLAIN hoặc test dữ liệu.
+
+V. YÊU CẦU TÍNH NHẤT QUÁN
+
+- Transaction cho thao tác nhiều bước.
+- Không giữ DB transaction khi gọi external service lâu.
+- AFTER_COMMIT cho realtime event phù hợp.
+- Repost không sao chép Location.
+- Delete Post không cascade delete Location.
+- Block xóa Follow hai chiều trong cùng transaction.
+- Password reset thu hồi Refresh Token trong cùng transaction.
+- Report/Moderation Case tuân thủ concurrency control hiện tại.
+
+VI. TIÊU CHÍ NGHIỆM THU LOCATION-AWARE DISCOVERY V1
+
+1. USER ACTIVE và completed profile có thể mở Nearby.
+2. Frontend chỉ hỏi location khi cần.
+3. Deny permission không ảnh hưởng chức năng khác.
+4. latitude/longitude ngoài phạm vi bị Backend từ chối.
+5. radius ngoài tập V1 bị từ chối.
+6. Chỉ Post PUBLISHED có Location mới là candidate.
+7. Author phải USER ACTIVE và completed profile.
+8. Block hai chiều loại Post khỏi Nearby.
+9. Restrict không loại Post.
+10. Post ngoài radius không xuất hiện.
+11. Kết quả sắp xếp distance ASC, publishedAt DESC, postId DESC.
+12. Repost không tạo Nearby item riêng.
+13. distanceMeters trả chính xác trong sai số kỹ thuật hợp lý.
+14. Cursor page tiếp theo không trả trùng item.
+15. Cursor của tọa độ/radius khác bị từ chối hoặc không được sử dụng lại theo contract đã chốt.
+16. limit nằm trong 1..20.
+17. Endpoint không dùng offset/page/COUNT.
+18. Không lưu current coordinate của viewer vào DB.
+19. Không tạo WebSocket/Notification từ current coordinate.
+20. UI có loading/empty/error/permission denied/unavailable/retry.
+21. Khi không có dữ liệu, hệ thống không tự mở rộng radius âm thầm.
+22. Manual E2E xác minh ít nhất các radius 1/5/20 km với dữ liệu Location test.
+
+VII. TIÊU CHÍ KHÔNG HỒI QUY
+
+Location-aware Discovery V1 không được làm thay đổi:
+
+- Personalized For You V1 score/cursor.
+- Following Feed behavior.
+- PostResponse public contract trừ khi có quyết định mới.
+- Student Recommendation V1.
+- Block/Restrict semantics.
+- Post Location create/update/remove hiện tại.
+- Repost semantics.
+- Messaging.
+- Notification.
+
+================================================================================
+PHẦN C: ĐỊNH HƯỚNG THIẾT KẾ KỸ THUẬT
+================================================================================
+
+I. KIẾN TRÚC TỔNG THỂ
+
+Client Browser
+    -> ReactJS Frontend
+    -> RESTful API / JSON / JWT
+    -> Spring Boot Backend
+    -> MySQL 8
+    -> Cloud Storage / OAuth / Email Services
+
+Realtime:
+
+ReactJS
+    -> native WebSocket/STOMP /ws
+    -> Spring WebSocket
+    -> user queue Notification/Messaging
+
+REST/MySQL là source of truth.
+WebSocket là best-effort delivery.
+
+II. NGUYÊN TẮC BACKEND
+
+- Controller chỉ tiếp nhận request/response.
+- Service xử lý nghiệp vụ và transaction.
+- Repository truy cập DB.
+- DTO request/response tách Entity.
+- Backend quyết định quyền cuối cùng.
+- Không đưa logic nghiệp vụ vào Controller.
+- Không filter list lớn bằng Java nếu có thể lọc tại DB.
+- Không gọi external provider trong transaction dài.
+
+III. NGUYÊN TẮC FRONTEND
+
+- Feature-Based Structure.
+- Không gọi Axios trực tiếp trong component trình bày.
+- Service layer chịu trách nhiệm API.
+- JWT được quản lý tập trung.
+- Provider credential chỉ dùng Auth.
+- Một STOMP client/WebSocket connection dùng chung trên mỗi tab.
+- Nearby dùng Browser Geolocation API khi user chủ động mở chức năng.
+
+IV. DATABASE HIỆN TẠI LIÊN QUAN ĐẾN LOCATION
+
+locations:
+
+- id.
+- google_place_id UNIQUE NOT NULL.
+- display_name NOT NULL.
+- formatted_address NULL.
+- latitude NOT NULL.
+- longitude NOT NULL.
+- created_at.
+- updated_at.
+
+posts:
+
+- location_id NULL.
+- FK tới locations.id.
+- ON DELETE SET NULL.
+
+Nguyên tắc:
+
+- Không thêm user current-location table cho Nearby V1.
+- Không thêm Location status/category cho Nearby V1.
+- Không đổi sang spatial POINT nếu chưa có nhu cầu hiệu năng rõ ràng.
+- SQL, DBML, Entity và test phải đồng bộ nếu có schema change.
+
+V. THIẾT KẾ QUERY NEARBY V1
+
+Luồng gợi ý:
+
+1. Validate viewer/account/profile.
+2. Validate latitude/longitude/radius/limit/cursor.
+3. Tính bounding box từ query coordinate và radius.
+4. Query posts JOIN locations JOIN users JOIN user_profiles.
+5. Lọc PUBLISHED, Location != NULL, USER ACTIVE/completed profile.
+6. Lọc Block hai chiều bằng NOT EXISTS hoặc pattern tương đương tại DB.
+7. Tính distance chính xác trong MySQL.
+8. Lọc distance <= radius.
+9. Keyset theo distance ASC, publishedAt DESC, postId DESC.
+10. Lấy limit + 1.
+11. Map Post projection + distanceMeters.
+12. Tạo nextCursor opaque nếu còn dữ liệu.
+
+Không load toàn bộ candidate vào Java trước khi distance filter.
+
+VI. CÔNG THỨC KHOẢNG CÁCH
+
+V1 có thể dùng công thức spherical distance/Haversine hoặc hàm MySQL tương đương,
+miễn đảm bảo:
+
+- Kết quả ổn định.
+- Đơn vị thống nhất.
+- Có test cho các mốc khoảng cách.
+- Không phụ thuộc thư viện mới nếu không cần thiết.
+
+Nếu dùng bounding box:
+
+- Bounding box chỉ là pre-filter.
+- Distance chính xác vẫn quyết định candidate cuối cùng.
+- Phải xử lý longitude biên theo implementation nếu test scope có trường hợp tương ứng.
+
+VII. THIẾT KẾ CURSOR NEARBY
+
+Payload logic tham khảo:
+
+- version.
+- distance.
+- publishedAt.
+- postId.
+- queryFingerprint hoặc các tham số đủ để bind với latitude/longitude/radius.
+
+Cursor phải được encode opaque; Frontend không tự tạo/chỉnh sửa.
+
+Keyset logic phải tương thích order:
+
+(distance > lastDistance)
+OR
+(distance = lastDistance AND publishedAt < lastPublishedAt)
+OR
+(distance = lastDistance AND publishedAt = lastPublishedAt AND postId < lastPostId)
+
+Nếu distance dùng số thực, implementation phải có chiến lược deterministic phù hợp,
+ví dụ dùng distanceMeters đã chuẩn hóa/round ở mức đã chốt hoặc expression ổn định,
+để tránh lỗi pagination do floating-point boundary.
+
+VIII. RESPONSE NEARBY
+
+Đề xuất:
+
+NearbyPostItemResponse
+
+- post: PostResponse/projection hiện tại.
+- distanceMeters: long/int.
+
+CursorPageResponse<NearbyPostItemResponse>
+
+- content.
+- nextCursor.
+- hasNext.
+
+Không bắt buộc thêm distanceMeters vào mọi PostResponse khác.
+
+IX. API LOCATION-AWARE V1
+
+Dự kiến:
+
+GET /api/v1/discovery/nearby
+
+Query:
+
+- latitude required.
+- longitude required.
+- radiusKm optional/default 5.
+- limit optional/default 10.
+- cursor optional.
+
+Error nghiệp vụ nên tái sử dụng framework exception hiện tại và bổ sung mã rõ nghĩa khi cần,
+ví dụ INVALID_CURSOR hoặc VALIDATION_ERROR theo convention của dự án.
+
+X. TEST LOCATION-AWARE V1
+
+Backend test tối thiểu:
+
+- Validate lat/lng/radius/limit.
+- Candidate có/không Location.
+- PUBLISHED/HIDDEN/DELETED.
+- ACTIVE/BLOCKED author.
+- profile completed/not completed.
+- Block A->B và B->A.
+- Restrict.
+- Inside/outside radius.
+- Distance order.
+- Tie-break publishedAt/postId.
+- Cursor page 1/page 2.
+- Cursor query mismatch.
+- Invalid cursor.
+- No COUNT/offset theo review query hoặc test phù hợp.
+- Repost không tạo item riêng.
+
+Frontend test tối thiểu:
+
+- Browser Geolocation success.
+- Permission denied.
+- Timeout/unavailable.
+- Radius change reset cursor/list.
+- Refresh location reset cursor/list.
+- Infinite scroll.
+- Empty state.
+- Error/retry.
+- Distance format.
+
+Manual E2E:
+
+- User A có tọa độ giả lập.
+- Có Post Location gần/dưới radius.
+- Có Post ngoài radius.
+- Có Post của blocked user.
+- Có Post của restricted user.
+- Xác minh thứ tự distance.
+- Thay radius.
+- Thay tọa độ.
+- Xác minh không làm thay đổi For You.
+
+XI. THỨ TỰ TRIỂN KHAI ĐỀ XUẤT CHO LOCATION-AWARE V1
+
+Giai đoạn 0 – Audit/đồng bộ tài liệu
+
+- README.
+- V9.
+- SQL/DBML.
+- Entity Location/Post.
+- Feed/Post projection.
+- Cursor utility.
+- Block query/policy.
+- Test hiện tại.
+
+Giai đoạn 1 – Backend query contract
+
+- DTO/query validation.
+- Nearby cursor.
+- Repository projection/query.
+- Service.
+- Controller.
+- Unit/integration test.
+
+Giai đoạn 2 – Frontend Nearby
+
+- Service API.
+- Geolocation helper/hook.
+- Nearby tab/page.
+- Radius selector.
+- Infinite scroll.
+- Loading/empty/error/permission states.
+
+Giai đoạn 3 – Manual E2E
+
+- Multi-user test.
+- Block/Restrict.
+- Radius/distance.
+- Cursor.
+- Regression For You/Following/Post Location.
+
+Chỉ đánh dấu INTEGRATED sau khi manual E2E hoàn tất theo quy ước dự án.
+
+================================================================================
+KẾT LUẬN
+================================================================================
+
+Bản cập nhật V9 này khóa lại trạng thái nghiệp vụ theo hệ thống hiện tại và tách rõ
+hai khái niệm:
+
+1. Personalized For You V1:
+   - Cá nhân hóa theo nhiều signal.
+   - Deterministic rule-based.
+   - Không có Location signal ở V1 hiện tại.
+
+2. Location-aware Discovery V1 – Nearby:
+   - Khám phá Post theo khoảng cách thực tế từ vị trí người dùng chủ động cung cấp.
+   - Deterministic distance-based.
+   - Không lưu vị trí người dùng.
+   - Không Discovery Map.
+   - Không thay đổi For You.
+
+Roadmap đề xuất:
+
+Student Recommendation V1
+-> Personalized For You V1
+-> Location-aware Discovery V1 – Nearby
+-> Manual E2E
+-> Location boost cho For You V1.1 nếu được chốt
+-> Discovery Map V1 nếu được chốt
+
+README.md vẫn là nguồn sự thật cao nhất đối với implementation. Mọi thay đổi tiếp theo
+phải tiếp tục đồng bộ README, SQL/DBML, source code và test theo quy tắc của dự án.
+================================================================================

@@ -27,4 +27,19 @@ public class Faculty extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private AcademicStatus status;
+
+    /** Faculty được tạo trong đúng School và không tự thay đổi quan hệ cha khi cập nhật V1. */
+    public Faculty(School school, String name) {
+        this.school = school;
+        this.name = name;
+        this.status = AcademicStatus.ACTIVE;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void changeStatus(AcademicStatus status) {
+        this.status = status;
+    }
 }

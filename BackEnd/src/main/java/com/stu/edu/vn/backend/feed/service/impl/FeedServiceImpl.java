@@ -3,41 +3,31 @@ package com.stu.edu.vn.backend.feed.service.impl;
 import com.stu.edu.vn.backend.common.api.CursorPageResponse;
 import com.stu.edu.vn.backend.common.cursor.CursorCodec;
 import com.stu.edu.vn.backend.common.cursor.ForYouCursor;
-import com.stu.edu.vn.backend.common.cursor.TimeCursor;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
 import com.stu.edu.vn.backend.feed.cursor.FollowingActivityCursor;
-import com.stu.edu.vn.backend.feed.mapper.FeedPostMapper;
+import com.stu.edu.vn.backend.feed.repository.PersonalizedFeedRepository;
+import com.stu.edu.vn.backend.feed.repository.projection.PersonalizedPostRankProjection;
 import com.stu.edu.vn.backend.feed.service.FeedService;
 import com.stu.edu.vn.backend.feed.service.FeedActivityAssembler;
+import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
 import com.stu.edu.vn.backend.post.entity.Post;
-import com.stu.edu.vn.backend.post.entity.PostHashtag;
-import com.stu.edu.vn.backend.post.entity.PostMedia;
-import com.stu.edu.vn.backend.post.repository.PostHashtagRepository;
-import com.stu.edu.vn.backend.post.repository.PostLikeRepository;
-import com.stu.edu.vn.backend.post.repository.PostMediaRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.PostRepostRepository;
 import com.stu.edu.vn.backend.post.repository.projection.FeedActivityProjection;
-import com.stu.edu.vn.backend.post.repository.SavedPostRepository;
-import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
-import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -55,15 +45,12 @@ public class FeedServiceImpl implements FeedService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final PersonalizedFeedRepository personalizedFeedRepository;
     private final PostRepostRepository postRepostRepository;
-    private final PostMediaRepository postMediaRepository;
-    private final PostHashtagRepository postHashtagRepository;
-    private final PostLikeRepository postLikeRepository;
-    private final SavedPostRepository savedPostRepository;
-    private final FeedPostMapper feedPostMapper;
     private final CursorCodec cursorCodec;
-    private final PostLocationBatchLoader postLocationBatchLoader;
     private final FeedActivityAssembler feedActivityAssembler;
+    private final FeedPostBatchLoader feedPostBatchLoader;
+    private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
@@ -73,12 +60,15 @@ public class FeedServiceImpl implements FeedService {
         if (cursor != null && !cursor.isValid()) {
             throw new BusinessException(ErrorCode.INVALID_CURSOR);
         }
+        LocalDateTime rankingAt = cursor == null
+                ? LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
+                : cursor.rankingAt();
         int score = cursor == null ? Integer.MAX_VALUE : cursor.score();
-        LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.createdAt();
+        LocalDateTime time = cursor == null ? FIRST_PAGE_TIME : cursor.publishedAt();
         long postId = cursor == null ? Long.MAX_VALUE : cursor.postId();
-        List<Post> posts = postRepository.findForYouFeed(
-                viewerId, score, time, postId, PageRequest.of(0, limit + 1));
-        return loadFeed(posts, viewerId, limit, true);
+        List<PersonalizedPostRankProjection> fetched = personalizedFeedRepository.findRankedPosts(
+                viewerId, rankingAt, score, time, postId, PageRequest.of(0, limit + 1));
+        return loadPersonalizedFeed(fetched, viewerId, rankingAt, limit);
     }
 
     @Override
@@ -110,61 +100,41 @@ public class FeedServiceImpl implements FeedService {
                 activity.getActorId(), activity.getPostId());
     }
 
-    private CursorPageResponse<FeedPostResponse> loadFeed(
-            List<Post> fetchedPosts, Long viewerId, int limit, boolean ranked) {
-        boolean hasNext = fetchedPosts.size() > limit;
-        List<Post> posts = fetchedPosts.stream().distinct().limit(limit).toList();
-        if (posts.isEmpty()) {
+    private CursorPageResponse<FeedPostResponse> loadPersonalizedFeed(
+            List<PersonalizedPostRankProjection> fetched,
+            Long viewerId,
+            LocalDateTime rankingAt,
+            int limit
+    ) {
+        boolean hasMoreRanks = fetched.size() > limit;
+        List<PersonalizedPostRankProjection> pageRanks = fetched.stream().limit(limit).toList();
+        if (pageRanks.isEmpty()) {
             return new CursorPageResponse<>(List.of(), null, false);
         }
 
-        List<Long> postIds = posts.stream().map(Post::getId).toList();
-        List<Long> authorIds = posts.stream().map(post -> post.getAuthor().getId()).distinct().toList();
-        Map<Long, UserProfile> profiles = userProfileRepository.findAllById(authorIds).stream()
-                .collect(Collectors.toMap(UserProfile::getUserId, Function.identity()));
-        Map<Long, List<PostMedia>> media = loadMedia(postIds);
-        Map<Long, String> hashtags = loadHashtags(postIds);
-        Set<Long> liked = new HashSet<>(postLikeRepository.findLikedPostIds(viewerId, postIds));
-        Set<Long> saved = new HashSet<>(savedPostRepository.findSavedPostIds(viewerId, postIds));
-        Set<Long> reposted = new HashSet<>(postRepostRepository.findRepostedPostIds(viewerId, postIds));
-        Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
+        List<Long> rankedPostIds = pageRanks.stream().map(PersonalizedPostRankProjection::getPostId).toList();
+        Map<Long, Post> accessibleById = postRepository.findAccessibleFeedHeadersByIds(viewerId, rankedPostIds)
+                .stream().collect(Collectors.toMap(Post::getId, post -> post));
+        List<Post> orderedPosts = rankedPostIds.stream()
+                .map(accessibleById::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        List<FeedPostResponse> content = feedPostBatchLoader.map(orderedPosts, viewerId);
 
-        List<FeedPostResponse> content = posts.stream().map(post -> feedPostMapper.toResponse(
-                post,
-                profiles.get(post.getAuthor().getId()),
-                media.getOrDefault(post.getId(), List.of()),
-                hashtags.get(post.getId()),
-                liked.contains(post.getId()),
-                saved.contains(post.getId()),
-                reposted.contains(post.getId()),
-                locations.get(post.getId())
-        )).toList();
-
-        Post last = posts.get(posts.size() - 1);
-        String nextCursor = hasNext
-                ? cursorCodec.encode(ranked
-                ? new ForYouCursor(last.getLikeCount() + last.getCommentCount(), last.getPublishedAt(), last.getId())
-                : new TimeCursor(last.getPublishedAt(), last.getId()))
+        PersonalizedPostRankProjection lastRank = orderedPosts.isEmpty() ? null
+                : pageRanks.stream()
+                .filter(rank -> rank.getPostId().equals(orderedPosts.get(orderedPosts.size() - 1).getId()))
+                .findFirst()
+                .orElse(null);
+        String nextCursor = hasMoreRanks && lastRank != null
+                ? cursorCodec.encode(new ForYouCursor(
+                ForYouCursor.CURRENT_VERSION,
+                rankingAt,
+                lastRank.getScore(),
+                lastRank.getPublishedAt(),
+                lastRank.getPostId()))
                 : null;
-        return new CursorPageResponse<>(content, nextCursor, hasNext);
-    }
-
-    private Map<Long, List<PostMedia>> loadMedia(List<Long> postIds) {
-        Map<Long, List<PostMedia>> result = new HashMap<>();
-        for (PostMedia item : postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(postIds)) {
-            result.computeIfAbsent(item.getPost().getId(), ignored -> new ArrayList<>()).add(item);
-        }
-        return result;
-    }
-
-    private Map<Long, String> loadHashtags(List<Long> postIds) {
-        Map<Long, String> result = new HashMap<>();
-        for (PostHashtag relation : postHashtagRepository.findWithHashtagByPostIds(postIds)) {
-            if (result.put(relation.getPost().getId(), relation.getHashtag().getNormalizedName()) != null) {
-                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
-            }
-        }
-        return result;
+        return new CursorPageResponse<>(content, nextCursor, nextCursor != null);
     }
 
     private Long requireEligibleViewer(int limit) {

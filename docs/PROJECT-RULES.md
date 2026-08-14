@@ -85,7 +85,8 @@
 - Profile Repost và Following Feed không dùng OFFSET hoặc COUNT tổng.
 
 - Following: bài của người đang Follow, mới nhất trước.
-- For You: bài hợp lệ, điểm cơ bản.
+- For You: Personalized V1 rule-based tại database từ recency, capped engagement, Follow, Academic/Interest ACTIVE, author history và exact hashtag-ID history; Academic/Interest không phải hard filter.
+- Cursor For You phải giữ `rankingAt`, `score`, `publishedAt`, `postId`; không score Java, không OFFSET/COUNT tổng và không đưa Repost activity vào For You.
 - Không hiển thị HIDDEN/DELETED.
 - Feed và các danh sách bài dùng Infinite Scroll phải dùng Cursor Pagination theo API contract.
 
@@ -110,6 +111,10 @@
 - Profile Report không cho tự báo cáo, không trùng `PENDING` theo reporter/target; tất cả lượt cùng target thuộc một Profile Report Case. Admin được chọn khóa USER ngay khi xác nhận vi phạm.
 
 ## 11. Admin
+
+- Admin Academic V1 chỉ hỗ trợ list/search/create/update và `ACTIVE`/`INACTIVE` cho School, Faculty, Major, Interest Category; không hard delete.
+- Mutation lấy actor từ JWT, không nhận `adminId`, và phải ghi `AdminAction` với target Academic.
+- Parent inactive không cascade status child nhưng public Academic API phải lọc toàn bộ ancestor; reference Academic/Interest của hồ sơ cũ được bảo toàn.
 
 - Chỉ ADMIN truy cập API quản trị.
 - Chỉ ADMIN đang hoạt động được cập nhật hoặc xóa avatar của tài khoản role USER; file dùng cùng validation với avatar cá nhân.

@@ -27,6 +27,9 @@ Enum admin_actions_action_type_enum {
   REJECT_MODERATION_CASE
   RESOLVE_PROFILE_REPORT
   REJECT_PROFILE_REPORT
+  CREATE_ACADEMIC_DATA
+  UPDATE_ACADEMIC_DATA
+  CHANGE_ACADEMIC_STATUS
 }
 
 Enum admin_actions_target_type_enum {
@@ -36,6 +39,7 @@ Enum admin_actions_target_type_enum {
   REPORT
   MODERATION_CASE
   PROFILE_REPORT
+  ACADEMIC_DATA
 }
 
 Enum comments_status_enum {

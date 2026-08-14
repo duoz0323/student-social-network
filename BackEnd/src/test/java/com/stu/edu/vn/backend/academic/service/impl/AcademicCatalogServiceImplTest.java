@@ -12,6 +12,7 @@ import com.stu.edu.vn.backend.academic.repository.SchoolRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -55,5 +56,32 @@ class AcademicCatalogServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ACADEMIC_LIMIT_INVALID);
+    }
+
+    @Test
+    void schoolInactiveMakesFacultyChildrenNotSelectable() {
+        when(schools.findByIdAndStatus(1L, AcademicStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.searchFaculties(1L, null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.ACADEMIC_SCHOOL_INVALID);
+    }
+
+    @Test
+    void inactiveFacultyOrParentSchoolMakesMajorsNotSelectable() {
+        when(faculties.findSelectableById(2L, AcademicStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.searchMajors(2L, null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.ACADEMIC_FACULTY_INVALID);
+    }
+
+    @Test
+    void interestsOnlyLoadActiveRows() {
+        when(interests.findAllByStatusOrderByNameAsc(AcademicStatus.ACTIVE)).thenReturn(List.of());
+
+        service.getInterests();
+
+        verify(interests).findAllByStatusOrderByNameAsc(AcademicStatus.ACTIVE);
     }
 }

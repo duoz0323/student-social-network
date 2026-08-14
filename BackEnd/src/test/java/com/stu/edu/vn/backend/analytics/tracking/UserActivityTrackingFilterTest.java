@@ -15,6 +15,7 @@ class UserActivityTrackingFilterTest {
     @Test
     void tracksRepresentativeBusinessRoutesButNotRefreshAdminOrBackground() {
         assertThat(matches("GET", "/api/v1/feeds/for-you")).isTrue();
+        assertThat(matches("GET", "/api/v1/discovery/nearby")).isTrue();
         assertThat(matches("GET", "/api/v1/posts/15")).isTrue();
         assertThat(matches("POST", "/api/v1/posts/15/likes")).isTrue();
         assertThat(matches("POST", "/api/v1/users/9/follow")).isTrue();

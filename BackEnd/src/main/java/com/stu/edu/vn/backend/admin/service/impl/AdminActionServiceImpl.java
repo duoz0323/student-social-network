@@ -95,7 +95,21 @@ public class AdminActionServiceImpl implements AdminActionService {
         loadReportTargets(idsByType.get(AdminTargetType.REPORT), result);
         loadModerationCaseTargets(idsByType.get(AdminTargetType.MODERATION_CASE), result);
         loadProfileReportTargets(idsByType.get(AdminTargetType.PROFILE_REPORT), result);
+        loadAcademicTargets(idsByType.get(AdminTargetType.ACADEMIC_DATA), result);
         return result;
+    }
+
+    private void loadAcademicTargets(
+            Set<Long> targetIds,
+            Map<AdminTargetType, Map<Long, AdminActionTargetResponse>> result
+    ) {
+        if (targetIds == null || targetIds.isEmpty()) return;
+        // Target cụ thể được lưu trong note vì bốn bảng master có thể trùng ID nội bộ.
+        result.put(AdminTargetType.ACADEMIC_DATA, targetIds.stream().collect(Collectors.toMap(
+                Function.identity(),
+                id -> new AdminActionTargetResponse(
+                        AdminTargetType.ACADEMIC_DATA, id, "Dữ liệu học thuật #" + id, true)
+        )));
     }
 
     private void loadUserTargets(
@@ -206,6 +220,7 @@ public class AdminActionServiceImpl implements AdminActionService {
             case REPORT -> reportFallback(action.getTargetId());
             case MODERATION_CASE -> moderationCaseFallback(action.getTargetId());
             case PROFILE_REPORT -> profileReportFallback(action.getTargetId());
+            case ACADEMIC_DATA -> "Dữ liệu học thuật #" + action.getTargetId();
         };
         return new AdminActionTargetResponse(type, action.getTargetId(), displayText, false);
     }

@@ -3,6 +3,8 @@ package com.stu.edu.vn.backend.post.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.feed.repository.PersonalizedFeedRepository;
+import com.stu.edu.vn.backend.feed.repository.projection.PersonalizedPostRankProjection;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserBlockRepository;
@@ -11,6 +13,8 @@ import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -41,10 +48,16 @@ class UserBlockPostQueryMySqlIntegrationTest {
     private PostRepository postRepository;
 
     @Autowired
+    private PersonalizedFeedRepository personalizedFeedRepository;
+
+    @Autowired
     private UserBlockRepository userBlockRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @DynamicPropertySource
     static void mysqlProperties(DynamicPropertyRegistry registry) {
@@ -59,32 +72,38 @@ class UserBlockPostQueryMySqlIntegrationTest {
         Fixture fixture = fixture();
         userBlockRepository.insertIfAbsent(fixture.viewer().getId(), fixture.blockedAuthor().getId());
 
-        List<Post> firstPage = forYou(
-                fixture.viewer().getId(), Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 3);
+        LocalDateTime rankingAt = LocalDateTime.now();
+        List<PersonalizedPostRankProjection> firstPage = forYou(
+                fixture.viewer().getId(), rankingAt, Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 3);
 
         assertThat(firstPage).hasSize(3)
-                .allMatch(post -> post.getAuthor().getId().equals(fixture.visibleAuthor().getId()));
-        Post lastValidPost = firstPage.getLast();
-        List<Post> secondPage = forYou(
+                .extracting(PersonalizedPostRankProjection::getPostId)
+                .allMatch(fixture.visiblePosts().stream().map(Post::getId).toList()::contains);
+        PersonalizedPostRankProjection lastValidPost = firstPage.getLast();
+        List<PersonalizedPostRankProjection> secondPage = forYou(
                 fixture.viewer().getId(),
-                lastValidPost.getLikeCount() + lastValidPost.getCommentCount(),
+                rankingAt,
+                lastValidPost.getScore(),
                 lastValidPost.getPublishedAt(),
-                lastValidPost.getId(),
+                lastValidPost.getPostId(),
                 3);
         assertThat(secondPage)
-                .extracting(Post::getId)
-                .doesNotContainAnyElementsOf(firstPage.stream().map(Post::getId).toList());
+                .extracting(PersonalizedPostRankProjection::getPostId)
+                .doesNotContainAnyElementsOf(firstPage.stream()
+                        .map(PersonalizedPostRankProjection::getPostId).toList());
 
         userBlockRepository.deleteBlock(fixture.viewer().getId(), fixture.blockedAuthor().getId());
         userBlockRepository.insertIfAbsent(fixture.blockedAuthor().getId(), fixture.viewer().getId());
         assertThat(forYou(
-                fixture.viewer().getId(), Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 10))
-                .noneMatch(post -> post.getAuthor().getId().equals(fixture.blockedAuthor().getId()));
+                fixture.viewer().getId(), rankingAt, Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 10))
+                .extracting(PersonalizedPostRankProjection::getPostId)
+                .doesNotContainAnyElementsOf(fixture.blockedPosts().stream().map(Post::getId).toList());
 
         userBlockRepository.deleteBlock(fixture.blockedAuthor().getId(), fixture.viewer().getId());
         assertThat(forYou(
-                fixture.viewer().getId(), Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 10))
-                .anyMatch(post -> post.getAuthor().getId().equals(fixture.blockedAuthor().getId()));
+                fixture.viewer().getId(), rankingAt, Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 10))
+                .extracting(PersonalizedPostRankProjection::getPostId)
+                .containsAnyElementsOf(fixture.blockedPosts().stream().map(Post::getId).toList());
     }
 
     @Test
@@ -122,15 +141,128 @@ class UserBlockPostQueryMySqlIntegrationTest {
                 .allMatch(post -> post.getAuthor().getId().equals(fixture.visibleAuthor().getId()));
     }
 
-    private List<Post> forYou(
+    @Test
+    void personalizedSignalsAreAdditiveDynamicAndDoNotCountTheCandidateAsHistory() {
+        LocalDateTime rankingAt = LocalDateTime.of(2026, 8, 11, 3, 0);
+        User viewer = completedUser("personalized-viewer");
+        User affinityAuthor = completedUser("personalized-affinity");
+        User baselineAuthor = completedUser("personalized-baseline");
+        Post affinityCandidate = createPost(affinityAuthor, "affinity-candidate");
+        Post baselineCandidate = createPost(baselineAuthor, "baseline-candidate");
+        Post affinityHistory = createPost(affinityAuthor, "affinity-history");
+        jdbcTemplate.update("UPDATE posts SET published_at = ? WHERE id IN (?, ?)",
+                rankingAt.minusHours(2), affinityCandidate.getId(), baselineCandidate.getId());
+        jdbcTemplate.update("UPDATE posts SET published_at = ? WHERE id = ?",
+                rankingAt.minusDays(10), affinityHistory.getId());
+
+        Map<String, Object> academic = jdbcTemplate.queryForMap("""
+                SELECT school.id AS school_id, faculty.id AS faculty_id, major.id AS major_id
+                FROM majors major
+                JOIN faculties faculty ON faculty.id = major.faculty_id
+                JOIN schools school ON school.id = faculty.school_id
+                WHERE school.status = 'ACTIVE' AND faculty.status = 'ACTIVE' AND major.status = 'ACTIVE'
+                LIMIT 1
+                """);
+        Long schoolId = ((Number) academic.get("school_id")).longValue();
+        Long facultyId = ((Number) academic.get("faculty_id")).longValue();
+        Long majorId = ((Number) academic.get("major_id")).longValue();
+        jdbcTemplate.update("""
+                UPDATE user_profiles
+                SET school_id = ?, faculty_id = ?, major_id = ?, entry_year = 2022
+                WHERE user_id IN (?, ?)
+                """, schoolId, facultyId, majorId, viewer.getId(), affinityAuthor.getId());
+
+        Long interestId = jdbcTemplate.queryForObject(
+                "SELECT id FROM interest_categories WHERE status = 'ACTIVE' ORDER BY id LIMIT 1", Long.class);
+        jdbcTemplate.update("INSERT INTO user_interests(user_id, interest_id) VALUES (?, ?), (?, ?)",
+                viewer.getId(), interestId, affinityAuthor.getId(), interestId);
+        jdbcTemplate.update("INSERT INTO follows(follower_id, following_id) VALUES (?, ?)",
+                viewer.getId(), affinityAuthor.getId());
+
+        String marker = "personalized_" + System.nanoTime();
+        jdbcTemplate.update("INSERT INTO hashtags(normalized_name, display_name) VALUES (?, ?)", marker, marker);
+        Long sharedHashtagId = jdbcTemplate.queryForObject(
+                "SELECT id FROM hashtags WHERE normalized_name = ?", Long.class, marker);
+        jdbcTemplate.update("INSERT INTO post_hashtags(post_id, hashtag_id) VALUES (?, ?), (?, ?)",
+                affinityCandidate.getId(), sharedHashtagId, affinityHistory.getId(), sharedHashtagId);
+        addAllInteractions(viewer.getId(), affinityHistory.getId());
+
+        String candidateOnlyMarker = marker + "_candidate";
+        jdbcTemplate.update("INSERT INTO hashtags(normalized_name, display_name) VALUES (?, ?)",
+                candidateOnlyMarker, candidateOnlyMarker);
+        Long candidateOnlyHashtagId = jdbcTemplate.queryForObject(
+                "SELECT id FROM hashtags WHERE normalized_name = ?", Long.class, candidateOnlyMarker);
+        jdbcTemplate.update("INSERT INTO post_hashtags(post_id, hashtag_id) VALUES (?, ?)",
+                baselineCandidate.getId(), candidateOnlyHashtagId);
+        addAllInteractions(viewer.getId(), baselineCandidate.getId());
+
+        Map<Long, Integer> initialScores = scoreByPostId(viewer.getId(), rankingAt);
+        assertThat(initialScores.get(affinityCandidate.getId())).isEqualTo(150);
+        // Interaction trên chính candidate chỉ tăng engagement 1 Like + 2 Comment + 2 Repost, không tăng history/hashtag.
+        assertThat(initialScores.get(baselineCandidate.getId())).isEqualTo(65);
+
+        jdbcTemplate.update("UPDATE schools SET status = 'INACTIVE' WHERE id = ?", schoolId);
+        jdbcTemplate.update("UPDATE faculties SET status = 'INACTIVE' WHERE id = ?", facultyId);
+        jdbcTemplate.update("UPDATE majors SET status = 'INACTIVE' WHERE id = ?", majorId);
+        jdbcTemplate.update("UPDATE interest_categories SET status = 'INACTIVE' WHERE id = ?", interestId);
+        assertThat(scoreByPostId(viewer.getId(), rankingAt).get(affinityCandidate.getId())).isEqualTo(123);
+
+        jdbcTemplate.update("DELETE FROM follows WHERE follower_id = ? AND following_id = ?",
+                viewer.getId(), affinityAuthor.getId());
+        jdbcTemplate.update("INSERT INTO user_restrictions(restrictor_id, restricted_id) VALUES (?, ?)",
+                viewer.getId(), affinityAuthor.getId());
+        assertThat(scoreByPostId(viewer.getId(), rankingAt).get(affinityCandidate.getId())).isEqualTo(93);
+
+        userBlockRepository.insertIfAbsent(viewer.getId(), affinityAuthor.getId());
+        assertThat(scoreByPostId(viewer.getId(), rankingAt)).doesNotContainKey(affinityCandidate.getId());
+    }
+
+    @Test
+    void personalizedQueryHasAValidMySql8ExecutionPlan() throws Exception {
+        User viewer = completedUser("personalized-explain");
+        String query = PersonalizedFeedRepository.class.getMethod(
+                        "findRankedPosts", Long.class, LocalDateTime.class, int.class,
+                        LocalDateTime.class, Long.class, org.springframework.data.domain.Pageable.class)
+                .getAnnotation(Query.class).value();
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("viewerId", viewer.getId())
+                .addValue("rankingAt", LocalDateTime.of(2026, 8, 11, 3, 0))
+                .addValue("cursorScore", Integer.MAX_VALUE)
+                .addValue("cursorPublishedAt", FIRST_CURSOR_TIME)
+                .addValue("cursorPostId", Long.MAX_VALUE);
+
+        String plan = namedParameterJdbcTemplate.queryForObject(
+                "EXPLAIN FORMAT=JSON " + query + " LIMIT 11", parameters, String.class);
+
+        assertThat(plan).isNotBlank().contains("query_block", "user_blocks", "post_likes", "saved_posts");
+    }
+
+    private List<PersonalizedPostRankProjection> forYou(
             Long viewerId,
+            LocalDateTime rankingAt,
             int cursorScore,
             LocalDateTime cursorTime,
             Long cursorPostId,
             int limit
     ) {
-        return postRepository.findForYouFeed(
-                viewerId, cursorScore, cursorTime, cursorPostId, PageRequest.of(0, limit));
+        return personalizedFeedRepository.findRankedPosts(
+                viewerId, rankingAt, cursorScore, cursorTime, cursorPostId, PageRequest.of(0, limit));
+    }
+
+    private Map<Long, Integer> scoreByPostId(Long viewerId, LocalDateTime rankingAt) {
+        return forYou(viewerId, rankingAt, Integer.MAX_VALUE, FIRST_CURSOR_TIME, Long.MAX_VALUE, 2000).stream()
+                .collect(Collectors.toMap(
+                        PersonalizedPostRankProjection::getPostId,
+                        PersonalizedPostRankProjection::getScore,
+                        (left, right) -> left
+                ));
+    }
+
+    private void addAllInteractions(Long viewerId, Long postId) {
+        jdbcTemplate.update("INSERT INTO post_likes(user_id, post_id) VALUES (?, ?)", viewerId, postId);
+        jdbcTemplate.update("INSERT INTO comments(post_id, user_id, content) VALUES (?, ?, 'test')", postId, viewerId);
+        jdbcTemplate.update("INSERT INTO saved_posts(user_id, post_id) VALUES (?, ?)", viewerId, postId);
+        jdbcTemplate.update("INSERT INTO post_reposts(user_id, post_id) VALUES (?, ?)", viewerId, postId);
     }
 
     private Fixture fixture() {

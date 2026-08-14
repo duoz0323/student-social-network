@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronLeft, ChevronRight, Hash, LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BarChart3, ChevronLeft, ChevronRight, GraduationCap, Hash, LayoutDashboard, Users, FileText, Flag, History, LogOut } from 'lucide-react';
 import logo from '../../assets/brand/logo-light.jpg';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
 import AdminToastProvider from '../../features/admin/components/AdminToastProvider.jsx';
+import { getAdminPageTitle } from '../../features/admin/utils/adminPageTitle.js';
 
 export default function AdminShell() {
   const { currentUser, logout } = useApp();
+  const location = useLocation();
   const navigate = useNavigate();
-  // Giữ trạng thái thu gọn tại layout để không bị đặt lại khi chuyển giữa các trang quản trị.
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Màn hình nhỏ khởi tạo sidebar ở trạng thái thu gọn để không che khu vực nội dung chính.
+  const [isCollapsed, setIsCollapsed] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  ));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const items = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true },
@@ -18,9 +22,15 @@ export default function AdminShell() {
     { to: '/admin/user-analytics', label: 'Thống kê người dùng', icon: BarChart3 },
     { to: '/admin/posts', label: 'Bài viết', icon: FileText },
     { to: '/admin/hashtags', label: 'Hashtag', icon: Hash },
+    { to: '/admin/academic', label: 'Dữ liệu học thuật', icon: GraduationCap },
     { to: '/admin/reports', label: 'Báo cáo', icon: Flag },
     { to: '/admin/actions', label: 'Lịch sử', icon: History },
   ];
+
+  useEffect(() => {
+    // Đồng bộ tiêu đề tab theo route Admin, tránh giữ lại tiêu đề của màn hình đăng nhập trước đó.
+    document.title = `${getAdminPageTitle(location.pathname)} • UniShare`;
+  }, [location.pathname]);
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -31,12 +41,26 @@ export default function AdminShell() {
     navigate('/login', { replace: true });
   }
 
+  function handleNavigation() {
+    // Sau khi chọn mục trên mobile, đóng drawer để người dùng nhìn thấy ngay nội dung vừa điều hướng.
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setIsCollapsed(true);
+  }
+
   return (
-    <div className="admin-theme min-h-screen bg-white text-zinc-950 flex">
+    <div className="admin-theme flex min-h-screen overflow-x-hidden bg-white text-zinc-950">
+      {!isCollapsed ? (
+        <button
+          type="button"
+          aria-label="Đóng thanh chức năng"
+          onClick={() => setIsCollapsed(true)}
+          className="fixed inset-0 z-20 bg-black/20 md:hidden"
+        />
+      ) : null}
+
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-10 flex h-screen flex-col border-r border-zinc-200 bg-zinc-50 transition-[width] duration-200 ${
-          isCollapsed ? 'w-20' : 'w-72'
+        className={`fixed left-0 top-0 z-30 flex h-dvh flex-col border-r border-zinc-200 bg-zinc-50 transition-[width] duration-200 ${
+          isCollapsed ? 'w-16 md:w-20' : 'w-72'
         }`}
       >
         <button
@@ -68,6 +92,7 @@ export default function AdminShell() {
                 key={item.to}
                 end={item.end}
                 to={item.to}
+                onClick={handleNavigation}
                 className={({ isActive }) =>
                   `flex items-center rounded-xl py-3 font-medium transition-colors duration-150 ${
                     isCollapsed ? 'justify-center px-3' : 'gap-3 px-4'
@@ -117,9 +142,11 @@ export default function AdminShell() {
       </aside>
 
       {/* Main Content */}
-      <main className={`min-h-screen flex-1 bg-white p-8 transition-[margin] duration-200 lg:p-12 ${isCollapsed ? 'ml-20' : 'ml-72'}`}>
+      <main className={`min-h-screen min-w-0 flex-1 overflow-x-hidden bg-white p-4 transition-[margin,padding] duration-200 sm:p-6 lg:p-8 2xl:p-12 ${
+        isCollapsed ? 'ml-16 md:ml-20' : 'ml-16 md:ml-72'
+      }`}>
         <AdminToastProvider>
-          <div className="mx-auto max-w-5xl">
+          <div className="admin-content-container mx-auto w-full max-w-[100rem]">
             <Outlet />
           </div>
         </AdminToastProvider>

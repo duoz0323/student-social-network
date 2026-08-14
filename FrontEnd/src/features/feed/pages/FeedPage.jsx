@@ -9,48 +9,59 @@ import InfinitePostList from '../../post/components/InfinitePostList.jsx';
 import PostComposer from '../../post/components/PostComposer.jsx';
 import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
 import { toFeedItemView, toPostView } from '../../post/utils/postViewModel.js';
+import NearbyDiscovery from '../components/NearbyDiscovery.jsx';
+
+const FEED_TYPES = new Set(['for-you', 'following', 'nearby']);
 
 export default function FeedPage() {
   const { type = 'for-you' } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useApp();
   const [composerOpen, setComposerOpen] = useState(false);
+  const isNearby = type === 'nearby';
   const feedState = useInfinitePosts({
     cacheKey: `feed:${type}`,
     request: type === 'following' ? feedApi.getFollowing : feedApi.getForYou,
     normalizePost: type === 'following' ? toFeedItemView : toPostView,
+    enabled: !isNearby,
+    active: !isNearby,
   });
 
   const { refresh } = feedState;
 
   // Tự động cuộn lên đầu và kích hoạt load lại bài viết khi ấn Logo hoặc tab Dành cho bạn/Đang theo dõi
   useEffect(() => {
+    if (!FEED_TYPES.has(type)) navigate('/feed/for-you', { replace: true });
+  }, [navigate, type]);
+
+  useEffect(() => {
     const handleRefresh = (event) => {
       const targetType = event.detail?.type;
-      if (!targetType || targetType === type) {
+      if (!isNearby && (!targetType || targetType === type)) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         void refresh();
       }
     };
     window.addEventListener('unishare:refresh-feed', handleRefresh);
     return () => window.removeEventListener('unishare:refresh-feed', handleRefresh);
-  }, [refresh, type]);
+  }, [isNearby, refresh, type]);
 
   function handleTabClick(targetType) {
     if (type === targetType) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      void refresh();
+      if (!isNearby) void refresh();
     } else {
       navigate(`/feed/${targetType}`);
     }
   }
 
   const feedTabs = (
-    <div className="flex h-[var(--header-height)] justify-center gap-12">
+    <div className="flex h-[var(--header-height)] items-stretch justify-around gap-1 px-1 sm:justify-center sm:gap-6">
       <button
         type="button"
         className={`relative px-4 text-[15px] font-bold transition ${type === 'for-you' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
         onClick={() => handleTabClick('for-you')}
+        aria-current={type === 'for-you' ? 'page' : undefined}
       >
         Dành cho bạn
         {type === 'for-you' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
@@ -59,16 +70,26 @@ export default function FeedPage() {
         type="button"
         className={`relative px-4 text-[15px] font-bold transition ${type === 'following' ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
         onClick={() => handleTabClick('following')}
+        aria-current={type === 'following' ? 'page' : undefined}
       >
         Đang theo dõi
         {type === 'following' && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
+      </button>
+      <button
+        type="button"
+        className={`relative px-3 text-[15px] font-bold transition sm:px-4 ${isNearby ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
+        onClick={() => handleTabClick('nearby')}
+        aria-current={isNearby ? 'page' : undefined}
+      >
+        Gần bạn
+        {isNearby && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
       </button>
     </div>
   );
 
   function closeComposer() {
     setComposerOpen(false);
-    feedState.reload();
+    if (!isNearby) feedState.reload();
   }
 
   return (
@@ -85,7 +106,7 @@ export default function FeedPage() {
         </div>
 
         {/* Spinner quay nhỏ ở giữa kiểu Threads/Instagram khi reload feed */}
-        {feedState.refreshing && (
+        {!isNearby && feedState.refreshing && (
           <div className="flex items-center justify-center border-b border-[var(--app-border-strong)] py-4 text-[var(--app-muted)]">
             <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Đang tải bài viết mới...">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
@@ -94,14 +115,18 @@ export default function FeedPage() {
           </div>
         )}
 
-        <InfinitePostList
-          {...feedState}
-          errorTitle="Không thể tải Feed"
-          emptyTitle="Feed đang trống"
-          emptyDescription={type === 'following'
-            ? 'Hãy theo dõi thêm bạn bè để thấy bài viết mới.'
-            : 'Chưa có bài viết phù hợp để hiển thị.'}
-        />
+        {/* Giữ hook Nearby được mount để tọa độ chỉ tồn tại trong memory và không phải xin lại khi đổi tab. */}
+        <NearbyDiscovery active={isNearby} />
+        {!isNearby ? (
+          <InfinitePostList
+            {...feedState}
+            errorTitle="Không thể tải Feed"
+            emptyTitle="Feed đang trống"
+            emptyDescription={type === 'following'
+              ? 'Hãy theo dõi thêm bạn bè để thấy bài viết mới.'
+              : 'Chưa có bài viết phù hợp để hiển thị.'}
+          />
+        ) : null}
       </ContentShell>
       <PostComposer mode={composerOpen ? 'modal' : null} onClose={closeComposer} />
     </>

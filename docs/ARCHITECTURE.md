@@ -198,22 +198,26 @@ Media:
 
 ### For You
 
-MVP dùng điểm cơ bản:
+Personalized For You V1 dùng database-side deterministic score:
 
 ```text
-score = freshnessScore
-      + likeCount × likeWeight
-      + commentCount × commentWeight
+score = recencyScore
+      + cappedPostEngagement
+      + followingAuthorBonus
+      + activeAcademicAffinity
+      + commonActiveInterestAffinity
+      + historicalAuthorAffinity
+      + exactHashtagBehaviorAffinity
 ```
 
-Không sử dụng Machine Learning.
+MySQL 8 dùng CTE/projection để lọc access, tính score, áp dụng keyset và lấy `limit + 1`; Service batch-load PostCard theo IDs rồi khôi phục đúng thứ tự. Candidate Post hiện tại bị trừ khỏi history/hashtag affinity. Không sử dụng AI/Machine Learning.
 
 ### Cursor Pagination cho danh sách bài viết
 
 - Feed For You, Feed Following, bài trên hồ sơ, tab Repost, bài đã lưu và bài đã thích dùng Cursor Pagination.
 - Request đầu truyền `limit`; request sau truyền nguyên `nextCursor` opaque do Backend trả về.
 - `limit` mặc định 10, tối đa 20; Backend lấy `limit + 1` để xác định `hasNext`.
-- Feed For You dùng cursor gồm `score`, `publishedAt`, `postId`; danh sách theo thời gian dùng
+- Feed For You dùng cursor versioned gồm `rankingAt`, `score`, `publishedAt`, `postId`; `rankingAt` freeze recency trong cùng phiên cuộn. Danh sách theo thời gian dùng
   `createdAt`, `postId`.
 - Following Feed hợp nhất `ORIGINAL` và `REPOST` bằng `UNION ALL`, dùng cursor
   `activityAt`, `itemRank`, `actorId`, `postId`; dữ liệu PostCard được batch-load để tránh N+1.

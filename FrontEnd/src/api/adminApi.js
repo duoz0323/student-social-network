@@ -23,6 +23,54 @@ export const adminApi = Object.freeze({
   createHashtag: (name, signal) => requestData(httpClient.post(ADMIN_ENDPOINTS.hashtags, { name }, { signal })),
   updateHashtag: (id, name, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.hashtag(id), { name }, { signal })),
   deleteHashtag: (id, signal) => requestData(httpClient.delete(ADMIN_ENDPOINTS.hashtag(id), { signal })),
+  getAcademicSchools: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.academicSchools, { params: compactParams(params), signal },
+  )),
+  createAcademicSchool: (payload, signal) => requestData(httpClient.post(
+    ADMIN_ENDPOINTS.academicSchools, payload, { signal },
+  )),
+  updateAcademicSchool: (id, payload, signal) => requestData(httpClient.put(
+    ADMIN_ENDPOINTS.academicSchool(id), payload, { signal },
+  )),
+  changeAcademicSchoolStatus: (id, status, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.academicSchoolStatus(id), { status }, { signal },
+  )),
+  getAcademicFaculties: (schoolId, params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.academicFaculties(schoolId), { params: compactParams(params), signal },
+  )),
+  createAcademicFaculty: (schoolId, name, signal) => requestData(httpClient.post(
+    ADMIN_ENDPOINTS.academicFaculties(schoolId), { name }, { signal },
+  )),
+  updateAcademicFaculty: (id, name, signal) => requestData(httpClient.put(
+    ADMIN_ENDPOINTS.academicFaculty(id), { name }, { signal },
+  )),
+  changeAcademicFacultyStatus: (id, status, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.academicFacultyStatus(id), { status }, { signal },
+  )),
+  getAcademicMajors: (facultyId, params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.academicMajors(facultyId), { params: compactParams(params), signal },
+  )),
+  createAcademicMajor: (facultyId, name, signal) => requestData(httpClient.post(
+    ADMIN_ENDPOINTS.academicMajors(facultyId), { name }, { signal },
+  )),
+  updateAcademicMajor: (id, name, signal) => requestData(httpClient.put(
+    ADMIN_ENDPOINTS.academicMajor(id), { name }, { signal },
+  )),
+  changeAcademicMajorStatus: (id, status, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.academicMajorStatus(id), { status }, { signal },
+  )),
+  getAcademicInterests: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.academicInterests, { params: compactParams(params), signal },
+  )),
+  createAcademicInterest: (name, signal) => requestData(httpClient.post(
+    ADMIN_ENDPOINTS.academicInterests, { name }, { signal },
+  )),
+  updateAcademicInterest: (id, name, signal) => requestData(httpClient.put(
+    ADMIN_ENDPOINTS.academicInterest(id), { name }, { signal },
+  )),
+  changeAcademicInterestStatus: (id, status, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.academicInterestStatus(id), { status }, { signal },
+  )),
   getPost: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.post(id), { signal })),
   hidePost: (id, reasonCode, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.hidePost(id), { reasonCode }, { signal })),
   restorePost: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.restorePost(id), undefined, { signal })),

@@ -31,5 +31,5 @@ test('normalize giữ rate null và chuyển count về số an toàn', () => {
   assert.equal(result.peakReturnRate, null);
   assert.equal(result.items[0].eligibleSystemUserCount, 20);
   assert.equal(result.items[0].activeUserRate, null);
-  assert.equal(formatRate(null), 'Chưa đủ dữ liệu');
+  assert.equal(formatRate(null), 'Chưa có dữ liệu');
 });

@@ -10,6 +10,7 @@ import { useNotifications } from '../../contexts/NotificationContext.jsx';
 import { notificationBadgeLabel } from '../../features/notification/utils/notificationState.js';
 import { useMessaging } from '../../features/messaging/hooks/useMessaging.js';
 import { messagingBadgeLabel } from '../../features/messaging/utils/messagingState.js';
+import StudentRecommendationRail from '../../features/recommendation/components/StudentRecommendationRail.jsx';
 
 // SVG Icons cho Sidebar
 function HomeIcon({ active = false }) {
@@ -128,6 +129,7 @@ export default function UserShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMessagingRoute = location.pathname.startsWith('/messages');
+  const isFeedRoute = location.pathname.startsWith('/feed');
 
   // Cập nhật tiêu đề tab trình duyệt hiển thị số thông báo/tin nhắn chưa đọc (VD: (1) Trang chủ • UniShare)
   useEffect(() => {
@@ -256,9 +258,16 @@ export default function UserShell() {
         </div>
       </header>
 
-      <main className={`flex min-h-screen flex-col px-0 lg:col-start-2 ${isMessagingRoute ? 'items-stretch lg:pl-0' : 'items-center lg:items-start lg:pl-[12%] xl:pl-[18%]'}`}>
+      <main className={`flex min-h-screen flex-col px-0 lg:col-start-2 ${
+        isMessagingRoute
+          ? 'items-stretch lg:pl-0'
+          : `items-center lg:items-start lg:pl-[12%] xl:pl-[10%] ${isFeedRoute ? 'xl:pr-[320px] 2xl:pr-[360px]' : ''}`
+      }`}>
         <Outlet />
       </main>
+
+      {/* Rail gợi ý tách khỏi feed để luôn hiện diện khi người dùng cuộn bài viết. */}
+      {isFeedRoute ? <StudentRecommendationRail /> : null}
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-6 border-t border-[var(--app-border)] bg-[var(--app-surface)] text-center text-[10px] font-semibold lg:hidden">

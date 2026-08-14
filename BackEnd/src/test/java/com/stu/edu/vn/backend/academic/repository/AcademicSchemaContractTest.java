@@ -34,6 +34,8 @@ class AcademicSchemaContractTest {
         assertThat(sql).contains("PRIMARY KEY (`user_id`,`interest_id`)");
         assertThat(dbml).contains("entry_year smallint");
         assertThat(sql).contains("chk_user_profiles_entry_year");
+        assertThat(sql).contains("'CREATE_ACADEMIC_DATA','UPDATE_ACADEMIC_DATA','CHANGE_ACADEMIC_STATUS'");
+        assertThat(dbml).contains("ACADEMIC_DATA");
     }
 
     @Test

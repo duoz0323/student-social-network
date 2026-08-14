@@ -53,7 +53,7 @@ export default function AdminUserAnalyticsPage() {
   }
 
   return (
-    <section className="space-y-5 rounded-[28px] bg-zinc-50 p-4 transition-[width,transform] sm:p-6 min-[1800px]:w-[calc(100%+28rem)] min-[1800px]:-translate-x-56">
+    <section className="space-y-4 transition-[width,transform] min-[1800px]:w-[calc(100%+28rem)] min-[1800px]:-translate-x-56">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-end">
         <AnalyticsFilterForm
           filters={draftFilters}
@@ -67,16 +67,16 @@ export default function AdminUserAnalyticsPage() {
       </div>
 
       {error ? <AnalyticsError message={error} onRetry={retry} /> : null}
-      {loading ? <LoadingState message="Đang tổng hợp hoạt động người dùng..." /> : null}
+      {loading ? <LoadingState message="Đang tải số liệu..." /> : null}
 
       {!loading && !error && monthly && summary ? (
         hasEligibleUsers(monthly.items) ? (
           <AnalyticsContent monthly={monthly} summary={summary} />
         ) : (
           <EmptyState
-            title="Chưa có tài khoản đủ điều kiện thống kê"
-            description="Khoảng tháng đã chọn chưa có USER ACTIVE hoàn tất hồ sơ tại ngày đánh giá."
-            actionLabel="Tải lại dữ liệu"
+            title="Chưa có dữ liệu trong thời gian này"
+            description="Hãy chọn khoảng thời gian khác rồi thử lại."
+            actionLabel="Tải lại"
             onAction={retry}
           />
         )
@@ -87,9 +87,9 @@ export default function AdminUserAnalyticsPage() {
 
 function AnalyticsFilterForm({ filters, currentMonth, loading, error, onChange, onSubmit, onReset }) {
   return (
-    <form onSubmit={onSubmit} className="w-full rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
+    <form onSubmit={onSubmit} className="w-full rounded-xl border border-zinc-200 bg-white p-4">
       <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(180px,0.8fr)_auto] md:items-end">
-        <CompactFilter label="Khoảng thời gian">
+        <CompactFilter label="Thời gian">
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
             <MonthInput value={filters.fromMonth} max={currentMonth} onChange={(value) => onChange('fromMonth', value)} />
             <span className="text-zinc-300">–</span>
@@ -97,22 +97,22 @@ function AnalyticsFilterForm({ filters, currentMonth, loading, error, onChange, 
           </div>
         </CompactFilter>
 
-        <CompactFilter label="Ngưỡng không hoạt động">
+        <CompactFilter label="Số ngày không hoạt động">
           <div className="relative">
             <select
               value={filters.inactiveDays}
               onChange={(event) => onChange('inactiveDays', event.target.value)}
-              className="h-9 w-full appearance-none rounded-lg border border-zinc-200 bg-white px-3 pr-8 text-xs font-semibold text-blue-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-9 w-full appearance-none rounded-lg border border-zinc-200 bg-white px-3 pr-8 text-xs font-semibold text-zinc-900 outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-200"
             >
               {[15].map((days) => <option key={days} value={days}>{days} ngày</option>)}
             </select>
-            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-600" aria-hidden="true" />
+            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
           </div>
         </CompactFilter>
 
         <div className="flex justify-end gap-2">
-          <Button type="submit" size="sm" disabled={loading} className="gap-2 rounded-lg bg-blue-600 px-4 text-white">
-            <SlidersHorizontal size={14} aria-hidden="true" /> Áp dụng
+          <Button type="submit" size="sm" disabled={loading} className="gap-2 px-4">
+            <SlidersHorizontal size={14} aria-hidden="true" /> Xem kết quả
           </Button>
           <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={onReset} className="rounded-lg px-2.5">
             <RotateCcw size={14} aria-hidden="true" />
@@ -128,7 +128,7 @@ function AnalyticsFilterForm({ filters, currentMonth, loading, error, onChange, 
 function CompactFilter({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-400">{label}</span>
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">{label}</span>
       {children}
     </label>
   );
@@ -142,7 +142,7 @@ function MonthInput({ value, max, onChange }) {
       max={max}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-semibold text-blue-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      className="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-semibold text-zinc-900 outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-200"
     />
   );
 }
@@ -164,32 +164,32 @@ function AnalyticsError({ message, onRetry }) {
 function AnalyticsContent({ monthly, summary }) {
   const cards = [
     {
-      label: 'Tháng có nhiều người quay lại',
+      label: 'Nhiều người quay lại nhất',
       value: monthly.peakReturningMonth ? formatMonthCompact(monthly.peakReturningMonth) : '—',
-      helper: `${formatCount(monthly.peakReturningUserCount)} người quay lại`,
-      accent: 'border-l-blue-500',
-      helperTone: 'text-blue-600',
+      helper: `${formatCount(monthly.peakReturningUserCount)} người`,
+      tone: 'border-t-sky-500',
+      helperTone: 'text-sky-700',
     },
     {
-      label: 'Tỷ lệ người quay lại cao nhất',
+      label: 'Tỷ lệ quay lại cao nhất',
       value: formatRate(monthly.peakReturnRate),
-      helper:  monthly.peakReturnRateMonth ? 'Trong '+formatMonth(monthly.peakReturnRateMonth) : 'Chưa đủ dữ liệu',
-      accent: 'border-l-indigo-500',
-      helperTone: 'text-indigo-600',
+      helper: monthly.peakReturnRateMonth ? formatMonth(monthly.peakReturnRateMonth) : 'Chưa ghi nhận',
+      tone: 'border-t-violet-500',
+      helperTone: 'text-violet-700',
     },
     {
-      label: 'Tỷ lệ quay người dùng quay lại trong tháng',
+      label: 'Tỷ lệ quay lại tháng đã chọn',
       value: formatRate(summary.returnRate),
       helper: formatMonth(summary.month),
-      accent: 'border-l-orange-500',
-      helperTone: 'text-orange-600',
+      tone: 'border-t-amber-500',
+      helperTone: 'text-amber-700',
     },
     {
-      label: 'Tổng người dùng đủ điều kiện',
+      label: 'Người dùng được thống kê',
       value: formatCount(summary.eligibleSystemUserCount),
-      helper: `Đánh giá đến ${formatEvaluationDate(summary.evaluationDate)}`,
-      accent: 'border-l-blue-600',
-      helperTone: 'text-zinc-500',
+      helper: `Tính đến ${formatEvaluationDate(summary.evaluationDate)}`,
+      tone: 'border-t-emerald-500',
+      helperTone: 'text-emerald-700',
     },
   ];
 
@@ -208,11 +208,11 @@ function AnalyticsContent({ monthly, summary }) {
   );
 }
 
-function KpiCard({ label, value, helper, accent, helperTone }) {
+function KpiCard({ label, value, helper, tone, helperTone }) {
   return (
-    <article className={`min-h-28 rounded-2xl border border-zinc-100 border-l-2 bg-white p-4 shadow-sm ${accent}`}>
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-500">{label}</p>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-zinc-950">{value}</p>
+    <article className={`min-h-28 rounded-xl border border-t-2 border-zinc-200 bg-white p-4 ${tone}`}>
+      <p className="text-xs font-medium text-zinc-500">{label}</p>
+      <p className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950">{value}</p>
       <p className={`mt-1 text-xs font-semibold ${helperTone}`}>{helper}</p>
     </article>
   );
@@ -231,17 +231,17 @@ function ReturningTrendChart({ monthly }) {
   const areaPath = countPoints.length ? `${countPath} L ${countPoints.at(-1).x} ${baseline} L ${countPoints[0].x} ${baseline} Z` : '';
 
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm sm:p-5">
+    <section className="flex min-w-0 flex-col rounded-xl border border-zinc-200 bg-white p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-base font-bold text-zinc-950">
-            Xu hướng người dùng quay lại ({monthly.fromMonth} – {monthly.toMonth})
+            Người dùng quay lại theo tháng ({monthly.fromMonth} – {monthly.toMonth})
           </h2>
-          <p className="mt-1 text-xs text-zinc-500">Số người quay lại và tỷ lệ tái kích hoạt thực tế theo từng tháng.</p>
+          <p className="mt-1 text-xs text-zinc-500">So sánh số người và tỷ lệ quay lại theo từng tháng.</p>
         </div>
         <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-zinc-600">
-          <Legend color="#0b67d1" label="Người dùng quay lại" />
-          <Legend color="#475b91" label="Tỷ lệ quay lại" dashed />
+          <Legend color="#7c3aed" label="Số người quay lại" />
+          <Legend color="#0f766e" label="Tỷ lệ quay lại" dashed />
         </div>
       </div>
 
@@ -254,8 +254,8 @@ function ReturningTrendChart({ monthly }) {
         >
           <defs>
             <linearGradient id="returning-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0b67d1" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#0b67d1" stopOpacity="0.01" />
+              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
@@ -275,12 +275,12 @@ function ReturningTrendChart({ monthly }) {
           })}
 
           {areaPath ? <path d={areaPath} fill="url(#returning-area)" /> : null}
-          {countPath ? <path d={countPath} fill="none" stroke="#0b67d1" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" /> : null}
-          {ratePath ? <path d={ratePath} fill="none" stroke="#475b91" strokeWidth="2.5" strokeDasharray="6 5" strokeLinejoin="round" strokeLinecap="round" /> : null}
+          {countPath ? <path d={countPath} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" /> : null}
+          {ratePath ? <path d={ratePath} fill="none" stroke="#0f766e" strokeWidth="2" strokeDasharray="6 5" strokeLinejoin="round" strokeLinecap="round" /> : null}
 
           {countPoints.map((point, index) => (
             <g key={`count-${items[index].month}`}>
-              <circle cx={point.x} cy={point.y} r="4" fill="#0b67d1">
+              <circle cx={point.x} cy={point.y} r="4" fill="#7c3aed">
                 <title>{`${formatMonth(items[index].month)}: ${formatCount(items[index].returningUserCount)} người quay lại`}</title>
               </circle>
               <text x={point.x} y={CHART.height - 16} textAnchor="middle" className="fill-zinc-500 text-[10px]">
@@ -290,7 +290,7 @@ function ReturningTrendChart({ monthly }) {
           ))}
 
           {ratePoints.map((point, index) => (
-            <circle key={`rate-${items[index].month}`} cx={point.x} cy={point.y} r="3.5" fill="#475b91">
+            <circle key={`rate-${items[index].month}`} cx={point.x} cy={point.y} r="3.5" fill="#0f766e">
               <title>{`${formatMonth(items[index].month)}: ${formatRate(items[index].returnRate)}`}</title>
             </circle>
           ))}
@@ -311,27 +311,27 @@ function Legend({ color, label, dashed = false }) {
 
 function MonthlySnapshotTable({ summary, inactiveDays }) {
   const rows = [
-    { label: 'Tổng số người dùng đủ điều kiện', count: summary.eligibleSystemUserCount },
-    { label: 'Tổng người dùng đang hoạt động', count: summary.activeUserCount },
-    { label: 'Người dùng mới hoạt động', count: summary.newActiveUserCount },
-    { label: 'Người dùng hoạt động thường xuyên', count: summary.regularActiveUserCount },
-    { label: 'Người dùng quay lại', count: summary.returningUserCount },
-    { label: 'Người dùng mới ngừng hoạt động', count: summary.recentlyInactiveUserCount },
-    { label: `Đủ ngưỡng > ${inactiveDays} ngày, chưa quay lại`, count: summary.eligibleInactiveNotReturnedUserCount, highlighted: true },
-    { label: 'Người dùng chưa từng hoạt động', count: summary.neverActiveUserCount },
-    { label: 'Tổng người dùng không hoạt động', count: summary.inactiveUserCount },
+    { label: 'Người dùng được thống kê', count: summary.eligibleSystemUserCount },
+    { label: 'Đang hoạt động', count: summary.activeUserCount },
+    { label: 'Hoạt động lần đầu', count: summary.newActiveUserCount },
+    { label: 'Hoạt động thường xuyên', count: summary.regularActiveUserCount },
+    { label: 'Quay lại hoạt động', count: summary.returningUserCount },
+    { label: 'Mới ngừng hoạt động', count: summary.recentlyInactiveUserCount },
+    { label: `Quá ${inactiveDays} ngày chưa quay lại`, count: summary.eligibleInactiveNotReturnedUserCount, highlighted: true },
+    { label: 'Chưa từng hoạt động', count: summary.neverActiveUserCount },
+    { label: 'Không hoạt động', count: summary.inactiveUserCount },
   ];
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm">
-      <div className="flex flex-col gap-2 border-b border-zinc-100 p-4">
+    <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col gap-2 border-b border-violet-100 bg-violet-50/50 p-4">
         <div>
-          <h2 className="text-base font-bold text-zinc-950">Bảng dữ liệu tháng {formatMonthCompact(summary.month)}</h2>
+          <h2 className="text-base font-bold text-zinc-950">Chi tiết tháng {formatMonthCompact(summary.month)}</h2>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
-            <CalendarDays size={13} aria-hidden="true" /> Đánh giá đến {formatEvaluationDate(summary.evaluationDate)} theo UTC
+            <CalendarDays size={13} aria-hidden="true" /> Dữ liệu đến ngày {formatEvaluationDate(summary.evaluationDate)}
           </p>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Ngưỡng {inactiveDays} ngày</span>
+        <span className="w-fit rounded-md bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Trên {inactiveDays} ngày</span>
       </div>
 
       <div className="min-w-0">
@@ -340,17 +340,17 @@ function MonthlySnapshotTable({ summary, inactiveDays }) {
             <col className="w-[72%]" />
             <col className="w-[28%]" />
           </colgroup>
-          <thead className="bg-zinc-50 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+          <thead className="bg-violet-50/70 text-[10px] uppercase tracking-[0.1em] text-violet-800">
             <tr>
-              <th className="px-4 py-3 font-bold">Chỉ số API</th>
+              <th className="px-4 py-3 font-bold">Nhóm người dùng</th>
               <th className="px-4 py-3 text-right font-bold">Số lượng</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {rows.map((row) => (
-              <tr key={row.label} className={row.highlighted ? 'bg-red-50/50' : 'hover:bg-zinc-50/70'}>
-                <td className={`break-words px-4 py-3 font-medium ${row.highlighted ? 'text-red-700' : 'text-zinc-800'}`}>{row.label}</td>
-                <td className={`px-4 py-3 text-right font-bold ${row.highlighted ? 'text-red-700' : 'text-zinc-950'}`}>{formatCount(row.count)}</td>
+              <tr key={row.label} className={row.highlighted ? 'bg-amber-50/70' : 'hover:bg-violet-50/30'}>
+                <td className={`break-words px-4 py-3 font-medium ${row.highlighted ? 'text-amber-900' : 'text-zinc-800'}`}>{row.label}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${row.highlighted ? 'text-amber-900' : 'text-zinc-950'}`}>{formatCount(row.count)}</td>
               </tr>
             ))}
           </tbody>

@@ -42,9 +42,11 @@ class AdminAuditEntityMappingTest {
                 "BLOCK_USER", "UNBLOCK_USER", "UPDATE_USER_PROFILE", "CREATE_HASHTAG", "UPDATE_HASHTAG", "DELETE_HASHTAG",
                 "HIDE_POST", "RESTORE_POST",
                 "RESOLVE_REPORT", "REJECT_REPORT", "RESOLVE_MODERATION_CASE", "REJECT_MODERATION_CASE",
-                "RESOLVE_PROFILE_REPORT", "REJECT_PROFILE_REPORT");
+                "RESOLVE_PROFILE_REPORT", "REJECT_PROFILE_REPORT", "CREATE_ACADEMIC_DATA",
+                "UPDATE_ACADEMIC_DATA", "CHANGE_ACADEMIC_STATUS");
         assertThat(AdminTargetType.values()).extracting(Enum::name)
-                .containsExactly("USER", "POST", "HASHTAG", "REPORT", "MODERATION_CASE", "PROFILE_REPORT");
+                .containsExactly("USER", "POST", "HASHTAG", "REPORT", "MODERATION_CASE", "PROFILE_REPORT",
+                        "ACADEMIC_DATA");
         assertThat(AdminBlockReason.values()).extracting(Enum::name).containsExactly(
                 "SPAM", "HARASSMENT", "HARMFUL_CONTENT", "FAKE_ACCOUNT", "REPEATED_VIOLATION",
                 "PROFILE_VIOLATION", "OTHER");

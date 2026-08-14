@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 10/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 11/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -22,7 +22,9 @@
 | Quản lý/link/unlink phương thức đăng nhập | IMPLEMENTED | IMPLEMENTED | TESTED | PARTIAL | Backend đầy đủ; một số màn hình vẫn không có ảnh thiết kế riêng. |
 | Password Recovery bằng OTP | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Có decoy challenge, verify/resend/complete và thu hồi Refresh Token. |
 | Onboarding, hồ sơ và avatar | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Bắt buộc displayName, dateOfBirth và đủ 18 tuổi. |
-| Academic Profile & Interests foundation | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Schema/master/profile API, onboarding wizard, Edit/Profile Display và test Frontend đã có; manual E2E phụ thuộc Backend/MySQL local. Recommendation, AI/ML và Admin Academic UI chưa triển khai. |
+| Academic Profile & Interests foundation | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Schema/master/profile API, onboarding wizard, Edit/Profile Display đã có và đã manual test end-to-end thành công. |
+| Student Recommendation V1 (rule-based) | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | “Có thể bạn biết” dùng Academic ACTIVE, Interest ACTIVE và common-follow; automated test và manual E2E đã thành công. |
+| Admin Academic Management V1 | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | School/Faculty/Major/Interest có list/search/create/update/status, active hierarchy public, audit log và UI `/admin/academic`; không hard delete. |
 | Follow/Unfollow và danh sách follow | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách vẫn dùng `PageResponse`. |
 | Block/Unblock và danh sách đã chặn | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Block hai chiều ở lớp truy cập; đồng bộ Feed, Search, Profile, Comment và Messaging. |
 | Restrict/Unrestrict và danh sách đã hạn chế | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Restrict một chiều; suppress Like/Comment/Reply trước khi lưu Notification, không ảnh hưởng tương tác. |
@@ -32,7 +34,9 @@
 | Bình luận và reply một cấp | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Reply một cấp đã có endpoint dù README xếp ưu tiên P2. |
 | Save/Unsave và danh sách bài đã lưu | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách dùng Cursor Pagination. |
 | Repost/Unrepost, Profile Repost và Following activity | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Luồng chính đã tích hợp cùng Block/Restrict; MySQL concurrency test cần `REPOST_TEST_DB_URL`. |
-| Feed For You/Following | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Cursor Pagination và Infinite Scroll. |
+| Personalized For You V1 (rule-based) | IMPLEMENTED | IMPLEMENTED | TESTED | TESTED | Database-side ranking từ recency/engagement/Follow/Academic/Interest/history/exact hashtag ID; cursor freeze `rankingAt`. Chờ manual E2E để nâng `INTEGRATED`. |
+| Location-aware Discovery V1 – Nearby | IMPLEMENTED | IMPLEMENTED | TESTED | TESTED | Tab `Gần bạn`, Geolocation chủ động, radius 1/3/5/10/20, cursor Infinite Scroll và chống stale request đã có; chờ manual E2E MySQL/Geolocation để nâng `INTEGRATED`. |
+| Feed Following | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | ORIGINAL/REPOST activity và cursor riêng không thay đổi bởi Personalized For You V1. |
 | Bài viết trên hồ sơ | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | `GET /api/v1/users/{userId}/posts` dùng Cursor Pagination. |
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
 | Báo cáo bài viết và Moderation Case | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Report độc lập; một case OPEN mỗi Post; chống trùng theo reporter/Post/case OPEN. |
@@ -65,7 +69,12 @@
 - Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh và không triển khai Discovery Map.
 - Repost đã tích hợp với Profile, Following Feed, Notification realtime và các bộ lọc Block/Restrict.
 - Moderation Case, chỉnh sửa hồ sơ người dùng bởi Admin và analytics hoạt động người dùng đã tích hợp xuyên suốt Backend, schema và Admin UI.
-- Academic Profile & Interests đã có SQL/DBML/JPA, master API autocomplete, profile transaction, seed demo, onboarding wizard, Edit/Profile Display và test tự động; không bao gồm Recommendation, AI/ML hoặc Admin Academic UI.
+- Academic Profile & Interests đã có SQL/DBML/JPA, master API autocomplete, profile transaction, seed demo, onboarding wizard, Edit/Profile Display, test tự động và manual E2E thành công.
+- Admin Academic Management V1 đã tích hợp Backend/API, audit log và Admin UI cho School/Faculty/Major/Interest; không bao gồm hard delete, cấu hình Recommendation, School Suggestion hoặc AI/ML.
+- Student Recommendation V1 đã có API rule-based, database-side ranking/pagination, UI “Có thể bạn biết”, test tự động và manual E2E thành công; trạng thái `INTEGRATED`.
+- Personalized For You V1 đã triển khai/test bằng MySQL 8 theo deterministic rule-based score; không tạo bảng/index/cache/job mới, không thay public API và chưa manual E2E nên chưa đánh dấu `INTEGRATED`.
+- Location-aware Discovery V1 đã có Backend query và Frontend tab `Gần bạn`; canonical seed có 6 Post tại 5 địa điểm công cộng quanh Bình Trị Đông để manual test radius. Automated test, lint và build đạt, chưa manual E2E với quyền Geolocation/MySQL thực nên chưa `INTEGRATED`.
+- AI/ML Feed Recommendation: `NOT IMPLEMENTED`.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
@@ -82,8 +91,8 @@
 
 ## Kết quả quality gate ngày 10/08/2026
 
-- Backend: `778` test, `0` failure, `0` error, `62` test tích hợp được skip do thiếu biến môi trường/database test; package build pass.
-- Frontend: `114` test pass; ESLint pass; production build pass.
+- Backend: `831` test, `0` failure, `0` error, `63` test tích hợp được skip do thiếu biến môi trường/database test; `mvn test` và `mvn clean package` đều pass.
+- Frontend: `129` test pass; ESLint pass; production build pass.
 - Kiểm tra merge: không còn conflict marker và `git diff --check` không phát hiện lỗi whitespace.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo

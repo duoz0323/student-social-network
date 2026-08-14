@@ -26,4 +26,20 @@ public class School extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private AcademicStatus status;
+
+    /** Tạo master data mới ở trạng thái ACTIVE; trạng thái chỉ đổi qua use case quản trị riêng. */
+    public School(String name, String shortName) {
+        this.name = name;
+        this.shortName = shortName;
+        this.status = AcademicStatus.ACTIVE;
+    }
+
+    public void update(String name, String shortName) {
+        this.name = name;
+        this.shortName = shortName;
+    }
+
+    public void changeStatus(AcademicStatus status) {
+        this.status = status;
+    }
 }
