@@ -86,7 +86,7 @@ API trả 401
 → AUTH-01 Đăng nhập
 ```
 
-### 1.3 Feed For You, Following và Nearby
+### 1.3 Feed For You, Following, Nearby và Discovery Map
 
 ```text
 FEED-01
@@ -96,6 +96,11 @@ FEED-01
 → Tab Dành cho bạn tải bài PUBLISHED hợp lệ
 → Tab Đang theo dõi tải bài của người đang follow
 → Tab Gần bạn mới yêu cầu một snapshot Geolocation và tải Post có Location theo radius đã chọn
+→ Trong Discovery, người dùng có thể chuyển sang Bản đồ tại `/feed/map` mà không xin Geolocation
+→ Bản đồ mở ở tâm mặc định; pan/zoom chỉ đánh dấu viewport mới
+→ Người dùng bấm Tìm trong khu vực này để tải/thay marker và reset panel đang chọn
+→ Marker được cluster phía client; marker click mở Location side panel/bottom sheet và tải PostCard bằng cursor
+→ Nút Vị trí của tôi mới gọi getCurrentPosition, pan/zoom và đặt user marker; người dùng vẫn phải bấm tìm viewport
 → Hiển thị danh sách PostCard
 → Người dùng cuộn đến gần cuối danh sách
 → Frontend gửi lại nextCursor opaque để tải trang tiếp theo
@@ -110,6 +115,8 @@ Hiển thị empty state
 ```
 
 Nearby chỉ gọi `getCurrentPosition` khi mở tab `Gần bạn` hoặc bấm `Cập nhật vị trí`; không dùng `watchPosition`, không lưu tọa độ vào storage/URL/analytics. Người dùng chọn radius `1/3/5/10/20 km`, mặc định 5 km. Đổi radius hoặc vị trí reset list/cursor và hủy request cũ; deny, unavailable, timeout, API error, empty, loading-more và end đều có trạng thái riêng. `INVALID_CURSOR` dừng phân trang và không tự retry.
+
+Map không gọi marker API theo mỗi lần pan/zoom và không xin GPS khi mount. Marker request bị hủy khi tìm viewport mới; Location Posts request bị hủy khi đổi marker. Cursor luôn opaque, `postCount` lấy từ marker response, `truncated` hiển thị cảnh báo phóng to và lỗi SDK/API/GPS đều có retry hoặc thông báo riêng mà không làm mất khả năng dùng map.
 
 ### 1.4 Tạo bài viết
 

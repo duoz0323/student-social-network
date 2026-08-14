@@ -266,7 +266,7 @@ Người dùng có thể tạo bài viết gồm:
 
 Bài viết phải có ít nhất nội dung văn bản hoặc một media.
 
-Địa điểm gắn với bài viết thuộc P1 và độc lập với Discovery Map:
+Địa điểm gắn với bài viết thuộc P1 và là nền tảng cho Discovery Map V1 Backend:
 
 - Quan hệ là Location 1 - N Post; một Post có thể không có hoặc có tối đa một Location.
 - Frontend gửi placeId, displayName, formattedAddress, latitude và longitude.
@@ -275,7 +275,7 @@ Bài viết phải có ít nhất nội dung văn bản hoặc một media.
 - Khi sửa bài trong giới hạn 15 phút, tác giả có thể KEEP, REPLACE hoặc REMOVE Location.
 - Gỡ Location chỉ đặt location_id về NULL; xóa Post không xóa Location và không tự động xóa Location không còn tham chiếu.
 - Location hoặc NULL được hiển thị nhất quán trong các response Post, gồm Create, Detail, Feed, Profile, Saved, Liked, Search và Admin Post Detail.
-- Report snapshot chưa lưu Location. Discovery Map và các chức năng khám phá nâng cao theo địa điểm vẫn ngoài phạm vi.
+- Report snapshot chưa lưu Location. Discovery Map V1 cung cấp marker viewport, clustering Frontend và Post tại Location; tìm kiếm địa điểm, trang Location cùng các chức năng khám phá nâng cao vẫn ngoài phạm vi.
 
 4.2. Media bài viết
 
@@ -712,7 +712,7 @@ Các chức năng sau không triển khai trong phiên bản MVP:
 6. Mention.
 7. Trích dẫn bài viết và Quote Post.
 8. Chủ đề nội dung do Admin quản lý.
-9. Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
+9. Tìm kiếm địa điểm trên Map, trang Location và các chức năng khám phá nâng cao ngoài Discovery Map V1 marker/clustering đã triển khai.
 10. Feed cá nhân hóa do người dùng tạo.
 11. Feed công khai và lưu Feed.
 12. Không quan tâm và từ khóa bị ẩn.

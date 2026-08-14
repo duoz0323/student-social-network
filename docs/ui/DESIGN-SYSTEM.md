@@ -34,6 +34,8 @@ Tài liệu này tổng hợp quy chuẩn thiết kế quan sát được từ �
 - Feed dùng tab ngang responsive ở đầu vùng nội dung cho `Dành cho bạn`, `Đang theo dõi` và `Gần bạn`.
 - Composer tạo bài nhanh nằm phía trên danh sách bài trong Feed.
 - Tab `Gần bạn` đặt bộ chọn radius và nút cập nhật vị trí phía trên danh sách; khoảng cách hiển thị cùng dòng Location bằng đơn vị m/km, không hiển thị tọa độ chi tiết.
+- Discovery có switch `Gần bạn`/`Bản đồ`. Map dùng chiều cao `clamp()` theo viewport khả dụng; desktop đặt map cạnh side panel, mobile dùng bottom sheet và không dùng `100vh` tuyệt đối.
+- Hai control chính trên Map là `Tìm trong khu vực này` và `Vị trí của tôi`; marker Location hiển thị số bài, user marker có màu/nhãn riêng, cluster click chỉ zoom/fit. Empty/error/truncated/GPS message phải là text có semantic phù hợp, không chỉ dựa vào màu.
 - Profile dùng header thông tin cá nhân, chỉ số follower/following, nút hành động và tab nội dung.
 - Search dùng thanh tìm kiếm lớn ở đầu, bên dưới là nhóm gợi ý/tìm kiếm phổ biến.
 - Admin dùng tiêu đề trang lớn, mô tả ngắn, bộ lọc/tìm kiếm và bảng dữ liệu.

@@ -223,6 +223,19 @@ MySQL 8 dùng CTE/projection để lọc access, tính score, áp dụng keyset 
   `activityAt`, `itemRank`, `actorId`, `postId`; dữ liệu PostCard được batch-load để tránh N+1.
 - Search, bình luận, Follow và Admin tiếp tục dùng `PageResponse`.
 
+### Discovery Map V1
+
+- Map nằm trong module `discovery` cùng Nearby, không tạo bounded context hoặc Post loader mới.
+- Marker query nhận bounding box, lọc visibility/Block hai chiều và aggregation theo Location tại MySQL; Restrict không lọc, Repost không tham gia.
+- Marker endpoint lấy tối đa 200 Location bằng fetch 201, sắp xếp `latestPostAt DESC`, `locationId DESC` và không dùng pagination/count tổng.
+- Location Posts query chỉ lấy khóa `postId`, `publishedAt` theo keyset; Service dùng `FeedPostBatchLoader` rồi reconstruct thứ tự SQL.
+- Cursor Base64URL versioned chứa `locationId`, `publishedAt`, `postId`; location mismatch trả `INVALID_CURSOR`.
+- `DiscoveryViewerGuard` dùng chung điều kiện USER/ACTIVE/onboarding cho Nearby và Map.
+- Frontend dùng service qua Axios/interceptor hiện hành, Google Maps loader dùng chung với Places và `@googlemaps/markerclusterer`; state marker/panel/GPS nằm cục bộ trong feature Feed.
+- Marker chỉ tải theo thao tác `Tìm trong khu vực này`; marker request và Location Posts request có AbortController/request ID độc lập, đổi marker reset cursor và Post được khử trùng theo ID.
+- Geolocation chỉ chạy từ nút `Vị trí của tôi`, giữ tọa độ trong memory runtime và không tự gọi marker API sau khi pan tới vị trí mới.
+- Không migration, không cache marker bền vững và không lưu tọa độ request. Backend/Frontend đã `IMPLEMENTED`/automated `TESTED`; feature chưa `INTEGRATED` vì chưa manual E2E với môi trường thật.
+
 ## 8. Bảo mật
 
 - Mật khẩu băm.

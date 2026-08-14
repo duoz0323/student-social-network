@@ -406,7 +406,7 @@ Trạng thái bài viết:
 - Soft delete hoặc hard delete Post không xóa Location. Không cascade remove, không dùng `orphanRemoval` và không tự động xóa Location không còn được tham chiếu.
 - Location hoặc `null` phải xuất hiện nhất quán trong response tạo bài, chi tiết bài, Feed For You, Feed Following, bài trên hồ sơ, bài đã lưu, bài đã thích, kết quả tìm kiếm Post và chi tiết Post dành cho Admin.
 - Admin Post Detail hiển thị Location hiện tại. Report snapshot chưa lưu Location trong đợt này.
-- Nearby Discovery V1 dùng dữ liệu Location hiện có để tìm Post theo bán kính; Discovery Map, Feed tùy chỉnh theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places vẫn ngoài phạm vi.
+- Nearby Discovery V1 và Discovery Map V1 dùng dữ liệu Location hiện có để khám phá Post; Feed tùy chỉnh theo Location, trang Location, địa điểm phổ biến, quản trị Location và đồng bộ định kỳ với Google Places vẫn ngoài phạm vi.
 
 ### ❤️ 5. Tương tác bài viết
 
@@ -484,6 +484,24 @@ Trạng thái Backend và Frontend `IMPLEMENTED`, automated test `TESTED`; chưa
 - Nearby độc lập với Feed For You và không thay đổi score, candidate, `rankingAt` hoặc cursor của Personalized For You V1.
 - Frontend tích hợp tab `Gần bạn` trong Feed, chỉ gọi Geolocation khi mở tab hoặc bấm cập nhật vị trí; tọa độ chỉ giữ trong memory runtime. UI hỗ trợ năm radius đã khóa, state tường minh, AbortController/chống response cũ và Infinite Scroll giữ nguyên cursor opaque.
 - Canonical demo seed dành sáu Post `PUBLISHED` cho năm địa điểm công cộng quanh phường Bình Trị Đông. Có thể dùng tọa độ Chợ Bình Trị Đông trong seed (`10.7586500`, `106.6048500`) để kiểm thử radius 1/3/5 km; các `google_place_id` bắt đầu bằng `demo-binhtri-` và tọa độ chỉ là dữ liệu demo gần đúng, không giả làm định danh Google chính thức.
+
+#### Discovery Map V1
+
+Trạng thái Backend và Frontend `IMPLEMENTED`; automated unit/controller/security/query-contract test, MySQL `EXPLAIN` read-only, Frontend test/lint/build `TESTED`. Manual E2E ngày 2026-08-14 với JWT, MySQL và Google Maps thật đã đạt cho render/explicit viewport search, marker/count, cluster click, Location Posts load-more 8 trang, marker và viewport race, Geolocation denied, Block, Restrict, HIDDEN, Repost, desktop/mobile cùng hồi quy Nearby/For You/Following/Places. Geolocation success chưa thể thực thi vì browser tích hợp từ chối location và Chrome/Edge DevTools không khả dụng; DELETED giữ automated-only do không có fixture phá hủy có thể phục hồi an toàn. TIMEOUT/POSITION_UNAVAILABLE và `truncated = true` cũng chỉ có automated coverage theo phạm vi chấp nhận, nên toàn feature vẫn `NOT INTEGRATED`. Các MySQL integration test có mutation chỉ chạy khi có database test riêng qua `AUTH_TEST_DB_*`.
+
+- `GET /api/v1/discovery/map/locations` nhận viewport `north`, `south`, `east`, `west`; V1 yêu cầu `south < north`, `west < east` và chưa hỗ trợ viewport vượt anti-meridian.
+- Marker đại diện cho Location, được MySQL aggregation từ Post gốc `PUBLISHED` của author role `USER`, trạng thái `ACTIVE`, đã hoàn tất profile và không có Block ở bất kỳ chiều nào với viewer. Restrict không lọc; Repost không sinh candidate riêng.
+- `postCount` và `latestPostAt` chỉ tính trên Post viewer thực sự có quyền xem. Marker sắp xếp theo `latestPostAt DESC`, `locationId DESC`.
+- Marker endpoint không phân trang, lấy tối đa 200 Location bằng chiến lược fetch 201 rồi trả `truncated`; không dùng truy vấn tổng `COUNT(*)`.
+- `GET /api/v1/discovery/map/locations/{locationId}/posts` trả PostCard chuẩn bằng keyset `publishedAt DESC`, `postId DESC`, `limit` mặc định 10 và tối đa 20.
+- Cursor Location Posts là Base64URL opaque, versioned, chứa `locationId`, `publishedAt`, `postId`; cursor dùng sai Location hoặc malformed trả `INVALID_CURSOR`.
+- Location Posts tái sử dụng `FeedPostBatchLoader`, batch-load theo ID và khôi phục thứ tự query; không dùng OFFSET, COUNT tổng hoặc query theo từng Post.
+- Map chỉ nhận viewport; không lưu vị trí hiện tại của viewer/author, không tạo lịch sử vị trí và không phát tọa độ qua Notification, WebSocket, Messaging hoặc analytics payload.
+- Frontend giữ route Nearby `/feed/nearby` và bổ sung `/feed/map` dưới hai chế độ `Gần bạn`/`Bản đồ`; Nearby không đổi contract hoặc thời điểm xin Geolocation.
+- Google Places picker và Map dùng chung một Maps JavaScript SDK loader từ `VITE_GOOGLE_MAPS_API_KEY`; marker được gom cụm phía client bằng `@googlemaps/markerclusterer` và cluster click chỉ zoom/fit viewport.
+- Map mở ở tâm canonical seed nhưng không tự gọi marker API. Pan/zoom chỉ đánh dấu viewport mới; API marker chỉ chạy khi người dùng bấm `Tìm trong khu vực này`, có AbortController/request ID chống response cũ và cảnh báo khi `truncated = true`.
+- Marker click mở panel desktop hoặc bottom sheet mobile, hiển thị `postCount` authoritative và PostCard chuẩn. Đổi marker reset cursor/danh sách, hủy request cũ; Location Posts gửi lại nguyên cursor opaque và khử trùng Post theo ID.
+- Nút `Vị trí của tôi` mới gọi một lần `getCurrentPosition`; tọa độ chỉ giữ trong React state runtime, tạo marker riêng và không tự tìm marker cho đến khi người dùng xác nhận tìm trong viewport mới.
 
 Các danh sách bài viết dùng Infinite Scroll gồm Feed For You, Feed Following, bài trên hồ sơ,
 bài đã lưu, bài đã thích và kết quả Search bài viết/hashtag. Các API này dùng Cursor Pagination:
@@ -698,7 +716,7 @@ hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 - Báo cáo bài viết và trang cá nhân.
 - Moderation Case và xử lý báo cáo theo nhóm bài viết.
 - Gắn, thay đổi và gỡ một Location tùy chọn trên Post.
-- Location-aware Discovery V1 – Nearby theo bán kính, không lưu vị trí người dùng và không gồm Discovery Map.
+- Location-aware Discovery V1 – Nearby theo bán kính và Discovery Map V1 theo viewport/Location Posts; cả hai không lưu vị trí người dùng.
 - Admin khóa và mở khóa tài khoản.
 - Admin ẩn và khôi phục bài viết.
 - Hiển thị hoạt động quản trị cơ bản.
@@ -1136,6 +1154,15 @@ GET /api/v1/discovery/nearby?latitude=10.8231&longitude=106.6297&radiusKm=5&limi
 
 Response `data` là `CursorPageResponse<NearbyPostItemResponse>`; mỗi item có `post` theo PostCard chuẩn hiện hành và `distanceMeters` kiểu số nguyên. Client phải gửi lại nguyên cursor opaque và reset cursor khi đổi tọa độ hoặc radius.
 
+API Discovery Map V1 Backend yêu cầu cùng điều kiện JWT/USER/ACTIVE/onboarding:
+
+```http
+GET /api/v1/discovery/map/locations?north=10.78&south=10.73&east=106.70&west=106.64
+GET /api/v1/discovery/map/locations/{locationId}/posts?limit=10&cursor=<opaque-optional>
+```
+
+Marker response `data` có `{ "locations": [], "truncated": false }`. Location Posts dùng `CursorPageResponse<FeedPostResponse>` và cursor opaque bind với `locationId`.
+
 API onboarding và kiểm tra username:
 
 ```http
@@ -1544,7 +1571,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Mention.
 - Trích dẫn bài viết.
 - Chủ đề nội dung do Admin quản lý.
-- Discovery Map và các chức năng khám phá nâng cao theo địa điểm.
+- Các chức năng khám phá nâng cao theo địa điểm ngoài marker Map V1, gồm tìm kiếm địa điểm trên Map, trang Location và địa điểm phổ biến.
 - Feed cá nhân hóa do người dùng tạo.
 - Feed công khai và lưu Feed.
 - Elasticsearch.
@@ -1572,7 +1599,7 @@ test: thêm kiểm thử luồng đăng ký tạm
 - Feed cá nhân hóa.
 - Elasticsearch.
 - Khám phá nội dung theo địa điểm.
-- Discovery Map.
+- Manual E2E Discovery Map với tài khoản, Google Maps key, MySQL và quyền Geolocation thật.
 - Backend xác minh và đồng bộ định kỳ dữ liệu với Google Places.
 - Message Request.
 - Tài liệu, video, online status, recall và report message trong Nhắn tin.

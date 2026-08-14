@@ -1,10 +1,10 @@
 // Component vỏ chứa nội dung chuẩn (có nắp bo tròn dính ở trên) giống phong cách Threads.
 // Sử dụng để bọc nội dung của các trang như Feed, Profile, Search.
-export default function ContentShell({ header, children }) {
+export default function ContentShell({ header, children, wide = false }) {
   return (
     <>
       {/* Phần Sticky Header: Gồm Tabs và Mặt nạ bo tròn */}
-      <div className="sticky top-0 z-20 w-full max-w-[var(--feed-width)]">
+      <div className={`sticky top-0 z-20 w-full ${wide ? 'max-w-[1120px]' : 'max-w-[var(--feed-width)]'}`}>
         
         {/* Vùng xám bao phủ Tabs. Khi bài viết lướt qua mặt nạ, nó sẽ chui vào dưới vùng xám này và bị che đi hoàn toàn. */}
         <div className="bg-[var(--app-bg)] pt-2 lg:pt-6">
@@ -29,7 +29,7 @@ export default function ContentShell({ header, children }) {
       </div>
 
       {/* Vỏ chứa bài viết. Bị kéo lên 24px để lót dưới mặt nạ. Nền trắng nguyên khối. */}
-      <section className="content-shell bg-[var(--app-surface)] lg:-mt-6 relative z-0">
+      <section className={`content-shell ${wide ? 'content-shell--wide' : ''} bg-[var(--app-surface)] lg:-mt-6 relative z-0`}>
         {children}
       </section>
     </>

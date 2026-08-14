@@ -74,6 +74,8 @@ export const DISCOVERY_ENDPOINTS = Object.freeze({
   feedForYou: '/api/v1/feeds/for-you',
   feedFollowing: '/api/v1/feeds/following',
   nearby: '/api/v1/discovery/nearby',
+  mapLocations: '/api/v1/discovery/map/locations',
+  mapLocationPosts: (locationId) => `/api/v1/discovery/map/locations/${encodeURIComponent(locationId)}/posts`,
   studentRecommendations: '/api/v1/recommendations/students',
   searchUsers: '/api/v1/search/users',
   searchPosts: '/api/v1/search/posts',

@@ -1232,6 +1232,10 @@ body:has(.auth-theme) {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+.content-shell--wide {
+  width: min(100%, 1120px);
+}
 .animate-modal-in {
   animation: modal-in var(--motion-slow) var(--motion-ease-out) forwards;
 }

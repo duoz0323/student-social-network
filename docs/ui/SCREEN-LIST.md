@@ -64,7 +64,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin và khám phá bài gần vị trí hiện tại. | Sidebar, tab Dành cho bạn/Đang theo dõi/Gần bạn, card “Có thể bạn biết” cố định bên phải trên desktop rộng, composer nhanh, danh sách PostCard, like, comment, Repost, lưu, menu bài viết. | Suggestion mở `/profile/:userId`; tab Following hiển thị ORIGINAL/REPOST; tab Nearby dùng `/feed/nearby`, Geolocation chủ động, radius và cursor; vào chi tiết POST-01. | Nearby chỉ giữ tọa độ trong runtime, hiển thị distance cạnh Location và có state permission/loading/empty/error/end. Student Recommendation V1 vẫn độc lập và không hiện raw score. Trục trái của Feed đồng nhất với các trang người dùng. |
+| FEED-01 | Feed người dùng | `docs/ui/screens/feed/feed.jpg` | User | Xem bảng tin và khám phá bài theo khoảng cách hoặc viewport bản đồ. | Sidebar, tab Dành cho bạn/Đang theo dõi/Gần bạn; Discovery có chế độ Gần bạn/Bản đồ; composer, PostCard, marker cluster và panel Location responsive. | Nearby giữ `/feed/nearby`, radius/cursor; Map dùng `/feed/map`, explicit viewport search và Location Posts cursor; marker/PostCard mở POST-01. | Nearby và Map chỉ giữ tọa độ trong runtime. Map có loading/empty/error/truncated, desktop side panel, mobile bottom sheet và không xin GPS khi mount. Student Recommendation rail không hiển thị trên Map để bảo toàn viewport. |
 
 ## Post
 
@@ -101,7 +101,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| SEARCH-01 | Tìm kiếm và khám phá | `docs/ui/screens/search/model-search-and-discovery.jpg` | User | Tìm kiếm người dùng, bài viết hoặc hashtag. | Thanh tìm kiếm, tìm kiếm phổ biến, gợi ý theo dõi. | Từ sidebar; kết quả user đến `/profile/:userId`; kết quả bài đến POST-01. | Phạm vi triển khai: MVP_CURRENT. Tìm user theo displayName, không theo username. Tên ảnh có "discovery" nhưng Discovery Map thuộc FUTURE_DEVELOPMENT. |
+| SEARCH-01 | Tìm kiếm và khám phá | `docs/ui/screens/search/model-search-and-discovery.jpg` | User | Tìm kiếm người dùng, bài viết hoặc hashtag. | Thanh tìm kiếm, tìm kiếm phổ biến, gợi ý theo dõi. | Từ sidebar; kết quả user đến `/profile/:userId`; kết quả bài đến POST-01. | Phạm vi triển khai: MVP_CURRENT. Tìm user theo displayName, không theo username. Discovery Map là chế độ riêng trong FEED-01; Search không tìm địa điểm trên Map ở V1. |
 | SAVED-01 | Bài viết đã lưu | `docs/ui/screens/post/post-saved.jpg` | User | Xem các bài đã lưu. | Danh sách bài đã lưu, PostCard. | Trùng ảnh với POST-07. | Phạm vi triển khai: MVP_CURRENT. Biến thể thuộc nhóm Post nhưng liên quan trực tiếp đến Saved Posts. |
 | LIKED-01 | Bài viết đã thích | Chưa có ảnh riêng | User | Xem các bài đã Like của chính mình. | Danh sách PostCard đã thích, Unlike loại bài khỏi danh sách ngay. | Từ mục “Đã thích” trong menu “Xem thêm”; route `/liked`; mở POST-01. | Chỉ chủ tài khoản xem; dữ liệu lấy từ API phân trang. |
 

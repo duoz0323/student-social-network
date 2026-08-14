@@ -9,17 +9,14 @@ import com.stu.edu.vn.backend.discovery.dto.response.NearbyPostItemResponse;
 import com.stu.edu.vn.backend.discovery.model.NearbyBoundingBox;
 import com.stu.edu.vn.backend.discovery.repository.NearbyDiscoveryRepository;
 import com.stu.edu.vn.backend.discovery.repository.NearbyPostRank;
+import com.stu.edu.vn.backend.discovery.security.DiscoveryViewerGuard;
 import com.stu.edu.vn.backend.discovery.service.NearbyDiscoveryService;
 import com.stu.edu.vn.backend.discovery.service.NearbyQuerySupport;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
-import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
-import com.stu.edu.vn.backend.user.enums.UserRole;
-import com.stu.edu.vn.backend.user.enums.UserStatus;
-import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -32,8 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class NearbyDiscoveryServiceImpl implements NearbyDiscoveryService {
-    private final CurrentUserProvider currentUserProvider;
-    private final UserProfileRepository userProfileRepository;
+    private final DiscoveryViewerGuard viewerGuard;
     private final NearbyQuerySupport querySupport;
     private final CursorCodec cursorCodec;
     private final NearbyDiscoveryRepository nearbyDiscoveryRepository;
@@ -50,8 +46,7 @@ public class NearbyDiscoveryServiceImpl implements NearbyDiscoveryService {
             String encodedCursor
     ) {
         querySupport.validate(latitude, longitude, radiusKm, limit);
-        CustomUserPrincipal principal = currentUserProvider.getCurrentUser();
-        ensureEligibleViewer(principal);
+        CustomUserPrincipal principal = viewerGuard.requireEligibleViewer();
 
         String fingerprint = querySupport.fingerprint(latitude, longitude, radiusKm);
         NearbyCursor cursor = cursorCodec.decode(encodedCursor, NearbyCursor.class);
@@ -88,18 +83,6 @@ public class NearbyDiscoveryServiceImpl implements NearbyDiscoveryService {
                         fingerprint))
                 : null;
         return new CursorPageResponse<>(content, nextCursor, hasNext);
-    }
-
-    private void ensureEligibleViewer(CustomUserPrincipal principal) {
-        if (principal.getRole() != UserRole.USER) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-        if (principal.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.USER_BLOCKED);
-        }
-        if (!userProfileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(principal.getUserId())) {
-            throw new BusinessException(ErrorCode.PROFILE_NOT_COMPLETED);
-        }
     }
 
     private Post requirePost(Map<Long, Post> postsById, Long postId) {

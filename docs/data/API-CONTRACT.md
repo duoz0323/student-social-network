@@ -991,7 +991,7 @@ Route UI tương ứng:
 
 ## 4. Post
 
-> Location trên Post thuộc P1 và đã được tích hợp từ schema/JPA tới request/response API, resolver, Service và Frontend. Nearby Discovery V1 đã được triển khai ở Backend và Frontend; Discovery Map và Feed tùy chỉnh theo Location vẫn là FUTURE.
+> Location trên Post thuộc P1 và đã được tích hợp từ schema/JPA tới request/response API, resolver, Service và Frontend. Nearby Discovery V1 và Discovery Map V1 đã triển khai ở Backend/Frontend; Feed tùy chỉnh theo Location, trang Location và tìm kiếm địa điểm trên Map vẫn là FUTURE.
 
 ### Location object
 
@@ -1111,7 +1111,7 @@ Trường `location` phải được trả nhất quán trong:
 - Search Posts.
 - Admin Post Detail.
 
-Report snapshot chưa chứa Location trong P1 này. Không có API quản trị Location, trang Location, Feed tùy chỉnh theo Location hoặc Discovery Map; Nearby Discovery V1 là API read-only độc lập.
+Report snapshot chưa chứa Location trong P1 này. Không có API quản trị Location, trang Location hoặc Feed tùy chỉnh theo Location; Nearby Discovery V1 và Discovery Map V1 là các API read-only độc lập.
 
 ### GET `/api/v1/discovery/nearby`
 
@@ -1141,6 +1141,45 @@ Response `data`:
 ```
 
 Candidate là Post gốc `PUBLISHED` có Location của tác giả USER `ACTIVE` đã hoàn tất profile, không có Block hai chiều; Restrict không loại candidate và Repost không tạo item riêng. Order là `distanceMeters ASC`, `publishedAt DESC`, `postId DESC`. Cursor malformed, sai version hoặc khác tọa độ/radius trả `INVALID_CURSOR`. Backend không lưu hoặc trả tọa độ viewer.
+
+### GET `/api/v1/discovery/map/locations`
+
+API yêu cầu JWT của USER `ACTIVE` đã hoàn tất profile. Viewer luôn lấy từ Security Context.
+
+Query bắt buộc:
+
+- `north`, `south`: latitude từ `-90` đến `90`, yêu cầu `south < north`.
+- `east`, `west`: longitude từ `-180` đến `180`, yêu cầu `west < east`; V1 chưa hỗ trợ anti-meridian.
+
+Response `data`:
+
+```json
+{
+  "locations": [
+    {
+      "locationId": 15,
+      "displayName": "Thư viện STU",
+      "formattedAddress": "180 Cao Lỗ",
+      "latitude": 10.7381234,
+      "longitude": 106.6771234,
+      "postCount": 7,
+      "latestPostAt": "2026-08-14T01:20:00"
+    }
+  ],
+  "truncated": false
+}
+```
+
+Một Location chỉ sinh một marker. MySQL aggregation `postCount`/`latestPostAt` sau khi lọc Post `PUBLISHED`, author USER/ACTIVE/completed profile và Block hai chiều. Restrict không lọc, Repost không sinh candidate. Order `latestPostAt DESC`, `locationId DESC`; tối đa 200 marker bằng fetch 201, không pagination và không COUNT tổng.
+
+### GET `/api/v1/discovery/map/locations/{locationId}/posts`
+
+Query:
+
+- `limit`: mặc định `10`, từ `1` đến `20`.
+- `cursor`: Base64URL opaque, versioned và bind với `locationId`.
+
+Response `data` là `CursorPageResponse<FeedPostResponse>`. Candidate dùng cùng visibility với marker, sắp xếp `publishedAt DESC`, `postId DESC`, lấy `limit + 1`, không OFFSET/COUNT. Cursor malformed, sai version hoặc thuộc Location khác trả `INVALID_CURSOR`. Service tái sử dụng `FeedPostBatchLoader` và khôi phục đúng thứ tự ID từ keyset query.
 
 ## 5. Interaction
 

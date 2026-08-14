@@ -17,16 +17,15 @@ import com.stu.edu.vn.backend.discovery.cursor.NearbyCursor;
 import com.stu.edu.vn.backend.discovery.model.NearbyBoundingBox;
 import com.stu.edu.vn.backend.discovery.repository.NearbyDiscoveryRepository;
 import com.stu.edu.vn.backend.discovery.repository.NearbyPostRank;
+import com.stu.edu.vn.backend.discovery.security.DiscoveryViewerGuard;
 import com.stu.edu.vn.backend.discovery.service.NearbyQuerySupport;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.feed.service.FeedPostBatchLoader;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
-import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
-import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,8 +40,7 @@ class NearbyDiscoveryServiceImplTest {
     private static final double LATITUDE = 10.8231d;
     private static final double LONGITUDE = 106.6297d;
 
-    @Mock private CurrentUserProvider currentUserProvider;
-    @Mock private UserProfileRepository userProfileRepository;
+    @Mock private DiscoveryViewerGuard viewerGuard;
     @Mock private CursorCodec cursorCodec;
     @Mock private NearbyDiscoveryRepository nearbyDiscoveryRepository;
     @Mock private PostRepository postRepository;
@@ -55,17 +53,15 @@ class NearbyDiscoveryServiceImplTest {
     void setUp() {
         querySupport = new NearbyQuerySupport();
         service = new NearbyDiscoveryServiceImpl(
-                currentUserProvider,
-                userProfileRepository,
+                viewerGuard,
                 querySupport,
                 cursorCodec,
                 nearbyDiscoveryRepository,
                 postRepository,
                 feedPostBatchLoader
         );
-        when(currentUserProvider.getCurrentUser()).thenReturn(
+        when(viewerGuard.requireEligibleViewer()).thenReturn(
                 new CustomUserPrincipal(7L, UserRole.USER, UserStatus.ACTIVE));
-        when(userProfileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(7L)).thenReturn(true);
     }
 
     @Test
@@ -154,21 +150,12 @@ class NearbyDiscoveryServiceImplTest {
     }
 
     @Test
-    void rejectsAdminBlockedAndIncompleteViewer() {
-        when(currentUserProvider.getCurrentUser()).thenReturn(
-                new CustomUserPrincipal(7L, UserRole.ADMIN, UserStatus.ACTIVE));
+    void propagatesViewerGuardErrorBeforeQuery() {
+        when(viewerGuard.requireEligibleViewer()).thenThrow(new BusinessException(ErrorCode.FORBIDDEN));
+
         assertBusinessError(() -> service.getNearby(LATITUDE, LONGITUDE, 5, 10, null), ErrorCode.FORBIDDEN);
-
-        when(currentUserProvider.getCurrentUser()).thenReturn(
-                new CustomUserPrincipal(7L, UserRole.USER, UserStatus.BLOCKED));
-        assertBusinessError(() -> service.getNearby(LATITUDE, LONGITUDE, 5, 10, null), ErrorCode.USER_BLOCKED);
-
-        when(currentUserProvider.getCurrentUser()).thenReturn(
-                new CustomUserPrincipal(7L, UserRole.USER, UserStatus.ACTIVE));
-        when(userProfileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(7L)).thenReturn(false);
-        assertBusinessError(
-                () -> service.getNearby(LATITUDE, LONGITUDE, 5, 10, null),
-                ErrorCode.PROFILE_NOT_COMPLETED);
+        verify(nearbyDiscoveryRepository, never()).findNearby(any(), any(Double.class), any(Double.class),
+                any(Integer.class), any(), any(), any(Integer.class));
     }
 
     private Post post(long id) {

@@ -10,8 +10,10 @@ import PostComposer from '../../post/components/PostComposer.jsx';
 import { useInfinitePosts } from '../../post/hooks/useInfinitePosts.js';
 import { toFeedItemView, toPostView } from '../../post/utils/postViewModel.js';
 import NearbyDiscovery from '../components/NearbyDiscovery.jsx';
+import DiscoveryMap from '../components/DiscoveryMap.jsx';
+import DiscoveryModeTabs from '../components/DiscoveryModeTabs.jsx';
 
-const FEED_TYPES = new Set(['for-you', 'following', 'nearby']);
+const FEED_TYPES = new Set(['for-you', 'following', 'nearby', 'map']);
 
 export default function FeedPage() {
   const { type = 'for-you' } = useParams();
@@ -19,12 +21,14 @@ export default function FeedPage() {
   const { currentUser } = useApp();
   const [composerOpen, setComposerOpen] = useState(false);
   const isNearby = type === 'nearby';
+  const isMap = type === 'map';
+  const isDiscovery = isNearby || isMap;
   const feedState = useInfinitePosts({
     cacheKey: `feed:${type}`,
     request: type === 'following' ? feedApi.getFollowing : feedApi.getForYou,
     normalizePost: type === 'following' ? toFeedItemView : toPostView,
-    enabled: !isNearby,
-    active: !isNearby,
+    enabled: !isDiscovery,
+    active: !isDiscovery,
   });
 
   const { refresh } = feedState;
@@ -37,19 +41,19 @@ export default function FeedPage() {
   useEffect(() => {
     const handleRefresh = (event) => {
       const targetType = event.detail?.type;
-      if (!isNearby && (!targetType || targetType === type)) {
+      if (!isDiscovery && (!targetType || targetType === type)) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         void refresh();
       }
     };
     window.addEventListener('unishare:refresh-feed', handleRefresh);
     return () => window.removeEventListener('unishare:refresh-feed', handleRefresh);
-  }, [isNearby, refresh, type]);
+  }, [isDiscovery, refresh, type]);
 
   function handleTabClick(targetType) {
     if (type === targetType) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      if (!isNearby) void refresh();
+      if (!isDiscovery) void refresh();
     } else {
       navigate(`/feed/${targetType}`);
     }
@@ -77,24 +81,30 @@ export default function FeedPage() {
       </button>
       <button
         type="button"
-        className={`relative px-3 text-[15px] font-bold transition sm:px-4 ${isNearby ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
+        className={`relative px-3 text-[15px] font-bold transition sm:px-4 ${isDiscovery ? 'text-[var(--app-text)]' : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'}`}
         onClick={() => handleTabClick('nearby')}
-        aria-current={isNearby ? 'page' : undefined}
+        aria-current={isDiscovery ? 'page' : undefined}
       >
         Gần bạn
-        {isNearby && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
+        {isDiscovery && <span className="feed-tab-indicator absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--app-text)]" />}
       </button>
     </div>
   );
 
   function closeComposer() {
     setComposerOpen(false);
-    if (!isNearby) feedState.reload();
+    if (!isDiscovery) feedState.reload();
   }
 
   return (
     <>
-      <ContentShell header={feedTabs}>
+      <ContentShell header={feedTabs} wide={isMap}>
+        {isDiscovery ? (
+          <DiscoveryModeTabs
+            mode={isMap ? 'map' : 'nearby'}
+            onChange={(mode) => navigate(`/feed/${mode}`)}
+          />
+        ) : null}
         <div className="composer-trigger flex items-center gap-4 border-b border-[var(--app-border-strong)] px-5 pb-4 pt-4">
           <Avatar src={currentUser.avatarUrl} name={currentUser.displayName} />
           <button className="flex-1 text-left text-[15px] text-[var(--app-muted)]" onClick={() => setComposerOpen(true)}>
@@ -106,7 +116,7 @@ export default function FeedPage() {
         </div>
 
         {/* Spinner quay nhỏ ở giữa kiểu Threads/Instagram khi reload feed */}
-        {!isNearby && feedState.refreshing && (
+        {!isDiscovery && feedState.refreshing && (
           <div className="flex items-center justify-center border-b border-[var(--app-border-strong)] py-4 text-[var(--app-muted)]">
             <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Đang tải bài viết mới...">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
@@ -117,7 +127,8 @@ export default function FeedPage() {
 
         {/* Giữ hook Nearby được mount để tọa độ chỉ tồn tại trong memory và không phải xin lại khi đổi tab. */}
         <NearbyDiscovery active={isNearby} />
-        {!isNearby ? (
+        <DiscoveryMap active={isMap} />
+        {!isDiscovery ? (
           <InfinitePostList
             {...feedState}
             errorTitle="Không thể tải Feed"

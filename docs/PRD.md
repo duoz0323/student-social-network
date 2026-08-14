@@ -187,7 +187,7 @@ Quy tắc:
 - Trạng thái: PUBLISHED, HIDDEN, DELETED.
 - Xóa bài là xóa mềm.
 
-Location gắn với Post thuộc P1 và có phạm vi độc lập với Discovery Map:
+Location gắn với Post thuộc P1 và là nền tảng dữ liệu được Discovery Map V1 Backend tái sử dụng:
 
 - Quan hệ là `Location 1 — N Post`; một Post có `0..1` Location và một Location có thể được nhiều Post sử dụng.
 - Frontend gửi object tùy chọn gồm `placeId`, `displayName`, `formattedAddress`, `latitude` và `longitude`.
@@ -366,6 +366,7 @@ nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với
 - Admin khóa tài khoản.
 - Admin ẩn/khôi phục bài.
 - User Block hai chiều về hiển thị/tương tác; Block xóa Follow hai chiều và Unblock không khôi phục Follow.
+- Discovery Map V1: marker Location theo viewport, clustering phía Frontend và danh sách Post tại Location bằng cursor; Backend/Frontend đã triển khai, chờ manual E2E để tích hợp đầy đủ.
 
 ### P2
 
@@ -407,7 +408,7 @@ Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
 - Mention.
 - Quote Post.
 - Chủ đề.
-- Discovery Map.
+- Tìm kiếm địa điểm trên Map, trang Location riêng và địa điểm phổ biến; Discovery Map V1 marker/clustering đã triển khai.
 - Feed tùy chỉnh theo Location, trang Location riêng và địa điểm phổ biến; Nearby Discovery theo bán kính đã được triển khai ở Backend/Frontend V1.
 - Quản trị Location, xác minh Backend và đồng bộ định kỳ với Google Places.
 - Feed tùy chỉnh.

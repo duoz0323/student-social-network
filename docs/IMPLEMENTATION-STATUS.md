@@ -36,6 +36,7 @@
 | Repost/Unrepost, Profile Repost và Following activity | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Luồng chính đã tích hợp cùng Block/Restrict; MySQL concurrency test cần `REPOST_TEST_DB_URL`. |
 | Personalized For You V1 (rule-based) | IMPLEMENTED | IMPLEMENTED | TESTED | TESTED | Database-side ranking từ recency/engagement/Follow/Academic/Interest/history/exact hashtag ID; cursor freeze `rankingAt`. Chờ manual E2E để nâng `INTEGRATED`. |
 | Location-aware Discovery V1 – Nearby | IMPLEMENTED | IMPLEMENTED | TESTED | TESTED | Tab `Gần bạn`, Geolocation chủ động, radius 1/3/5/10/20, cursor Infinite Scroll và chống stale request đã có; chờ manual E2E MySQL/Geolocation để nâng `INTEGRATED`. |
+| Discovery Map V1 | IMPLEMENTED | IMPLEMENTED | TESTED | NOT INTEGRATED | Manual E2E thật đã pass load-more 8 trang, cluster, marker/viewport race, Block, Restrict, HIDDEN, Repost, responsive và regression; GPS-success còn thiếu do browser từ chối location và Chrome/Edge DevTools không khả dụng. DELETED, timeout/unavailable và `truncated=true` giữ automated-only theo phạm vi chấp nhận. |
 | Feed Following | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | ORIGINAL/REPOST activity và cursor riêng không thay đổi bởi Personalized For You V1. |
 | Bài viết trên hồ sơ | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | `GET /api/v1/users/{userId}/posts` dùng Cursor Pagination. |
 | Tìm kiếm user/post/hashtag | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Tiếp tục dùng `PageResponse`. |
@@ -66,7 +67,7 @@
   fingerprint idempotency, durable cleanup và UI gửi/hiển thị ảnh.
 - Typing Indicator dùng cùng connection STOMP, chỉ allow `/app/messaging/typing`, kiểm tra membership/account/Block,
   giới hạn 4 frame/user/giây trong từng instance và hiển thị có expiry 5 giây; không lưu DB hay thay đổi unread.
-- Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh và không triển khai Discovery Map.
+- Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh; Discovery Map V1 Backend đã dùng lại schema này mà không migration.
 - Repost đã tích hợp với Profile, Following Feed, Notification realtime và các bộ lọc Block/Restrict.
 - Moderation Case, chỉnh sửa hồ sơ người dùng bởi Admin và analytics hoạt động người dùng đã tích hợp xuyên suốt Backend, schema và Admin UI.
 - Academic Profile & Interests đã có SQL/DBML/JPA, master API autocomplete, profile transaction, seed demo, onboarding wizard, Edit/Profile Display, test tự động và manual E2E thành công.
@@ -74,6 +75,7 @@
 - Student Recommendation V1 đã có API rule-based, database-side ranking/pagination, UI “Có thể bạn biết”, test tự động và manual E2E thành công; trạng thái `INTEGRATED`.
 - Personalized For You V1 đã triển khai/test bằng MySQL 8 theo deterministic rule-based score; không tạo bảng/index/cache/job mới, không thay public API và chưa manual E2E nên chưa đánh dấu `INTEGRATED`.
 - Location-aware Discovery V1 đã có Backend query và Frontend tab `Gần bạn`; canonical seed có 6 Post tại 5 địa điểm công cộng quanh Bình Trị Đông để manual test radius. Automated test, lint và build đạt, chưa manual E2E với quyền Geolocation/MySQL thực nên chưa `INTEGRATED`.
+- Discovery Map V1 đã có hai API Backend, marker aggregation MySQL, Location Posts keyset/cursor bind Location, Map/cluster/panel responsive phía Frontend và GPS click-only không lưu trữ. Manual E2E ngày 2026-08-14 đã xác minh render/explicit search/marker, cluster click, Location Posts 8 trang không trùng, marker/viewport race, Block, Restrict, HIDDEN, Repost, responsive và hồi quy Nearby/For You/Following/Places. GPS-success chưa thực thi được do browser tích hợp từ chối location và Chrome/Edge DevTools không khả dụng, nên vẫn `NOT INTEGRATED`; DELETED, timeout/unavailable và `truncated=true` giữ automated-only theo phạm vi đã chốt.
 - AI/ML Feed Recommendation: `NOT IMPLEMENTED`.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận

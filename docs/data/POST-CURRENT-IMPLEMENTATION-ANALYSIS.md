@@ -769,5 +769,5 @@ Nói ngắn gọn:
 Tạo/sửa/xóa/tương tác/report/admin: đã có Backend và phần lớn đã nối Frontend.
 
 Feed/Profile/Saved/Liked/Search: đã có read-side Backend tương ứng.
-Location: Database/JPA/API/Frontend đã triển khai; Discovery Map vẫn FUTURE.
+Location: Database/JPA/API/Frontend Post đã triển khai; Discovery Map V1 Backend/Frontend đã triển khai và automated test đạt, còn manual E2E môi trường thật chưa chạy.
 ```
