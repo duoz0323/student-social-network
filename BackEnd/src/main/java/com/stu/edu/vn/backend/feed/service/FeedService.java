@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.feed.dto.FeedItemResponse;
 
 public interface FeedService {
     CursorPageResponse<FeedPostResponse> getForYou(String cursor, int limit);
+    CursorPageResponse<FeedPostResponse> getForYouAs(Long viewerId, String cursor, int limit);
 
     CursorPageResponse<FeedItemResponse> getFollowing(String cursor, int limit);
 }

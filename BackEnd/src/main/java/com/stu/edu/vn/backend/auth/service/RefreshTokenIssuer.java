@@ -5,6 +5,9 @@ import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
 import com.stu.edu.vn.backend.security.JwtProperties;
 import com.stu.edu.vn.backend.security.TokenHashService;
 import com.stu.edu.vn.backend.user.entity.User;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
+import com.stu.edu.vn.backend.common.exception.BusinessException;
+import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
@@ -27,6 +30,10 @@ public class RefreshTokenIssuer {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public IssuedRefreshToken issue(User user, String deviceId, String deviceInfo, String ipAddress) {
+        // Managed Social Identity không sở hữu phiên đăng nhập và chỉ được điều khiển qua Collaborator API.
+        if (user.getAccountType() == UserAccountType.MANAGED) {
+            throw new BusinessException(ErrorCode.MANAGED_ACCOUNT_LOGIN_FORBIDDEN);
+        }
         byte[] randomBytes = new byte[RANDOM_BYTES];
         secureRandom.nextBytes(randomBytes);
         String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);

@@ -89,6 +89,20 @@ export const DISCOVERY_ENDPOINTS = Object.freeze({
 });
 
 export const ADMIN_ENDPOINTS = Object.freeze({
+  profile: '/api/v1/admin/profile',
+  profilePassword: '/api/v1/admin/profile/password',
+  admins: '/api/v1/admin/admins',
+  admin: (adminId) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}`,
+  disableAdmin: (adminId) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}/disable`,
+  enableAdmin: (adminId) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}/enable`,
+  resetAdminPassword: (adminId) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}/password`,
+  adminRole: (adminId, roleCode) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}/roles/${encodeURIComponent(roleCode)}`,
+  revokeAdminRole: (adminId, roleCode) => `/api/v1/admin/admins/${encodeURIComponent(adminId)}/roles/${encodeURIComponent(roleCode)}/revoke`,
+  adminRoleCatalog: '/api/v1/admin/admins/roles/catalog',
+  adminRoles: '/api/v1/admin/roles',
+  createAdminRole: '/api/v1/admin/roles',
+  adminPermissions: '/api/v1/admin/roles/permissions',
+  rolePermissions: (roleCode) => `/api/v1/admin/roles/${encodeURIComponent(roleCode)}/permissions`,
   users: '/api/v1/admin/users',
   user: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}`,
   userProfile: (userId) => `/api/v1/admin/users/${encodeURIComponent(userId)}/profile`,
@@ -125,4 +139,20 @@ export const ADMIN_ENDPOINTS = Object.freeze({
   userEngagementMonthly: '/api/v1/admin/analytics/user-engagement/monthly',
   userEngagementSummary: '/api/v1/admin/analytics/user-engagement/summary',
   userEngagementDashboard: '/api/v1/admin/analytics/user-engagement/dashboard',
+  postAnalytics: '/api/v1/admin/analytics/posts',
+  hashtagAnalytics: '/api/v1/admin/analytics/hashtags',
+});
+
+const COLLABORATOR_BASE = '/api/v1/admin/collaborator';
+export const COLLABORATOR_ENDPOINTS = Object.freeze({
+  identity: `${COLLABORATOR_BASE}/social-identity`,
+  dashboard: `${COLLABORATOR_BASE}/dashboard`,
+  posts: `${COLLABORATOR_BASE}/posts`,
+  post: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}`,
+  analytics: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/analytics`,
+  hashtags: `${COLLABORATOR_BASE}/hashtags`,
+  like: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/like`,
+  comments: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/comments`,
+  replies: (commentId) => `${COLLABORATOR_BASE}/comments/${encodeURIComponent(commentId)}/replies`,
+  repost: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/repost`,
 });

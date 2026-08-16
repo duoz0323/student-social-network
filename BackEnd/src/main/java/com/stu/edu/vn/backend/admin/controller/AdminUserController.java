@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.validation.annotation.Validated;
@@ -44,6 +45,7 @@ public class AdminUserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_VIEW') and (#keyword == null or hasAuthority('USER_SEARCH')) and (#status == null or hasAuthority('USER_FILTER'))")
     public ResponseEntity<ApiResponse<PageResponse<AdminUserListItemResponse>>> getUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UserStatus status,
@@ -56,6 +58,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/{userId}")
+    @PreAuthorize("hasAuthority('USER_DETAIL_VIEW')")
     public ResponseEntity<ApiResponse<AdminUserDetailResponse>> getUserDetail(
             @PathVariable @Positive Long userId
     ) {
@@ -64,6 +67,7 @@ public class AdminUserController {
     }
 
     @PutMapping(value = "/{userId}/profile", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('USER_PROFILE_UPDATE')")
     public ResponseEntity<ApiResponse<AdminUserDetailResponse>> updateUserProfile(
             @PathVariable @Positive Long userId,
             @RequestBody AdminUpdateUserProfileRequest request
@@ -73,6 +77,7 @@ public class AdminUserController {
     }
 
     @PutMapping(value = "/{userId}/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('USER_PROFILE_UPDATE')")
     public ResponseEntity<ApiResponse<AdminUserDetailResponse>> updateUserProfileWithAvatar(
             @PathVariable @Positive Long userId,
             @RequestPart("profile") AdminUpdateUserProfileRequest request,
@@ -85,6 +90,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{userId}/block")
+    @PreAuthorize("hasAuthority('USER_BLOCK')")
     public ResponseEntity<ApiResponse<AdminUserStatusResponse>> blockUser(
             @PathVariable @Positive Long userId,
             @RequestBody AdminBlockUserRequest request
@@ -94,6 +100,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{userId}/unblock")
+    @PreAuthorize("hasAuthority('USER_UNBLOCK')")
     public ResponseEntity<ApiResponse<AdminUserStatusResponse>> unblockUser(
             @PathVariable @Positive Long userId
     ) {

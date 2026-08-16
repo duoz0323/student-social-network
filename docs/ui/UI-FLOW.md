@@ -305,6 +305,54 @@ Admin đăng nhập
 
 Tài khoản BLOCKED không được đăng nhập hoặc dùng chức năng hệ thống.
 
+### 1.12.1 Admin quản lý quản trị viên
+
+```text
+Admin có ADMIN_VIEW
+→ /admin/admins hiển thị danh sách quản trị viên
+→ Click một quản trị viên và tải chi tiết theo adminId
+→ Xem hồ sơ, trạng thái và các role hiện tại
+→ Chỉ tài khoản Bootstrap được tạo Admin hỗ trợ và gán/thu hồi role nghiệp vụ
+→ Với Admin hỗ trợ, actor có permission phù hợp vẫn có thể vô hiệu hóa/mở khóa hoặc mở form cấp lại mật khẩu
+→ Với Master Admin, UI khóa phân quyền và ẩn thao tác cấp lại mật khẩu/vô hiệu hóa; tài khoản chỉ tự đổi mật khẩu trong Hồ sơ
+→ Cấp lại mật khẩu Admin hỗ trợ hợp lệ ghi audit và thu hồi toàn bộ Refresh Token của tài khoản đích
+```
+
+Mật khẩu chỉ tồn tại trong form và request qua kết nối bảo mật; UI không lưu, hiển thị lại hoặc ghi log.
+Tài khoản `BLOCKED` vẫn giữ nguyên trạng thái sau khi được cấp lại mật khẩu.
+
+### 1.12.2 Admin tạo vai trò
+
+```text
+SUPER_ADMIN Bootstrap mở /admin/permissions
+→ Chọn Tạo vai trò
+→ Nhập tên vai trò
+→ Backend sinh code và tạo role với quyền Tổng quan
+→ UI chọn role vừa tạo
+→ SUPER_ADMIN Bootstrap bật thêm permission nghiệp vụ trong ma trận
+→ Role mới xuất hiện trong danh mục gán role cho tài khoản Admin
+```
+
+Frontend không tự sinh hoặc gửi role code; duplicate và validation cuối cùng do Backend quyết định.
+UI không cho chọn `SUPER_ADMIN` và khóa ba permission phân quyền `ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`,
+`ADMIN_ROLE_REVOKE`; Backend vẫn là hàng rào bắt buộc nếu Client bị chỉnh sửa.
+
+### 1.12.3 Hồ sơ quản trị viên
+
+```text
+Admin hoặc Cộng tác viên mở /admin/profile từ sidebar
+→ GET /api/v1/admin/profile
+→ sửa tên hiển thị, ngày sinh hoặc bio
+→ PUT /api/v1/admin/profile
+→ nhập mật khẩu hiện tại và mật khẩu mới
+→ PATCH /api/v1/admin/profile/password
+→ Backend thu hồi toàn bộ Refresh Token
+→ Frontend xóa phiên và chuyển về Đăng nhập
+```
+
+Email, username, trạng thái, role và permission chỉ đọc. Backend luôn lấy quản trị viên hiện tại từ JWT,
+không nhận `adminId` do Frontend gửi lên.
+
 ### 1.13 Admin quản lý bài viết
 
 ```text

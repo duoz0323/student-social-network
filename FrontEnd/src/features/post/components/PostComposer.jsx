@@ -39,8 +39,9 @@ function readVideoDuration(url) {
   });
 }
 
-export default function PostComposer({ mode, onClose }) {
+export default function PostComposer({ mode, onClose = () => {}, submitPost, actor }) {
   const { createPost, currentUser, showToast } = useApp();
+  const postActor = actor ?? currentUser;
   const [content, setContent] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [mediaPreviews, setMediaPreviews] = useState([]);
@@ -86,7 +87,7 @@ export default function PostComposer({ mode, onClose }) {
     setError('');
 
     try {
-      const result = await createPost({
+      const result = await (submitPost ?? createPost)({
         content,
         hashtag: selectedTopic?.name ?? null,
         mediaFiles: mediaPreviews.map((item) => item.file),
@@ -291,12 +292,12 @@ export default function PostComposer({ mode, onClose }) {
   const commonBody = (
     <div className="relative flex gap-3">
       <div className="flex flex-col items-center">
-        <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName} size="sm" />
+        <Avatar src={postActor?.avatarUrl} name={postActor?.displayName} size="sm" />
       </div>
       
       <div className="relative flex-1 pb-1">
         <div className="flex items-center gap-1">
-          <p className="text-[15px] font-bold text-[var(--app-text)]">{currentUser?.displayName}</p>
+          <p className="text-[15px] font-bold text-[var(--app-text)]">{postActor?.displayName}</p>
           <PostHashtagPicker
             value={selectedTopic?.name ?? null}
             onChange={(name) => setSelectedTopic(name ? { name } : null)}
@@ -353,6 +354,14 @@ export default function PostComposer({ mode, onClose }) {
         {error && <p className="app-error mt-3 rounded-xl px-3 py-2 text-sm">{error}</p>}
       </Modal>
     );
+  }
+
+  if (mode === 'inline') {
+    return <section className="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)]">
+      <div className="px-5 py-5">{commonBody}</div>
+      {error && <p className="app-error mx-5 mb-3 rounded-xl px-3 py-2 text-sm">{error}</p>}
+      <div className="border-t border-[var(--app-border)] px-5 py-4">{commonFooter}</div>
+    </section>;
   }
 
   // Floating mode

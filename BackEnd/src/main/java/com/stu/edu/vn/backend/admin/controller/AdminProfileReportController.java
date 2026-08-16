@@ -10,6 +10,7 @@ import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.report.enums.ReportStatus;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ public class AdminProfileReportController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<AdminProfileReportListItemResponse>>> list(
             @RequestParam(required = false) ReportStatus status,
             @RequestParam(required = false) String keyword,
@@ -42,12 +44,14 @@ public class AdminProfileReportController {
     }
 
     @GetMapping("/{caseId}")
+    @PreAuthorize("hasAuthority('REPORT_DETAIL_VIEW')")
     public ResponseEntity<ApiResponse<AdminProfileReportDetailResponse>> detail(@PathVariable Long caseId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Lấy chi tiết vụ việc báo cáo trang cá nhân thành công", service.getDetail(caseId)));
     }
 
     @PatchMapping("/{caseId}/reject")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_NO_VIOLATION')")
     public ResponseEntity<ApiResponse<AdminProfileReportStatusResponse>> reject(
             @PathVariable Long caseId,
             @Valid @RequestBody AdminProfileReportResolutionRequest request
@@ -57,6 +61,7 @@ public class AdminProfileReportController {
     }
 
     @PatchMapping("/{caseId}/resolve")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_ACTION')")
     public ResponseEntity<ApiResponse<AdminProfileReportStatusResponse>> resolve(
             @PathVariable Long caseId,
             @Valid @RequestBody AdminProfileReportResolutionRequest request

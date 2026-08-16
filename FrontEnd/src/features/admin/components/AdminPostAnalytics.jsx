@@ -2,16 +2,16 @@ import { TrendingUp } from 'lucide-react';
 import { useAdminPostStatistics } from '../hooks/useAdminPostStatistics.js';
 import { formatWeekRange } from '../utils/adminReportStatistics.js';
 
-export default function AdminPostAnalytics() {
+export default function AdminPostAnalytics({ layout = 'stacked' }) {
   const { totalPosts, hiddenPosts, weeklyTrend, loading, error } = useAdminPostStatistics();
   const prefersReducedMotion = typeof window !== 'undefined'
     && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  if (loading) return <AnalyticsLoading />;
+  if (loading) return <AnalyticsLoading layout={layout} />;
 
   return (
-    <aside className="space-y-5">
-      {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+    <aside className={layout === 'grid' ? 'grid gap-5 lg:grid-cols-2' : 'space-y-5'}>
+      {error ? <p className={`rounded-xl bg-red-50 p-3 text-sm text-red-700 ${layout === 'grid' ? 'lg:col-span-2' : ''}`}>{error}</p> : null}
       <PostStatusChart total={totalPosts} hidden={hiddenPosts} prefersReducedMotion={prefersReducedMotion} />
       <WeeklyPostChart days={weeklyTrend} prefersReducedMotion={prefersReducedMotion} />
     </aside>
@@ -146,9 +146,9 @@ function ChartAnimationStyles() {
   );
 }
 
-function AnalyticsLoading() {
+function AnalyticsLoading({ layout }) {
   return (
-    <aside className="space-y-5" aria-label="Đang tải thống kê bài viết">
+    <aside className={layout === 'grid' ? 'grid gap-5 lg:grid-cols-2' : 'space-y-5'} aria-label="Đang tải thống kê bài viết">
       {[0, 1].map((item) => <div key={item} className="h-64 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50" />)}
     </aside>
   );

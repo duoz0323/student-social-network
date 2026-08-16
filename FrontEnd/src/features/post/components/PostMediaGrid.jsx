@@ -111,10 +111,17 @@ function ImageLightbox({ images, selectedIndex, onChange, onClose }) {
   );
 }
 
-function mediaLayout(item, multiple) {
+function mediaLayout(item, multiple, compact) {
   const width = Number(item.width);
   const height = Number(item.height);
   const ratio = width > 0 && height > 0 ? width / height : 4 / 3;
+
+  // Trang quản lý dùng khung thấp hơn để toàn bộ chi tiết vừa viewport desktop.
+  if (compact) {
+    return multiple
+      ? 'aspect-video w-[68%] max-h-[240px] shrink-0 snap-start sm:w-[58%]'
+      : 'aspect-[16/7] w-full max-h-[270px]';
+  }
 
   if (ratio < 0.8) {
     return multiple
@@ -136,15 +143,15 @@ function mediaLayout(item, multiple) {
     : 'aspect-video w-full';
 }
 
-function MediaItem({ item, index, multiple, onOpenImage }) {
+function MediaItem({ item, index, multiple, compact, onOpenImage }) {
   const isVideo = item.mediaType === 'VIDEO';
-  const layoutClass = mediaLayout(item, multiple);
+  const layoutClass = mediaLayout(item, multiple, compact);
 
   return (
-    <div className={`relative max-h-[520px] overflow-hidden rounded-[14px] border border-[var(--app-border)] bg-zinc-100 ${layoutClass}`}>
+    <div className={`relative overflow-hidden rounded-[14px] border border-[var(--app-border)] bg-zinc-100 ${compact ? 'max-h-[270px]' : 'max-h-[520px]'} ${layoutClass}`}>
       {isVideo ? (
         <video
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${compact ? 'object-contain' : 'object-cover'}`}
           src={item.url}
           poster={item.thumbnailUrl || undefined}
           controls
@@ -160,7 +167,7 @@ function MediaItem({ item, index, multiple, onOpenImage }) {
           aria-label={`Mở rộng ảnh đính kèm ${index + 1}`}
         >
           <img
-            className="h-full w-full object-cover"
+            className={`h-full w-full ${compact ? 'object-contain' : 'object-cover'}`}
             src={item.url}
             alt={`Ảnh đính kèm ${index + 1}`}
             loading="lazy"
@@ -171,7 +178,7 @@ function MediaItem({ item, index, multiple, onOpenImage }) {
   );
 }
 
-export default function PostMediaGrid({ post }) {
+export default function PostMediaGrid({ post, compact = false }) {
   const media = normalizeMedia(post);
   const images = media.filter((item) => item.mediaType !== 'VIDEO');
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
@@ -181,7 +188,7 @@ export default function PostMediaGrid({ post }) {
   return (
     <>
       <div
-        className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`${compact ? 'mt-2' : 'mt-3'} flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
         aria-label={`${media.length} phương tiện đính kèm`}
       >
         {media.map((item, index) => {
@@ -192,6 +199,7 @@ export default function PostMediaGrid({ post }) {
               item={item}
               index={index}
               multiple={media.length > 1}
+              compact={compact}
               onOpenImage={() => setSelectedImageIndex(imageIndex)}
             />
           );

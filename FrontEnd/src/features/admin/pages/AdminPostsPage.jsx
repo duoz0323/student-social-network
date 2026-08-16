@@ -5,6 +5,8 @@ import { adminApi } from '../../../api/index.js';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import AdminPostAnalytics from '../components/AdminPostAnalytics.jsx';
+import AdminStatusBadge from '../components/AdminStatusBadge.jsx';
+import { getAdminStatusLabel } from '../constants/adminStatus.js';
 
 export default function AdminPostsPage() {
   const navigate = useNavigate();
@@ -37,10 +39,10 @@ export default function AdminPostsPage() {
         <div className="min-h-0 flex-1 [&>div]:h-full [&>div]:max-h-none">
           {loading ? <LoadingState /> : <DataTable rows={result.content} onRowDoubleClick={(row) => navigate(`/admin/posts/${row.postId}`)} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
             totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
-            { key: 'authorDisplayName', label: 'Tác giả' },
-            { key: 'contentPreview', label: 'Nội dung', className: 'max-w-sm', render: (row) => <p className="truncate">{row.contentPreview}</p> },
-            { key: 'status', label: 'Trạng thái' },
-            { key: 'pendingReportCount', label: 'Báo cáo chờ' },
+            { key: 'authorDisplayName', label: 'Tác giả', sortType: 'text' },
+            { key: 'contentPreview', label: 'Nội dung', sortType: 'text', className: 'max-w-sm', render: (row) => <p className="truncate">{row.contentPreview}</p> },
+            { key: 'status', label: 'Trạng thái', sortType: 'text', sortValue: (row) => getAdminStatusLabel(row.status), render: (row) => <AdminStatusBadge status={row.status} /> },
+            { key: 'pendingReportCount', label: 'Báo cáo chờ', sortType: 'number' },
           ]} />}
         </div>
       </div>

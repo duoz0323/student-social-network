@@ -79,6 +79,25 @@ public class AdminActionMapper {
             case CREATE_ACADEMIC_DATA -> "Tạo dữ liệu học thuật";
             case UPDATE_ACADEMIC_DATA -> "Cập nhật dữ liệu học thuật";
             case CHANGE_ACADEMIC_STATUS -> "Đổi trạng thái dữ liệu học thuật";
+            case CREATE_ADMIN -> "Tạo quản trị viên";
+            case UPDATE_ADMIN -> "Cập nhật quản trị viên";
+            case UPDATE_ADMIN_PROFILE -> "Cập nhật hồ sơ quản trị viên";
+            case DISABLE_ADMIN -> "Vô hiệu hóa quản trị viên";
+            case ENABLE_ADMIN -> "Mở khóa quản trị viên";
+            case RESET_ADMIN_PASSWORD -> "Cấp lại mật khẩu quản trị viên";
+            case CHANGE_ADMIN_PASSWORD -> "Quản trị viên đổi mật khẩu";
+            case ASSIGN_ADMIN_ROLE -> "Gán vai trò quản trị";
+            case REVOKE_ADMIN_ROLE -> "Thu hồi vai trò quản trị";
+            case CREATE_ADMIN_ROLE -> "Tạo vai trò quản trị";
+            case UPDATE_ROLE_PERMISSIONS -> "Cập nhật quyền của vai trò";
+            case CREATE_MANAGED_SOCIAL_IDENTITY -> "Tạo danh tính xã hội được quản lý";
+            case DISABLE_MANAGED_SOCIAL_IDENTITY -> "Vô hiệu hóa danh tính xã hội được quản lý";
+            case COLLABORATOR_POST_CREATED -> "Collaborator tạo bài viết";
+            case COLLABORATOR_POST_UPDATED -> "Collaborator cập nhật bài viết";
+            case COLLABORATOR_POST_DELETED -> "Collaborator xóa bài viết";
+            case MODERATION_SUGGESTION_CREATED -> "Tạo đề xuất kiểm duyệt";
+            case MODERATION_SUGGESTION_ACCEPTED -> "Chấp nhận đề xuất kiểm duyệt";
+            case MODERATION_SUGGESTION_REJECTED -> "Từ chối đề xuất kiểm duyệt";
         };
     }
 // hàm kiểm tra dữ liệu đầu vào , biến json thành object

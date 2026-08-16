@@ -69,7 +69,12 @@ public class PostLikeServiceImpl implements PostLikeService {
     @Override
     @Transactional
     public PostLikeResponse likePost(Long postId) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return likePostAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    @Transactional
+    public PostLikeResponse likePostAs(Long userId, Long postId) {
         User currentUser = ensureCurrentUserCanInteract(userId);
         PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
 
@@ -95,7 +100,12 @@ public class PostLikeServiceImpl implements PostLikeService {
     @Override
     @Transactional
     public PostLikeResponse unlikePost(Long postId) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return unlikePostAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    @Transactional
+    public PostLikeResponse unlikePostAs(Long userId, Long postId) {
         ensureCurrentUserCanInteract(userId);
         PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
 

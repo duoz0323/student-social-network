@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.security;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -55,7 +56,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new JwtAuthenticationException(ErrorCode.USER_BLOCKED);
             }
 
-            CustomUserPrincipal principal = new CustomUserPrincipal(user.getId(), user.getRole(), user.getStatus());
+            AdminAuthorization authorization = user.getRole() == UserRole.ADMIN
+                    ? jwtService.extractAdminAuthorizationFromAccessToken(token)
+                    : new AdminAuthorization(java.util.Set.of(), java.util.Set.of());
+            CustomUserPrincipal principal = authorization == null
+                    ? CustomUserPrincipal.legacyAdmin(user.getId(), user.getStatus())
+                    : new CustomUserPrincipal(
+                            user.getId(),
+                            user.getRole(),
+                            user.getStatus(),
+                            authorization.roles(),
+                            authorization.permissions()
+                    );
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,

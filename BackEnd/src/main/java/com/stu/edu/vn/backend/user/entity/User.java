@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.user.entity;
 import com.stu.edu.vn.backend.common.entity.BaseAuditEntity;
 import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,6 +47,10 @@ public class User extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_type", nullable = false, length = 16)
+    private UserAccountType accountType = UserAccountType.NORMAL;
 
     @Column(name = "blocked_at")
     private LocalDateTime blockedAt;

@@ -321,6 +321,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("status") PostStatus status
     );
 
+    // Màn hình quản lý của tác giả được xem lại cả bài HIDDEN/DELETED nhưng không được xem bài của người khác.
+    @EntityGraph(attributePaths = {"author", "authorProfile", "location"})
+    @Query("select p from Post p where p.id = :postId and p.author.id = :authorId")
+    Optional<Post> findOwnedDetailHeaderById(
+            @Param("postId") Long postId,
+            @Param("authorId") Long authorId
+    );
+
     // Cập nhật cờ đã chỉnh sửa và updated_at ngay cả khi người dùng chỉ đổi hashtag hoặc media.
     @Modifying
     @Query(

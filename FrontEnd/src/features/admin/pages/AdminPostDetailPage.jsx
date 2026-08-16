@@ -10,6 +10,8 @@ import AdminReportedPostCard from '../components/AdminReportedPostCard.jsx';
 import { getAdminPostHideReasonLabel } from '../constants/adminPostHideReasons.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 import { toAdminReportPostView } from '../utils/adminReportPost.js';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+import { ADMIN_PERMISSIONS } from '../constants/adminRbac.js';
 
 const POST_STATUS_LABELS = {
   PUBLISHED: 'Đang hiển thị',
@@ -21,6 +23,7 @@ export default function AdminPostDetailPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useAdminToast();
+  const auth = useAuth();
   const [postDetail, setPostDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -118,12 +121,12 @@ export default function AdminPostDetailPage() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700">{statusLabel}</span>
-            {postDetail.status === 'PUBLISHED' ? (
+            {postDetail.status === 'PUBLISHED' && auth.hasPermission(ADMIN_PERMISSIONS.POST_HIDE) ? (
               <Button variant="danger" disabled={actionSubmitting} onClick={() => setHideDialogOpen(true)}>
                 <EyeOff size={16} /> Ẩn bài viết
               </Button>
             ) : null}
-            {postDetail.status === 'HIDDEN' ? (
+            {postDetail.status === 'HIDDEN' && auth.hasPermission(ADMIN_PERMISSIONS.POST_RESTORE) ? (
               <Button variant="secondary" disabled={actionSubmitting} onClick={restorePost}>
                 <Eye size={16} /> {actionSubmitting ? 'Đang khôi phục...' : 'Khôi phục'}
               </Button>

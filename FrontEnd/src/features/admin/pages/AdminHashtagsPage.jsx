@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Hash, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../../../api/index.js';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
@@ -7,13 +8,18 @@ import { formatDateTime } from '../../../utils/formatters.js';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useAdminToast } from '../hooks/useAdminToast.js';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+import { ADMIN_PERMISSIONS } from '../constants/adminRbac.js';
 
 const EMPTY_RESULT = Object.freeze({ content: [], totalElements: 0, totalPages: 0 });
 
 /** Màn hình chỉ đọc giúp ADMIN theo dõi mức độ sử dụng hashtag trong hệ thống. */
 export default function AdminHashtagsPage() {
+  const [searchParams] = useSearchParams();
   const { showToast } = useAdminToast();
-  const [query, setQuery] = useState('');
+  const auth = useAuth();
+  // Nhận tên hashtag từ Analytics để màn quản lý mở đúng kết quả cần kiểm tra.
+  const [query, setQuery] = useState(() => searchParams.get('keyword') || '');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [result, setResult] = useState(EMPTY_RESULT);
@@ -113,26 +119,30 @@ export default function AdminHashtagsPage() {
     {
       key: 'name',
       label: 'Tên hashtag',
+      sortType: 'text',
       render: (row) => <span className="font-semibold text-zinc-950">#{row.name}</span>,
     },
     {
       key: 'postCount',
       label: 'Số bài viết',
+      sortType: 'number',
       render: (row) => Number(row.postCount || 0).toLocaleString('vi-VN'),
     },
-    { key: 'createdAt', label: 'Ngày tạo', render: (row) => formatDateTime(row.createdAt) },
+    { key: 'createdAt', label: 'Ngày tạo', sortType: 'date', render: (row) => formatDateTime(row.createdAt) },
     {
       key: 'latestUsedAt',
       label: 'Ngày sử dụng mới nhất',
+      sortType: 'date',
       render: (row) => row.latestUsedAt ? formatDateTime(row.latestUsedAt) : 'Chưa sử dụng',
     },
     {
       key: 'actions',
       label: 'Thao tác',
+      sortable: false,
       className: 'w-28 text-right',
       render: (row) => (
         <div className="flex justify-end gap-1">
-          <button
+          {auth.hasAdminRole('SUPER_ADMIN') && <button
             type="button"
             onClick={() => {
               setActionError('');
@@ -144,8 +154,8 @@ export default function AdminHashtagsPage() {
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-300"
           >
             <Pencil size={17} />
-          </button>
-          <button
+          </button>}
+          {auth.hasPermission(ADMIN_PERMISSIONS.HASHTAG_DELETE) && <button
             type="button"
             onClick={() => {
               setActionError('');
@@ -156,7 +166,7 @@ export default function AdminHashtagsPage() {
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
           >
             <Trash2 size={17} />
-          </button>
+          </button>}
         </div>
       ),
     },
@@ -173,9 +183,9 @@ export default function AdminHashtagsPage() {
             <h1 className="text-2xl font-bold text-zinc-950">Quản lý hashtag</h1>
             <p className="mt-1 text-sm text-zinc-500">Tạo, theo dõi và gỡ hashtag khỏi hệ thống.</p>
           </div>
-          <Button onClick={() => { setActionError(''); setCreateOpen(true); }}>
+          {auth.hasAdminRole('SUPER_ADMIN') && <Button onClick={() => { setActionError(''); setCreateOpen(true); }}>
             <Plus size={17} /> Tạo hashtag
-          </Button>
+          </Button>}
         </div>
       </header>
 

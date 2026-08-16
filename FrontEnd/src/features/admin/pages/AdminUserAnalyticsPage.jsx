@@ -11,6 +11,7 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import { useUserEngagementAnalytics } from '../hooks/useUserEngagementAnalytics.js';
 import {
   createDefaultAnalyticsFilters,
+  createMonthlySnapshotRows,
   formatCount,
   formatMonth,
   formatRate,
@@ -219,6 +220,7 @@ function KpiCard({ label, value, helper, tone, helperTone }) {
 }
 
 function ReturningTrendChart({ monthly }) {
+  const [activeIndex, setActiveIndex] = useState(null);
   const items = monthly.items;
   const countMaximum = roundedAxisMaximum(items.map((item) => item.returningUserCount));
   // Trục tỷ lệ luôn dùng toàn thang 0–100% để phản ánh đúng ý nghĩa phần trăm.
@@ -229,6 +231,9 @@ function ReturningTrendChart({ monthly }) {
   const ratePath = toSvgPath(ratePoints);
   const baseline = CHART.height - CHART.bottom;
   const areaPath = countPoints.length ? `${countPath} L ${countPoints.at(-1).x} ${baseline} L ${countPoints[0].x} ${baseline} Z` : '';
+  const activeItem = activeIndex === null ? null : items[activeIndex];
+  const plotWidth = CHART.width - CHART.left - CHART.right;
+  const hitInterval = countPoints.length > 1 ? countPoints[1].x - countPoints[0].x : plotWidth;
 
   return (
     <section className="flex min-w-0 flex-col rounded-xl border border-zinc-200 bg-white p-4 sm:p-5">
@@ -294,9 +299,40 @@ function ReturningTrendChart({ monthly }) {
               <title>{`${formatMonth(items[index].month)}: ${formatRate(items[index].returnRate)}`}</title>
             </circle>
           ))}
+
+          {/* Mỗi tháng có một vùng tương tác rộng để tooltip dễ dùng bằng chuột và bàn phím. */}
+          {countPoints.map((point, index) => {
+            const hitLeft = Math.max(CHART.left, point.x - hitInterval / 2);
+            const hitRight = Math.min(CHART.width - CHART.right, point.x + hitInterval / 2);
+            return <rect key={`hit-${items[index].month}`} x={hitLeft} y={CHART.top} width={hitRight - hitLeft} height={baseline - CHART.top} fill="transparent" tabIndex="0" aria-label={`${formatMonth(items[index].month)}: ${formatCount(items[index].returningUserCount)} người quay lại, tỷ lệ ${formatRate(items[index].returnRate)}`} onPointerEnter={() => setActiveIndex(index)} onPointerLeave={() => setActiveIndex(null)} onFocus={() => setActiveIndex(index)} onBlur={() => setActiveIndex(null)} />;
+          })}
+
+          {activeItem ? <ReturningChartTooltip item={activeItem} countPoint={countPoints[activeIndex]} ratePoint={ratePoints[activeIndex]} /> : null}
         </svg>
       </div>
     </section>
+  );
+}
+
+/** Hiển thị đồng thời hai chỉ số của tháng đang được trỏ tới. */
+function ReturningChartTooltip({ item, countPoint, ratePoint }) {
+  const width = 220, height = 72, chartRight = CHART.width - CHART.right;
+  const x = Math.min(Math.max(countPoint.x - width / 2, CHART.left), chartRight - width);
+  const highestPoint = Math.min(countPoint.y, ratePoint.y);
+  const lowestPoint = Math.max(countPoint.y, ratePoint.y);
+  const y = highestPoint - height - 12 < 4 ? Math.min(lowestPoint + 12, CHART.height - CHART.bottom - height) : highestPoint - height - 12;
+  return (
+    <g pointerEvents="none">
+      <line x1={countPoint.x} x2={countPoint.x} y1={CHART.top} y2={CHART.height - CHART.bottom} stroke="#71717a" strokeDasharray="3 4" opacity="0.55" />
+      <circle cx={countPoint.x} cy={countPoint.y} r="7" fill="#fff" stroke="#0b67d1" strokeWidth="3" />
+      <circle cx={ratePoint.x} cy={ratePoint.y} r="6" fill="#fff" stroke="#475b91" strokeWidth="2.5" />
+      <rect x={x} y={y} width={width} height={height} rx="9" fill="#18181b" />
+      <text x={x + 12} y={y + 19} fontSize="11" fill="#d4d4d8">{formatMonth(item.month)}</text>
+      <line x1={x + 12} x2={x + 31} y1={y + 38} y2={y + 38} stroke="#0b67d1" strokeWidth="3" />
+      <text x={x + 38} y={y + 42} fontSize="12" fill="#fff">Người dùng quay lại: <tspan fontWeight="700">{formatCount(item.returningUserCount)}</tspan></text>
+      <line x1={x + 12} x2={x + 31} y1={y + 58} y2={y + 58} stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="5 3" />
+      <text x={x + 38} y={y + 62} fontSize="12" fill="#fff">Tỷ lệ quay lại: <tspan fontWeight="700">{formatRate(item.returnRate)}</tspan></text>
+    </g>
   );
 }
 
@@ -310,17 +346,7 @@ function Legend({ color, label, dashed = false }) {
 }
 
 function MonthlySnapshotTable({ summary, inactiveDays }) {
-  const rows = [
-    { label: 'Người dùng được thống kê', count: summary.eligibleSystemUserCount },
-    { label: 'Đang hoạt động', count: summary.activeUserCount },
-    { label: 'Hoạt động lần đầu', count: summary.newActiveUserCount },
-    { label: 'Hoạt động thường xuyên', count: summary.regularActiveUserCount },
-    { label: 'Quay lại hoạt động', count: summary.returningUserCount },
-    { label: 'Mới ngừng hoạt động', count: summary.recentlyInactiveUserCount },
-    { label: `Quá ${inactiveDays} ngày chưa quay lại`, count: summary.eligibleInactiveNotReturnedUserCount, highlighted: true },
-    { label: 'Chưa từng hoạt động', count: summary.neverActiveUserCount },
-    { label: 'Không hoạt động', count: summary.inactiveUserCount },
-  ];
+  const rows = createMonthlySnapshotRows(summary, inactiveDays);
 
   return (
     <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
@@ -348,9 +374,15 @@ function MonthlySnapshotTable({ summary, inactiveDays }) {
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {rows.map((row) => (
-              <tr key={row.label} className={row.highlighted ? 'bg-amber-50/70' : 'hover:bg-violet-50/30'}>
-                <td className={`break-words px-4 py-3 font-medium ${row.highlighted ? 'text-amber-900' : 'text-zinc-800'}`}>{row.label}</td>
-                <td className={`px-4 py-3 text-right font-semibold ${row.highlighted ? 'text-amber-900' : 'text-zinc-950'}`}>{formatCount(row.count)}</td>
+              <tr key={row.key} className={snapshotRowClass(row)} aria-label={`Mức ${row.level}: ${row.label}`}>
+                <td className={`break-words px-4 py-3 ${snapshotLabelClass(row)}`}>
+                  <div className="flex items-center">
+                    {row.level === 2 ? <span className="mr-3 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-current bg-white" aria-hidden="true" /> : null}
+                    {row.level === 3 ? <span className="ml-4 mr-3 h-4 w-4 shrink-0 rounded-bl-md border-b border-l border-zinc-300" aria-hidden="true" /> : null}
+                    <span>{row.label}</span>
+                  </div>
+                </td>
+                <td className={`px-4 py-3 text-right font-bold ${row.tone === 'danger' ? 'text-red-700' : 'text-zinc-950'}`}>{formatCount(row.count)}</td>
               </tr>
             ))}
           </tbody>
@@ -358,6 +390,22 @@ function MonthlySnapshotTable({ summary, inactiveDays }) {
       </div>
     </section>
   );
+}
+
+function snapshotRowClass(row) {
+  if (row.level === 1) return 'bg-blue-50/80';
+  if (row.level === 2 && row.tone === 'active') return 'bg-emerald-50/60';
+  if (row.level === 2 && row.tone === 'inactive') return 'bg-amber-50/60';
+  if (row.tone === 'danger') return 'bg-red-50/50';
+  return 'hover:bg-zinc-50/70';
+}
+
+function snapshotLabelClass(row) {
+  if (row.level === 1) return 'text-base font-bold text-blue-950';
+  if (row.level === 2 && row.tone === 'active') return 'font-bold text-emerald-800';
+  if (row.level === 2 && row.tone === 'inactive') return 'font-bold text-amber-800';
+  if (row.tone === 'danger') return 'font-medium text-red-700';
+  return 'font-medium text-zinc-700';
 }
 
 function createChartPoints(items, accessor, maximum) {

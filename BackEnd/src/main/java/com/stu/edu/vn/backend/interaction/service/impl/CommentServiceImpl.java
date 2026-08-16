@@ -85,7 +85,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentResponse createComment(Long postId, CreateCommentRequest request) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return createCommentAs(currentUserProvider.getCurrentUserId(), postId, request);
+    }
+
+    @Override
+    public CommentResponse createCommentAs(Long userId, Long postId, CreateCommentRequest request) {
         ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
         findAccessibleInteractionTarget(userId, postId);
@@ -101,7 +105,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentResponse createReply(Long parentCommentId, CreateCommentRequest request) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return createReplyAs(currentUserProvider.getCurrentUserId(), parentCommentId, request);
+    }
+
+    @Override
+    public CommentResponse createReplyAs(Long userId, Long parentCommentId, CreateCommentRequest request) {
         ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
 
@@ -121,7 +129,12 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CommentResponse> getPublishedComments(Long postId, int page, int size) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return getPublishedCommentsAs(currentUserProvider.getCurrentUserId(), postId, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getPublishedCommentsAs(Long userId, Long postId, int page, int size) {
         ensureCurrentUserCanInteract(userId);
         assertPostCanBeAccessed(userId, postId);
 
@@ -143,7 +156,12 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CommentResponse> getPublishedReplies(Long parentCommentId, int page, int size) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return getPublishedRepliesAs(currentUserProvider.getCurrentUserId(), parentCommentId, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getPublishedRepliesAs(Long userId, Long parentCommentId, int page, int size) {
         ensureCurrentUserCanInteract(userId);
 
         Comment parentComment = commentRepository.findWithPostAndParentById(parentCommentId)

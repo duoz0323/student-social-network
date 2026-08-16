@@ -1089,6 +1089,14 @@ Quy tắc Location khi update:
 - Nếu có hard delete Post trong vận hành dữ liệu, Location cũng không bị xóa.
 - Gỡ Location chỉ đặt `posts.location_id = NULL`; không cascade remove và không tự động xóa Location không còn được tham chiếu.
 
+### Quản lý bài viết của Collaborator
+
+- `GET /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_VIEW_OWN` và chỉ trả bài thuộc Managed Social Identity đang liên kết với Admin hiện tại.
+- Response dùng `OwnedPostDetailResponse`, gồm đầy đủ nội dung, tác giả, media, hashtag, Location, counter, trạng thái `PUBLISHED/HIDDEN/DELETED`, thời điểm ẩn/xóa và lý do ẩn nếu có.
+- Endpoint chi tiết cho phép tác giả xem lại bài `HIDDEN` hoặc `DELETED`; bài của Managed Social Identity khác vẫn trả `POST_NOT_FOUND`.
+- `PUT /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_UPDATE_OWN`, chỉ nhận bài `PUBLISHED` thuộc danh tính hiện tại và vẫn áp dụng giới hạn sửa 15 phút.
+- `DELETE /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_DELETE_OWN`, chỉ xóa mềm bài `PUBLISHED` thuộc danh tính hiện tại.
+
 ### PUT `/api/v1/posts/{postId}/repost`
 
 - Tạo quan hệ Repost idempotent cho user hiện tại.
@@ -1410,6 +1418,82 @@ ngày sử dụng và mọi quan hệ `post_hashtags`. Response 200:
 Nếu giá trị sau chuẩn hóa không đổi, response vẫn thành công nhưng không ghi audit rỗng. Tên trùng trả 409;
 target không tồn tại trả 404. Thay đổi thực tế ghi `UPDATE_HASHTAG` vào lịch sử quản trị.
 
+### Hồ sơ quản trị viên đang đăng nhập
+
+```http
+GET   /api/v1/admin/profile
+PUT   /api/v1/admin/profile
+PATCH /api/v1/admin/profile/password
+```
+
+`GET` trả `id`, `email`, `username`, `displayName`, `avatarUrl`, `bio`, `dateOfBirth`, `status`, `roles`,
+`permissions`, `createdAt`, `updatedAt`; không trả password hash hoặc token. `PUT` chỉ nhận `displayName`,
+`dateOfBirth`, `bio`; Backend lấy admin từ JWT, áp dụng validation hồ sơ chung và ghi `UPDATE_ADMIN_PROFILE`.
+
+Request đổi mật khẩu:
+
+```json
+{
+  "currentPassword": "CurrentAdmin123!",
+  "newPassword": "NewAdminPassword123!",
+  "confirmPassword": "NewAdminPassword123!"
+}
+```
+
+Backend kiểm tra BCrypt của mật khẩu hiện tại, xác nhận và policy mật khẩu mới, từ chối mật khẩu trùng,
+ghi `CHANGE_ADMIN_PASSWORD`, thu hồi toàn bộ Refresh Token trong cùng transaction và không trả dữ liệu mật khẩu.
+Thành công yêu cầu Client xóa phiên và đăng nhập lại. Sai mật khẩu hiện tại trả 401
+`AUTH_CURRENT_PASSWORD_INVALID`.
+
+### GET `/api/v1/admin/admins?page=0&size=20`
+
+Trả `PageResponse` chỉ gồm tài khoản có `users.role = ADMIN`. Mỗi item có `id`, `email`, `username`,
+`displayName`, `status`, `roles`, `createdAt`; không trả dữ liệu xác thực.
+
+Các mutation tạo tài khoản Admin, gán/thu hồi role và toàn bộ API `/api/v1/admin/roles/**` chỉ chấp nhận
+actor có email khớp `BOOTSTRAP_ADMIN_EMAIL`. Backend kiểm tra danh tính Bootstrap trực tiếp từ database,
+không chỉ dựa vào role/permission trong JWT. Không thể gán `SUPER_ADMIN` cho tài khoản khác hoặc đưa
+`ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`, `ADMIN_ROLE_REVOKE` vào role nghiệp vụ; vi phạm trả lần lượt
+`ADMIN_SUPER_ROLE_BOOTSTRAP_ONLY` hoặc `ADMIN_PERMISSION_NOT_DELEGABLE`.
+
+Tài khoản mang `SUPER_ADMIN` là Master Admin bất biến: Backend từ chối gán/thu hồi role nghiệp vụ,
+vô hiệu hóa hoặc cấp lại mật khẩu qua API quản lý bằng `ADMIN_MASTER_ACCOUNT_PROTECTED`. Master Admin
+vẫn tự đổi mật khẩu qua `PATCH /api/v1/admin/profile/password` bằng mật khẩu hiện tại.
+
+### GET `/api/v1/admin/admins/{adminId}`
+
+Trả chi tiết hồ sơ, trạng thái, hợp `roles` và `permissions` hiện tại. Không trả `passwordHash`, Refresh
+Token hoặc provider token.
+
+### PATCH `/api/v1/admin/admins/{adminId}/password`
+
+Yêu cầu permission `ADMIN_PASSWORD_RESET` và chỉ áp dụng cho tài khoản ADMIN hỗ trợ, không áp dụng cho Master Admin.
+
+```json
+{
+  "newPassword": "NewAdmin123!",
+  "confirmPassword": "NewAdmin123!"
+}
+```
+
+Backend khóa tài khoản ADMIN đích, kiểm tra xác nhận/policy và mật khẩu mới khác mật khẩu hiện tại, lưu
+BCrypt hash, thu hồi toàn bộ Refresh Token còn hiệu lực, đồng thời ghi `RESET_ADMIN_PASSWORD` trong cùng
+transaction. Audit và response không chứa mật khẩu. Thao tác không tự mở khóa tài khoản `BLOCKED`.
+
+### POST `/api/v1/admin/roles`
+
+Chỉ SUPER_ADMIN Bootstrap có email khớp cấu hình hệ thống được gọi.
+
+```json
+{ "name": "Quản lý sự kiện" }
+```
+
+Backend trim và gộp khoảng trắng, giới hạn tên từ 2–100 ký tự, chuyển tiếng Việt về ASCII uppercase
+snake case để sinh `code` (ví dụ `QUAN_LY_SU_KIEN`) và từ chối HTTP 409 nếu code đã tồn tại. Role mới có
+`reserved = false`, mô tả hệ thống và duy nhất `DASHBOARD_BASIC_VIEW`; response HTTP 201 trả
+`AdminRoleResponse`. Việc tạo role cùng permission mặc định và action `CREATE_ADMIN_ROLE` nằm trong một
+transaction. Client không được tự gửi code hoặc permission khi tạo.
+
 ### GET `/api/v1/admin/users?page=0&size=20`
 
 ### GET `/api/v1/admin/users/{userId}`
@@ -1560,4 +1644,32 @@ chứa tháng, ngày đánh giá UTC, số USER đủ điều kiện, sáu nhóm
 Chỉ ADMIN được gọi. `month` tùy chọn và mặc định là tháng UTC hiện tại; validation `inactiveDays` giống API
 monthly. `data` là một item thống kê tháng, cùng contract với phần tử trong `monthly.items`. Các rate trả
 `null` khi mẫu số bằng 0; Frontend không được tự đổi thành `0%`.
+
+### GET `/api/v1/admin/analytics/posts?range=30D`
+
+Yêu cầu permission `POST_VIEW`. `range` nhận `7D`, `30D` (mặc định), `90D`, `6M`, `1Y`. Có thể thay bằng
+`fromDate` và `toDate` theo `yyyy-MM-dd`; phải truyền đủ cả hai, không ở tương lai và tối đa 366 ngày.
+
+`data` trả `fromDate`, `toDate`, `kpis`, `statusDistribution`, chuỗi `trend` đã bù ngày không có bài bằng 0,
+`interactions`, tối đa 5 `topPosts`, `moderation` và tối đa 5 `mostReportedPosts`. Tổng trạng thái là snapshot hiện
+tại; các số bài mới, tương tác, bảng xếp hạng và moderation dùng khoảng UTC đã chọn. `newPostsChangeRate` và
+`interactionsChangeRate` so với khoảng liền trước cùng độ dài; trả `null` khi kỳ trước bằng 0 nhưng kỳ hiện tại có dữ liệu.
+
+Tổng tương tác trong kỳ là các bản ghi Like, Comment còn công khai, Save và Repost hiện còn tồn tại có `created_at`
+trong khoảng chọn. Vì schema không có event ledger cho Unlike/Unsave/Unrepost, các tương tác đã gỡ không thể hồi dựng.
+
+### GET `/api/v1/admin/analytics/hashtags?range=30D`
+
+Yêu cầu permission `HASHTAG_VIEW`. `range` nhận `7D`, `30D` (mặc định), `90D`, `6M`, `1Y`. Có thể thay bằng
+`fromDate` và `toDate` theo `yyyy-MM-dd`; phải truyền đủ cả hai, không ở tương lai và tối đa 366 ngày.
+
+`data` trả `fromDate`, `toDate`, `granularity`, sáu KPI, chuỗi `trend`, tối đa 10 `popularHashtags`, `distribution`,
+tối đa 10 `growthHashtags`, tối đa 10 `recentHashtags` và tối đa 5 `lowUsageHashtags`. Khoảng trên 90 ngày dùng
+`granularity = MONTH`; các khoảng ngắn hơn dùng `DAY`. Trend luôn bù mốc không có bài bằng 0 và trả đồng thời
+`postsWithHashtag` cùng `totalPosts`.
+
+Các chỉ số trong kỳ dựa trên `posts.created_at` theo UTC. `newHashtags` dựa trên `hashtags.created_at`; hoạt động gần
+nhất dựa trên `post_hashtags.created_at`; số bài đang liên kết lấy từ `hashtags.post_count`. Kỳ so sánh có cùng số ngày
+và kết thúc ngay trước `fromDate`. `newHashtagsChangeRate`/`growthHashtags.changeRate` trả `null` khi kỳ trước bằng 0
+nhưng kỳ hiện tại có dữ liệu. Endpoint chỉ đọc và không cung cấp thao tác tạo, đổi tên hoặc xóa hashtag.
 

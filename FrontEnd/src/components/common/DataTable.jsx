@@ -1,5 +1,8 @@
+import { useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from './StateBlock.jsx';
 import Pagination from './Pagination.jsx';
+import { nextSortDirection, sortTableRows } from './tableSorting.js';
 
 export default function DataTable({
   columns,
@@ -12,6 +15,23 @@ export default function DataTable({
   onRowClick,
   onRowDoubleClick,
 }) {
+  const [sortState, setSortState] = useState({ key: null, direction: null });
+  const activeColumn = columns.find((column) => column.key === sortState.key);
+  const sortedRows = useMemo(
+    () => sortTableRows(rows, activeColumn, sortState.direction),
+    [rows, activeColumn, sortState.direction],
+  );
+
+  function changeSort(column) {
+    const sortable = column.sortable === true || Boolean(column.sortType || column.sortValue);
+    if (!sortable) return;
+    setSortState((current) => {
+      const currentDirection = current.key === column.key ? current.direction : null;
+      const direction = nextSortDirection(currentDirection, column.sortType);
+      return direction ? { key: column.key, direction } : { key: null, direction: null };
+    });
+  }
+
   // Loading và empty nằm trong cùng khung bảng để layout Admin không bị nhảy khi dữ liệu đổi trạng thái.
   if (!loading && !rows.length) return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--app-border)] bg-[var(--app-surface)]">
@@ -47,14 +67,29 @@ export default function DataTable({
         <table className="w-full min-w-[720px] border-collapse text-left text-sm relative">
           <thead className="sticky top-0 z-10 border-b border-[var(--app-border)] bg-[var(--app-surface-soft)]">
             <tr>
-              {columns.map((column) => (
+              {columns.map((column) => {
+                const sortable = column.sortable === true || Boolean(column.sortType || column.sortValue);
+                return (
                 <th
                   key={column.key}
                   className={`whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-[0.04em] text-[var(--app-muted)] ${column.className || ''}`}
                 >
-                  {column.label}
+                  {!sortable ? column.label : (
+                    <button
+                      type="button"
+                      onClick={() => changeSort(column)}
+                      className="inline-flex items-center gap-1.5 rounded-sm outline-none hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                      aria-label={`Sắp xếp theo ${column.label}`}
+                    >
+                      <span>{column.label}</span>
+                      {sortState.key !== column.key ? <ArrowUpDown size={14} aria-hidden="true" />
+                        : sortState.direction === 'asc' ? <ArrowUp size={14} aria-hidden="true" />
+                          : <ArrowDown size={14} aria-hidden="true" />}
+                    </button>
+                  )}
                 </th>
-              ))}
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--app-border)] bg-[var(--app-surface)]">
@@ -64,7 +99,7 @@ export default function DataTable({
                   {loadingText}
                 </td>
               </tr>
-            ) : rows.map((row, index) => (
+            ) : sortedRows.map((row, index) => (
               <tr 
                 key={row.id ?? row.userId ?? row.caseId ?? row.postId ?? row.reportId ?? row.actionId ?? index}
                 id={`dt-row-${index}`}

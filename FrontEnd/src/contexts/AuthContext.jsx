@@ -13,13 +13,15 @@ function sessionState(session, authStatus = 'AUTHENTICATED') {
     user: session.user,
     profileCompleted: Boolean(session.profileCompleted),
     role: session.user.role,
+    adminRoles: session.user.adminRoles ?? [],
+    permissions: session.user.permissions ?? [],
     authStatus,
     error: null,
   };
 }
 
 function emptyState(authStatus, error = null) {
-  return { user: null, profileCompleted: false, role: null, authStatus, error };
+  return { user: null, profileCompleted: false, role: null, adminRoles: [], permissions: [], authStatus, error };
 }
 
 export function AuthProvider({ children }) {
@@ -102,6 +104,15 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
+  const updateCurrentUser = useCallback((profile) => {
+    setState((current) => {
+      if (!current.user) return current;
+      const user = { ...current.user, ...profile };
+      tokenManager.setSessionSnapshot({ user, profileCompleted: current.profileCompleted });
+      return { ...current, user };
+    });
+  }, []);
+
   useEffect(() => {
     // httpClient chỉ nhận callback và không import ngược Auth Context nên không có circular dependency.
     configureHttpAuthHandlers({
@@ -132,8 +143,11 @@ export function AuthProvider({ children }) {
     refreshSession,
     clearSession,
     updateProfileCompletion,
+    updateCurrentUser,
     hasRole: (role) => state.role === role,
-  }), [state, initializeAuth, login, setAuthenticatedSession, logout, refreshSession, clearSession, updateProfileCompletion]);
+    hasAdminRole: (role) => state.adminRoles.includes(role),
+    hasPermission: (permission) => state.permissions.includes(permission),
+  }), [state, initializeAuth, login, setAuthenticatedSession, logout, refreshSession, clearSession, updateProfileCompletion, updateCurrentUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -328,6 +328,19 @@ nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với
 - Khóa.
 - Mở khóa.
 
+#### Quản trị viên và phân quyền
+
+- Chỉ tài khoản Bootstrap có email khớp cấu hình hệ thống được giữ `SUPER_ADMIN` và thực hiện tạo Admin hỗ trợ, gán/thu hồi role, tạo role hoặc cấu hình permission.
+- Admin hỗ trợ chỉ nhận role nghiệp vụ; không được nhận `SUPER_ADMIN` hoặc các quyền phân quyền `ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`, `ADMIN_ROLE_REVOKE`.
+- Mọi ADMIN có thể xem hồ sơ của chính mình; email, username, trạng thái, role và permission là dữ liệu chỉ đọc.
+- ADMIN được tự sửa tên hiển thị, ngày sinh, bio; Backend lấy tài khoản đích từ JWT và ghi audit.
+- Đổi mật khẩu yêu cầu mật khẩu hiện tại, policy mật khẩu mới và đăng xuất toàn bộ phiên sau khi hoàn tất.
+- Xem danh sách và mở chi tiết từng tài khoản ADMIN.
+- Tài khoản Bootstrap gán hoặc thu hồi role nghiệp vụ cho Admin hỗ trợ; chính Master Admin không nhận thêm hoặc bị thu hồi role nghiệp vụ.
+- Vô hiệu hóa hoặc mở khóa tài khoản ADMIN hỗ trợ; Master Admin không thể bị vô hiệu hóa.
+- Admin có permission `ADMIN_PASSWORD_RESET` được cấp lại mật khẩu cho tài khoản ADMIN hỗ trợ; Backend băm mật khẩu, ghi audit và thu hồi toàn bộ Refresh Token của tài khoản đích trong cùng transaction. Master Admin chỉ tự đổi mật khẩu trong hồ sơ.
+- SUPER_ADMIN Bootstrap được nhập tên để tạo role tùy chỉnh. Backend sinh role code duy nhất, đánh dấu role không reserved và gán quyền xem Tổng quan mặc định; role mới sau đó dùng chung ma trận permission và luồng gán/thu hồi hiện có.
+
 #### Bài viết
 
 - Danh sách.

@@ -31,3 +31,8 @@ export function isCurrentUserProfile(profile, currentUserId) {
     && currentUserId != null
     && String(profile.id) === String(currentUserId);
 }
+
+/** Admin luôn có hồ sơ nội bộ cần tải; USER chỉ tải hồ sơ sau khi hoàn tất onboarding. */
+export function shouldLoadCurrentProfile(role, profileCompleted) {
+  return role === 'ADMIN' || Boolean(profileCompleted);
+}

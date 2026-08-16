@@ -11,6 +11,7 @@ import {
 } from '../features/profile/utils/userBlockState.js';
 import { resolveCurrentFollowState } from '../features/profile/utils/followListState.js';
 import { publishPostActivity } from '../features/post/utils/postActivitySync.js';
+import { shouldLoadCurrentProfile, toCurrentUserProfile } from '../features/profile/utils/currentUserProfile.js';
 
 const AppContext = createContext(null);
 
@@ -36,14 +37,26 @@ export function AppProvider({ children }) {
   const [userRelationshipRevision, setUserRelationshipRevision] = useState(0);
   const createPostInFlightRef = useRef(false);
   const currentUserId = auth.user?.id ?? null;
+  const authRole = auth.role;
+  const authProfileCompleted = auth.profileCompleted;
+  const updateCurrentUser = auth.updateCurrentUser;
 
-  const refreshMyProfile = useCallback(async () => {
-    if (!currentUserId || !auth.profileCompleted) {
+  const refreshMyProfile = useCallback(async (signal) => {
+    if (!currentUserId || !shouldLoadCurrentProfile(authRole, authProfileCompleted)) {
       setMyProfile(null);
       return null;
     }
     try {
-      const profile = await socialApi.getMyProfile();
+      if (authRole === 'ADMIN') {
+        // Auth response chỉ có id/role; hồ sơ Admin theo JWT là nguồn đúng cho tên hiển thị sidebar.
+        const profile = await adminApi.getProfile(signal);
+        if (!signal?.aborted && profile) {
+          updateCurrentUser(toCurrentUserProfile(profile, currentUserId));
+          setMyProfile(null);
+        }
+        return profile;
+      }
+      const profile = await socialApi.getMyProfile(signal);
       if (profile) {
         setMyProfile({
           id: profile.userId ?? profile.id ?? currentUserId,
@@ -63,30 +76,33 @@ export function AppProvider({ children }) {
     } catch {
       return null;
     }
-  }, [currentUserId, auth.profileCompleted]);
+  }, [authProfileCompleted, authRole, currentUserId, updateCurrentUser]);
 
   useEffect(() => {
-    if (currentUserId && auth.profileCompleted) {
+    const controller = new AbortController();
+    if (currentUserId && shouldLoadCurrentProfile(authRole, authProfileCompleted)) {
       // Đồng bộ profile từ API khi phiên xác thực trở nên đủ điều kiện.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void refreshMyProfile();
+      void refreshMyProfile(controller.signal);
     } else {
       setMyProfile(null);
     }
-  }, [currentUserId, auth.profileCompleted, refreshMyProfile]);
+    return () => controller.abort();
+  }, [authProfileCompleted, authRole, currentUserId, refreshMyProfile]);
 
   const currentUser = useMemo(() => {
     const knownUser = toViewUser(data.users.find((user) => String(user.id) === String(currentUserId)));
     const authUser = auth.user;
+    const currentProfile = auth.role === 'ADMIN' ? authUser : myProfile;
     return {
       id: currentUserId,
       role: auth.role,
       status: 'ACTIVE',
-      displayName: myProfile?.displayName || authUser?.displayName || knownUser?.displayName || 'Người dùng UniShare',
-      avatarUrl: myProfile?.avatarUrl ?? authUser?.avatarUrl ?? knownUser?.avatarUrl ?? '',
-      birthDate: myProfile?.birthDate ?? authUser?.birthDate ?? knownUser?.birthDate ?? null,
-      bio: myProfile?.bio ?? authUser?.bio ?? knownUser?.bio ?? '',
-      profileCompletedAt: myProfile?.profileCompletedAt ?? (auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null),
+      displayName: currentProfile?.displayName || authUser?.displayName || knownUser?.displayName || 'Người dùng UniShare',
+      avatarUrl: currentProfile?.avatarUrl ?? authUser?.avatarUrl ?? knownUser?.avatarUrl ?? '',
+      birthDate: currentProfile?.birthDate ?? authUser?.birthDate ?? knownUser?.birthDate ?? null,
+      bio: currentProfile?.bio ?? authUser?.bio ?? knownUser?.bio ?? '',
+      profileCompletedAt: currentProfile?.profileCompletedAt ?? (auth.profileCompleted ? 'AUTHENTICATED_SESSION' : null),
     };
   }, [auth.profileCompleted, auth.role, auth.user, currentUserId, data.users, myProfile]);
 

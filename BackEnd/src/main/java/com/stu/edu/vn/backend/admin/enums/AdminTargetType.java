@@ -10,5 +10,6 @@ public enum AdminTargetType {
     REPORT,
     MODERATION_CASE,
     PROFILE_REPORT,
-    ACADEMIC_DATA
+    ACADEMIC_DATA,
+    MODERATION_SUGGESTION
 }

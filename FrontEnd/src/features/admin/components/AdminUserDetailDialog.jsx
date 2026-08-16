@@ -1,9 +1,10 @@
-import { Info, Mail, UserRound, X } from 'lucide-react';
+import { Mail, UserRound, X } from 'lucide-react';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import { formatDateTime } from '../../../utils/formatters.js';
 import { getAdminUserBlockReasonLabel } from '../constants/adminUserBlockReasons.js';
+import AdminStatusBadge from './AdminStatusBadge.jsx';
 
 function formatOptionalDateTime(value) {
   return value ? formatDateTime(value) : '—';
@@ -36,6 +37,8 @@ export default function AdminUserDetailDialog({
   onRetry,
   onEdit,
   onStatusAction,
+  canEdit = false,
+  canStatusAction = false,
 }) {
   const displayName = detail?.displayName?.trim() || 'Chưa cập nhật tên';
   const isBlocked = detail?.status === 'BLOCKED';
@@ -77,11 +80,7 @@ export default function AdminUserDetailDialog({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="truncate text-xl font-bold text-slate-800">{displayName}</h3>
-                <span className={`rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${
-                  isBlocked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-                }`}>
-                  {isBlocked ? 'Đã khóa' : 'Đang hoạt động'}
-                </span>
+                <AdminStatusBadge status={detail.status} />
               </div>
               <p className="mt-2 flex items-center gap-2 truncate text-xs text-slate-500">
                 <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -111,27 +110,24 @@ export default function AdminUserDetailDialog({
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <Button
-              className="!h-10 !rounded-md !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700"
-              onClick={onEdit}
-            >
-              Sửa hồ sơ
-            </Button>
-            <Button
-              className="!h-10 !rounded-md !border-slate-200 !bg-slate-100 !text-slate-700 hover:!bg-slate-200"
-              variant="secondary"
-              disabled={actionPending}
-              onClick={onStatusAction}
-            >
-              {actionPending ? 'Đang xử lý...' : isBlocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-            </Button>
-          </div>
-
-          <p className="mt-7 flex items-center gap-2 text-[10px] text-slate-400">
-            <Info className="h-3.5 w-3.5" aria-hidden="true" />
-            Thông tin được lấy trực tiếp từ hệ thống tại thời điểm mở.
-          </p>
+          {canEdit || canStatusAction ? (
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {canEdit && <Button
+                className="!h-10 w-full !rounded-md !border-blue-600 !bg-blue-600 !px-3 !text-white hover:!bg-blue-700"
+                onClick={onEdit}
+              >
+                Sửa thông tin
+              </Button>}
+              {canStatusAction && <Button
+                className="!h-10 w-full !rounded-md !border-slate-200 !bg-slate-100 !px-3 !text-slate-700 hover:!bg-slate-200"
+                variant="secondary"
+                disabled={actionPending}
+                onClick={onStatusAction}
+              >
+                {actionPending ? 'Đang xử lý...' : isBlocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+              </Button>}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </Modal>

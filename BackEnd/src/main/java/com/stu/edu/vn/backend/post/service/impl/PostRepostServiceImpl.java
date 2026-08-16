@@ -47,7 +47,12 @@ public class PostRepostServiceImpl implements PostRepostService {
     @Override
     @Transactional
     public PostRepostResponse repost(Long postId) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return repostAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    @Transactional
+    public PostRepostResponse repostAs(Long userId, Long postId) {
         requireActiveCompletedUser(userId);
         Post post = lockPost(postId);
         requirePublishedRepostTarget(post, userId);
@@ -68,7 +73,12 @@ public class PostRepostServiceImpl implements PostRepostService {
     @Override
     @Transactional
     public PostRepostResponse unrepost(Long postId) {
-        Long userId = currentUserProvider.getCurrentUserId();
+        return unrepostAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    @Transactional
+    public PostRepostResponse unrepostAs(Long userId, Long postId) {
         requireActiveCompletedUser(userId);
         lockPost(postId);
 

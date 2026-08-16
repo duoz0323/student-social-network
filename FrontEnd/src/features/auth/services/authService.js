@@ -1,7 +1,18 @@
 import { authApi } from '../../../api/index.js';
 import { tokenManager } from '../../../api/tokenManager.js';
+import { ALL_ADMIN_PERMISSIONS } from '../../admin/constants/adminRbac.js';
 
 let refreshPromise = null;
+
+function decodeAccessClaims(accessToken) {
+  try {
+    const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(Array.from(atob(payload), (character) =>
+      `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`).join('')));
+  } catch {
+    return {};
+  }
+}
 
 function buildSession(response, fallbackUser = null) {
   const user = response.user ?? fallbackUser;
@@ -9,12 +20,18 @@ function buildSession(response, fallbackUser = null) {
     throw new Error('Phản hồi Auth không đủ dữ liệu để thiết lập phiên.');
   }
   // Giữ lại đầy đủ các thông tin profile trả về từ Backend (displayName, avatarUrl, email...)
+  const claims = decodeAccessClaims(response.accessToken);
+  const isLegacyAdminToken = user.role === 'ADMIN' && !Array.isArray(claims.adminRoles);
+  const adminRoles = isLegacyAdminToken ? ['SUPER_ADMIN'] : (claims.adminRoles ?? []);
+  const permissions = isLegacyAdminToken ? ALL_ADMIN_PERMISSIONS : (claims.permissions ?? []);
   return {
     user: {
       ...fallbackUser,
       ...user,
       id: user.id,
       role: user.role,
+      adminRoles,
+      permissions,
     },
     profileCompleted: Boolean(response.profileCompleted),
     accessToken: response.accessToken,

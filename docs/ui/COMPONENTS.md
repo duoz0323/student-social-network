@@ -10,8 +10,8 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 |---|---|---|---|---|
 | `UserShell` | Khung giao diện người dùng gồm sidebar trái và vùng nội dung chính. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeNav`, `currentUser`, `children`, `onCreatePost`. | Dùng chung. |
 | `UserSidebar` | Hiển thị brand và điều hướng người dùng. | FEED-01, POST-01, POST-07, PROFILE-01, PROFILE-02, SEARCH-01. | `activeItem`, `currentUser`, callbacks điều hướng. `/profile/me` active Trang cá nhân; `/profile/:userId` không active Trang cá nhân. | Dùng chung. |
-| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-10. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
-| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-10. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
+| `AdminShell` | Khung trang quản trị gồm sidebar admin và content rộng. | ADMIN-01 đến ADMIN-13. | `activeNav`, `adminUser`, `children`. | Dùng chung admin. |
+| `AdminSidebar` | Điều hướng quản trị. | ADMIN-01 đến ADMIN-13. | `activeItem`, `onBackToApp`. | Dùng chung admin. |
 | `AuthEntryLayout` | Bố trí hero UniShare và vùng form Auth trên nền sáng, ưu tiên form trên mobile. | AUTH-01 đến AUTH-06. | `children`. | Layout Auth duy nhất; không dùng dữ liệu thật cho phần minh họa. |
 
 ## 2. Common component
@@ -130,6 +130,9 @@ Tài liệu này phân rã component dựa trên phần lặp lại thực tế 
 | `AdminAcademicPage` | Điều phối tab Academic/Interest, drill-down School → Faculty → Major, tìm kiếm, phân trang và trạng thái tải/lỗi/rỗng. | ADMIN-10. | `keyword`, `page`, `size`, selected School/Faculty; API qua `adminApi`. | Dùng `DataTable`, không gọi Axios trực tiếp và không hiển thị thao tác hard delete. |
 | `AdminAcademicFormDialog` | Form dùng chung cho create/edit School, Faculty, Major và Interest; School có shortName tùy chọn. | ADMIN-10. | `kind`, `item`, `submitting`, `error`, callbacks. | Backend chuẩn hóa/kiểm tra duplicate cuối cùng. |
 | `AdminAcademicStatusDialog` | Xác nhận đổi ACTIVE/INACTIVE và giải thích bảo toàn reference/không cascade. | ADMIN-10. | `kind`, `target`, `submitting`, `error`, callbacks. | Bắt buộc xác nhận khi chuyển ACTIVE → INACTIVE. |
+| `AdminManagementPage` | Danh sách tài khoản ADMIN và modal chi tiết theo permission. | ADMIN-11. | `admins`, `selectedAdmin`, `roles`, `permissions`; API qua `adminApi`. | Click item mở chi tiết; Master Admin chỉ đọc, không hiện thao tác role/cấp lại mật khẩu/vô hiệu hóa; Admin hỗ trợ vẫn được quản lý theo permission. |
+| `AdminRolePermissionsPage` | Tạo role tùy chỉnh và cấu hình ma trận permission. | ADMIN-11. | `roles`, `permissions`, `selectedRoleCode`, form `name`; API qua `adminApi`. | Chỉ SUPER_ADMIN Bootstrap; ba permission phân quyền bị khóa ở role khác; role mới có Tổng quan mặc định. |
+| `AdminProfilePage` | Hồ sơ tự quản lý và đổi mật khẩu của ADMIN. | ADMIN-12. | `profile`, `draft`, `password`; API qua `adminApi`. | Thông tin quyền chỉ đọc; đổi mật khẩu thành công đăng xuất toàn bộ phiên. |
 | `AdminStatusBadge` | Badge trạng thái user, post, report. | ADMIN-01 đến ADMIN-06. | `type`, `status`. | Dùng chung admin. |
 | `AdminUserAnalyticsPage` | Hiển thị Analytics độc lập với Dashboard theo bố cục KPI, biểu đồ hai trục và bảng snapshot tháng kết thúc. | ADMIN-07. | Chỉ dùng trường từ monthly/summary: peak, `returningUserCount`, `returnRate` và các count/rate của item; khoảng tối đa 24 tháng. | Module admin; xử lý Loading/Empty/Error và retry, không gọi Axios trực tiếp trong page. |
 | `useUserEngagementAnalytics` | Điều phối đồng thời API monthly và summary, hủy request cũ và chuẩn hóa trạng thái tải/lỗi. | ADMIN-07. | `filters`, `retry`; dùng `userEngagementAnalyticsService`. | Hook chuyên biệt của module Analytics. |

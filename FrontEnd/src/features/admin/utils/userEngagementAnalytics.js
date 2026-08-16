@@ -73,6 +73,29 @@ export function hasEligibleUsers(items) {
   return items.some((item) => item.eligibleSystemUserCount > 0);
 }
 
+/**
+ * Xếp các chỉ số snapshot theo cây ba cấp để giao diện thể hiện đúng quan hệ tổng và thành phần.
+ */
+export function createMonthlySnapshotRows(summary = {}, inactiveDays = 15) {
+  return [
+    { key: 'eligible', label: 'Tổng số người dùng đủ điều kiện', count: summary.eligibleSystemUserCount, level: 1 },
+    { key: 'active', label: 'Tổng số người dùng đang hoạt động', count: summary.activeUserCount, level: 2, tone: 'active' },
+    { key: 'new-active', label: 'Người dùng mới hoạt động', count: summary.newActiveUserCount, level: 3, tone: 'active' },
+    { key: 'regular-active', label: 'Người dùng hoạt động thường xuyên', count: summary.regularActiveUserCount, level: 3, tone: 'active' },
+    { key: 'returning', label: 'Người dùng quay lại', count: summary.returningUserCount, level: 3, tone: 'active' },
+    { key: 'inactive', label: 'Tổng số người dùng không hoạt động', count: summary.inactiveUserCount, level: 2, tone: 'inactive' },
+    { key: 'recently-inactive', label: 'Người dùng mới ngừng hoạt động', count: summary.recentlyInactiveUserCount, level: 3, tone: 'inactive' },
+    {
+      key: 'eligible-inactive',
+      label: `Đủ ngưỡng > ${inactiveDays} ngày, chưa quay lại`,
+      count: summary.eligibleInactiveNotReturnedUserCount,
+      level: 3,
+      tone: 'danger',
+    },
+    { key: 'never-active', label: 'Người dùng chưa từng hoạt động', count: summary.neverActiveUserCount, level: 3, tone: 'inactive' },
+  ];
+}
+
 function normalizeItem(item) {
   return {
     month: item.month || '',

@@ -26,10 +26,10 @@ export default function AdminActionsPage() {
     {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
     {loading ? <LoadingState /> : <DataTable rows={result.content} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
       totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
-      { key: 'actionLabel', label: 'Thao tác' }, { key: 'admin', label: 'Quản trị viên', render: (row) => row.admin?.displayName },
-      { key: 'target', label: 'Đối tượng', render: (row) => row.target?.displayText },
-      { key: 'note', label: 'Ghi chú' },
-      { key: 'createdAt', label: 'Thời gian', render: (row) => formatDateTime(row.createdAt) },
+      { key: 'actionLabel', label: 'Thao tác', sortType: 'text' }, { key: 'admin', label: 'Quản trị viên', sortType: 'text', sortValue: (row) => row.admin?.displayName, render: (row) => row.admin?.displayName },
+      { key: 'target', label: 'Đối tượng', sortType: 'text', sortValue: (row) => row.target?.displayText, render: (row) => row.target?.displayText },
+      { key: 'note', label: 'Ghi chú', sortType: 'text' },
+      { key: 'createdAt', label: 'Thời gian', sortType: 'date', render: (row) => formatDateTime(row.createdAt) },
     ]} />}
   </section>;
 }

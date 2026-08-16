@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
 import com.stu.edu.vn.backend.post.enums.LocationAction;
 import com.stu.edu.vn.backend.location.service.LocationResolver;
 import com.stu.edu.vn.backend.post.dto.response.DeletePostResponse;
+import com.stu.edu.vn.backend.post.dto.response.OwnedPostDetailResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostDetailResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostResponse;
 import com.stu.edu.vn.backend.post.entity.Hashtag;
@@ -91,7 +92,11 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {
-        Long authorId = currentUserProvider.getCurrentUserId();
+        return createPostAs(currentUserProvider.getCurrentUserId(), request);
+    }
+
+    @Override
+    public PostResponse createPostAs(Long authorId, CreatePostRequest request) {
         AuthorContext authorContext = ensureAuthorCanCreatePost(authorId);
         CreatePostCommand command = validateRequest(request);
         // Chỉ gửi text đã qua business validation; bài chỉ có media không gọi provider.
@@ -108,7 +113,11 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostDetailResponse getPostDetail(Long postId) {
-        Long viewerId = currentUserProvider.getCurrentUserId();
+        return getPostDetailAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    public PostDetailResponse getPostDetailAs(Long viewerId, Long postId) {
         ensureViewerCanUsePostApi(viewerId);
 
         // Chỉ truy vấn bài PUBLISHED để HIDDEN/DELETED trả 404 và không lộ nội dung không hợp lệ.
@@ -134,8 +143,35 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public OwnedPostDetailResponse getOwnedPostDetailAs(Long authorId, Long postId) {
+        ensureViewerCanUsePostApi(authorId);
+
+        // Truy vấn luôn ràng buộc authorId để Collaborator không thể đọc nội dung quản lý của danh tính khác.
+        Post post = postRepository.findOwnedDetailHeaderById(postId, authorId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        if (post.getAuthorProfile() == null) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
+
+        List<PostMedia> media = postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(post.getId());
+        String hashtag = readSingleHashtag(post.getId());
+        boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(authorId, postId);
+        boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(authorId, postId);
+        PostDetailResponse detail = postMapper.toDetailResponse(
+                post, post.getAuthorProfile(), media, hashtag, true, likedByCurrentUser, reposted);
+        return OwnedPostDetailResponse.from(
+                detail, post.getStatus(), post.getHiddenAt(), post.getHiddenReason(), post.getDeletedAt());
+    }
+
+    @Override
+    @Transactional
     public PostDetailResponse updatePost(Long postId, UpdatePostRequest request) {
-        Long viewerId = currentUserProvider.getCurrentUserId();
+        return updatePostAs(currentUserProvider.getCurrentUserId(), postId, request);
+    }
+
+    @Override
+    @Transactional
+    public PostDetailResponse updatePostAs(Long viewerId, Long postId, UpdatePostRequest request) {
         ensureViewerCanUsePostApi(viewerId);
 
         // Chỉ lấy bài PUBLISHED để bài HIDDEN/DELETED trả POST_NOT_FOUND và không lộ trạng thái nội bộ.
@@ -167,7 +203,12 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public DeletePostResponse deletePost(Long postId) {
-        Long viewerId = currentUserProvider.getCurrentUserId();
+        return deletePostAs(currentUserProvider.getCurrentUserId(), postId);
+    }
+
+    @Override
+    @Transactional
+    public DeletePostResponse deletePostAs(Long viewerId, Long postId) {
         ensureViewerCanUsePostApi(viewerId);
 
         // Chỉ tìm bài PUBLISHED để bài HIDDEN/DELETED hoặc không tồn tại đều trả POST_NOT_FOUND và không lộ trạng thái nội bộ.

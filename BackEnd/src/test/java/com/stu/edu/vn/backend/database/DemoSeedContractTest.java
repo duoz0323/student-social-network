@@ -18,7 +18,7 @@ class DemoSeedContractTest {
             "\\('demo-caolo-[^']+',\\s*'[^']+',\\s*'[^']+',\\s*([0-9.]+),\\s*([0-9.]+)\\)");
 
     @Test
-    void databaseDirectoryKeepsCanonicalArtifactsAndVersionedMigrations() throws Exception {
+    void databaseDirectoryKeepsCanonicalArtifactsAndVersionedAdditiveMigrations() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -30,15 +30,17 @@ class DemoSeedContractTest {
                     .toList();
         }
 
-        // Hai artifact canonical luôn nằm ở thư mục gốc; migration hợp lệ nằm riêng trong migrations/.
+        // Giữ artifact canonical, migration Auth/Post và các migration Admin bổ sung đã được merge.
         assertThat(files)
                 .contains(
                 "student_social_network.dbml",
                 "student_social_network.sql",
-                "migrations/20260815_post_share_v1.sql")
-                .allMatch(path -> path.equals("student_social_network.dbml")
-                        || path.equals("student_social_network.sql")
-                        || path.matches("migrations/\\d{8}_[a-z0-9_]+\\.sql"));
+                "migrations/20260815_post_share_v1.sql",
+                "migrations/20260816_auth_password_methods.sql",
+                "collaborator_managed_social_identity_20260815.sql",
+                "collaborator_role_lifecycle_20260815.sql",
+                "managed_profile_completion_hotfix_20260815.sql");
+        assertThat(files).allMatch(file -> file.endsWith(".sql") || file.endsWith(".dbml"));
     }
 
     @Test
@@ -54,6 +56,12 @@ class DemoSeedContractTest {
                 .contains("'invalid_demo_counts'")
                 .contains("'invalid_academic_hierarchy'")
                 .contains("'counter_mismatch'");
+
+        // Canonical schema phải đặt account_type đúng bảng users và bảo vệ ngày sinh theo loại tài khoản.
+        assertThat(seed)
+                .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
+                .contains("owner_account_type <> 'MANAGED'")
+                .doesNotContain("`status` varchar(16) NOT NULL DEFAULT 'ACTIVE',\n  `account_type` varchar(16) NOT NULL DEFAULT 'NORMAL',\n  `expires_at`");
     }
 
     @Test

@@ -411,6 +411,26 @@ class PostServiceImplTest {
     }
 
     @Test
+    void getOwnedPostDetailReturnsDeletedPostOnlyForItsAuthor() {
+        User author = user(10L);
+        Post post = existingPost(1L, author, completedProfile(10L));
+        LocalDateTime deletedAt = LocalDateTime.of(2026, 7, 3, 1, 8);
+        post.setStatus(PostStatus.DELETED);
+        post.setDeletedAt(deletedAt);
+        when(postRepository.findOwnedDetailHeaderById(1L, 10L)).thenReturn(Optional.of(post));
+        when(postMediaRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
+        when(postHashtagRepository.findWithHashtagByPostId(1L)).thenReturn(List.of());
+
+        var response = postService.getOwnedPostDetailAs(10L, 1L);
+
+        assertThat(response.status()).isEqualTo(PostStatus.DELETED);
+        assertThat(response.deletedAt()).isEqualTo(deletedAt);
+        assertThat(response.viewer().owner()).isTrue();
+        verify(postRepository).findOwnedDetailHeaderById(1L, 10L);
+        verify(postRepository, never()).findDetailHeaderByIdAndStatus(1L, PostStatus.PUBLISHED);
+    }
+
+    @Test
     void getPostDetailRejectsViewerWithoutCompletedProfile() {
         UserProfile profile = completedProfile(10L);
         profile.setProfileCompletedAt(null);

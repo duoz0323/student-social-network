@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +38,7 @@ public class AdminReportController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<AdminReportListItemResponse>>> getReports(
             @RequestParam(required = false) ReportStatus status,
             @RequestParam(required = false) ReportReason reason,
@@ -54,6 +56,7 @@ public class AdminReportController {
     }
 
     @GetMapping("/{reportId}")
+    @PreAuthorize("hasAuthority('REPORT_DETAIL_VIEW')")
     public ResponseEntity<ApiResponse<AdminReportDetailResponse>> getReportDetail(
             @PathVariable @Positive Long reportId
     ) {
@@ -63,6 +66,7 @@ public class AdminReportController {
     }
 
     @PatchMapping("/{reportId}/reject")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_NO_VIOLATION')")
     public ResponseEntity<ApiResponse<AdminReportStatusResponse>> rejectReport(
             @PathVariable @Positive Long reportId,
             @RequestBody AdminRejectReportRequest request
@@ -73,6 +77,7 @@ public class AdminReportController {
     }
 
     @PatchMapping("/{reportId}/resolve")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_ACTION')")
     public ResponseEntity<ApiResponse<AdminReportStatusResponse>> resolveReport(
             @PathVariable @Positive Long reportId,
             @RequestBody AdminResolveReportRequest request
