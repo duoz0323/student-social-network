@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +36,7 @@ public class AdminPostController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('POST_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<AdminPostListItemResponse>>> getPosts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) PostStatus status,
@@ -50,6 +52,7 @@ public class AdminPostController {
     }
 
     @GetMapping("/{postId}")
+    @PreAuthorize("hasAuthority('POST_VIEW')")
     public ResponseEntity<ApiResponse<AdminPostDetailResponse>> getPostDetail(
             @PathVariable @Positive Long postId) {
         AdminPostDetailResponse response = adminPostService.getPostDetail(postId);
@@ -57,6 +60,7 @@ public class AdminPostController {
     }
 
     @PatchMapping("/{postId}/hide")
+    @PreAuthorize("hasAuthority('POST_HIDE')")
     public ResponseEntity<ApiResponse<AdminPostStatusResponse>> hidePost(
             @PathVariable @Positive Long postId,
             @RequestBody AdminHidePostRequest request) {
@@ -65,6 +69,7 @@ public class AdminPostController {
     }
 
     @PatchMapping("/{postId}/restore")
+    @PreAuthorize("hasAuthority('POST_RESTORE')")
     public ResponseEntity<ApiResponse<AdminPostStatusResponse>> restorePost(
             @PathVariable @Positive Long postId) {
         AdminPostStatusResponse response = adminPostService.restorePost(postId);

@@ -57,7 +57,7 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <section className="grid h-[calc(100vh-4rem)] min-h-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:w-[calc(100%+17.5rem)] 2xl:-translate-x-[8.75rem] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+    <section className="grid h-[calc(100vh-4rem)] min-h-0 min-w-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <div className="mb-3 flex shrink-0 gap-2 rounded-xl border bg-white p-2">
           {[
@@ -101,10 +101,10 @@ export default function AdminReportsPage() {
             onRowDoubleClick={(row) => navigate(`/admin/profile-reports/${row.caseId}`)}
             pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage, totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
             columns={[
-              { key: 'reportedDisplayName', label: 'Trang cá nhân' },
-              { key: 'reportCount', label: 'Số báo cáo', render: (row) => `${row.reportCount} người` },
-              { key: 'status', label: 'Trạng thái', render: (row) => getProfileReportStatusLabel(row.status) },
-              { key: 'latestReportedAt', label: 'Gần nhất', render: (row) => formatDateTime(row.latestReportedAt) },
+              { key: 'reportedDisplayName', label: 'Trang cá nhân', sortType: 'text' },
+              { key: 'reportCount', label: 'Số báo cáo', sortType: 'number', render: (row) => `${row.reportCount} người` },
+              { key: 'status', label: 'Trạng thái', sortType: 'text', render: (row) => getProfileReportStatusLabel(row.status) },
+              { key: 'latestReportedAt', label: 'Gần nhất', sortType: 'date', render: (row) => formatDateTime(row.latestReportedAt) },
             ]}
           /> : <DataTable
             rows={result.content}
@@ -112,12 +112,12 @@ export default function AdminReportsPage() {
             onRowDoubleClick={(row) => navigate(`/admin/reports/${row.caseId}`)}
             pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage, totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
             columns={[
-              { key: 'post', label: 'Bài viết', render: (row) => <div><p className="max-w-xs truncate">{row.postContentPreview || 'Bài không có nội dung chữ'}</p><span className="text-xs text-zinc-400">{row.postAuthorDisplayName || `User #${row.postAuthorId}`}</span></div> },
-              { key: 'reportCount', label: 'Số báo cáo', render: (row) => `${row.reportCount} (${row.distinctReporterCount} người)` },
-              { key: 'status', label: 'Trạng thái', render: (row) => getAdminReportStatusLabel(row.status) },
-              { key: 'latestReportedAt', label: 'Gần nhất', render: (row) => formatDateTime(row.latestReportedAt) },
-              { key: 'resolvedBy', label: 'Admin xử lý', render: (row) => row.resolvedByDisplayName || '—' },
-              { key: 'resolvedAt', label: 'Đã xử lý lúc', render: (row) => row.resolvedAt ? formatDateTime(row.resolvedAt) : '—' },
+              { key: 'post', label: 'Bài viết', sortType: 'text', sortValue: (row) => row.postContentPreview || row.postAuthorDisplayName, render: (row) => <div><p className="max-w-xs truncate">{row.postContentPreview || 'Bài không có nội dung chữ'}</p><span className="text-xs text-zinc-400">{row.postAuthorDisplayName || `User #${row.postAuthorId}`}</span></div> },
+              { key: 'reportCount', label: 'Số báo cáo', sortType: 'number', render: (row) => `${row.reportCount} (${row.distinctReporterCount} người)` },
+              { key: 'status', label: 'Trạng thái', sortType: 'text', render: (row) => getAdminReportStatusLabel(row.status) },
+              { key: 'latestReportedAt', label: 'Gần nhất', sortType: 'date', render: (row) => formatDateTime(row.latestReportedAt) },
+              { key: 'resolvedBy', label: 'Admin xử lý', sortType: 'text', sortValue: (row) => row.resolvedByDisplayName, render: (row) => row.resolvedByDisplayName || '—' },
+              { key: 'resolvedAt', label: 'Đã xử lý lúc', sortType: 'date', render: (row) => row.resolvedAt ? formatDateTime(row.resolvedAt) : '—' },
             ]}
           />}
         </div>

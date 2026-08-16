@@ -206,6 +206,7 @@ public class AdminActionServiceImpl implements AdminActionService {
             case REPORT -> reportFallback(action.getTargetId());
             case MODERATION_CASE -> moderationCaseFallback(action.getTargetId());
             case PROFILE_REPORT -> profileReportFallback(action.getTargetId());
+            case MODERATION_SUGGESTION -> moderationSuggestionFallback(action.getTargetId());
         };
         return new AdminActionTargetResponse(type, action.getTargetId(), displayText, false);
     }
@@ -245,5 +246,9 @@ public class AdminActionServiceImpl implements AdminActionService {
 
     private String profileReportFallback(Long id) {
         return "Báo cáo trang cá nhân #" + id;
+    }
+
+    private String moderationSuggestionFallback(Long id) {
+        return "Đề xuất kiểm duyệt #" + id;
     }
 }

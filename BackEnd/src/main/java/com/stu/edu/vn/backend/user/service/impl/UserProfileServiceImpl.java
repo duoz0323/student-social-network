@@ -115,7 +115,8 @@ public class UserProfileServiceImpl implements UserProfileService {
                         && relationshipPolicyService.hasBlocked(currentUserId, profileUserId),
                 !profileUserId.equals(currentUserId)
                         && userRestrictionRepository.existsByIdRestrictorIdAndIdRestrictedId(
-                        currentUserId, profileUserId)
+                        currentUserId, profileUserId),
+                profile.getUser().getAccountType() == com.stu.edu.vn.backend.user.enums.UserAccountType.MANAGED
         );
     }
 }

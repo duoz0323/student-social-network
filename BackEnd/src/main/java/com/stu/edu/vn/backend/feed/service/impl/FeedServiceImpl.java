@@ -68,7 +68,13 @@ public class FeedServiceImpl implements FeedService {
     @Override
     @Transactional(readOnly = true)
     public CursorPageResponse<FeedPostResponse> getForYou(String encodedCursor, int limit) {
-        Long viewerId = requireEligibleViewer(limit);
+        return getForYouAs(currentUserProvider.getCurrentUserId(), encodedCursor, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPageResponse<FeedPostResponse> getForYouAs(Long viewerId, String encodedCursor, int limit) {
+        requireEligibleViewer(viewerId, limit);
         ForYouCursor cursor = cursorCodec.decode(encodedCursor, ForYouCursor.class);
         if (cursor != null && !cursor.isValid()) {
             throw new BusinessException(ErrorCode.INVALID_CURSOR);
@@ -84,7 +90,8 @@ public class FeedServiceImpl implements FeedService {
     @Override
     @Transactional(readOnly = true)
     public CursorPageResponse<FeedItemResponse> getFollowing(String encodedCursor, int limit) {
-        Long viewerId = requireEligibleViewer(limit);
+        Long viewerId = currentUserProvider.getCurrentUserId();
+        requireEligibleViewer(viewerId, limit);
         FollowingActivityCursor cursor = cursorCodec.decode(encodedCursor, FollowingActivityCursor.class);
         if (cursor != null && !cursor.isValid()) {
             throw new BusinessException(ErrorCode.INVALID_CURSOR);
@@ -167,11 +174,10 @@ public class FeedServiceImpl implements FeedService {
         return result;
     }
 
-    private Long requireEligibleViewer(int limit) {
+    private Long requireEligibleViewer(Long viewerId, int limit) {
         if (limit < 1 || limit > MAX_LIMIT) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
-        Long viewerId = currentUserProvider.getCurrentUserId();
         User viewer = userRepository.findById(viewerId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         if (viewer.getStatus() != UserStatus.ACTIVE) {

@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,6 +39,7 @@ public class AdminModerationCaseController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<AdminModerationCaseListItemResponse>>> getCases(
             @RequestParam(required = false) ModerationCaseStatus status,
             @RequestParam(required = false) ReportReason reason,
@@ -54,6 +56,7 @@ public class AdminModerationCaseController {
     }
 
     @GetMapping("/{caseId}")
+    @PreAuthorize("hasAuthority('REPORT_DETAIL_VIEW')")
     public ResponseEntity<ApiResponse<AdminModerationCaseDetailResponse>> getCaseDetail(
             @PathVariable @Positive Long caseId
     ) {
@@ -62,6 +65,7 @@ public class AdminModerationCaseController {
     }
 
     @PatchMapping("/{caseId}/resolve-no-violation")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_NO_VIOLATION')")
     public ResponseEntity<ApiResponse<AdminModerationCaseStatusResponse>> resolveNoViolation(
             @PathVariable @Positive Long caseId,
             @Valid @RequestBody ResolveModerationCaseNoViolationRequest request
@@ -71,6 +75,7 @@ public class AdminModerationCaseController {
     }
 
     @PatchMapping("/{caseId}/resolve-action")
+    @PreAuthorize("hasAuthority('REPORT_RESOLVE_ACTION')")
     public ResponseEntity<ApiResponse<AdminModerationCaseStatusResponse>> resolveAction(
             @PathVariable @Positive Long caseId,
             @Valid @RequestBody ResolveModerationCaseActionRequest request

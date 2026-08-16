@@ -110,6 +110,8 @@ Quản trị viên có thể:
 - Xem và chỉnh sửa ảnh đại diện, tên hiển thị, ngày sinh, phần giới thiệu của hồ sơ USER.
 - Sau khi chỉnh sửa hồ sơ, gửi thông báo hệ thống cho USER rằng nội dung đã bị điều chỉnh do vi phạm Tiêu chuẩn hệ thống.
 - Khóa và mở khóa tài khoản.
+- Cấp lại mật khẩu cho tài khoản quản trị viên hỗ trợ khi được yêu cầu; Master Admin chỉ tự đổi mật khẩu trong hồ sơ.
+- Xem, chỉnh sửa hồ sơ quản trị viên của chính mình và đổi mật khẩu bằng mật khẩu hiện tại.
 - Quản lý bài viết.
 - Xem, tìm kiếm, tạo, đổi tên và xóa hashtag; đổi tên giữ nguyên liên kết bài viết, còn xóa khiến bài liên quan không còn hashtag.
 - Ẩn và khôi phục bài viết.
@@ -235,7 +237,9 @@ Quy tắc:
 - Làm mới Access Token bằng Refresh Token.
 - Refresh Token được lưu dưới dạng hash.
 - Thu hồi Refresh Token khi đăng xuất.
-- Phân quyền `USER` và `ADMIN`.
+- `users.role` tiếp tục phân tách loại tài khoản `USER` và `ADMIN`; tài khoản `ADMIN` được phân quyền chi tiết bằng RBAC.
+- Access Token của ADMIN chứa snapshot `adminRoles` và hợp quyền `permissions` đã được Backend ký. Backend chỉ tin claims đã ký, không nhận role/permission từ header hoặc payload do Client tự khai báo.
+- Khi gán/thu hồi role hoặc vô hiệu hóa admin, toàn bộ Refresh Token còn hiệu lực của tài khoản đích bị thu hồi; Access Token stateless đã phát hành tiếp tục có hiệu lực tới expiry ngắn hạn.
 
 #### Hoàn tất hồ sơ ban đầu
 
@@ -543,6 +547,26 @@ không tồn tại hai case `OPEN` cho cùng bài.
 
 ### 🛡️ 10. Quản trị hệ thống
 
+#### RBAC quản trị — Backend/Database/Frontend `IMPLEMENTED`, automated test `TESTED`
+
+- Chỉ tài khoản được tạo từ cấu hình Bootstrap được giữ `SUPER_ADMIN` và có quyền tạo tài khoản quản trị hỗ trợ, gán/thu hồi role hoặc cấu hình permission. Các tài khoản `ADMIN` hỗ trợ có thể mang nhiều vai trò nghiệp vụ nhưng không được nhận `SUPER_ADMIN` hay quyền phân quyền tiếp.
+- `SUPER_ADMIN` nhận toàn bộ permission hiện có và permission bổ sung trong tương lai; `USER_MANAGER` có Dashboard Tổng quan, quản lý người dùng và thống kê người dùng; `MODERATOR` có Dashboard Tổng quan, bài viết, hashtag, báo cáo và quyền duyệt đề xuất kiểm duyệt; `ADS_MANAGER` chỉ có Dashboard Tổng quan vì module Ads chưa được triển khai.
+- `COLLABORATOR` là role hệ thống có bộ permission cố định và có khu vực riêng tại `/admin/collaborator/**`; role này không dùng Dashboard Tổng quan và không nhận permission của module quản trị khác. Khi Master Admin gán role, Backend tự tạo hoặc kích hoạt Managed Social Identity trong cùng transaction, nên tài khoản nhận ngay toàn bộ chức năng: tạo, sửa, xóa mềm bài viết của chính danh tính; xem analytics thật; khám phá; like/unlike; comment/reply; repost/unrepost; xem/tìm hashtag và gửi/xem đề xuất kiểm duyệt của chính mình.
+- Mỗi Collaborator có đúng một Managed Social Identity. Khi thu hồi role, Backend vô hiệu hóa liên kết nhưng không xóa Social User, bài viết hoặc lịch sử; khi gán lại role, danh tính cũ được kích hoạt lại. Danh tính này là user nội bộ loại `MANAGED`, không đại diện cá nhân nên không lưu ngày sinh, không có thông tin đăng nhập và không được phát hành Refresh Token; hồ sơ vẫn được đánh dấu sẵn sàng để nội dung xuất hiện trong feed. Mọi bài viết/tương tác vẫn đi qua cùng policy, repository, counter và notification của user thường. Client không được gửi `authorId` hoặc `socialUserId` để lựa chọn actor.
+- Đề xuất kiểm duyệt có trạng thái `PENDING`, `ACCEPTED`, `REJECTED`; một Collaborator không được có hai đề xuất `PENDING` cho cùng bài. Chấp nhận đề xuất chỉ ghi nhận quyết định và audit, không tự động ẩn bài hay tạo kết luận vi phạm.
+- Database dùng `roles`, `permissions`, `role_permissions`, `admin_roles`; unique key trên bảng nối ngăn gán trùng. `users.role` không bị thay thế.
+- Bootstrap Admin được gán `SUPER_ADMIN`; nếu tài khoản bootstrap ADMIN đã tồn tại thì bảo đảm role này được gán nhưng không đổi mật khẩu. Các API phân quyền kiểm tra trực tiếp email actor khớp `BOOTSTRAP_ADMIN_EMAIL`, không chỉ tin role/permission trong Access Token.
+- `SUPER_ADMIN` không xuất hiện trong danh mục role có thể gán. Không được cấp role này cho tài khoản khác hoặc thu hồi/vô hiệu hóa tài khoản Bootstrap làm hệ thống mất quản trị viên gốc.
+- Các permission `ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`, `ADMIN_ROLE_REVOKE` là quyền không thể ủy quyền: chỉ `SUPER_ADMIN` Bootstrap được giữ và không thể thêm vào role nghiệp vụ khác.
+- Thay đổi tài khoản/role admin được ghi `admin_actions` với actor, action, target, role trong note và timestamp. Tài khoản admin hỗ trợ bị vô hiệu hóa bằng trạng thái `BLOCKED`, không xóa cứng; quản trị viên có permission `ADMIN_ENABLE` được mở khóa tài khoản về `ACTIVE`. Master Admin không thể bị vô hiệu hóa.
+- Quản trị viên có permission `ADMIN_PASSWORD_RESET` được cấp lại mật khẩu cho một tài khoản ADMIN hỗ trợ. Backend áp dụng policy mật khẩu, chỉ lưu BCrypt hash, không trả hoặc ghi log mật khẩu, ghi action `RESET_ADMIN_PASSWORD` và thu hồi toàn bộ Refresh Token của tài khoản đích trong cùng transaction; trạng thái `ACTIVE`/`BLOCKED` của tài khoản không bị thay đổi. Master Admin không nhận thao tác này từ màn hình quản trị và chỉ tự đổi mật khẩu tại `/admin/profile`.
+- Mọi ADMIN đang hoạt động có trang `/admin/profile` để xem email, username, trạng thái, role/permission và tự sửa tên hiển thị, ngày sinh, bio. Email, username, role, permission và trạng thái là dữ liệu chỉ đọc; Backend luôn lấy tài khoản đích từ JWT.
+- Tự đổi mật khẩu yêu cầu đúng mật khẩu hiện tại; mật khẩu mới phải khớp xác nhận, đạt policy và khác mật khẩu cũ. Backend lưu BCrypt hash, ghi `CHANGE_ADMIN_PASSWORD`, thu hồi toàn bộ Refresh Token và Frontend yêu cầu đăng nhập lại.
+- Frontend đọc claims đã ký để bảo vệ route, lọc sidebar và ẩn action không được phép; Backend dùng method security theo từng permission và vẫn là hàng rào cuối cùng.
+- Khu vực quản trị tách thành `Quản trị viên` tại `/admin/admins` để xem/tạo/vô hiệu hóa Admin và gán role, cùng `Phân quyền` tại `/admin/permissions` để bật/tắt từng permission theo nhóm chức năng. `DASHBOARD_BASIC_VIEW` bắt buộc cho mọi role; quyền của `SUPER_ADMIN` là bất biến.
+- Tại trang Phân quyền, SUPER_ADMIN có thể nhập tên để tạo role tùy chỉnh. Backend chuẩn hóa tên, sinh `code` ASCII uppercase snake case duy nhất, tạo `reserved = false` và gán `DASHBOARD_BASIC_VIEW` mặc định trước khi cho cấu hình thêm permission.
+- Cập nhật permission của role thay toàn bộ snapshot `role_permissions` trong transaction, ghi audit và thu hồi Refresh Token của mọi Admin đang mang role đó. Access Token đã phát hành chỉ hết hiệu lực theo TTL ngắn hạn.
+
 #### Quản lý người dùng
 
 - Xem danh sách người dùng.
@@ -588,6 +612,20 @@ là request nghiệp vụ thành công đại diện cho hành vi thực của U
 sửa bài, Like/Save, bình luận hoặc Follow. Refresh Token, Auth/OTP, health check, WebSocket heartbeat,
 request Admin và request nền không tạo activity. Ngày hoạt động dùng UTC; mỗi USER có tối đa một dòng
 `user_daily_activities` trong một ngày nhờ unique `(user_id, activity_date)` và MySQL UPSERT atomic.
+
+Bảng snapshot tháng hiển thị cây ba cấp: tổng USER đủ điều kiện ở cấp 1; tổng đang hoạt động và tổng không hoạt động
+ở cấp 2; mỗi nhóm cấp 2 chứa ba trạng thái chi tiết tương ứng ở cấp 3. Thứ tự và độ thụt lề chỉ mô tả quan hệ
+tổng–thành phần, không thay đổi giá trị hoặc công thức do API Analytics trả về.
+
+Sidebar Admin gom các màn hình thống kê trong nhóm mở rộng “Thống kê”, gồm Người dùng (`/admin/user-analytics`),
+Bài viết (`/admin/post-analytics`) và Hashtag (`/admin/hashtag-analytics`). Thống kê bài viết dùng endpoint chỉ đọc
+`GET /api/v1/admin/analytics/posts`, yêu cầu `POST_VIEW`, với bộ lọc 7/30/90 ngày, 6 tháng, 1 năm hoặc khoảng ngày
+tùy chọn tối đa 366 ngày. Màn hình gồm KPI trạng thái, tăng trưởng so với kỳ liền trước, biểu đồ bài mới, phân bố
+trạng thái, tương tác Like/Comment/Save/Repost và top bài nổi bật. Thống kê hashtag dùng endpoint chỉ đọc
+`GET /api/v1/admin/analytics/hashtags`, yêu cầu `HASHTAG_VIEW`, với cùng các preset thời gian. Màn hình gồm 6 KPI,
+xu hướng bài có hashtag so với tổng bài, top 10 và phân bố sử dụng, tăng trưởng so với kỳ trước, hashtag hoạt động
+gần đây và hashtag ít sử dụng. Analytics không chứa thao tác tạo, đổi tên hoặc xóa; các thao tác này vẫn thuộc màn
+Quản lý Hashtag. Các mục con chỉ hiển thị khi Admin có permission đọc module tương ứng.
 
 Widget Dashboard gọi `GET /api/v1/admin/analytics/user-engagement/dashboard?days=30` (từ 1 đến 90 ngày) để
 hiển thị chuỗi tổng `activity_count` theo từng ngày UTC. Response luôn bù các ngày chưa có dữ liệu bằng `0` và
@@ -715,6 +753,7 @@ hiện tại làm `evaluationDate`; tháng đã qua dùng ngày cuối tháng.
 - MySQL Workbench.
 - Bảng `user_blocks` dùng khóa chính kép `(blocker_id, blocked_id)`, khóa ngoại tới `users`, CHECK chống tự Block và index đảo chiều `(blocked_id, blocker_id)`.
 - Bảng `user_restrictions` dùng khóa chính kép `(restrictor_id, restricted_id)`, khóa ngoại tới `users`, CHECK chống tự Restrict và index `(restricted_id, restrictor_id)` phục vụ kiểm tra suppress Notification.
+- Các bảng RBAC quản trị gồm `roles`, `permissions`, `role_permissions`, `admin_roles`; SQL seed năm role ban đầu và schema cho phép tạo thêm role tùy chỉnh, DBML được đồng bộ cùng schema vật lý.
 
 ### Lưu trữ media
 
@@ -1129,17 +1168,45 @@ PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-action
 Frontend chỉ gửi hành động nghiệp vụ và kết luận; `status` cùng `resolved_by` do Backend xác định từ
 state machine và JWT Principal.
 
+API quản lý Admin/RBAC:
+
+```http
+GET   /api/v1/admin/profile
+PUT   /api/v1/admin/profile
+PATCH /api/v1/admin/profile/password
+GET   /api/v1/admin/admins
+GET   /api/v1/admin/admins/{adminId}
+POST  /api/v1/admin/admins
+PUT   /api/v1/admin/admins/{adminId}
+PATCH /api/v1/admin/admins/{adminId}/disable
+PATCH /api/v1/admin/admins/{adminId}/enable
+PATCH /api/v1/admin/admins/{adminId}/password
+POST  /api/v1/admin/admins/{adminId}/roles/{roleCode}
+PATCH /api/v1/admin/admins/{adminId}/roles/{roleCode}/revoke
+GET   /api/v1/admin/admins/roles/catalog
+GET   /api/v1/admin/roles
+POST  /api/v1/admin/roles
+GET   /api/v1/admin/roles/permissions
+PUT   /api/v1/admin/roles/{roleCode}/permissions
+```
+
+Ba endpoint hồ sơ tự quản lý dành cho mọi ADMIN đang hoạt động và không nhận `adminId` từ Client. Chỉ actor có email khớp `BOOTSTRAP_ADMIN_EMAIL` mới được tạo Admin hỗ trợ, gán/thu hồi role, tạo role và quản lý ma trận permission; Backend không chỉ dựa vào claim `SUPER_ADMIN`. Endpoint tạo role chỉ nhận `name`; Backend tự sinh `code`, chống trùng và gán quyền Tổng quan mặc định. Không thể gán `SUPER_ADMIN` hoặc thêm `ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`, `ADMIN_ROLE_REVOKE` vào role khác. Master Admin không nhận thêm/bớt role nghiệp vụ, không được cấp lại mật khẩu qua endpoint quản lý và không thể bị vô hiệu hóa; mật khẩu của tài khoản này chỉ đổi qua API hồ sơ tự quản lý. Các endpoint tài khoản còn lại yêu cầu permission `ADMIN_*` tương ứng. Endpoint cấp lại mật khẩu của Admin hỗ trợ nhận `newPassword` và `confirmPassword`, không trả mật khẩu trong response. Việc thay đổi role hoặc mật khẩu không nhận `userId` actor từ Client mà lấy actor từ JWT Principal hiện tại.
+
 API Analytics độc lập dành cho Admin:
 
 ```http
 GET /api/v1/admin/analytics/user-engagement/monthly?fromMonth=2026-01&toMonth=2026-06&inactiveDays=15
 GET /api/v1/admin/analytics/user-engagement/summary?month=2026-06&inactiveDays=15
 GET /api/v1/admin/analytics/user-engagement/dashboard?days=30
+GET /api/v1/admin/analytics/posts?range=30D
+GET /api/v1/admin/analytics/posts?fromDate=2026-08-01&toDate=2026-08-16
 ```
 
 Khoảng monthly tối đa 24 tháng. `summary` mặc định lấy tháng hiện tại. Response monthly gồm từng tháng,
 hai peak (`peakReturningMonth`, `peakReturnRateMonth`) và `comparisonOperator = GREATER_THAN`.
 Dashboard mặc định dùng 30 ngày, cho phép từ 1 đến 90 ngày và trả `dailyInteractions` cùng `featuredUsers`.
+Post Analytics mặc định 30 ngày. Tổng bài/công khai/ẩn/xóa là snapshot trạng thái hiện tại; bài mới, tương tác,
+top bài và hồ sơ kiểm duyệt dùng cùng khoảng ngày UTC. So sánh dùng khoảng liền trước có cùng số ngày.
 
 Ví dụ bắt đầu đăng ký:
 
@@ -1379,7 +1446,7 @@ npm run preview
 - Rate limit cho đăng nhập, gửi OTP, gửi lại OTP và social authentication.
 - Token Google/Facebook phải được xác minh tại Backend.
 - Không tin email, provider ID hoặc trạng thái verified do Frontend tự gửi.
-- API Admin chỉ dành cho vai trò `ADMIN`.
+- API Admin trước hết yêu cầu `users.role = ADMIN`, sau đó kiểm tra permission RBAC hoặc `ADMIN_ROLE_SUPER_ADMIN` phù hợp tại Backend.
 - Backend kiểm tra quyền cho mọi thao tác.
 - Không ghi mật khẩu, OTP hoặc Token vào log.
 - Bean Validation cho dữ liệu đầu vào.

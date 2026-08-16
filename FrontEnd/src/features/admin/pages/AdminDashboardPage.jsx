@@ -48,10 +48,7 @@ export default function AdminDashboardPage() {
   if (error) return <EmptyState title="Không thể tải Dashboard" description={error} />;
 
   return <section className="space-y-7">
-    <div>
-      <h1 className="text-5xl font-bold">Bảng điều khiển</h1>
-      <p className="mt-3 text-base text-zinc-500">Tổng quan và mức tương tác trong 30 ngày gần nhất.</p>
-    </div>
+
 
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {dashboard.cards.map(({ label, value, icon: Icon, theme, iconTheme }) => (

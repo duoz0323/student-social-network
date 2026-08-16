@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ public class AdminActionController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ADMIN_ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AdminActionListResponse>>> getActions(
             @RequestParam(required = false) AdminActionType actionType,
             @RequestParam(required = false) AdminTargetType targetType,
@@ -53,6 +55,7 @@ public class AdminActionController {
     }
 
     @GetMapping("/{actionId}")
+    @PreAuthorize("hasAuthority('ADMIN_ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminActionDetailResponse>> getActionDetail(
             @PathVariable @Positive Long actionId
     ) {

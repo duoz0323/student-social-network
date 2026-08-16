@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.analytics.dto.MonthlyUserEngagementResponse;
 import com.stu.edu.vn.backend.analytics.service.UserEngagementAnalyticsService;
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +29,7 @@ public class  AdminUserEngagementAnalyticsController {
      * Cấp dữ liệu Dashboard cho biểu đồ tương tác và bảng USER nổi bật, không trả lịch sử hoạt động chi tiết.
      */
     @GetMapping("/dashboard")
+    @PreAuthorize("hasAuthority('DASHBOARD_BASIC_VIEW')")
     public ResponseEntity<ApiResponse<DashboardUserEngagementResponse>> getDashboard(
             @RequestParam(defaultValue = "30") int days
     ) {
@@ -38,6 +40,7 @@ public class  AdminUserEngagementAnalyticsController {
     }
 
     @GetMapping("/monthly")
+    @PreAuthorize("hasAuthority('USER_ANALYTICS_VIEW')")
     public ResponseEntity<ApiResponse<MonthlyUserEngagementResponse>> getMonthly(
             @RequestParam String fromMonth,
             @RequestParam String toMonth,
@@ -50,6 +53,7 @@ public class  AdminUserEngagementAnalyticsController {
     }
 
     @GetMapping("/summary")
+    @PreAuthorize("hasAuthority('USER_ANALYTICS_VIEW')")
     public ResponseEntity<ApiResponse<MonthlyUserEngagementItemResponse>> getSummary(
             @RequestParam(required = false) String month,
             @RequestParam(defaultValue = "15") int inactiveDays

@@ -170,6 +170,7 @@ Redis/distributed rate limit, adaptive blocking và abuse telemetry là P1.
 - `user_interests` dùng primary key `(user_id, interest_id)` và index đảo `(interest_id, user_id)` để chống trùng và chuẩn bị query theo sở thích ở phase sau.
 - `school_id`, `faculty_id`, `major_id` có foreign key/index riêng; `entry_year` có check tĩnh `1900..9999`, còn giới hạn không vượt năm hiện tại được Service kiểm tra bằng UTC `Clock`.
 - Academic fields không tham gia `chk_user_profiles_completion_consistency`, do đó không làm thay đổi username hoặc `profile_completed_at`.
+- Hồ sơ `NORMAL` đã hoàn tất vẫn bắt buộc `date_of_birth` bằng trigger insert/update; riêng Managed Social Identity có `users.account_type = MANAGED` được phép không có ngày sinh vì đây là danh tính nội dung, không đại diện cá nhân.
 - Master data trong SQL canonical có STU, một số trường TP.HCM và 16 interest categories; chỉ dùng development/demo, không phải danh mục chính thức toàn quốc.
 
 Chỉ rebuild khi đã xác nhận database đích là local/test, đã xem thống kê dữ liệu hiện có và đã tạo backup khi cần bảo tồn.
@@ -179,6 +180,18 @@ File `database/student_social_network.sql` là file import duy nhất: tự drop
 ```bash
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
 ```
+
+### Migration gộp Admin/RBAC/Collaborator cho database đang có dữ liệu
+
+File `database/V20260816__admin_rbac_collaborator_features.sql` dùng để nâng cấp database nền hiện hữu mà không rebuild. File không chứa `DROP DATABASE`, `DROP TABLE`, seed user/post hoặc cập nhật dữ liệu nghiệp vụ ngoài master data RBAC. Migration chỉ tạo/đồng bộ các bảng RBAC, Managed Social Identity, đề xuất kiểm duyệt, cột `users.account_type`, check/trigger hoàn tất hồ sơ và enum audit tương ứng. Những thay đổi thuần giao diện hoặc analytics dùng schema sẵn có không cần DDL bổ sung.
+
+Chọn rõ database đích trong lệnh import; không chạy đồng thời file canonical rebuild:
+
+```bash
+mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/V20260816__admin_rbac_collaborator_features.sql
+```
+
+Migration yêu cầu MySQL 8.0+, kiểm tra sự tồn tại của `users`, `user_profiles`, `posts`, `admin_actions` trước khi sửa và có thể chạy lại. DDL MySQL tự commit, vì vậy vẫn phải backup trước khi áp dụng trên database dùng chung.
 
 Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.
 

@@ -12,6 +12,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,6 +26,18 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(HttpServletRequest request) {
+        // Method Security chạy sau filter; chuẩn hóa lỗi thiếu permission thành 403 thay vì rơi xuống lỗi 500.
+        ErrorResponse response = ErrorResponse.of(
+                ErrorCode.FORBIDDEN.name(),
+                ErrorCode.FORBIDDEN.getDefaultMessage(),
+                ErrorCode.FORBIDDEN.getHttpStatus().value(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
+    }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupported(HttpServletRequest request) {

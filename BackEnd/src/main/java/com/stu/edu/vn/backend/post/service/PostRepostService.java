@@ -7,8 +7,10 @@ import com.stu.edu.vn.backend.post.dto.response.PostRepostResponse;
 /** Contract thao tác Repost và đọc tab Đăng lại trên Profile. */
 public interface PostRepostService {
     PostRepostResponse repost(Long postId);
+    PostRepostResponse repostAs(Long userId, Long postId);
 
     PostRepostResponse unrepost(Long postId);
+    PostRepostResponse unrepostAs(Long userId, Long postId);
 
     CursorPageResponse<FeedItemResponse> getProfileReposts(Long userId, String cursor, int limit);
 }

@@ -1,6 +1,12 @@
 package com.stu.edu.vn.backend.admin.bootstrap;
 
 import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
+import com.stu.edu.vn.backend.admin.rbac.AdminRoleCode;
+import com.stu.edu.vn.backend.admin.rbac.entity.AdminRole;
+import com.stu.edu.vn.backend.admin.rbac.entity.AdminRoleAssignment;
+import com.stu.edu.vn.backend.admin.rbac.entity.AdminRoleAssignmentId;
+import com.stu.edu.vn.backend.admin.rbac.repository.AdminRoleAssignmentRepository;
+import com.stu.edu.vn.backend.admin.rbac.repository.AdminRoleRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -13,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +44,8 @@ public class BootstrapAdminService {
     private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
+    private final AdminRoleRepository adminRoleRepository;
+    private final AdminRoleAssignmentRepository adminRoleAssignmentRepository;
 
     public BootstrapAdminService(
             BootstrapAdminProperties properties,
@@ -45,11 +54,26 @@ public class BootstrapAdminService {
             PasswordEncoder passwordEncoder,
             Clock clock
     ) {
+        this(properties, userRepository, userProfileRepository, passwordEncoder, clock, null, null);
+    }
+
+    @Autowired
+    public BootstrapAdminService(
+            BootstrapAdminProperties properties,
+            UserRepository userRepository,
+            UserProfileRepository userProfileRepository,
+            PasswordEncoder passwordEncoder,
+            Clock clock,
+            AdminRoleRepository adminRoleRepository,
+            AdminRoleAssignmentRepository adminRoleAssignmentRepository
+    ) {
         this.properties = properties;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.clock = clock;
+        this.adminRoleRepository = adminRoleRepository;
+        this.adminRoleAssignmentRepository = adminRoleAssignmentRepository;
     }
 
     @Transactional
@@ -66,6 +90,12 @@ public class BootstrapAdminService {
 
         // Email tồn tại chỉ làm bootstrap bỏ qua, tuyệt đối không nâng role hoặc đổi mật khẩu tài khoản cũ.
         if (userRepository.existsByEmail(normalizedEmail)) {
+            // Chỉ lookup thêm khi RBAC repository hiện diện; giữ tính tương thích cho unit test constructor rút gọn.
+            if (adminRoleRepository != null) {
+                userRepository.findByEmail(normalizedEmail)
+                        .filter(user -> user.getRole() == UserRole.ADMIN)
+                        .ifPresent(user -> ensureSuperAdminRole(user.getId()));
+            }
             return BootstrapAdminResult.ALREADY_EXISTS;
         }
 
@@ -88,8 +118,22 @@ public class BootstrapAdminService {
         profile.setProfileCompletedAt(LocalDateTime.now(clock));
         // saveAndFlush làm lỗi hồ sơ xuất hiện ngay trong transaction để bản ghi users được rollback cùng lúc.
         userProfileRepository.saveAndFlush(profile);
+        ensureSuperAdminRole(savedAdmin.getId());
 
         return BootstrapAdminResult.CREATED;
+    }
+
+    private void ensureSuperAdminRole(Long adminId) {
+        // Unit test cũ dùng constructor rút gọn; production luôn được Spring truyền repository RBAC.
+        if (adminRoleRepository == null || adminRoleAssignmentRepository == null) {
+            return;
+        }
+        AdminRole role = adminRoleRepository.findByCode(AdminRoleCode.SUPER_ADMIN.name())
+                .orElseThrow(() -> new IllegalStateException("RBAC role SUPER_ADMIN chưa được seed"));
+        AdminRoleAssignmentId id = new AdminRoleAssignmentId(adminId, role.getId());
+        if (!adminRoleAssignmentRepository.existsById(id)) {
+            adminRoleAssignmentRepository.save(new AdminRoleAssignment(adminId, role.getId(), null));
+        }
     }
 
     private String normalizeAndValidateEmail(String rawEmail) {

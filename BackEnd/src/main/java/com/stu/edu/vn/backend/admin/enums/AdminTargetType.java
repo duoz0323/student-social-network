@@ -9,5 +9,6 @@ public enum AdminTargetType {
     HASHTAG,
     REPORT,
     MODERATION_CASE,
-    PROFILE_REPORT
+    PROFILE_REPORT,
+    MODERATION_SUGGESTION
 }

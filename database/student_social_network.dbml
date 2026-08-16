@@ -27,6 +27,25 @@ Enum admin_actions_action_type_enum {
   REJECT_MODERATION_CASE
   RESOLVE_PROFILE_REPORT
   REJECT_PROFILE_REPORT
+  CREATE_ADMIN
+  UPDATE_ADMIN
+  UPDATE_ADMIN_PROFILE
+  DISABLE_ADMIN
+  ENABLE_ADMIN
+  RESET_ADMIN_PASSWORD
+  CHANGE_ADMIN_PASSWORD
+  ASSIGN_ADMIN_ROLE
+  REVOKE_ADMIN_ROLE
+  CREATE_ADMIN_ROLE
+  UPDATE_ROLE_PERMISSIONS
+  CREATE_MANAGED_SOCIAL_IDENTITY
+  DISABLE_MANAGED_SOCIAL_IDENTITY
+  COLLABORATOR_POST_CREATED
+  COLLABORATOR_POST_UPDATED
+  COLLABORATOR_POST_DELETED
+  MODERATION_SUGGESTION_CREATED
+  MODERATION_SUGGESTION_ACCEPTED
+  MODERATION_SUGGESTION_REJECTED
 }
 
 Enum admin_actions_target_type_enum {
@@ -36,6 +55,7 @@ Enum admin_actions_target_type_enum {
   REPORT
   MODERATION_CASE
   PROFILE_REPORT
+  MODERATION_SUGGESTION
 }
 
 Enum comments_status_enum {
@@ -754,7 +774,7 @@ Table user_profiles {
     (major_id) [name: "idx_user_profiles_major"]
   }
 
-  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))) | chk_user_profiles_completion_requires_birth_date: CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))) | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0))) | chk_user_profiles_entry_year: CHECK (entry_year IS NULL OR entry_year BETWEEN 1900 AND 9999)"
+  Note: "chk_user_profiles_completion_consistency: CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null)))) | Trigger completion_birth_insert/update bắt buộc date_of_birth cho NORMAL, miễn cho MANAGED | chk_user_profiles_display_name_not_blank: CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0))) | chk_user_profiles_entry_year: CHECK (entry_year IS NULL OR entry_year BETWEEN 1900 AND 9999)"
 }
 
 Table user_interests {
@@ -773,6 +793,7 @@ Table users {
   password_hash varchar(255)
   role varchar(16) [not null, default: 'USER']
   status varchar(16) [not null, default: 'ACTIVE']
+  account_type varchar(16) [not null, default: 'NORMAL']
   blocked_at datetime(6)
   blocked_reason varchar(500)
   first_active_at datetime(6)
@@ -784,7 +805,79 @@ Table users {
     (status, created_at, id) [name: "idx_users_status_created_at"]
   }
 
-  Note: "chk_users_role: CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))) | chk_users_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_users_blocked_data: CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))) | chk_users_email_not_blank: CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))) | chk_users_email_verification_consistency: CHECK (((`email` is not null) or (`email_verified_at` is null))) | chk_users_password_verified_email: CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null)))"
+  Note: "chk_users_role: CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))) | chk_users_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))) | chk_users_account_type: CHECK (account_type IN ('NORMAL','MANAGED')) | chk_users_managed_auth: MANAGED chỉ là USER không email/password | chk_users_blocked_data: CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))) | chk_users_email_not_blank: CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))) | chk_users_email_verification_consistency: CHECK (((`email` is not null) or (`email_verified_at` is null))) | chk_users_password_verified_email: CHECK (((`password_hash` is null) or (`email` is not null and `email_verified_at` is not null)))"
+}
+
+Table admin_social_identities {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  admin_id bigint [not null, unique, note: "UNSIGNED"]
+  social_user_id bigint [not null, unique, note: "UNSIGNED"]
+  status varchar(16) [not null, default: 'ACTIVE']
+  created_by bigint [not null, note: "UNSIGNED"]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+  Note: "Managed Social Identity; admin_id phải khác social_user_id; status ACTIVE hoặc DISABLED."
+}
+
+Table moderation_suggestions {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  post_id bigint [not null, note: "UNSIGNED"]
+  suggested_by_admin_id bigint [not null, note: "UNSIGNED"]
+  reason varchar(32) [not null]
+  description varchar(500)
+  status varchar(16) [not null, default: 'PENDING']
+  reviewed_by_admin_id bigint [note: "UNSIGNED"]
+  reviewed_at datetime(6)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+  pending_admin_id bigint [note: "UNSIGNED; generated khi PENDING"]
+  pending_post_id bigint [note: "UNSIGNED; generated khi PENDING"]
+  Indexes { (pending_admin_id, pending_post_id) [unique, name: "uq_moderation_suggestions_pending"] }
+  Note: "PENDING chuyển một lần sang ACCEPTED hoặc REJECTED; không tự đổi trạng thái Post."
+}
+
+Table roles {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  code varchar(64) [not null, unique]
+  display_name varchar(100) [not null]
+  description varchar(500)
+  reserved boolean [not null, default: false]
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Note: "Master role RBAC dành riêng cho tài khoản có users.role = ADMIN; code duy nhất."
+}
+
+Table permissions {
+  id bigint [pk, not null, increment, note: "UNSIGNED"]
+  code varchar(100) [not null, unique]
+  description varchar(500)
+  created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
+
+  Note: "Permission code nhỏ theo từng hành động Admin; code duy nhất."
+}
+
+Table role_permissions {
+  role_id bigint [pk, not null, note: "UNSIGNED"]
+  permission_id bigint [pk, not null, note: "UNSIGNED"]
+  assigned_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (permission_id, role_id) [name: "idx_role_permissions_permission_role"]
+  }
+}
+
+Table admin_roles {
+  admin_id bigint [pk, not null, note: "UNSIGNED"]
+  role_id bigint [pk, not null, note: "UNSIGNED"]
+  assigned_by bigint [note: "UNSIGNED; NULL cho bootstrap/seed hệ thống"]
+  assigned_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  Indexes {
+    (role_id, admin_id) [name: "idx_admin_roles_role_admin"]
+    (assigned_by) [name: "idx_admin_roles_assigned_by"]
+  }
 }
 
 Table conversations {
@@ -902,6 +995,17 @@ Ref fk_account_status_histories_changed_by: account_status_histories.changed_by 
 Ref fk_user_daily_activities_user: user_daily_activities.user_id > users.id [delete: cascade, update: restrict]
 Ref fk_account_status_histories_user: account_status_histories.user_id > users.id [delete: restrict, update: restrict]
 Ref fk_admin_actions_admin: admin_actions.admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_social_identities_admin: admin_social_identities.admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_social_identities_social_user: admin_social_identities.social_user_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_social_identities_created_by: admin_social_identities.created_by > users.id [delete: restrict, update: restrict]
+Ref fk_moderation_suggestions_post: moderation_suggestions.post_id > posts.id [delete: restrict, update: restrict]
+Ref fk_moderation_suggestions_suggester: moderation_suggestions.suggested_by_admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_moderation_suggestions_reviewer: moderation_suggestions.reviewed_by_admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_roles_admin: admin_roles.admin_id > users.id [delete: restrict, update: restrict]
+Ref fk_admin_roles_role: admin_roles.role_id > roles.id [delete: restrict, update: restrict]
+Ref fk_admin_roles_assigned_by: admin_roles.assigned_by > users.id [delete: restrict, update: restrict]
+Ref fk_role_permissions_role: role_permissions.role_id > roles.id [delete: cascade, update: restrict]
+Ref fk_role_permissions_permission: role_permissions.permission_id > permissions.id [delete: cascade, update: restrict]
 Ref fk_comments_parent: comments.parent_comment_id > comments.id [delete: cascade, update: restrict]
 Ref fk_comments_post: comments.post_id > posts.id [delete: cascade, update: restrict]
 Ref fk_comments_user: comments.user_id > users.id [delete: restrict, update: restrict]

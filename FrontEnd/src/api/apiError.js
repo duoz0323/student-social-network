@@ -31,7 +31,7 @@ export class ApiError extends Error {
     this.retryable = retryable;
 
     // Chỉ giữ lỗi gốc trong development để không đưa chi tiết kỹ thuật vào production UI.
-    if (import.meta.env.DEV && originalError) this.originalError = originalError;
+    if (import.meta.env?.DEV && originalError) this.originalError = originalError;
   }
 }
 

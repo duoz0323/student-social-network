@@ -58,3 +58,11 @@ export function AdminRoute({ children }) {
   if (!auth.profileCompleted) return <Navigate to="/onboarding/profile" replace />;
   return auth.role === 'ADMIN' ? children : <Navigate to="/403" replace />;
 }
+
+export function AdminPermissionRoute({ children, permission, anyOf = [], adminRole }) {
+  const auth = useAuth();
+  const allowed = adminRole
+    ? auth.hasAdminRole(adminRole)
+    : permission ? auth.hasPermission(permission) : anyOf.some(auth.hasPermission);
+  return allowed ? children : <Navigate to="/403" replace />;
+}

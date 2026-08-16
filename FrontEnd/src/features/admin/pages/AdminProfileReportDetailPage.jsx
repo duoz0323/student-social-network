@@ -8,6 +8,8 @@ import { EmptyState, LoadingState } from '../../../components/common/StateBlock.
 import { formatDateTime } from '../../../utils/formatters.js';
 import { getProfileReportReasonLabel } from '../../profile/constants/profileReportReasons.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+import { ADMIN_PERMISSIONS } from '../constants/adminRbac.js';
 
 const STATUS_LABELS = {
   PENDING: 'Chờ xử lý',
@@ -19,6 +21,7 @@ export default function AdminProfileReportDetailPage() {
   const { caseId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useAdminToast();
+  const auth = useAuth();
   const [report, setReport] = useState(null);
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -172,9 +175,9 @@ export default function AdminProfileReportDetailPage() {
 
         {report.status === 'PENDING' ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t pt-4">
-            <Button variant="secondary" disabled={submitting} onClick={() => processReport(false)}><CircleX size={16} /> Không vi phạm</Button>
-            <Button disabled={submitting} onClick={() => processReport(true)}><CheckCircle2 size={16} /> Xác nhận vi phạm</Button>
-            <Button className="bg-red-600 text-white hover:bg-red-700" disabled={submitting} onClick={() => processReport(true, true)}><CheckCircle2 size={16} /> Vi phạm & khóa tài khoản</Button>
+            {auth.hasPermission(ADMIN_PERMISSIONS.REPORT_RESOLVE_NO_VIOLATION) && <Button variant="secondary" disabled={submitting} onClick={() => processReport(false)}><CircleX size={16} /> Không vi phạm</Button>}
+            {auth.hasPermission(ADMIN_PERMISSIONS.REPORT_RESOLVE_ACTION) && <Button disabled={submitting} onClick={() => processReport(true)}><CheckCircle2 size={16} /> Xác nhận vi phạm</Button>}
+            {auth.hasPermission(ADMIN_PERMISSIONS.REPORT_RESOLVE_ACTION) && <Button className="bg-red-600 text-white hover:bg-red-700" disabled={submitting} onClick={() => processReport(true, true)}><CheckCircle2 size={16} /> Vi phạm & khóa tài khoản</Button>}
           </div>
         ) : null}
       </div>

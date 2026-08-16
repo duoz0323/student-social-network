@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isCurrentUserProfile, mergeCurrentUserProfile, toCurrentUserProfile } from './currentUserProfile.js';
+import {
+  isCurrentUserProfile,
+  mergeCurrentUserProfile,
+  shouldLoadCurrentProfile,
+  toCurrentUserProfile,
+} from './currentUserProfile.js';
 
 test('toCurrentUserProfile chuẩn hóa dữ liệu hồ sơ từ API', () => {
   assert.deepEqual(toCurrentUserProfile({
@@ -41,4 +46,11 @@ test('mergeCurrentUserProfile đồng bộ avatar mới nhưng giữ thông tin 
 test('không dùng hồ sơ cache của tài khoản trước cho phiên mới', () => {
   assert.equal(isCurrentUserProfile({ id: 42, displayName: 'Nguyễn An' }, 42), true);
   assert.equal(isCurrentUserProfile({ id: 42, displayName: 'Nguyễn An' }, 99), false);
+});
+
+test('Admin luôn tải hồ sơ riêng để sidebar hiển thị đúng tên tài khoản đăng nhập', () => {
+  assert.equal(shouldLoadCurrentProfile('ADMIN', false), true);
+  assert.equal(shouldLoadCurrentProfile('ADMIN', true), true);
+  assert.equal(shouldLoadCurrentProfile('USER', false), false);
+  assert.equal(shouldLoadCurrentProfile('USER', true), true);
 });

@@ -19,6 +19,7 @@ import com.stu.edu.vn.backend.security.TokenHashService;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
@@ -54,6 +55,10 @@ public class AuthServiceImpl implements AuthService {
         NormalizedEmail email = EmailNormalizer.normalize(request.email());
         User user = userRepository.findByEmail(email.value())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+
+        if (user.getAccountType() == UserAccountType.MANAGED) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
 
         // Trạng thái tài khoản phải được kiểm tra trước khi phát hành bất kỳ phiên đăng nhập nào.
         if (user.getStatus() != UserStatus.ACTIVE) {
@@ -112,6 +117,9 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findById(refreshToken.getUser().getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+        if (user.getAccountType() == UserAccountType.MANAGED) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_BLOCKED);
         }

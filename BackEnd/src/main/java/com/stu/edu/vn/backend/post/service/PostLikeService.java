@@ -11,8 +11,10 @@ import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
 public interface PostLikeService {
 
     PostLikeResponse likePost(Long postId);
+    PostLikeResponse likePostAs(Long userId, Long postId);
 
     PostLikeResponse unlikePost(Long postId);
+    PostLikeResponse unlikePostAs(Long userId, Long postId);
 
     CursorPageResponse<FeedPostResponse> getLikedPosts(String cursor, int limit);
 }

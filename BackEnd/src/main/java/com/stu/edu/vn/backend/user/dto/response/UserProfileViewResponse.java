@@ -25,6 +25,17 @@ public record UserProfileViewResponse(
         long followingCount,
         boolean followedByCurrentUser,
         boolean blockedByMe,
-        boolean restrictedByMe
+        boolean restrictedByMe,
+        boolean managedAccount
 ) {
+    /** Giữ source compatibility cho mapper/test cũ; tài khoản hiện hữu mặc định không phải Managed. */
+    public UserProfileViewResponse(
+            Long userId, String username, String displayName, String avatarUrl, LocalDate dateOfBirth,
+            String bio, SchoolResponse school, AcademicItemResponse faculty, AcademicItemResponse major,
+            Integer entryYear, List<InterestResponse> interests, long followerCount, long followingCount,
+            boolean followedByCurrentUser, boolean blockedByMe, boolean restrictedByMe
+    ) {
+        this(userId, username, displayName, avatarUrl, dateOfBirth, bio, school, faculty, major, entryYear,
+                interests, followerCount, followingCount, followedByCurrentUser, blockedByMe, restrictedByMe, false);
+    }
 }

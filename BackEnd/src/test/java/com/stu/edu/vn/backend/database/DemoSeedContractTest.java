@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class DemoSeedContractTest {
 
     @Test
-    void databaseDirectoryKeepsOnlyCanonicalSqlAndDbml() throws Exception {
+    void databaseDirectoryKeepsCanonicalArtifactsAndVersionedAdditiveMigrations() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -23,9 +23,11 @@ class DemoSeedContractTest {
                     .toList();
         }
 
-        assertThat(files).containsExactly(
-                "student_social_network.dbml",
-                "student_social_network.sql");
+        assertThat(files).contains("student_social_network.dbml", "student_social_network.sql",
+                "collaborator_managed_social_identity_20260815.sql",
+                "collaborator_role_lifecycle_20260815.sql",
+                "managed_profile_completion_hotfix_20260815.sql");
+        assertThat(files).allMatch(file -> file.endsWith(".sql") || file.endsWith(".dbml"));
     }
 
     @Test
@@ -41,6 +43,12 @@ class DemoSeedContractTest {
                 .contains("'invalid_demo_counts'")
                 .contains("'invalid_academic_hierarchy'")
                 .contains("'counter_mismatch'");
+
+        // Canonical schema phải đặt account_type đúng bảng users và bảo vệ ngày sinh theo loại tài khoản.
+        assertThat(seed)
+                .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
+                .contains("owner_account_type <> 'MANAGED'")
+                .doesNotContain("`status` varchar(16) NOT NULL DEFAULT 'ACTIVE',\n  `account_type` varchar(16) NOT NULL DEFAULT 'NORMAL',\n  `expires_at`");
     }
 
     private Path databaseDirectory() {

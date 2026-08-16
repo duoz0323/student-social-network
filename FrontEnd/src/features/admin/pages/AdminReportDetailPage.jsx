@@ -10,11 +10,14 @@ import AdminReportedPostCard from '../components/AdminReportedPostCard.jsx';
 import { getAdminReportDetailStatusLabel, getAdminReportReasonLabel } from '../constants/adminReportLabels.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 import { toAdminReportPostView, toReportPostFallback } from '../utils/adminReportPost.js';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+import { ADMIN_PERMISSIONS } from '../constants/adminRbac.js';
 
 export default function AdminReportDetailPage() {
   const { caseId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useAdminToast();
+  const auth = useAuth();
   const [moderationCase, setModerationCase] = useState(null);
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -139,8 +142,8 @@ export default function AdminReportDetailPage() {
         <div className="mt-4 shrink-0 border-t pt-4">
           {moderationCase.resolution?.resolvedBy && <p className="text-sm text-zinc-500">Xử lý bởi {moderationCase.resolution.resolvedBy.displayName || `Admin #${moderationCase.resolution.resolvedBy.adminId}`} lúc {formatDateTime(moderationCase.resolution.resolvedAt)}</p>}
           {isOpen && <div className="flex flex-wrap justify-end gap-3">
-            <Button variant="secondary" disabled={submitting} onClick={resolveNoViolation}><CircleX size={16} /> Không vi phạm</Button>
-            <Button disabled={submitting} onClick={() => setHideDialogOpen(true)}><EyeOff size={16} /> Có vi phạm / Ẩn bài</Button>
+            {auth.hasPermission(ADMIN_PERMISSIONS.REPORT_RESOLVE_NO_VIOLATION) && <Button variant="secondary" disabled={submitting} onClick={resolveNoViolation}><CircleX size={16} /> Không vi phạm</Button>}
+            {auth.hasPermission(ADMIN_PERMISSIONS.REPORT_RESOLVE_ACTION) && <Button disabled={submitting} onClick={() => setHideDialogOpen(true)}><EyeOff size={16} /> Có vi phạm / Ẩn bài</Button>}
           </div>}
         </div>
       </div>

@@ -69,8 +69,8 @@ DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `admin_id` bigint unsigned NOT NULL,
-  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','CREATE_HASHTAG','UPDATE_HASHTAG','DELETE_HASHTAG','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE','RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT') NOT NULL,
-  `target_type` enum('USER','POST','HASHTAG','REPORT','MODERATION_CASE','PROFILE_REPORT') NOT NULL,
+  `action_type` enum('BLOCK_USER','UNBLOCK_USER','UPDATE_USER_PROFILE','CREATE_HASHTAG','UPDATE_HASHTAG','DELETE_HASHTAG','HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT','RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE','RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT','CREATE_ADMIN','UPDATE_ADMIN','UPDATE_ADMIN_PROFILE','DISABLE_ADMIN','ENABLE_ADMIN','RESET_ADMIN_PASSWORD','CHANGE_ADMIN_PASSWORD','ASSIGN_ADMIN_ROLE','REVOKE_ADMIN_ROLE','CREATE_ADMIN_ROLE','UPDATE_ROLE_PERMISSIONS','CREATE_MANAGED_SOCIAL_IDENTITY','DISABLE_MANAGED_SOCIAL_IDENTITY','COLLABORATOR_POST_CREATED','COLLABORATOR_POST_UPDATED','COLLABORATOR_POST_DELETED','MODERATION_SUGGESTION_CREATED','MODERATION_SUGGESTION_ACCEPTED','MODERATION_SUGGESTION_REJECTED') NOT NULL,
+  `target_type` enum('USER','POST','HASHTAG','REPORT','MODERATION_CASE','PROFILE_REPORT','MODERATION_SUGGESTION') NOT NULL,
   `target_id` bigint unsigned NOT NULL,
   `note` varchar(1000) DEFAULT NULL,
   `old_data` json DEFAULT NULL,
@@ -91,6 +91,54 @@ LOCK TABLES `admin_actions` WRITE;
 /*!40000 ALTER TABLE `admin_actions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `admin_actions` ENABLE KEYS */;
 UNLOCK TABLES;
+
+-- Managed Social Identity của Collaborator dùng users/posts/interactions hiện hữu.
+DROP TABLE IF EXISTS `admin_social_identities`;
+CREATE TABLE `admin_social_identities` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `admin_id` bigint unsigned NOT NULL,
+  `social_user_id` bigint unsigned NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `created_by` bigint unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_admin_social_identities_admin` (`admin_id`),
+  UNIQUE KEY `uq_admin_social_identities_social_user` (`social_user_id`),
+  KEY `idx_admin_social_identities_created_by` (`created_by`),
+  CONSTRAINT `fk_admin_social_identities_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_admin_social_identities_social_user` FOREIGN KEY (`social_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_admin_social_identities_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_admin_social_identities_status` CHECK (`status` IN ('ACTIVE','DISABLED')),
+  CONSTRAINT `chk_admin_social_identities_distinct_users` CHECK (`admin_id` <> `social_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `moderation_suggestions`;
+CREATE TABLE `moderation_suggestions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `post_id` bigint unsigned NOT NULL,
+  `suggested_by_admin_id` bigint unsigned NOT NULL,
+  `reason` varchar(32) NOT NULL,
+  `description` varchar(500) DEFAULT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `reviewed_by_admin_id` bigint unsigned DEFAULT NULL,
+  `reviewed_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  `pending_admin_id` bigint unsigned GENERATED ALWAYS AS (IF(`status`='PENDING',`suggested_by_admin_id`,NULL)) STORED,
+  `pending_post_id` bigint unsigned GENERATED ALWAYS AS (IF(`status`='PENDING',`post_id`,NULL)) STORED,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_moderation_suggestions_pending` (`pending_admin_id`,`pending_post_id`),
+  KEY `idx_moderation_suggestions_status_created` (`status`,`created_at` DESC,`id` DESC),
+  KEY `idx_moderation_suggestions_post` (`post_id`,`created_at` DESC),
+  KEY `idx_moderation_suggestions_reviewer` (`reviewed_by_admin_id`),
+  CONSTRAINT `fk_moderation_suggestions_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_moderation_suggestions_suggester` FOREIGN KEY (`suggested_by_admin_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_moderation_suggestions_reviewer` FOREIGN KEY (`reviewed_by_admin_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_moderation_suggestions_reason` CHECK (`reason` IN ('SPAM','INAPPROPRIATE_CONTENT','SCAM_SUSPECTED','HARASSMENT','HARMFUL_CONTENT','OTHER')),
+  CONSTRAINT `chk_moderation_suggestions_status` CHECK (`status` IN ('PENDING','ACCEPTED','REJECTED')),
+  CONSTRAINT `chk_moderation_suggestions_review_state` CHECK (((`status`='PENDING') AND `reviewed_by_admin_id` IS NULL AND `reviewed_at` IS NULL) OR ((`status` IN ('ACCEPTED','REJECTED')) AND `reviewed_by_admin_id` IS NOT NULL AND `reviewed_at` IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Table structure for table `profile_report_cases`
@@ -1098,8 +1146,7 @@ CREATE TABLE `user_profiles` (
   CONSTRAINT `fk_user_profiles_school` FOREIGN KEY (`school_id`) REFERENCES `schools` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `fk_user_profiles_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `fk_user_profiles_major` FOREIGN KEY (`major_id`) REFERENCES `majors` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
-  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null) and (`date_of_birth` is not null)))),
-  CONSTRAINT `chk_user_profiles_completion_requires_birth_date` CHECK (((`profile_completed_at` is null) or (`date_of_birth` is not null))),
+  CONSTRAINT `chk_user_profiles_completion_consistency` CHECK (((`profile_completed_at` is null) or ((`username` is not null) and (`display_name` is not null)))),
   CONSTRAINT `chk_user_profiles_display_name_not_blank` CHECK (((`display_name` is null) or (char_length(trim(`display_name`)) > 0))),
   CONSTRAINT `chk_user_profiles_entry_year` CHECK (`entry_year` IS NULL OR `entry_year` BETWEEN 1900 AND 9999)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1128,6 +1175,7 @@ CREATE TABLE `users` (
   `password_hash` varchar(255) DEFAULT NULL,
   `role` varchar(16) NOT NULL DEFAULT 'USER',
   `status` varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  `account_type` varchar(16) NOT NULL DEFAULT 'NORMAL',
   `blocked_at` datetime(6) DEFAULT NULL,
   `blocked_reason` varchar(500) DEFAULT NULL,
   `first_active_at` datetime(6) DEFAULT NULL,
@@ -1139,6 +1187,8 @@ CREATE TABLE `users` (
   KEY `idx_users_status_created_at` (`status`,`created_at` DESC,`id` DESC),
   CONSTRAINT `chk_users_role` CHECK ((`role` in (_utf8mb4'USER',_utf8mb4'ADMIN'))),
   CONSTRAINT `chk_users_status` CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'BLOCKED'))),
+  CONSTRAINT `chk_users_account_type` CHECK ((`account_type` in (_utf8mb4'NORMAL',_utf8mb4'MANAGED'))),
+  CONSTRAINT `chk_users_managed_auth` CHECK (((`account_type` = _utf8mb4'NORMAL') or ((`role` = _utf8mb4'USER') and (`email` is null) and (`email_verified_at` is null) and (`password_hash` is null)))),
   CONSTRAINT `chk_users_blocked_data` CHECK ((((`status` = _utf8mb4'ACTIVE') and (`blocked_at` is null)) or ((`status` = _utf8mb4'BLOCKED') and (`blocked_at` is not null)))),
   CONSTRAINT `chk_users_email_not_blank` CHECK (((`email` is null) or (char_length(trim(`email`)) > 0))),
   CONSTRAINT `chk_users_email_verification_consistency` CHECK (((`email` is not null) or (`email_verified_at` is null))),
@@ -1157,6 +1207,169 @@ UNLOCK TABLES;
 
 --
 -- Academic interests dùng khóa chính kép để chống trùng tại database.
+-- Admin RBAC: users.role tiếp tục phân biệt account type USER/ADMIN; quyền chi tiết chỉ áp dụng cho ADMIN.
+DROP TABLE IF EXISTS `admin_roles`;
+DROP TABLE IF EXISTS `role_permissions`;
+DROP TABLE IF EXISTS `permissions`;
+DROP TABLE IF EXISTS `roles`;
+
+CREATE TABLE `roles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(64) NOT NULL,
+  `display_name` varchar(100) NOT NULL,
+  `description` varchar(500) DEFAULT NULL,
+  `reserved` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_roles_code` (`code`),
+  CONSTRAINT `chk_roles_code_not_blank` CHECK ((char_length(trim(`code`)) > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- User thường/Admin vẫn bắt buộc ngày sinh khi hoàn tất; Managed Social Identity được miễn vì không đại diện cá nhân.
+DELIMITER $$
+CREATE TRIGGER `trg_user_profiles_completion_birth_insert`
+BEFORE INSERT ON `user_profiles`
+FOR EACH ROW
+BEGIN
+  DECLARE owner_account_type varchar(16);
+  IF NEW.profile_completed_at IS NOT NULL THEN
+    SELECT account_type INTO owner_account_type FROM users WHERE id = NEW.user_id;
+    IF owner_account_type IS NULL OR (owner_account_type <> 'MANAGED' AND NEW.date_of_birth IS NULL) THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Completed normal profile requires date_of_birth';
+    END IF;
+  END IF;
+END$$
+
+CREATE TRIGGER `trg_user_profiles_completion_birth_update`
+BEFORE UPDATE ON `user_profiles`
+FOR EACH ROW
+BEGIN
+  DECLARE owner_account_type varchar(16);
+  IF NEW.profile_completed_at IS NOT NULL THEN
+    SELECT account_type INTO owner_account_type FROM users WHERE id = NEW.user_id;
+    IF owner_account_type IS NULL OR (owner_account_type <> 'MANAGED' AND NEW.date_of_birth IS NULL) THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Completed normal profile requires date_of_birth';
+    END IF;
+  END IF;
+END$$
+DELIMITER ;
+
+CREATE TABLE `permissions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(100) NOT NULL,
+  `description` varchar(500) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_permissions_code` (`code`),
+  CONSTRAINT `chk_permissions_code_not_blank` CHECK ((char_length(trim(`code`)) > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `role_permissions` (
+  `role_id` bigint unsigned NOT NULL,
+  `permission_id` bigint unsigned NOT NULL,
+  `assigned_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`role_id`,`permission_id`),
+  KEY `idx_role_permissions_permission_role` (`permission_id`,`role_id`),
+  CONSTRAINT `fk_role_permissions_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_role_permissions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `admin_roles` (
+  `admin_id` bigint unsigned NOT NULL,
+  `role_id` bigint unsigned NOT NULL,
+  `assigned_by` bigint unsigned DEFAULT NULL,
+  `assigned_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`admin_id`,`role_id`),
+  KEY `idx_admin_roles_role_admin` (`role_id`,`admin_id`),
+  KEY `idx_admin_roles_assigned_by` (`assigned_by`),
+  CONSTRAINT `fk_admin_roles_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_admin_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_admin_roles_assigned_by` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Master data RBAC dùng upsert để có thể chạy lại mà không tạo role hoặc permission trùng.
+INSERT INTO `roles` (`code`, `display_name`, `description`, `reserved`) VALUES
+  ('SUPER_ADMIN', 'Super Admin', 'Quản trị viên cao nhất, có toàn bộ permission hiện tại và bổ sung sau này.', 0),
+  ('USER_MANAGER', 'User Manager', 'Xem Dashboard, quản lý người dùng và analytics người dùng.', 0),
+  ('MODERATOR', 'Moderator', 'Xem Dashboard, kiểm duyệt bài viết, hashtag và báo cáo.', 0),
+  ('ADS_MANAGER', 'Ads Manager', 'Role dự phòng, hiện chỉ được xem Dashboard tổng quan.', 1),
+  ('COLLABORATOR', 'Collaborator', 'Tạo nội dung, tương tác xã hội và gửi đề xuất kiểm duyệt bằng Managed Social Identity.', 1)
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`), `description` = VALUES(`description`), `reserved` = VALUES(`reserved`);
+
+INSERT INTO `permissions` (`code`, `description`) VALUES
+  ('DASHBOARD_BASIC_VIEW', 'Xem Dashboard quản trị cơ bản.'),
+  ('USER_VIEW', 'Xem danh sách người dùng.'),
+  ('USER_SEARCH', 'Tìm kiếm người dùng.'),
+  ('USER_FILTER', 'Lọc danh sách người dùng.'),
+  ('USER_DETAIL_VIEW', 'Xem chi tiết người dùng.'),
+  ('USER_PROFILE_UPDATE', 'Sửa nội dung hồ sơ người dùng.'),
+  ('USER_BLOCK', 'Khóa tài khoản USER.'),
+  ('USER_UNBLOCK', 'Mở khóa tài khoản USER.'),
+  ('USER_ANALYTICS_VIEW', 'Xem analytics hoạt động USER.'),
+  ('POST_VIEW', 'Xem danh sách và chi tiết bài viết trong Admin.'),
+  ('POST_HIDE', 'Ẩn bài viết PUBLISHED.'),
+  ('POST_RESTORE', 'Khôi phục bài viết HIDDEN.'),
+  ('HASHTAG_VIEW', 'Xem danh sách hashtag.'),
+  ('HASHTAG_SEARCH', 'Tìm kiếm hashtag.'),
+  ('HASHTAG_DELETE', 'Xóa hashtag và gỡ liên kết khỏi bài viết.'),
+  ('REPORT_VIEW', 'Xem danh sách báo cáo hoặc Moderation Case.'),
+  ('REPORT_DETAIL_VIEW', 'Xem chi tiết báo cáo hoặc Moderation Case.'),
+  ('REPORT_RESOLVE_NO_VIOLATION', 'Kết luận không vi phạm.'),
+  ('REPORT_RESOLVE_ACTION', 'Kết luận vi phạm và thực hiện hành động hiện có.'),
+  ('ADMIN_VIEW', 'Xem danh sách Admin.'),
+  ('ADMIN_DETAIL_VIEW', 'Xem chi tiết Admin.'),
+  ('ADMIN_CREATE', 'Tạo tài khoản Admin.'),
+  ('ADMIN_UPDATE', 'Cập nhật thông tin Admin.'),
+  ('ADMIN_DISABLE', 'Vô hiệu hóa Admin.'),
+  ('ADMIN_ENABLE', 'Mở khóa tài khoản Admin.'),
+  ('ADMIN_PASSWORD_RESET', 'Cấp lại mật khẩu cho tài khoản Admin.'),
+  ('ADMIN_ROLE_ASSIGN', 'Gán role cho Admin.'),
+  ('ADMIN_ROLE_REVOKE', 'Thu hồi role khỏi Admin.'),
+  ('COLLABORATOR_DASHBOARD_VIEW','Xem Dashboard nội dung của Collaborator.'),
+  ('COLLABORATOR_POST_VIEW_OWN','Xem bài viết của Managed Social Identity hiện tại.'),
+  ('COLLABORATOR_POST_CREATE','Tạo bài viết bằng Managed Social Identity.'),
+  ('COLLABORATOR_POST_UPDATE_OWN','Sửa bài của Managed Social Identity trong thời hạn cho phép.'),
+  ('COLLABORATOR_POST_DELETE_OWN','Xóa mềm bài của Managed Social Identity.'),
+  ('COLLABORATOR_POST_ANALYTICS_VIEW','Xem analytics bài thuộc Managed Social Identity.'),
+  ('COLLABORATOR_EXPLORE_VIEW','Khám phá nội dung bằng Managed Social Identity.'),
+  ('COLLABORATOR_POST_LIKE','Like hoặc Unlike bằng Managed Social Identity.'),
+  ('COLLABORATOR_POST_COMMENT','Bình luận bằng Managed Social Identity.'),
+  ('COLLABORATOR_POST_REPLY','Trả lời bình luận bằng Managed Social Identity.'),
+  ('COLLABORATOR_POST_REPOST','Repost hoặc Unrepost bằng Managed Social Identity.'),
+  ('COLLABORATOR_HASHTAG_VIEW','Xem hashtag trong khu vực Collaborator.'),
+  ('COLLABORATOR_HASHTAG_SEARCH','Tìm kiếm hashtag trong khu vực Collaborator.'),
+  ('COLLABORATOR_MODERATION_SUGGEST','Gửi đề xuất kiểm duyệt.'),
+  ('COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN','Xem đề xuất do chính Collaborator tạo.'),
+  ('MODERATION_SUGGESTION_VIEW','Xem danh sách đề xuất kiểm duyệt.'),
+  ('MODERATION_SUGGESTION_DETAIL_VIEW','Xem chi tiết đề xuất kiểm duyệt.'),
+  ('MODERATION_SUGGESTION_REVIEW','Chấp nhận hoặc từ chối đề xuất kiểm duyệt.')
+ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r CROSS JOIN `permissions` p WHERE r.code = 'SUPER_ADMIN';
+
+-- Xóa ma trận cũ trước khi seed lại để script cũng đồng bộ đúng khi được chạy lặp.
+DELETE rp FROM `role_permissions` rp
+JOIN `roles` r ON r.id = rp.role_id
+WHERE r.code IN ('USER_MANAGER','MODERATOR','ADS_MANAGER','COLLABORATOR');
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('DASHBOARD_BASIC_VIEW','USER_VIEW','USER_SEARCH','USER_FILTER','USER_DETAIL_VIEW','USER_PROFILE_UPDATE','USER_BLOCK','USER_UNBLOCK','USER_ANALYTICS_VIEW') WHERE r.code = 'USER_MANAGER';
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('DASHBOARD_BASIC_VIEW','POST_VIEW','POST_HIDE','POST_RESTORE','HASHTAG_VIEW','HASHTAG_SEARCH','HASHTAG_DELETE','REPORT_VIEW','REPORT_DETAIL_VIEW','REPORT_RESOLVE_NO_VIOLATION','REPORT_RESOLVE_ACTION') WHERE r.code = 'MODERATOR';
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code = 'DASHBOARD_BASIC_VIEW' WHERE r.code = 'ADS_MANAGER';
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r CROSS JOIN `permissions` p WHERE r.code = 'COLLABORATOR' AND p.code LIKE 'COLLABORATOR\_%';
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('MODERATION_SUGGESTION_VIEW','MODERATION_SUGGESTION_DETAIL_VIEW','MODERATION_SUGGESTION_REVIEW') WHERE r.code = 'MODERATOR';
+
 DROP TABLE IF EXISTS `user_interests`;
 CREATE TABLE `user_interests` (
   `user_id` bigint unsigned NOT NULL,
@@ -1703,6 +1916,10 @@ BEGIN
 
         SET user_no = user_no + 1;
     END WHILE;
+
+    -- Tài khoản ADMIN demo đầu tiên trở thành SUPER_ADMIN; INSERT IGNORE chống gán trùng.
+    INSERT IGNORE INTO `admin_roles` (`admin_id`, `role_id`, `assigned_by`)
+    SELECT 1, r.id, NULL FROM `roles` r WHERE r.code = 'SUPER_ADMIN';
 
     -- Social-only va linked-provider de test cac nhanh xac thuc.
     INSERT INTO `user_auth_providers`

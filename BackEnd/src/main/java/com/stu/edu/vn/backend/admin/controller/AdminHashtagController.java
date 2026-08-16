@@ -12,6 +12,7 @@ import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,7 @@ public class AdminHashtagController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('HASHTAG_VIEW') and (#keyword == null or hasAuthority('HASHTAG_SEARCH'))")
     public ResponseEntity<ApiResponse<PageResponse<AdminHashtagListItemResponse>>> getHashtags(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -47,6 +49,7 @@ public class AdminHashtagController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN_ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminHashtagListItemResponse>> createHashtag(
             @RequestBody AdminCreateHashtagRequest request) {
         AdminHashtagListItemResponse response = adminHashtagService.createHashtag(
@@ -56,6 +59,7 @@ public class AdminHashtagController {
     }
 
     @DeleteMapping("/{hashtagId}")
+    @PreAuthorize("hasAuthority('HASHTAG_DELETE')")
     public ResponseEntity<ApiResponse<AdminHashtagDeleteResponse>> deleteHashtag(
             @PathVariable Long hashtagId) {
         if (hashtagId == null || hashtagId <= 0) {
@@ -66,6 +70,7 @@ public class AdminHashtagController {
     }
 
     @PatchMapping("/{hashtagId}")
+    @PreAuthorize("hasAuthority('ADMIN_ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminHashtagUpdateResponse>> updateHashtag(
             @PathVariable Long hashtagId,
             @RequestBody AdminCreateHashtagRequest request) {

@@ -7,10 +7,15 @@ import BlockUserDialog from '../components/BlockUserDialog.jsx';
 import AdminEditUserProfileDialog from '../components/AdminEditUserProfileDialog.jsx';
 import AdminUserDetailDialog from '../components/AdminUserDetailDialog.jsx';
 import AdminUserAnalytics from '../components/AdminUserAnalytics.jsx';
+import AdminStatusBadge from '../components/AdminStatusBadge.jsx';
 import { useAdminToast } from '../hooks/useAdminToast.js';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+import { ADMIN_PERMISSIONS } from '../constants/adminRbac.js';
+import { getAdminStatusLabel } from '../constants/adminStatus.js';
 
 export default function AdminUsersPage() {
   const { showToast } = useAdminToast();
+  const auth = useAuth();
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -165,7 +170,7 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <section className="grid h-[calc(100vh-4rem)] min-h-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:w-[calc(100%+17.5rem)] 2xl:-translate-x-[8.75rem] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+      <section className="grid h-[calc(100vh-4rem)] min-h-0 min-w-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="flex h-full min-h-0 min-w-0 flex-col">
           <div className="mb-4 flex shrink-0 items-center gap-3 rounded-xl border bg-white p-3">
             <Search size={16} />
@@ -177,9 +182,9 @@ export default function AdminUsersPage() {
             {loading ? <LoadingState /> : (
               <DataTable rows={result.content} onRowClick={openUserDetail} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
                 totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
-                { key: 'displayName', label: 'Người dùng', render: (row) => <div><strong>{row.displayName || 'Chưa cập nhật tên'}</strong><small className="block text-gray-500">{row.email}</small></div> },
-                { key: 'profileCompleted', label: 'Hồ sơ', render: (row) => row.profileCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất' },
-                { key: 'status', label: 'Trạng thái' },
+                { key: 'displayName', label: 'Người dùng', sortType: 'text', sortValue: (row) => row.displayName || row.email, render: (row) => <div><strong>{row.displayName || 'Chưa cập nhật tên'}</strong><small className="block text-gray-500">{row.email}</small></div> },
+                { key: 'profileCompleted', label: 'Hồ sơ', sortType: 'boolean', render: (row) => row.profileCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất' },
+                { key: 'status', label: 'Trạng thái', sortType: 'text', sortValue: (row) => getAdminStatusLabel(row.status), render: (row) => <AdminStatusBadge status={row.status} /> },
               ]} />
             )}
           </div>
@@ -206,6 +211,11 @@ export default function AdminUsersPage() {
           onRetry={() => loadUserDetail(selectedUserId)}
           onEdit={openEditProfile}
           onStatusAction={changeDetailStatus}
+          canEdit={auth.hasAdminRole('SUPER_ADMIN')
+            || auth.hasPermission(ADMIN_PERMISSIONS.USER_PROFILE_UPDATE)}
+          canStatusAction={userDetail?.status === 'BLOCKED'
+            ? auth.hasPermission(ADMIN_PERMISSIONS.USER_UNBLOCK)
+            : auth.hasPermission(ADMIN_PERMISSIONS.USER_BLOCK)}
         />
       ) : null}
       {editTarget ? (

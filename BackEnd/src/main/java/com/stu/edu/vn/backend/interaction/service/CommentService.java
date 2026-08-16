@@ -11,12 +11,16 @@ import com.stu.edu.vn.backend.interaction.dto.response.DeleteCommentResponse;
 public interface CommentService {
 
     CommentResponse createComment(Long postId, CreateCommentRequest request);
+    CommentResponse createCommentAs(Long userId, Long postId, CreateCommentRequest request);
 
     CommentResponse createReply(Long parentCommentId, CreateCommentRequest request);
+    CommentResponse createReplyAs(Long userId, Long parentCommentId, CreateCommentRequest request);
 
     PageResponse<CommentResponse> getPublishedComments(Long postId, int page, int size);
+    PageResponse<CommentResponse> getPublishedCommentsAs(Long userId, Long postId, int page, int size);
 
     PageResponse<CommentResponse> getPublishedReplies(Long parentCommentId, int page, int size);
+    PageResponse<CommentResponse> getPublishedRepliesAs(Long userId, Long parentCommentId, int page, int size);
 
     DeleteCommentResponse deleteComment(Long commentId);
 }

@@ -3,6 +3,31 @@ import { httpClient } from './httpClient.js';
 import { compactParams, requestData } from './requestData.js';
 
 export const adminApi = Object.freeze({
+  getProfile: (signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.profile, { signal })),
+  updateProfile: (payload, signal) => requestData(httpClient.put(ADMIN_ENDPOINTS.profile, payload, { signal })),
+  changePassword: (payload, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.profilePassword, payload, { signal },
+  )),
+  getAdmins: (params, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.admins, { params: compactParams(params), signal })),
+  getAdmin: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.admin(id), { signal })),
+  createAdmin: (payload, signal) => requestData(httpClient.post(ADMIN_ENDPOINTS.admins, payload, { signal })),
+  updateAdmin: (id, payload, signal) => requestData(httpClient.put(ADMIN_ENDPOINTS.admin(id), payload, { signal })),
+  disableAdmin: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.disableAdmin(id), undefined, { signal })),
+  enableAdmin: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.enableAdmin(id), undefined, { signal })),
+  resetAdminPassword: (id, payload, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.resetAdminPassword(id), payload, { signal },
+  )),
+  assignAdminRole: (id, roleCode, signal) => requestData(httpClient.post(ADMIN_ENDPOINTS.adminRole(id, roleCode), undefined, { signal })),
+  revokeAdminRole: (id, roleCode, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.revokeAdminRole(id, roleCode), undefined, { signal })),
+  getAdminRoleCatalog: (signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.adminRoleCatalog, { signal })),
+  getRolesForPermissionManagement: (signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.adminRoles, { signal })),
+  createAdminRole: (name, signal) => requestData(httpClient.post(
+    ADMIN_ENDPOINTS.createAdminRole, { name }, { signal },
+  )),
+  getPermissionCatalog: (signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.adminPermissions, { signal })),
+  updateRolePermissions: (roleCode, permissionCodes, signal) => requestData(httpClient.put(
+    ADMIN_ENDPOINTS.rolePermissions(roleCode), { permissionCodes }, { signal },
+  )),
   getUsers: (params, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.users, { params: compactParams(params), signal })),
   getUser: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.user(id), { signal })),
   updateUserProfile: (id, payload, avatarChange = {}, signal) => {
@@ -52,6 +77,14 @@ export const adminApi = Object.freeze({
   )),
   getUserEngagementDashboard: (params, signal) => requestData(httpClient.get(
     ADMIN_ENDPOINTS.userEngagementDashboard,
+    { params: compactParams(params), signal },
+  )),
+  getPostAnalytics: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.postAnalytics,
+    { params: compactParams(params), signal },
+  )),
+  getHashtagAnalytics: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.hashtagAnalytics,
     { params: compactParams(params), signal },
   )),
 });

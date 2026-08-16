@@ -5,6 +5,8 @@ import { adminApi } from '../../../api/index.js';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import AdminPostAnalytics from '../components/AdminPostAnalytics.jsx';
+import AdminStatusBadge from '../components/AdminStatusBadge.jsx';
+import { getAdminStatusLabel } from '../constants/adminStatus.js';
 
 export default function AdminPostsPage() {
   const navigate = useNavigate();
@@ -27,7 +29,7 @@ export default function AdminPostsPage() {
   }, [query, page, pageSize]);
 
   return (
-    <section className="grid h-[calc(100vh-4rem)] min-h-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:w-[calc(100%+17.5rem)] 2xl:-translate-x-[8.75rem] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+    <section className="grid h-[calc(100vh-4rem)] min-h-0 min-w-0 items-start gap-6 overflow-hidden lg:h-[calc(100vh-6rem)] 2xl:grid-cols-[minmax(0,1fr)_16rem]">
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <div className="mb-4 flex shrink-0 items-center gap-3 rounded-xl border bg-white p-3"><Search size={16} />
           <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm nội dung bài viết..." className="flex-1 outline-none" />
@@ -37,10 +39,10 @@ export default function AdminPostsPage() {
         <div className="min-h-0 flex-1 [&>div]:h-full [&>div]:max-h-none">
           {loading ? <LoadingState /> : <DataTable rows={result.content} onRowDoubleClick={(row) => navigate(`/admin/posts/${row.postId}`)} pagination={{ currentPage: page, totalPages: result.totalPages, onPageChange: setPage,
             totalItems: result.totalElements, pageSize, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }} columns={[
-            { key: 'authorDisplayName', label: 'Tác giả' },
-            { key: 'contentPreview', label: 'Nội dung', className: 'max-w-sm', render: (row) => <p className="truncate">{row.contentPreview}</p> },
-            { key: 'status', label: 'Trạng thái' },
-            { key: 'pendingReportCount', label: 'Báo cáo chờ' },
+            { key: 'authorDisplayName', label: 'Tác giả', sortType: 'text' },
+            { key: 'contentPreview', label: 'Nội dung', sortType: 'text', className: 'max-w-sm', render: (row) => <p className="truncate">{row.contentPreview}</p> },
+            { key: 'status', label: 'Trạng thái', sortType: 'text', sortValue: (row) => getAdminStatusLabel(row.status), render: (row) => <AdminStatusBadge status={row.status} /> },
+            { key: 'pendingReportCount', label: 'Báo cáo chờ', sortType: 'number' },
           ]} />}
         </div>
       </div>
