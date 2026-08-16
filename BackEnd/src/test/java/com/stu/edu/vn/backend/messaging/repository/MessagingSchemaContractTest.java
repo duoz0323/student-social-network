@@ -23,8 +23,8 @@ class MessagingSchemaContractTest {
     }
 
     @Test
-    void postShareManualMigrationMatchesCanonicalContract() throws Exception {
-        String migration = Files.readString(databasePath("migrations", "20260815_post_share_v1.sql"));
+    void consolidatedMigrationMatchesCanonicalPostShareContract() throws Exception {
+        String migration = Files.readString(databasePath("V20260816__admin_rbac_collaborator_features.sql"));
         assertThat(migration).contains(
                 "information_schema.columns",
                 "information_schema.table_constraints",

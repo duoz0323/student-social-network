@@ -19,7 +19,7 @@
 - Composite FK bảo đảm sender là member. Service bảo đảm hai member khớp participant và các marker
   last/read thuộc đúng conversation.
 - Schema Messaging hiện hành nằm trong SQL canonical và DBML. Database đang tồn tại nâng cấp thủ công bằng
-  `database/migrations/20260815_post_share_v1.sql`; Backend không tự chạy migration khi khởi động.
+  migration tổng `database/V20260816__admin_rbac_collaborator_features.sql`; Backend không tự chạy migration khi khởi động.
 
 ## Repost
 
@@ -183,9 +183,9 @@ File `database/student_social_network.sql` là file import duy nhất: tự drop
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
 ```
 
-### Migration gộp Admin/RBAC/Collaborator cho database đang có dữ liệu
+### Migration tổng cho database đang có dữ liệu
 
-File `database/V20260816__admin_rbac_collaborator_features.sql` dùng để nâng cấp database nền hiện hữu mà không rebuild. File không chứa `DROP DATABASE`, `DROP TABLE`, seed user/post hoặc cập nhật dữ liệu nghiệp vụ ngoài master data RBAC. Migration chỉ tạo/đồng bộ các bảng RBAC, Managed Social Identity, đề xuất kiểm duyệt, cột `users.account_type`, check/trigger hoàn tất hồ sơ và enum audit tương ứng. Những thay đổi thuần giao diện hoặc analytics dùng schema sẵn có không cần DDL bổ sung.
+File `database/V20260816__admin_rbac_collaborator_features.sql` dùng để nâng cấp database nền hiện hữu mà không rebuild. File không chứa `DROP DATABASE`, `DROP TABLE`, seed user/post hoặc cập nhật dữ liệu nghiệp vụ ngoài master data RBAC. Migration hợp nhất Post Share, Login Methods/Set Password, Admin RBAC, Managed Social Identity, đề xuất kiểm duyệt, `users.account_type`, check/trigger hoàn tất hồ sơ và enum audit Academic/Admin/Collaborator. Những thay đổi thuần giao diện hoặc analytics dùng schema sẵn có không cần DDL bổ sung.
 
 Chọn rõ database đích trong lệnh import; không chạy đồng thời file canonical rebuild:
 
@@ -193,7 +193,7 @@ Chọn rõ database đích trong lệnh import; không chạy đồng thời fil
 mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/V20260816__admin_rbac_collaborator_features.sql
 ```
 
-Migration yêu cầu MySQL 8.0+, kiểm tra sự tồn tại của `users`, `user_profiles`, `posts`, `admin_actions` trước khi sửa và có thể chạy lại. DDL MySQL tự commit, vì vậy vẫn phải backup trước khi áp dụng trên database dùng chung.
+Migration yêu cầu MySQL 8.0+, kiểm tra đầy đủ các bảng nền Auth, Messaging, User, Post và Admin trước khi sửa và có thể chạy lại. DDL MySQL tự commit, vì vậy vẫn phải backup trước khi áp dụng trên database dùng chung.
 
 Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.
 

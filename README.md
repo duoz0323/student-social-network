@@ -963,7 +963,7 @@ student-social-network/
 ├── database/
 │   ├── student_social_network.sql
 │   ├── student_social_network.dbml
-│   └── migrations/              # Migration thủ công cho database đang tồn tại
+│   └── V20260816__admin_rbac_collaborator_features.sql  # Migration tổng cho database đang tồn tại
 │
 ├── docs/
 │   ├── api/

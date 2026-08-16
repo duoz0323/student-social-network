@@ -31,44 +31,33 @@ class RbacRolePermissionSeedTest {
     }
 
     @Test
-    void baselineAndRuntimeMigrationsSupportRolePermissionAuditAction() throws IOException {
-        // Khóa đồng bộ ENUM để cập nhật permission không rollback khi ghi lịch sử quản trị.
+    void baselineAndConsolidatedMigrationSupportAllAdminContracts() throws IOException {
+        // Khóa đồng bộ contract giữa file rebuild và migration tổng duy nhất.
         assertThat(Files.readString(resolveDatabasePath("student_social_network.sql")))
-                .contains("'UPDATE_ROLE_PERMISSIONS'");
-        assertThat(Files.readString(resolveDatabasePath("rbac_role_permissions_20260812.sql")))
-                .contains("'UPDATE_ROLE_PERMISSIONS'");
-        assertThat(Files.readString(resolveDatabasePath("fix_admin_action_type_20260813.sql")))
+                .contains("'UPDATE_ROLE_PERMISSIONS'", "'CREATE_ACADEMIC_DATA'", "'ACADEMIC_DATA'");
+
+        assertThat(Files.readString(resolveDatabasePath("V20260816__admin_rbac_collaborator_features.sql")))
                 .contains("'UPDATE_ROLE_PERMISSIONS'")
-                .contains("SHOW COLUMNS FROM `admin_actions` LIKE 'action_type'");
-        assertThat(Files.readString(resolveDatabasePath("admin_enable_20260813.sql")))
                 .contains("'ENABLE_ADMIN'")
                 .contains("'ADMIN_ENABLE'")
-                .contains("WHERE r.code = 'SUPER_ADMIN'");
-        assertThat(Files.readString(resolveDatabasePath("admin_password_reset_20260814.sql")))
                 .contains("'RESET_ADMIN_PASSWORD'")
                 .contains("'ADMIN_PASSWORD_RESET'")
-                .contains("WHERE r.code = 'SUPER_ADMIN'");
-        assertThat(Files.readString(resolveDatabasePath("admin_role_creation_20260814.sql")))
                 .contains("'CREATE_ADMIN_ROLE'")
-                .contains("'RESET_ADMIN_PASSWORD'");
-        assertThat(Files.readString(resolveDatabasePath("admin_self_profile_20260814.sql")))
                 .contains("'UPDATE_ADMIN_PROFILE'")
                 .contains("'CHANGE_ADMIN_PASSWORD'");
-        assertThat(Files.readString(resolveDatabasePath("bootstrap_admin_delegation_guard_20260815.sql")))
-                .contains("r.code <> 'SUPER_ADMIN'")
-                .contains("'ADMIN_CREATE', 'ADMIN_ROLE_ASSIGN', 'ADMIN_ROLE_REVOKE'");
-        assertThat(Files.readString(resolveDatabasePath("collaborator_managed_social_identity_20260815.sql")))
-                .contains("CREATE TABLE `admin_social_identities`")
-                .contains("CREATE TABLE `moderation_suggestions`")
-                .contains("'COLLABORATOR_POST_CREATE'");
-        assertThat(Files.readString(resolveDatabasePath("collaborator_role_lifecycle_20260815.sql")))
-                .contains("`reserved` = 1")
+
+        assertThat(Files.readString(resolveDatabasePath("V20260816__admin_rbac_collaborator_features.sql")))
+                .contains("WHERE r.code <> 'SUPER_ADMIN'")
+                .contains("'ADMIN_CREATE', 'ADMIN_ROLE_ASSIGN', 'ADMIN_ROLE_REVOKE'")
+                .contains("CREATE TABLE IF NOT EXISTS `admin_social_identities`")
+                .contains("CREATE TABLE IF NOT EXISTS `moderation_suggestions`")
+                .contains("'COLLABORATOR_POST_CREATE'")
                 .contains("r.code = 'COLLABORATOR'")
-                .contains("p.code LIKE 'COLLABORATOR\\_%'");
-        assertThat(Files.readString(resolveDatabasePath("managed_profile_completion_hotfix_20260815.sql")))
+                .contains("p.code LIKE 'COLLABORATOR\\_%'")
                 .contains("DROP CHECK `chk_user_profiles_completion_requires_birth_date`")
                 .contains("owner_account_type <> 'MANAGED'")
-                .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`");
+                .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
+                .contains("'CREATE_ACADEMIC_DATA'", "'ACADEMIC_DATA'");
     }
 
     private Path resolveDatabasePath(String fileName) {

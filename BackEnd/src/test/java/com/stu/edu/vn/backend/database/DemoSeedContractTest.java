@@ -18,7 +18,7 @@ class DemoSeedContractTest {
             "\\('demo-caolo-[^']+',\\s*'[^']+',\\s*'[^']+',\\s*([0-9.]+),\\s*([0-9.]+)\\)");
 
     @Test
-    void databaseDirectoryKeepsCanonicalArtifactsAndVersionedAdditiveMigrations() throws Exception {
+    void databaseDirectoryKeepsOnlyCanonicalArtifactsAndConsolidatedMigration() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -30,16 +30,12 @@ class DemoSeedContractTest {
                     .toList();
         }
 
-        // Giữ artifact canonical, migration Auth/Post và các migration Admin bổ sung đã được merge.
+        // Thư mục database chỉ giữ một file rebuild, một migration tổng và DBML đối chiếu.
         assertThat(files)
-                .contains(
+                .containsExactly(
+                "V20260816__admin_rbac_collaborator_features.sql",
                 "student_social_network.dbml",
-                "student_social_network.sql",
-                "migrations/20260815_post_share_v1.sql",
-                "migrations/20260816_auth_password_methods.sql",
-                "collaborator_managed_social_identity_20260815.sql",
-                "collaborator_role_lifecycle_20260815.sql",
-                "managed_profile_completion_hotfix_20260815.sql");
+                "student_social_network.sql");
         assertThat(files).allMatch(file -> file.endsWith(".sql") || file.endsWith(".dbml"));
     }
 
@@ -62,6 +58,31 @@ class DemoSeedContractTest {
                 .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
                 .contains("owner_account_type <> 'MANAGED'")
                 .doesNotContain("`status` varchar(16) NOT NULL DEFAULT 'ACTIVE',\n  `account_type` varchar(16) NOT NULL DEFAULT 'NORMAL',\n  `expires_at`");
+    }
+
+    @Test
+    void canonicalImportContainsFeaturesBeforeAndAfterPostMerge() throws Exception {
+        String seed = Files.readString(databaseDirectory().resolve("student_social_network.sql"));
+
+        // Một lần import phải tạo đủ contract cũ lẫn các module được bổ sung sau merge.
+        assertThat(seed)
+                .contains("Đây là artifact import hợp nhất và là file duy nhất cần chạy")
+                .contains("`otp_verified_at` datetime(6) DEFAULT NULL")
+                .contains("'UNLINK_AUTH_METHOD',_utf8mb4'SET_PASSWORD'")
+                .contains("enum('TEXT','IMAGE','POST_SHARE')")
+                .contains("`shared_post_id` bigint unsigned DEFAULT NULL")
+                .contains("CREATE TABLE `roles`")
+                .contains("CREATE TABLE `permissions`")
+                .contains("CREATE TABLE `admin_roles`")
+                .contains("CREATE TABLE `admin_social_identities`")
+                .contains("CREATE TABLE `moderation_suggestions`")
+                .contains("`account_type` varchar(16) NOT NULL DEFAULT 'NORMAL'")
+                .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
+                .contains("'CREATE_ACADEMIC_DATA'")
+                .contains("'CREATE_ADMIN_ROLE'")
+                .contains("'CHANGE_ADMIN_PASSWORD'")
+                .contains("'COLLABORATOR_POST_CREATED'")
+                .contains("'MODERATION_SUGGESTION_REVIEW'");
     }
 
     @Test

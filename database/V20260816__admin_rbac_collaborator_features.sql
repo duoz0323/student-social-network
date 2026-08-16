@@ -1,4 +1,4 @@
--- UniShare - migration gộp các chức năng Admin/RBAC/Collaborator.
+-- UniShare - migration gộp Post Share/Auth Methods/Admin/RBAC/Collaborator.
 -- Mục tiêu: nâng cấp database đang tồn tại, không drop database, không drop table
 -- và không nạp dữ liệu demo. Có thể chạy lại khi lần chạy trước bị gián đoạn.
 --
@@ -7,7 +7,8 @@
 --   * Chọn đúng database đích trước khi chạy, ví dụ:
 --       mysql --default-character-set=utf8mb4 -u root -p student_social_network \
 --         < database/V20260816__admin_rbac_collaborator_features.sql
---   * Database nền phải có các bảng users, user_profiles, posts và admin_actions.
+--   * Database nền phải có các bảng users, user_profiles, posts, messages,
+--     auth_method_link_challenges, reauthentication_challenges và admin_actions.
 --
 -- Phạm vi ghi dữ liệu chỉ gồm master data RBAC: roles, permissions,
 -- role_permissions. Không cập nhật user, post, hashtag, report hoặc dữ liệu xã hội.
@@ -28,9 +29,12 @@ BEGIN
 
   IF (SELECT COUNT(*) FROM information_schema.tables
       WHERE table_schema = DATABASE()
-        AND table_name IN ('users', 'user_profiles', 'posts', 'admin_actions')) <> 4 THEN
+        AND table_name IN (
+          'users', 'user_profiles', 'posts', 'messages',
+          'auth_method_link_challenges', 'reauthentication_challenges', 'admin_actions'
+        )) <> 7 THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Thieu bang nen users, user_profiles, posts hoac admin_actions';
+      SET MESSAGE_TEXT = 'Thieu bang nen bat buoc cho migration tong';
   END IF;
 
   -- Cột này chỉ phân biệt user thường với Managed Social Identity.
@@ -100,6 +104,63 @@ BEGIN
       `profile_completed_at` IS NULL OR
       (`username` IS NOT NULL AND `display_name` IS NOT NULL)
     );
+
+  -- Hợp nhất migration Login Methods: lưu mốc OTP đã xác minh và mở scope SET_PASSWORD.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'auth_method_link_challenges'
+      AND column_name = 'otp_verified_at'
+  ) THEN
+    ALTER TABLE `auth_method_link_challenges`
+      ADD COLUMN `otp_verified_at` datetime(6) NULL AFTER `otp_hash`;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_schema = DATABASE()
+      AND table_name = 'reauthentication_challenges'
+      AND constraint_name = 'chk_reauth_scope'
+      AND constraint_type = 'CHECK'
+  ) THEN
+    ALTER TABLE `reauthentication_challenges`
+      DROP CHECK `chk_reauth_scope`;
+  END IF;
+
+  ALTER TABLE `reauthentication_challenges`
+    ADD CONSTRAINT `chk_reauth_scope`
+    CHECK (`scope` IN ('UNLINK_AUTH_METHOD', 'SET_PASSWORD'));
+
+  -- Hợp nhất Post Share V1; chỉ bổ sung khi database cũ chưa có shared_post_id.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'messages'
+      AND column_name = 'shared_post_id'
+  ) THEN
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_schema = DATABASE()
+        AND table_name = 'messages'
+        AND constraint_name = 'chk_messages_payload_shape'
+        AND constraint_type = 'CHECK'
+    ) THEN
+      ALTER TABLE `messages` DROP CHECK `chk_messages_payload_shape`;
+    END IF;
+
+    ALTER TABLE `messages`
+      MODIFY COLUMN `type` enum('TEXT','IMAGE','POST_SHARE') NOT NULL,
+      ADD COLUMN `shared_post_id` bigint unsigned DEFAULT NULL AFTER `content`,
+      ADD KEY `idx_messages_shared_post` (`shared_post_id`,`id`),
+      ADD CONSTRAINT `fk_messages_shared_post`
+        FOREIGN KEY (`shared_post_id`) REFERENCES `posts` (`id`)
+        ON DELETE SET NULL ON UPDATE RESTRICT,
+      ADD CONSTRAINT `chk_messages_payload_shape`
+        CHECK (((`type` = 'TEXT'
+                  AND `content` IS NOT NULL
+                  AND char_length(trim(`content`)) > 0)
+                OR `type` IN ('IMAGE','POST_SHARE')));
+  END IF;
 END$$
 
 CALL `migrate_admin_rbac_collaborator_20260816`()$$
@@ -297,6 +358,7 @@ ALTER TABLE `admin_actions`
     'HIDE_POST','RESTORE_POST','RESOLVE_REPORT','REJECT_REPORT',
     'RESOLVE_MODERATION_CASE','REJECT_MODERATION_CASE',
     'RESOLVE_PROFILE_REPORT','REJECT_PROFILE_REPORT',
+    'CREATE_ACADEMIC_DATA','UPDATE_ACADEMIC_DATA','CHANGE_ACADEMIC_STATUS',
     'CREATE_ADMIN','UPDATE_ADMIN','UPDATE_ADMIN_PROFILE',
     'DISABLE_ADMIN','ENABLE_ADMIN','RESET_ADMIN_PASSWORD',
     'CHANGE_ADMIN_PASSWORD','ASSIGN_ADMIN_ROLE','REVOKE_ADMIN_ROLE',
@@ -308,7 +370,7 @@ ALTER TABLE `admin_actions`
   ) NOT NULL,
   MODIFY `target_type` enum(
     'USER','POST','HASHTAG','REPORT','MODERATION_CASE',
-    'PROFILE_REPORT','MODERATION_SUGGESTION'
+    'PROFILE_REPORT','ACADEMIC_DATA','MODERATION_SUGGESTION'
   ) NOT NULL;
 
 START TRANSACTION;

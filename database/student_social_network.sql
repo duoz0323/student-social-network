@@ -1,6 +1,16 @@
 -- Student Social Network - MySQL 8 full rebuild and demo seed
 -- Current model: email OTP, Google and Facebook authentication only.
 -- WARNING: drops and recreates the complete test database.
+--
+-- Đây là artifact import hợp nhất và là file duy nhất cần chạy khi dựng database mới.
+-- Trạng thái cuối đã bao gồm các thay đổi từng được phát hành qua migration rời:
+--   * Post Share V1 và Messaging POST_SHARE.
+--   * Login Methods: otp_verified_at và reauthentication SET_PASSWORD.
+--   * Admin RBAC, tạo/khóa/mở Admin, cấp lại/tự đổi mật khẩu và phân quyền.
+--   * Academic Admin audit actions.
+--   * Collaborator, Managed Social Identity và moderation suggestions.
+-- Các migration rời trong database/ chỉ dùng để nâng cấp database đang có dữ liệu;
+-- không chạy lại chúng sau khi đã import mới bằng file này.
 
 DROP DATABASE IF EXISTS `student_social_network`;
 CREATE DATABASE `student_social_network` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
