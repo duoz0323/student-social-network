@@ -14,10 +14,30 @@ class MessagingSchemaContractTest {
         for (String token : new String[]{"conversations", "conversation_members", "messages",
                 "uq_conversations_participant_pair", "idx_conversations_last_message",
                 "idx_conversation_members_user_cursor", "uq_messages_sender_client_message",
-                "idx_messages_conversation_cursor", "fk_messages_sender_member"}) {
+                "idx_messages_conversation_cursor", "fk_messages_sender_member",
+                "POST_SHARE", "shared_post_id", "idx_messages_shared_post",
+                "fk_messages_shared_post"}) {
             assertThat(sql).contains(token);
             assertThat(dbml).contains(token);
         }
+    }
+
+    @Test
+    void postShareManualMigrationMatchesCanonicalContract() throws Exception {
+        String migration = Files.readString(databasePath("migrations", "20260815_post_share_v1.sql"));
+        assertThat(migration).contains(
+                "information_schema.columns",
+                "information_schema.table_constraints",
+                "enum('TEXT','IMAGE','POST_SHARE')",
+                "ADD COLUMN `shared_post_id` bigint unsigned DEFAULT NULL",
+                "idx_messages_shared_post",
+                "fk_messages_shared_post",
+                "ON DELETE SET NULL",
+                "chk_messages_payload_shape")
+                .doesNotContain("`shared_post_id` IS NULL");
+
+        String sql = Files.readString(databasePath("student_social_network.sql"));
+        assertThat(sql).doesNotContain("`shared_post_id` IS NULL");
     }
 
     @Test

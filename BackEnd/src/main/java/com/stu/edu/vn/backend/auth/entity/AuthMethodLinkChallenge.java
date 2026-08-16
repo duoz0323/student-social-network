@@ -72,6 +72,9 @@ public class AuthMethodLinkChallenge extends BaseAuditEntity {
     @Column(name = "otp_hash", nullable = true, length = 64, columnDefinition = "char(64)")
     private String otpHash;
 
+    @Column(name = "otp_verified_at", nullable = true)
+    private LocalDateTime otpVerifiedAt;
+
     @Column(name = "otp_version", nullable = false, columnDefinition = "int unsigned")
     private Integer otpVersion = 1;
 
@@ -162,6 +165,13 @@ public class AuthMethodLinkChallenge extends BaseAuditEntity {
 
     public void complete(LocalDateTime completedAt) {
         transitionTo(OtpChallengeStatus.COMPLETED, completedAt);
+    }
+
+    /** Rotate flow token sau OTP để password step dùng proof riêng, ngắn hạn và single-use. */
+    public void verifyOtp(String newFlowTokenHash, LocalDateTime verifiedAt) {
+        requirePending();
+        this.flowTokenHash = requireText(newFlowTokenHash, "newFlowTokenHash");
+        this.otpVerifiedAt = Objects.requireNonNull(verifiedAt, "verifiedAt không được null");
     }
 
     public void cancel(LocalDateTime cancelledAt) {

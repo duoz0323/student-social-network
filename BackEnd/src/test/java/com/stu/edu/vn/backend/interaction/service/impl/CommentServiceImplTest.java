@@ -20,6 +20,7 @@ import com.stu.edu.vn.backend.interaction.mapper.CommentMapper;
 import com.stu.edu.vn.backend.interaction.repository.CommentRepository;
 import com.stu.edu.vn.backend.interaction.repository.projection.CommentReplyCountProjection;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
+import com.stu.edu.vn.backend.moderation.service.ContentModerationService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
@@ -43,6 +44,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class CommentServiceImplTest {
 
@@ -57,6 +61,9 @@ class CommentServiceImplTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
     private final UserRelationshipPolicyService relationshipPolicyService =
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
+    private final ContentModerationService contentModerationService =
+            org.mockito.Mockito.mock(ContentModerationService.class);
+    private final TransactionTemplate transactionTemplate = org.mockito.Mockito.mock(TransactionTemplate.class);
 
     private CommentServiceImpl commentService;
 
@@ -72,7 +79,9 @@ class CommentServiceImplTest {
                 notificationService,
                 entityManager,
                 clock,
-                relationshipPolicyService
+                relationshipPolicyService,
+                contentModerationService,
+                transactionTemplate
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -82,6 +91,12 @@ class CommentServiceImplTest {
         PostInteractionTargetProjection publishedTarget = target(PostStatus.PUBLISHED, 20L);
         when(postRepository.findInteractionTargetById(1L)).thenReturn(Optional.of(publishedTarget));
         when(postRepository.getReferenceById(1L)).thenReturn(post(1L));
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(new SimpleTransactionStatus());
+        });
+        when(commentRepository.findWithPostAndParentById(any()))
+                .thenAnswer(invocation -> commentRepository.findForReplyCreationById(invocation.getArgument(0)));
     }
 
     @Test
@@ -101,6 +116,21 @@ class CommentServiceImplTest {
         assertThat(response.commentId()).isEqualTo(100L);
         assertThat(response.postId()).isEqualTo(1L);
         assertThat(response.userId()).isEqualTo(10L);
+    }
+
+    @Test
+    void rejectedCommentDoesNotInsertNotifyOrRunTransaction() {
+        doThrow(new BusinessException(ErrorCode.CONTENT_POLICY_VIOLATION))
+                .when(contentModerationService).requireAllowed("Nội dung vi phạm");
+
+        assertThatThrownBy(() -> commentService.createComment(
+                1L, new CreateCommentRequest("Nội dung vi phạm")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.CONTENT_POLICY_VIOLATION);
+
+        verify(transactionTemplate, never()).execute(any());
+        verify(commentRepository, never()).saveAndFlush(any());
+        verify(notificationService, never()).createPostCommentNotification(any(), any(), any(), any());
     }
 
     @Test
@@ -139,6 +169,23 @@ class CommentServiceImplTest {
         assertThat(captor.getValue().getPost().getId()).isEqualTo(1L);
         assertThat(captor.getValue().getContent()).isEqualTo("Noi dung tra loi");
         assertThat(response.parentCommentId()).isEqualTo(90L);
+    }
+
+    @Test
+    void rejectedReplyDoesNotInsertNotifyOrRunTransaction() {
+        Comment parent = savedComment(new Comment(post(1L), user(20L), "Binh luan goc"), 90L);
+        when(commentRepository.findForReplyCreationById(90L)).thenReturn(Optional.of(parent));
+        doThrow(new BusinessException(ErrorCode.CONTENT_MODERATION_UNAVAILABLE))
+                .when(contentModerationService).requireAllowed("Reply chờ kiểm tra");
+
+        assertThatThrownBy(() -> commentService.createReply(
+                90L, new CreateCommentRequest("Reply chờ kiểm tra")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.CONTENT_MODERATION_UNAVAILABLE);
+
+        verify(transactionTemplate, never()).execute(any());
+        verify(commentRepository, never()).saveAndFlush(any());
+        verify(notificationService, never()).createCommentReplyNotification(any(), any(), any(), any());
     }
 
     @Test

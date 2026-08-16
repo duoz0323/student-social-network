@@ -184,6 +184,9 @@ Chính sách mặc định:
 - Nếu provider đã được liên kết, Backend đăng nhập đúng tài khoản hiện có.
 - Nếu provider chưa được liên kết và thông tin hợp lệ chưa thuộc tài khoản nào, Backend tạo tài khoản nội bộ mới.
 - Nếu social email trùng một tài khoản `ACTIVE` nhưng provider chưa được liên kết, hệ thống không tự động gộp chỉ dựa trên email.
+- `provider_user_id` là định danh social chính; provider email chỉ là metadata đã được Backend xác minh và không được dùng để chọn `users.id` đích.
+- Facebook có thể không trả email. Account Facebook-only hợp lệ giữ `users.email`, `email_verified_at` và `password_hash` bằng `NULL`; email Facebook nếu có chỉ lưu tại `user_auth_providers` và không tự tạo phương thức đăng nhập EMAIL.
+- Google identity vẫn được xác thực bằng `sub` khi không có verified email. Khi Google trả email đã verified và không có conflict, Backend được phép populate `users.email` cùng `email_verified_at`; `password_hash` vẫn `NULL`, nên local email login chưa khả dụng cho đến khi Set Password thành công.
 
 #### Chuyển từ đăng ký OTP sang social
 
@@ -209,13 +212,20 @@ Người dùng đã đăng nhập có thể liên kết thêm:
 
 Quy tắc:
 
-- Email phải được xác minh OTP trước khi liên kết.
+- Email login chỉ usable khi đồng thời có `users.email`, `email_verified_at` và `password_hash`.
+- Link Email là một flow gồm nhập email, xác minh OTP và thiết lập mật khẩu ban đầu; ba giá trị email verified, password hash và challenge `COMPLETED` được ghi nguyên tử.
 - Google/Facebook phải được xác minh trong phiên đang đăng nhập.
 - `user_id` đích được lấy từ JWT hiện tại, không suy ra chỉ bằng email social.
 - Email hoặc provider đã thuộc tài khoản khác phải bị từ chối.
 - Không tự động gộp hai tài khoản đang hoạt động.
 - Không được gỡ phương thức đăng nhập cuối cùng.
 - Tài khoản social muốn dùng đăng nhập local phải thiết lập mật khẩu và xác minh email tương ứng.
+- Trạng thái EMAIL authoritative là `NOT_LINKED`, `VERIFIED_NO_PASSWORD` hoặc `READY`; Frontend không suy luận trạng thái chỉ từ việc email có tồn tại.
+- Set Password chỉ dành cho tài khoản có verified email nhưng chưa có password, yêu cầu reauthentication ngắn hạn/single-use bằng provider đã liên kết. Change Password yêu cầu current password và là nghiệp vụ khác Forgot Password.
+- Phương thức usable được tính bằng EMAIL `READY`, provider GOOGLE đã liên kết và provider FACEBOOK đã liên kết. `canUnlink` luôn được Backend tính theo invariant còn ít nhất một phương thức usable.
+- Set Password và Change Password thu hồi toàn bộ Refresh Token của account; Frontend xóa phiên local và yêu cầu đăng nhập lại. Access Token stateless đã phát hành vẫn có thể còn hiệu lực tới expiry vì hệ thống chưa dùng `tokenVersion`/blacklist.
+
+Trạng thái triển khai Login Methods/Link Email/Set Password/Change Password: Backend, Database/API và Frontend `IMPLEMENTED`; automated unit test mục tiêu, Frontend test/lint/build `TESTED`; chưa `INTEGRATED` cho đến khi hoàn tất manual E2E bằng credential Google/Facebook và SMTP thật.
 
 #### Khôi phục mật khẩu
 
@@ -344,14 +354,15 @@ Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Restrict là quan hệ m
 
 ### 💬 3.3. Nhắn tin trực tiếp một-một
 
-Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text, gửi/hiển thị ảnh và Typing Indicator Giai đoạn 1D `INTEGRATED` và `TESTED`. Migration cùng 7 concurrency test đã chạy thành công trên MySQL 8.4 tạm; smoke test E2E hai trình duyệt chưa triển khai.
+Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text, gửi/hiển thị ảnh, chia sẻ bài viết V1 và Typing Indicator Giai đoạn 1D `TESTED`. Text/ảnh/typing đã `INTEGRATED`; chia sẻ bài viết có migration MySQL thủ công nhưng chưa chạy trên database thật hoặc smoke test E2E hai trình duyệt.
 
-- Conversation một-một hỗ trợ `TEXT`, chỉ ảnh hoặc ảnh kèm chú thích. Nội dung/chú thích tối đa 2.000 Unicode code point; mỗi message có tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; video và tài liệu chưa hỗ trợ.
+- Conversation một-một hỗ trợ `TEXT`, chỉ ảnh hoặc ảnh kèm chú thích, và `POST_SHARE` tham chiếu bài viết kèm lời nhắn tùy chọn. Nội dung/chú thích tối đa 2.000 Unicode code point; mỗi message ảnh có tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; video và tài liệu chưa hỗ trợ.
 - Chỉ tài khoản `USER`, `ACTIVE` và đã hoàn tất hồ sơ được dùng Messaging; `ADMIN` không dùng Messaging như tài khoản xã hội và không được nhắn chính mình.
 - Một cặp người dùng chỉ có một conversation logic, chuẩn hóa bằng `participant_low_id` và `participant_high_id`; conversation và đúng hai member được tạo trong cùng transaction.
 - A chỉ được bắt đầu conversation với B khi B đang Follow A. Conversation rỗng không xuất hiện trong Inbox và phải kiểm tra lại điều kiện Follow khi gửi tin đầu tiên; sau tin đầu tiên, Unfollow không đóng conversation.
-- Database gồm `conversations`, `conversation_members`, `messages`, `message_attachments` và `media_cleanup_tasks`; cặp participant, `(sender_id, client_message_id)`, thứ tự attachment và định danh storage là duy nhất. `last_message_id` và `last_read_message_id` phải thuộc đúng conversation và được Service kiểm soát ngoài foreign key.
-- REST Core giữ POST JSON gửi text và bổ sung cùng path POST với `multipart/form-data` gồm `clientMessageId`, `content` tùy chọn, `images` tối đa 5. URL ảnh ngắn hạn chỉ được cấp qua `GET /api/v1/message-attachments/{attachmentId}/access` sau khi kiểm tra lại quyền.
+- Database gồm `conversations`, `conversation_members`, `messages`, `message_attachments` và `media_cleanup_tasks`; `messages.shared_post_id` là tham chiếu nullable tới bài viết, dùng `ON DELETE SET NULL` để giữ lịch sử message khi bài bị xóa cứng. Cặp participant, `(sender_id, client_message_id)`, thứ tự attachment và định danh storage là duy nhất. `last_message_id` và `last_read_message_id` phải thuộc đúng conversation và được Service kiểm soát ngoài foreign key.
+- REST Core dùng cùng POST JSON để gửi text hoặc `POST_SHARE` với `clientMessageId`, `content` tùy chọn và `sharedPostId`; Backend tự xác định type, kiểm tra khả năng xem bài của cả sender/recipient và áp dụng fingerprint idempotency gồm conversation, post và content. Cùng path POST với `multipart/form-data` nhận `images` tối đa 5. URL ảnh chat ngắn hạn chỉ được cấp qua `GET /api/v1/message-attachments/{attachmentId}/access` sau khi kiểm tra lại quyền.
+- `GET /api/v1/conversations/share-recipients` trả danh sách phân trang gồm conversation đã có message và follower đủ điều kiện; loại self, Block hai chiều, tài khoản không phải `USER`/không `ACTIVE`/chưa onboarding. Restrict không ảnh hưởng danh sách.
 - Danh sách conversation và lịch sử message dùng cursor Base64URL opaque, keyset pagination, không truy vấn tổng số. Page lịch sử được truy vấn mới nhất trước nhưng trả nội dung theo thời gian tăng dần trong từng page.
 - Gửi message lấy sender từ JWT, nhận UUID v4 `clientMessageId` và Backend tự xác định `TEXT`/`IMAGE`. Payload ảnh có fingerprint gồm conversation, content, số ảnh, MIME, size và SHA-256 từng file; replay chính xác không upload/phát event lại, còn tái sử dụng key với payload khác trả `IDEMPOTENCY_KEY_REUSED`.
 - Mark read chỉ tiến lên, không thay đổi `last_read_at` khi marker cũ được gửi lại. Unread được tính trực tiếp từ message của participant còn lại, không dùng counter denormalized.
@@ -361,10 +372,11 @@ Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diệ
 - Frontend subscribe Notification tại `/user/queue/notifications` và Messaging tại `/user/queue/messaging` trên cùng connection.
 - JWT tiếp tục được xác thực tại STOMP `CONNECT`; principal name là chuỗi `users.id`. Client chỉ được `SEND` đúng destination `/app/messaging/typing`; mọi destination khác hoặc frame không có destination đều bị từ chối.
 - User Block theo một trong hai chiều phải ẩn conversation, chặn history/send/read, loại khỏi unread và chặn nhận realtime; Unblock làm dữ liệu cũ xuất hiện lại. Open/send và Block khóa cặp user theo thứ tự ID ổn định để tuần tự hóa race; Restrict không ảnh hưởng Messaging.
-- Message không tạo bản ghi Notification. `MESSAGE_CREATED` và `MESSAGES_READ` chỉ phát `AFTER_COMMIT`; payload message bổ sung metadata `attachments` nhưng không có URL/storage ID. Broker lỗi không rollback REST/MySQL đã commit và không thay đổi contract Notification.
+- Message không tạo bản ghi Notification. `MESSAGE_CREATED` và `MESSAGES_READ` chỉ phát `AFTER_COMMIT`; payload message bổ sung metadata `attachments` nhưng không có URL/storage ID. `POST_SHARE` trả snapshot được hydrate theo từng viewer; khi viewer không còn quyền xem hoặc bài không còn tồn tại, payload chỉ đánh dấu `sharedPostUnavailable` và không làm hỏng history. Broker lỗi không rollback REST/MySQL đã commit và không thay đổi contract Notification.
 - Upload ảnh dùng Cloudinary `authenticated` ngoài transaction MySQL dài. Khi transaction ngắn lưu message/attachment thất bại, Backend xóa bù ngay; lỗi xóa được ghi durable cleanup task và scheduler retry.
 - Media chat không lưu hoặc trả URL công khai vĩnh viễn. Endpoint access chống IDOR, kiểm tra USER/ACTIVE/onboarding/membership/Block và cấp signed URL với TTL cấu hình, mặc định 5 phút.
 - Typing Indicator Giai đoạn 1D đã hoàn thành qua `TYPING_STARTED`/`TYPING_STOPPED`, không lưu database, không replay và không thay đổi unread.
+- Nút Chia sẻ bài viết mở modal chọn một người nhận, hỗ trợ tìm kiếm/phân trang, gửi qua DM, sao chép URL canonical và Facebook Share Dialog/Web Sharer; không yêu cầu hoặc lưu Facebook Access Token. Chia sẻ không tạo Notification và không tăng Repost count.
 - Tài liệu, video, Message Request, Hidden Message Request, online status, delivered status, recall, xóa conversation phía cá nhân và report message chưa thuộc phạm vi.
 
 ### 📝 4. Quản lý bài viết
@@ -434,6 +446,27 @@ Quy tắc:
 - Frontend cập nhật ngay trạng thái và bộ đếm Like, Comment, Save, Repost từ response REST; các tab cùng trình duyệt đồng bộ qua `BroadcastChannel` và vô hiệu hóa đúng cache danh sách liên quan.
 - Khi tab trở lại foreground, Frontend reconciliation danh sách đang hiển thị bằng REST. Notification WebSocket của Like, Comment, Reply và Repost kích hoạt reconciliation Post cho người nhận; MySQL và REST API vẫn là nguồn dữ liệu chuẩn.
 
+#### AI-assisted Content Moderation V1
+
+Trạng thái: Backend/Frontend/local AI service `IMPLEMENTED`, automated test và smoke inference thật `TESTED`; chưa `INTEGRATED` vì chưa chạy toàn bộ manual E2E trên giao diện với local service thật.
+
+- Áp dụng synchronous pre-publication moderation cho text khi tạo Post, sửa text Post, tạo Comment và tạo Reply. Post update chỉ gọi lại provider khi text sau chuẩn hóa thực sự thay đổi.
+- V1 chỉ kiểm tra text; không kiểm tra image, video, avatar, bio, message, hashtag, Location hoặc search query.
+- AI provider chỉ phân loại/chấm điểm. `ModerationPolicy` của Backend mới quyết định đúng ba kết quả `ALLOW`, `WARNING`, `BLOCK`; Post/Comment service chỉ phụ thuộc abstraction dùng chung `ContentModerationService`.
+- `ALLOW` tiếp tục transaction lưu nội dung. `WARNING` và `BLOCK` đều không lưu nội dung; V1 không có lựa chọn đăng bất chấp cảnh báo.
+- Timeout, provider unavailable, cấu hình thiếu hoặc response không hợp lệ trả `CONTENT_MODERATION_UNAVAILABLE` và fail closed: nội dung chưa được kiểm tra không được publish.
+- Error contract dùng `CONTENT_MODERATION_WARNING`, `CONTENT_POLICY_VIOLATION`, `CONTENT_MODERATION_UNAVAILABLE`; response chỉ có decision/category nội bộ an toàn, không expose confidence, model hoặc raw provider response.
+- Frontend chờ response Backend trước khi thêm Post/Comment/Reply, giữ nguyên draft và media/hashtag/Location khi bị từ chối, đồng thời không tăng bộ đếm optimistic cho nội dung rejected.
+- External inference và upload media nằm ngoài transaction MySQL dài. Sau khi moderation cho phép, Backend mở transaction ngắn, recheck quyền/trạng thái/deadline và persist atomically.
+- Rejected content không tạo Post/Comment/Reply, không làm trigger tăng `comment_count`, không tạo Notification hoặc realtime event.
+- V1 không tự khóa user, không tạo Report/Moderation Case, không ẩn nội dung cũ và không thay thế quy trình Report/Admin human moderation hiện tại.
+- Provider duy nhất là FastAPI local chạy checkpoint tiếng Việt `visolex/phobert-v2-hsd`; text không được gửi tới dịch vụ AI tính phí bên ngoài. Checkpoint chỉ phân loại `CLEAN/OFFENSIVE/HATE`, tương ứng `ALLOW/WARNING/BLOCK`; đây không phải bộ kiểm duyệt an toàn tổng quát cho media hoặc mọi nhóm rủi ro.
+- Input vượt context 256 token được chia theo token và tổng hợp theo mức nghiêm trọng nhất để không bỏ mất vi phạm ở phần đuôi. Model nạp một lần khi FastAPI khởi động; `/health` kiểm tra process và `/ready` chỉ thành công khi model sẵn sàng.
+- URL local và timeout đều lấy từ environment; Post/Comment service tiếp tục chỉ phụ thuộc abstraction moderation dùng chung.
+
+Checklist kiểm thử thủ công: [`docs/testing/AI-CONTENT-MODERATION-V1-E2E-CHECKLIST.md`](docs/testing/AI-CONTENT-MODERATION-V1-E2E-CHECKLIST.md).
+Bộ dữ liệu E2E local: [`docs/testing/LOCAL-AI-CONTENT-MODERATION-V1-DATASET.md`](docs/testing/LOCAL-AI-CONTENT-MODERATION-V1-DATASET.md).
+
 ### 📰 6. Bảng tin
 
 #### Feed Following
@@ -483,7 +516,7 @@ Trạng thái Backend và Frontend `IMPLEMENTED`, automated test `TESTED`; chưa
 - Tọa độ viewer chỉ tồn tại trong request/query processing; không lưu database, analytics payload, Notification, WebSocket hoặc log nghiệp vụ.
 - Nearby độc lập với Feed For You và không thay đổi score, candidate, `rankingAt` hoặc cursor của Personalized For You V1.
 - Frontend tích hợp tab `Gần bạn` trong Feed, chỉ gọi Geolocation khi mở tab hoặc bấm cập nhật vị trí; tọa độ chỉ giữ trong memory runtime. UI hỗ trợ năm radius đã khóa, state tường minh, AbortController/chống response cũ và Infinite Scroll giữ nguyên cursor opaque.
-- Canonical demo seed dành sáu Post `PUBLISHED` cho năm địa điểm công cộng quanh phường Bình Trị Đông. Có thể dùng tọa độ Chợ Bình Trị Đông trong seed (`10.7586500`, `106.6048500`) để kiểm thử radius 1/3/5 km; các `google_place_id` bắt đầu bằng `demo-binhtri-` và tọa độ chỉ là dữ liệu demo gần đúng, không giả làm định danh Google chính thức.
+- Canonical demo seed dành mười Post `PUBLISHED`, chia đều cho năm địa điểm công cộng quanh đường Cao Lỗ, Quận 8. Có thể dùng tọa độ Trường Đại học Công nghệ Sài Gòn trong seed (`10.7387550`, `106.6777880`) để kiểm thử radius 1/3/5 km; các `google_place_id` bắt đầu bằng `demo-caolo-` và tọa độ chỉ là dữ liệu demo gần đúng, không giả làm định danh Google chính thức.
 
 #### Discovery Map V1
 
@@ -890,7 +923,8 @@ student-social-network/
 │
 ├── database/
 │   ├── student_social_network.sql
-│   └── student_social_network.dbml
+│   ├── student_social_network.dbml
+│   └── migrations/              # Migration thủ công cho database đang tồn tại
 │
 ├── docs/
 │   ├── api/
@@ -1050,7 +1084,7 @@ Authorization: Bearer <access_token>
 - Principal của kết nối được Backend xác định từ JWT và có tên bằng chuỗi `users.id`; Backend không tin `userId` do Frontend gửi.
 - Event chỉ được phát sau khi transaction tạo Notification commit thành công.
 - Giai đoạn đầu chỉ phát event `NOTIFICATION_CREATED`; read, read-all, delete và invalidation vẫn đồng bộ qua REST.
-- Messaging phát `MESSAGE_CREATED` và `MESSAGES_READ` sau commit cho cả hai participant; mỗi envelope có unread count authoritative riêng cho user nhận.
+- Messaging phát `MESSAGE_CREATED` và `MESSAGES_READ` sau commit cho cả hai participant; mỗi envelope có unread count authoritative riêng và snapshot `POST_SHARE` được hydrate theo quyền của chính user nhận.
 - Client không được gửi mutation bền vững qua STOMP. Chỉ frame typing tạm thời tại `/app/messaging/typing` được phép; Backend tự lấy actor từ principal, kiểm tra membership/account/Block và chỉ phát cho participant còn lại qua `/user/queue/messaging`.
 - Typing dùng `TYPING_STARTED`/`TYPING_STOPPED`, giới hạn tối đa 4 frame/user/giây trong bộ nhớ của từng instance, không ghi database, không thay đổi unread và không replay. Frontend gửi START lần đầu, refresh mỗi 3 giây khi còn hoạt động, STOP sau 2 giây idle và tự hết hạn trạng thái nhận sau 5 giây.
 - Khi socket gián đoạn, Frontend phải reconcile bằng REST và chỉ polling unread count khi tab đang hiển thị.
@@ -1336,6 +1370,10 @@ GOOGLE_CLIENT_ID=your_google_client_id
 FACEBOOK_APP_ID=your_facebook_app_id
 FACEBOOK_APP_SECRET=your_facebook_app_secret
 
+AI_MODERATION_LOCAL_BASE_URL=http://127.0.0.1:8001
+AI_MODERATION_CONNECT_TIMEOUT=3s
+AI_MODERATION_READ_TIMEOUT=5s
+
 MAIL_USERNAME=your_gmail_address@gmail.com
 MAIL_APP_PASSWORD=your_16_character_google_app_password
 MAIL_SENDER_NAME=UniShare
@@ -1344,6 +1382,21 @@ MAIL_SENDER_NAME=UniShare
 `MAIL_USERNAME` là tài khoản Gmail gửi OTP. `MAIL_APP_PASSWORD` phải là Google App Password,
 không dùng mật khẩu đăng nhập Google thông thường. `MAIL_SENDER_NAME` là tên hiển thị người gửi
 và mặc định là `UniShare`. Không đưa thông tin bí mật lên GitHub.
+
+Content moderation chỉ dùng local service và không có API key AI trả phí. Khi local service chưa sẵn sàng, timeout hoặc response sai contract, mutation text fail closed với `CONTENT_MODERATION_UNAVAILABLE`; Backend không tự bypass moderation.
+
+Khởi động local AI service trước Backend (lần đầu tải khoảng 540 MB model vào cache):
+
+```powershell
+cd ai-service
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+Chi tiết CPU/GPU, cache, Linux/macOS, smoke test thật, nguồn model và giấy phép xem tại [`ai-service/README.md`](ai-service/README.md).
 
 Chạy Backend:
 
@@ -1364,7 +1417,12 @@ npm install
 VITE_API_BASE_URL=http://localhost:8080/api/v1
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
 VITE_FACEBOOK_APP_ID=your_facebook_app_id
+VITE_PUBLIC_APP_URL=https://your-public-frontend-domain.example
 ```
+
+`VITE_PUBLIC_APP_URL` là origin HTTPS công khai dùng để tạo canonical link khi chia sẻ Post ra Facebook.
+Facebook không thể crawl `localhost`, địa chỉ loopback hoặc IP mạng nội bộ; khi phát triển local cần dùng
+deployment/tunnel public và cấu hình origin tương ứng, sau đó khởi động lại Vite.
 
 ```bash
 npm run dev

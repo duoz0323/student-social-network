@@ -71,13 +71,13 @@ export function useLinkAuthProvider({ onUpdated }) {
     } finally { finish(); }
   }, [begin, finish]);
 
-  const verifyOtp = useCallback(async (code) => {
+  const completeEmailLink = useCallback(async (payload) => {
     if (!linkFlow) return null;
     const controller = begin();
     if (!controller) return null;
     try {
-      const method = await authProviderService.verifyEmailLink(code, linkFlow.linkFlowToken, controller.signal);
-      if (mountedRef.current) { setLinkFlow(null); setState((current) => ({ ...current, success: 'Đã liên kết email.' })); }
+      const method = await authProviderService.completeEmailLink(payload, linkFlow.linkFlowToken, controller.signal);
+      if (mountedRef.current) { setLinkFlow(null); setState((current) => ({ ...current, success: 'Email đã sẵn sàng đăng nhập.' })); }
       await callbackRef.current?.();
       return method;
     } catch (error) {
@@ -87,6 +87,51 @@ export function useLinkAuthProvider({ onUpdated }) {
       throw error;
     } finally { finish(); }
   }, [begin, finish, linkFlow, safeRefetch]);
+
+  const verifyEmailOtp = useCallback(async (code) => {
+    if (!linkFlow) return null;
+    const controller = begin();
+    if (!controller) return null;
+    try {
+      const response = await authProviderService.verifyEmailLink(code, linkFlow.linkFlowToken, controller.signal);
+      if (!response?.flowToken) throw new Error('INVALID_LINK_RESPONSE');
+      const verifiedFlow = { ...linkFlow, linkFlowToken: response.flowToken, challengeExpiresAt: response.expiresAt, otpVerified: true };
+      if (mountedRef.current) setLinkFlow(verifiedFlow);
+      return verifiedFlow;
+    } catch (error) {
+      if (isTerminalLinkError(error) && mountedRef.current) setLinkFlow(null);
+      if (mountedRef.current) setState((current) => ({ ...current, error: friendlyClientError(error) }));
+      throw error;
+    } finally { finish(); }
+  }, [begin, finish, linkFlow]);
+
+  const setPassword = useCallback(async (proofMethod, payload) => {
+    const controller = begin();
+    if (!controller) return null;
+    try {
+      const credential = await acquireCredential(proofMethod);
+      if (!mountedRef.current) return null;
+      const result = await authProviderService.setPassword(proofMethod, credential, payload, controller.signal);
+      if (mountedRef.current) setState((current) => ({ ...current, success: 'Đã thiết lập mật khẩu.' }));
+      return result;
+    } catch (error) {
+      if (mountedRef.current) setState((current) => ({ ...current, error: friendlyClientError(error) }));
+      throw error;
+    } finally { finish(); }
+  }, [begin, finish]);
+
+  const changePassword = useCallback(async (payload) => {
+    const controller = begin();
+    if (!controller) return null;
+    try {
+      const result = await authProviderService.changePassword(payload, controller.signal);
+      if (mountedRef.current) setState((current) => ({ ...current, success: 'Đã thay đổi mật khẩu.' }));
+      return result;
+    } catch (error) {
+      if (mountedRef.current) setState((current) => ({ ...current, error: friendlyClientError(error) }));
+      throw error;
+    } finally { finish(); }
+  }, [begin, finish]);
 
   const resendOtp = useCallback(async () => {
     if (!linkFlow) return null;
@@ -150,5 +195,6 @@ export function useLinkAuthProvider({ onUpdated }) {
   const clearLinkFlow = useCallback(() => setLinkFlow(null), []);
   const clearMessages = useCallback(() => setState((current) => ({ ...current, error: '', success: '' })), []);
 
-  return { ...state, linkFlow, startEmailLink, verifyOtp, resendOtp, linkSocial, unlinkWithProof, clearLinkFlow, clearMessages };
+  return { ...state, linkFlow, startEmailLink, verifyEmailOtp, completeEmailLink, resendOtp, linkSocial,
+    unlinkWithProof, setPassword, changePassword, clearLinkFlow, clearMessages };
 }

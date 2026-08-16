@@ -215,6 +215,15 @@ Location gắn với Post thuộc P1 và là nền tảng dữ liệu được D
 - Xóa bình luận của mình.
 - Reply một cấp thuộc P2.
 
+#### AI-assisted Content Moderation V1
+
+- Text của Post create, Post update khi text thay đổi, Comment và Reply phải được kiểm tra trước khi public.
+- Backend quyết định `ALLOW`, `WARNING`, `BLOCK`; WARNING/BLOCK đều không persist và provider failure fail closed.
+- Rejected content không tăng counter, không tạo Notification/realtime, Report, Moderation Case, admin action hoặc user penalty.
+- V1 không kiểm tra media/hashtag/Location và không thay thế Report/Admin human moderation. Contract chi tiết cùng trạng thái triển khai theo README.
+- Provider duy nhất là local FastAPI dùng `visolex/phobert-v2-hsd`; `CLEAN/OFFENSIVE/HATE` lần lượt map `ALLOW/WARNING/BLOCK` và không yêu cầu API key AI trả phí.
+- Model chỉ bao phủ toxic/offensive/hate speech tiếng Việt, không được mô tả như bộ kiểm duyệt tổng quát. Input dài phải được chunk theo token và lấy mức nghiêm trọng nhất.
+
 #### Lưu bài
 
 - Save/Unsave.
@@ -341,7 +350,7 @@ nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với
 - Đăng ký local bằng email và xác minh OTP.
 - Đăng ký, đăng nhập Google/Facebook.
 - Đăng nhập local và đăng xuất.
-- Khôi phục mật khẩu bằng OTP cho tài khoản local đủ điều kiện; dùng decoy challenge để chống account enumeration và không hỗ trợ social-only tạo mật khẩu lần đầu.
+- Khôi phục mật khẩu bằng OTP cho tài khoản local đủ điều kiện; dùng decoy challenge để chống account enumeration và không hỗ trợ social-only tạo mật khẩu lần đầu. Social account có verified email nhưng chưa có password phải dùng Set Password sau reauthentication; Link Email luôn gồm OTP và mật khẩu ban đầu. Facebook provider email không tự tạo local email login, còn verified Google email có thể populate account email nhưng vẫn cần Set Password.
 - Hoàn tất hồ sơ ban đầu.
 - JWT/Refresh Token.
 - Hồ sơ.
@@ -372,7 +381,7 @@ nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với
 
 - Reply bình luận một cấp.
 - Thông báo REST và realtime bằng WebSocket/STOMP.
-- Nhắn tin trực tiếp một-một text-only: Database, REST Core, realtime best-effort, UI và Typing Indicator đã triển khai đến Giai đoạn 1D.
+- Nhắn tin trực tiếp một-một: text, ảnh, chia sẻ bài viết V1, realtime best-effort, UI và Typing Indicator đã triển khai và có test tự động; riêng chia sẻ bài viết chưa smoke test E2E hai trình duyệt.
 - Lịch sử thao tác quản trị đơn giản.
 
 Phạm vi Notification realtime Giai đoạn 1:
@@ -387,16 +396,18 @@ Phạm vi Notification realtime Giai đoạn 1:
 - Giai đoạn này không realtime hóa read, read-all, delete hoặc invalidation; không dùng SockJS,
   outbox hay message broker ngoài.
 
-Phạm vi Messaging đến Giai đoạn 1D và Backend gửi ảnh:
+Phạm vi Messaging đến Giai đoạn 1D, ảnh và chia sẻ bài viết V1:
 
 - Chỉ `USER`, `ACTIVE`, hoàn tất hồ sơ; người nhận phải Follow người gửi để bắt đầu conversation.
 - Một cặp user có một conversation; conversation rỗng không vào Inbox và gửi tin đầu phải kiểm tra lại Follow.
 - Block hai chiều ẩn list/history, chặn send/read và loại unread; Restrict không ảnh hưởng.
-- Hỗ trợ `TEXT`, chỉ ảnh và ảnh kèm chú thích; content tối đa 2.000 Unicode code point. Mỗi message tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; không hỗ trợ video hoặc tài liệu.
+- Hỗ trợ `TEXT`, chỉ ảnh, ảnh kèm chú thích và `POST_SHARE` tham chiếu bài viết với lời nhắn tùy chọn; content tối đa 2.000 Unicode code point. Mỗi message ảnh tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; không hỗ trợ video hoặc tài liệu.
 - JSON text cũ được giữ nguyên; ảnh gửi REST multipart cùng path và idempotent bằng UUID v4 cùng fingerprint SHA-256 payload.
 - Media chat lưu ở chế độ authenticated, response/event chỉ có metadata. Signed URL TTL ngắn chỉ cấp cho member hợp lệ sau khi kiểm tra USER/ACTIVE/onboarding và Block.
 - Upload nằm ngoài transaction MySQL dài; rollback xóa bù và ghi durable cleanup task để scheduler retry khi cần.
-- REST/MySQL là nguồn sự thật; WebSocket là best-effort. `MESSAGE_CREATED` và `MESSAGES_READ` phát after-commit, không tạo Notification. UI text có Inbox, detail, badge, optimistic send, cursor history và REST reconciliation; UI ảnh thuộc giai đoạn Frontend tiếp theo.
+- `POST_SHARE` chỉ gửi được khi cả sender và recipient có quyền xem bài tại thời điểm gửi; history/realtime hydrate snapshot theo quyền từng viewer và trả trạng thái không khả dụng nếu quyền thay đổi hoặc bài bị xóa. Danh sách người nhận gồm conversation đã có message hoặc follower đủ điều kiện, loại self/Block/tài khoản không hợp lệ; Restrict không ảnh hưởng.
+- REST/MySQL là nguồn sự thật; WebSocket là best-effort. `MESSAGE_CREATED` và `MESSAGES_READ` phát after-commit, không tạo Notification. UI có Inbox, detail, badge, text/ảnh/shared-post bubble, optimistic send, cursor history và REST reconciliation.
+- Share Modal cho phép chọn một recipient, tìm kiếm/phân trang, gửi DM, sao chép link canonical và mở Facebook Share Dialog/Web Sharer mà không dùng Facebook Access Token; thao tác này không phải Repost và không tăng Repost count.
 - Typing là trạng thái tạm thời: client chỉ `SEND` `{conversationId, typing}` đến `/app/messaging/typing`; Backend lấy user từ STOMP principal, kiểm tra account/membership/Block và chỉ phát `TYPING_STARTED`/`TYPING_STOPPED` cho participant còn lại. Không lưu DB, không unread, không Notification, không replay và Restrict không ảnh hưởng.
 
 ## 6. Ngoài phạm vi

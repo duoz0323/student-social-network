@@ -5,7 +5,7 @@ import { AUTH_PROVIDER_META } from '../constants/authProviderConstants.js';
 
 const PROOF_LABELS = { PASSWORD: 'Mật khẩu', GOOGLE: 'Google', FACEBOOK: 'Facebook' };
 
-export default function ReauthenticationDialog({ targetMethod, methods, open, busy, onClose, onSubmit }) {
+export default function ReauthenticationDialog({ targetMethod, methods, open, busy, purpose = 'UNLINK_AUTH_METHOD', onClose, onSubmit }) {
   const proofs = [
     methods.some((item) => item.linked && item.localLoginAvailable) ? 'PASSWORD' : null,
     methods.some((item) => item.type === 'GOOGLE' && item.linked) ? 'GOOGLE' : null,
@@ -13,10 +13,11 @@ export default function ReauthenticationDialog({ targetMethod, methods, open, bu
   ].filter(Boolean);
   const [proof, setProof] = useState(proofs[0] ?? '');
   const [password, setPassword] = useState('');
+  const settingPassword = purpose === 'SET_PASSWORD';
   if (!targetMethod) return null;
   return (
-    <Modal open={open} title={`Xác thực lại để gỡ ${AUTH_PROVIDER_META[targetMethod].label}`} onClose={busy ? undefined : onClose} footer={(
-      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button variant="danger" disabled={busy || !proof || (proof === 'PASSWORD' && !password)} onClick={() => onSubmit(proof, password)}>{busy ? 'Đang xử lý...' : 'Xác thực và gỡ'}</Button></>
+    <Modal open={open} title={settingPassword ? 'Xác thực lại để thiết lập mật khẩu' : `Xác thực lại để gỡ ${AUTH_PROVIDER_META[targetMethod].label}`} onClose={busy ? undefined : onClose} footer={(
+      <><Button variant="ghost" disabled={busy} onClick={onClose}>Hủy</Button><Button variant={settingPassword ? 'primary' : 'danger'} disabled={busy || !proof || (proof === 'PASSWORD' && !password)} onClick={() => onSubmit(proof, password)}>{busy ? 'Đang xử lý...' : settingPassword ? 'Tiếp tục' : 'Xác thực và gỡ'}</Button></>
     )}>
       {proofs.length === 0 ? <p className="text-sm font-semibold text-red-600">Không có phương thức xác thực lại khả dụng.</p> : (
         <>

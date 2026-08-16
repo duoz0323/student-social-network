@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.post.dto.request.UpdatePostRequest;
 import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
 import com.stu.edu.vn.backend.post.enums.LocationAction;
 import com.stu.edu.vn.backend.location.entity.Location;
+import com.stu.edu.vn.backend.moderation.service.ContentModerationService;
 import com.stu.edu.vn.backend.post.dto.response.DeletePostResponse;
 import com.stu.edu.vn.backend.post.dto.response.PostResponse;
 import com.stu.edu.vn.backend.post.entity.Hashtag;
@@ -86,6 +87,8 @@ class PostServiceImplTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T01:10:00Z"), ZoneId.of("UTC"));
     private final UserRelationshipPolicyService relationshipPolicyService =
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
+    private final ContentModerationService contentModerationService =
+            org.mockito.Mockito.mock(ContentModerationService.class);
 
     private final AtomicLong postIds = new AtomicLong(100);
     private final AtomicLong mediaIds = new AtomicLong(200);
@@ -114,7 +117,8 @@ class PostServiceImplTest {
                 transactionTemplate,
                 entityManager,
                 clock,
-                relationshipPolicyService
+                relationshipPolicyService,
+                contentModerationService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -125,6 +129,9 @@ class PostServiceImplTest {
             return callback.doInTransaction(new SimpleTransactionStatus());
         });
         when(postRepository.saveAndFlush(any(Post.class))).thenAnswer(invocation -> savedPost(invocation.getArgument(0)));
+        when(postRepository.findDetailHeaderByIdAndStatusForUpdate(any(), eq(PostStatus.PUBLISHED)))
+                .thenAnswer(invocation -> postRepository.findDetailHeaderByIdAndStatus(
+                        invocation.getArgument(0), PostStatus.PUBLISHED));
         when(postMediaRepository.saveAllAndFlush(any())).thenAnswer(invocation -> saveMedia(invocation.getArgument(0)));
         when(postHashtagRepository.saveAndFlush(any(PostHashtag.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(hashtagRepository.findByNormalizedName(any())).thenAnswer(invocation -> {
@@ -146,6 +153,24 @@ class PostServiceImplTest {
         assertThat(response.author().id()).isEqualTo(10L);
         assertThat(response.media()).isEmpty();
         assertThat(response.hashtag()).isNull();
+    }
+
+    @Test
+    void createPostDoesNotPersistWhenModerationRejectsOrIsUnavailable() {
+        for (ErrorCode errorCode : List.of(
+                ErrorCode.CONTENT_MODERATION_WARNING,
+                ErrorCode.CONTENT_POLICY_VIOLATION,
+                ErrorCode.CONTENT_MODERATION_UNAVAILABLE)) {
+            org.mockito.Mockito.reset(contentModerationService, transactionTemplate);
+            doThrow(new BusinessException(errorCode)).when(contentModerationService).requireAllowed("Nội dung cần kiểm tra");
+
+            assertThatThrownBy(() -> postService.createPost(
+                    new CreatePostRequest("Nội dung cần kiểm tra", null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(errorCode);
+            verify(transactionTemplate, never()).execute(any());
+            verify(postRepository, never()).saveAndFlush(any(Post.class));
+        }
     }
 
     @Test
@@ -604,6 +629,33 @@ class PostServiceImplTest {
         var response = postService.updatePost(1L, new UpdatePostRequest("Nội dung sau ba phút", null, null, null));
 
         assertThat(response.content()).isEqualTo("Nội dung sau ba phút");
+    }
+
+    @Test
+    void updatePostSkipsModerationWhenNormalizedTextIsUnchanged() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        prepareSimpleUpdate(post, List.of());
+
+        postService.updatePost(1L, new UpdatePostRequest("  Noi dung  ", null, null, null));
+
+        verify(contentModerationService, never()).requireAllowed(any());
+    }
+
+    @Test
+    void updatePostDoesNotMutateWhenChangedTextIsRejected() {
+        Post post = existingPost(1L, user(10L), completedProfile(10L));
+        prepareSimpleUpdate(post, List.of());
+        doThrow(new BusinessException(ErrorCode.CONTENT_MODERATION_WARNING))
+                .when(contentModerationService).requireAllowed("Nội dung mới");
+
+        assertThatThrownBy(() -> postService.updatePost(
+                1L, new UpdatePostRequest("Nội dung mới", null, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.CONTENT_MODERATION_WARNING);
+
+        assertThat(post.getContent()).isEqualTo("Noi dung");
+        verify(transactionTemplate, never()).execute(any());
+        verify(postRepository, never()).markEdited(any());
     }
 
     @Test

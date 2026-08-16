@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.stu.edu.vn.backend.common.api.CursorPageResponse;
+import com.stu.edu.vn.backend.common.api.PageResponse;
+import com.stu.edu.vn.backend.messaging.dto.request.SendMessageRequest;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.mockito.ArgumentCaptor;
 
 /** Contract HTTP bảo vệ status insert/replay và request không nhận sender/type. */
 class MessagingControllerTest {
@@ -60,5 +63,30 @@ class MessagingControllerTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         mockMvc.perform(get("/api/v1/conversations/1/messages").param("limit", "101"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shareRecipientAndPostShareKeepIdentityAndTypeServerSide() throws Exception {
+        when(service.getShareRecipients("khanh", 0, 20)).thenReturn(new PageResponse<>(
+                List.of(new ShareRecipientResponse(20L, "khanh", "Khánh", null, 2L, true)),
+                0, 20, 1, 1, true, true));
+        mockMvc.perform(get("/api/v1/conversations/share-recipients").param("keyword", "khanh"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].username").value("khanh"))
+                .andExpect(jsonPath("$.data.content[0].existingConversation").value(true));
+
+        MessageResponse message = new MessageResponse(3L, 2L, 1L,
+                "550e8400-e29b-41d4-a716-446655440000", MessageType.POST_SHARE, null,
+                List.of(), null, true, LocalDateTime.now());
+        when(service.sendMessage(eq(2L), any())).thenReturn(new SendMessageResponse(message, false));
+        String body = "{\"clientMessageId\":\"550e8400-e29b-41d4-a716-446655440000\","
+                + "\"content\":null,\"sharedPostId\":125,\"type\":\"TEXT\",\"senderId\":999}";
+        mockMvc.perform(post("/api/v1/conversations/2/messages")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.message.type").value("POST_SHARE"));
+        ArgumentCaptor<SendMessageRequest> request = ArgumentCaptor.forClass(SendMessageRequest.class);
+        verify(service).sendMessage(eq(2L), request.capture());
+        org.assertj.core.api.Assertions.assertThat(request.getValue().sharedPostId()).isEqualTo(125L);
     }
 }

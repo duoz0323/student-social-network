@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import MessageAttachmentGrid from './MessageAttachmentGrid.jsx';
+import SharedPostMessage from './SharedPostMessage.jsx';
 import { formatMessageGroupTimestamp, messagingTimestampMillis, millisecondsUntilNextMessagingDay } from '../utils/messageTime.js';
 
 const TIME_GROUP_GAP_MS = 15 * 60 * 1000;
@@ -55,7 +56,8 @@ export default function MessageThread({ messages, currentUserId, otherReadMarker
           {!mine ? <span className="w-8 shrink-0">{showAvatar ? <MessageAvatar user={otherUser} /> : null}</span> : null}
           <div className="max-w-[82%] text-sm sm:max-w-[68%]">
             <MessageAttachmentGrid attachments={message.attachments} />
-            {message.content ? <p className={`whitespace-pre-wrap break-words rounded-3xl bg-[#262628] px-4 py-2.5 text-white ${message.attachments?.length ? 'mt-1.5' : ''}`}>{message.content}</p> : null}
+            {message.content ? <p className={`whitespace-pre-wrap break-words rounded-3xl bg-[#262628] px-4 py-2.5 text-white ${message.attachments?.length || message.type === 'POST_SHARE' ? 'mb-1.5' : ''}`}>{message.content}</p> : null}
+            {message.type === 'POST_SHARE' ? <SharedPostMessage post={message.sharedPost} unavailable={message.sharedPostUnavailable} /> : null}
             {showSeen || showDeliveryState ? (
               <div className="mt-1 flex items-center justify-end gap-2 px-1 text-[10px] text-[var(--app-muted)]">
                 {showSeen ? <span>Đã xem</span> : null}

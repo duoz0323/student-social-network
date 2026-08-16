@@ -28,6 +28,11 @@ public final class MessagePayloadFingerprint {
         return sha256(canonical.toString());
     }
 
+    public static String postShare(Long conversationId, Long sharedPostId, String content) {
+        return sha256("POST_SHARE\n" + conversationId + "\n" + sharedPostId + "\n"
+                + (content == null ? "" : content));
+    }
+
     private static String sha256(String value) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

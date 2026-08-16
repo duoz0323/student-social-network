@@ -128,7 +128,8 @@ export function AppProvider({ children }) {
         });
         return { ok: true, data: response };
       } catch (error) {
-        return { ok: false, message: error.message };
+        // Giữ mã lỗi và details an toàn để composer phân biệt WARNING/BLOCK/unavailable mà không reset draft.
+        return { ok: false, code: error.code, details: error.details, message: error.message };
       } finally {
         createPostInFlightRef.current = false;
       }

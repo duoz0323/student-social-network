@@ -4,6 +4,7 @@ import com.stu.edu.vn.backend.auth.dto.*;
 import com.stu.edu.vn.backend.auth.enums.AuthMethod;
 import com.stu.edu.vn.backend.auth.enums.AuthMethodLinkPurpose;
 import com.stu.edu.vn.backend.auth.service.AuthMethodManagementService;
+import com.stu.edu.vn.backend.auth.service.PasswordManagementService;
 import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
 import com.stu.edu.vn.backend.common.api.ApiResponse;
 import jakarta.validation.Valid;
@@ -15,9 +16,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users/me/auth-providers")
 public class AuthMethodController {
     private final AuthMethodManagementService service;
+    private final PasswordManagementService passwordService;
 
-    public AuthMethodController(AuthMethodManagementService service) {
+    public AuthMethodController(AuthMethodManagementService service, PasswordManagementService passwordService) {
         this.service = service;
+        this.passwordService = passwordService;
     }
 
     @GetMapping
@@ -32,11 +35,19 @@ public class AuthMethodController {
     }
 
     @PostMapping("/email/verify")
-    public ResponseEntity<ApiResponse<AuthMethodResponse>> verifyEmail(
+    public ResponseEntity<ApiResponse<VerifiedEmailLinkResponse>> verifyEmail(
             @RequestHeader(name = "X-Auth-Flow-Token", required = false) String token,
             @Valid @RequestBody LinkOtpRequest request) {
-        return noStore(HttpStatus.OK, ApiResponse.success("Đã liên kết email",
-                service.verify(token, request.code(), AuthMethodLinkPurpose.LINK_EMAIL)));
+        return noStore(HttpStatus.OK, ApiResponse.success("OTP hợp lệ",
+                service.verifyEmailOtp(token, request)));
+    }
+
+    @PostMapping("/email/complete")
+    public ResponseEntity<ApiResponse<AuthMethodResponse>> completeEmail(
+            @RequestHeader(name = "X-Auth-Flow-Token", required = false) String token,
+            @Valid @RequestBody CompleteEmailLinkRequest request) {
+        return noStore(HttpStatus.OK, ApiResponse.success("Đã liên kết email và thiết lập mật khẩu",
+                service.completeEmailLink(token, request)));
     }
 
     @PostMapping("/email/resend")
@@ -54,6 +65,21 @@ public class AuthMethodController {
     @PostMapping("/facebook")
     public ResponseEntity<ApiResponse<AuthMethodResponse>> linkFacebook(@Valid @RequestBody FacebookAuthRequest request) {
         return noStore(HttpStatus.OK, ApiResponse.success("Đã liên kết Facebook", service.linkFacebook(request)));
+    }
+
+    @PostMapping("/password")
+    public ResponseEntity<ApiResponse<PasswordMutationResponse>> setPassword(
+            @RequestHeader(name = "X-Auth-Flow-Token", required = false) String token,
+            @Valid @RequestBody SetPasswordRequest request) {
+        return noStore(HttpStatus.OK, ApiResponse.success("Đã thiết lập mật khẩu",
+                passwordService.setPassword(token, request)));
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<ApiResponse<PasswordMutationResponse>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        return noStore(HttpStatus.OK, ApiResponse.success("Đã thay đổi mật khẩu",
+                passwordService.changePassword(request)));
     }
 
     @DeleteMapping("/{provider}")

@@ -79,26 +79,30 @@ public class SocialAuthenticationTransactionService {
         if (existing.isPresent()) return issueSession(existing.get().getUser(), provider, deviceId, deviceInfo, ipAddress);
 
         String email = normalizeOptionalEmail(providerEmail);
+        String verifiedEmail = Boolean.TRUE.equals(providerEmailVerified) ? email : null;
         if (registrationFlowToken != null && !registrationFlowToken.isBlank()) {
             return authenticateWithPending(provider, providerUserId, email, providerEmailVerified,
                     registrationFlowToken, deviceId, deviceInfo, ipAddress);
         }
-        if (email != null) {
-            var pending = pendingRepository.findByActiveIdentifierKeyForUpdate("EMAIL:" + email);
+        if (verifiedEmail != null) {
+            var pending = pendingRepository.findByActiveIdentifierKeyForUpdate("EMAIL:" + verifiedEmail);
             if (pending.filter(item -> item.getStatus() == OtpChallengeStatus.PENDING)
                     .filter(item -> item.getExpiresAt().isAfter(LocalDateTime.now(clock))).isPresent()) {
                 // Hội tụ pending/social thuộc Giai đoạn 8; không sửa pending trong luồng này.
                 throw new BusinessException(ErrorCode.AUTH_SOCIAL_PENDING_CONFLICT);
             }
-            Optional<User> emailOwner = userRepository.findByEmail(email);
-            if (emailOwner.isPresent()) throwActiveEmailConflict(provider, providerUserId, email, providerEmailVerified, emailOwner.get());
+            Optional<User> emailOwner = userRepository.findByEmail(verifiedEmail);
+            if (emailOwner.isPresent()) throwActiveEmailConflict(provider, providerUserId,
+                    verifiedEmail, providerEmailVerified, emailOwner.get());
         } else if (!allowMissingEmail) {
             throw new BusinessException(provider == AuthProvider.FACEBOOK
                     ? ErrorCode.AUTH_FACEBOOK_EMAIL_MISSING : ErrorCode.AUTH_GOOGLE_EMAIL_MISSING);
         }
 
-        User savedUser = userRepository.saveAndFlush(new User(email, null));
-        if (email != null && Boolean.TRUE.equals(providerEmailVerified)) savedUser.setEmailVerifiedAt(LocalDateTime.now(clock));
+        // Chỉ verified Google email được đưa vào users; Facebook email chỉ là metadata của provider.
+        String accountEmail = provider == AuthProvider.GOOGLE ? verifiedEmail : null;
+        User savedUser = userRepository.saveAndFlush(new User(accountEmail, null));
+        if (accountEmail != null) savedUser.setEmailVerifiedAt(LocalDateTime.now(clock));
         profileRepository.saveAndFlush(new UserProfile(savedUser));
         providerRepository.saveAndFlush(new UserAuthProvider(savedUser, provider, providerUserId, email,
                 email == null ? null : providerEmailVerified));

@@ -45,7 +45,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query(value = """
             SELECT m.id AS messageId, m.conversation_id AS conversationId,
                    m.sender_id AS senderId, m.client_message_id AS clientMessageId,
-                   m.type AS type, m.content AS content, m.created_at AS createdAt,
+                   m.type AS type, m.content AS content, m.shared_post_id AS sharedPostId,
+                   m.created_at AS createdAt,
                    c.participant_low_id AS participantLowId,
                    c.participant_high_id AS participantHighId
             FROM messages m

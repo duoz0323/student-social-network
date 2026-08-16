@@ -368,6 +368,7 @@ CREATE TABLE `auth_method_link_challenges` (
   `active_user_purpose_key` varchar(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   `flow_token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   `otp_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `otp_verified_at` datetime(6) DEFAULT NULL,
   `otp_version` int unsigned NOT NULL DEFAULT '1',
   `otp_expires_at` datetime(6) NOT NULL,
   `failed_attempts` tinyint unsigned NOT NULL DEFAULT '0',
@@ -486,7 +487,7 @@ CREATE TABLE `reauthentication_challenges` (
   KEY `idx_reauth_cleanup` (`status`,`terminal_at`,`id`),
   CONSTRAINT `fk_reauth_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `chk_reauth_proof_method` CHECK ((`proof_method` in (_utf8mb4'LOCAL_PASSWORD',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
-  CONSTRAINT `chk_reauth_scope` CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD'))),
+  CONSTRAINT `chk_reauth_scope` CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD',_utf8mb4'SET_PASSWORD'))),
   CONSTRAINT `chk_reauth_target_method` CHECK ((`target_auth_method` in (_utf8mb4'EMAIL',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))),
   CONSTRAINT `chk_reauth_status` CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))),
   CONSTRAINT `chk_reauth_times` CHECK ((`expires_at` > `created_at`)),
@@ -1210,17 +1211,20 @@ CREATE TABLE `messages` (
   `conversation_id` bigint unsigned NOT NULL,
   `sender_id` bigint unsigned NOT NULL,
   `client_message_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `type` enum('TEXT','IMAGE') NOT NULL,
+  `type` enum('TEXT','IMAGE','POST_SHARE') NOT NULL,
   `content` varchar(2000) DEFAULT NULL,
+  `shared_post_id` bigint unsigned DEFAULT NULL,
   `payload_fingerprint` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_messages_sender_client_message` (`sender_id`,`client_message_id`),
   KEY `idx_messages_conversation_cursor` (`conversation_id`,`id` DESC),
+  KEY `idx_messages_shared_post` (`shared_post_id`,`id`),
   CONSTRAINT `fk_messages_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_messages_sender_member` FOREIGN KEY (`conversation_id`,`sender_id`) REFERENCES `conversation_members` (`conversation_id`,`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `chk_messages_payload_shape` CHECK (((`type` = 'TEXT' AND `content` IS NOT NULL AND char_length(trim(`content`)) > 0) OR `type` = 'IMAGE')),
+  CONSTRAINT `fk_messages_shared_post` FOREIGN KEY (`shared_post_id`) REFERENCES `posts` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `chk_messages_payload_shape` CHECK (((`type` = 'TEXT' AND `content` IS NOT NULL AND char_length(trim(`content`)) > 0) OR `type` IN ('IMAGE','POST_SHARE'))),
   CONSTRAINT `chk_messages_content_length` CHECK ((char_length(`content`) <= 2000))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1563,12 +1567,12 @@ VALUES
     ('demo-dormitory-b', 'Ký túc xá Khu B', 'Đông Hòa, Dĩ An, Bình Dương', 10.8831000, 106.7827000),
     ('demo-cafe-study', 'Không gian học tập cộng đồng', 'Thủ Đức, TP.HCM', 10.8498000, 106.7711000),
     ('demo-stadium', 'Sân vận động sinh viên', 'Thủ Đức, TP.HCM', 10.8752000, 106.8011000),
-    -- Địa điểm công cộng thật quanh Bình Trị Đông; ID và tọa độ là dữ liệu demo, không phải Google Place ID chính thức.
-    ('demo-binhtri-aeon-mall', 'AEON Mall Bình Tân', '01 Đường số 17A, phường Bình Trị Đông, TP.HCM', 10.7429040, 106.6118400),
-    ('demo-binhtri-market', 'Chợ Bình Trị Đông', 'Đường Trương Phước Phan, phường Bình Trị Đông, TP.HCM', 10.7586500, 106.6048500),
-    ('demo-binhtri-nguyen-huu-canh', 'Trường THPT Nguyễn Hữu Cảnh', '845 Hương Lộ 2, phường Bình Trị Đông, TP.HCM', 10.7659000, 106.5989000),
-    ('demo-binhtri-ward-office', 'UBND phường Bình Trị Đông', '276/66 Tân Hòa Đông, phường Bình Trị Đông, TP.HCM', 10.7625000, 106.6143000),
-    ('demo-binhtri-tan-khai-temple', 'Đình Tân Khai', 'Phường Bình Trị Đông, TP.HCM', 10.7557000, 106.6019000);
+    -- Địa điểm công cộng quanh đường Cao Lỗ; ID và tọa độ là dữ liệu demo gần đúng, không phải Google Place ID chính thức.
+    ('demo-caolo-stu', 'Trường Đại học Công nghệ Sài Gòn', '180 Cao Lỗ, Phường 4, Quận 8, TP.HCM', 10.7387550, 106.6777880),
+    ('demo-caolo-cultural-sports-center', 'Trung tâm Văn hóa - Thể thao Quận 8', '195 Cao Lỗ, Phường 4, Quận 8, TP.HCM', 10.7397000, 106.6768000),
+    ('demo-caolo-dong-dieu', 'Khu Đồng Diều', 'Đường Cao Lỗ, Phường 4, Quận 8, TP.HCM', 10.7349000, 106.6760000),
+    ('demo-caolo-chanh-hung-bridge', 'Cầu Chánh Hưng', 'Đường Phạm Hùng, Quận 8, TP.HCM', 10.7474000, 106.6707000),
+    ('demo-caolo-pham-the-hien-market', 'Chợ Phạm Thế Hiển', 'Đường Phạm Thế Hiển, Quận 8, TP.HCM', 10.7486000, 106.6689000);
 
 INSERT INTO `hashtags` (`normalized_name`, `display_name`) VALUES
     ('hoc tap', 'Học tập'),
@@ -1744,14 +1748,18 @@ BEGIN
             WHEN MOD(post_no, 20) = 1 THEN 'HIDDEN'
             ELSE 'PUBLISHED'
         END;
-        -- Sáu Post cố định phục vụ manual E2E Nearby quanh phường Bình Trị Đông.
+        -- Mười Post cố định, chia đều cho năm địa điểm để demo Nearby quanh đường Cao Lỗ, Quận 8.
         SET seed_location_id = CASE post_no
-            WHEN 902 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-aeon-mall')
-            WHEN 903 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-aeon-mall')
-            WHEN 904 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-market')
-            WHEN 905 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-nguyen-huu-canh')
-            WHEN 906 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-ward-office')
-            WHEN 907 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-tan-khai-temple')
+            WHEN 902 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-stu')
+            WHEN 903 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-stu')
+            WHEN 904 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-cultural-sports-center')
+            WHEN 905 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-cultural-sports-center')
+            WHEN 906 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-dong-dieu')
+            WHEN 907 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-dong-dieu')
+            WHEN 908 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-chanh-hung-bridge')
+            WHEN 909 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-chanh-hung-bridge')
+            WHEN 910 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-pham-the-hien-market')
+            WHEN 911 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-pham-the-hien-market')
             ELSE IF(MOD(post_no, 3) = 0, 1 + MOD(post_no, 12), NULL)
         END;
 
@@ -1762,12 +1770,16 @@ BEGIN
         ) VALUES (
             current_author_id,
             CASE post_no
-                WHEN 902 THEN 'Cuối tuần ghé AEON Mall Bình Tân học nhóm rồi ăn trưa, khu bàn ngồi khá rộng và có nhiều lựa chọn giá sinh viên.'
-                WHEN 903 THEN 'Có bạn nào ở Bình Trị Đông muốn lập nhóm xem phim và trao đổi đồ án tại AEON Mall tối nay không?'
-                WHEN 904 THEN 'Sáng nay Chợ Bình Trị Đông có nhiều món ăn sáng ngon, đi sớm khá thoáng và dễ tìm món dưới 30 nghìn.'
-                WHEN 905 THEN 'Nhóm mình đang tìm thêm hai bạn ôn Toán và tiếng Anh gần THPT Nguyễn Hữu Cảnh vào chiều thứ bảy.'
-                WHEN 906 THEN 'Cuối tuần có hoạt động hỗ trợ người dân sử dụng dịch vụ công trực tuyến gần UBND phường Bình Trị Đông, bạn nào muốn tham gia tình nguyện không?'
-                WHEN 907 THEN 'Một góc kiến trúc và không gian yên tĩnh ở Đình Tân Khai, phù hợp cho các bạn thích chụp ảnh và tìm hiểu lịch sử địa phương.'
+                WHEN 902 THEN 'Sáng nay học ở STU từ tiết một, căn tin đông nhưng vẫn kịp mua ổ bánh mì trước giờ vào lớp.'
+                WHEN 903 THEN 'Có bạn nào ở gần Cao Lỗ muốn ghép nhóm làm đồ án React không? Chiều mai tụi mình gặp nhau ở STU để chia task nhé.'
+                WHEN 904 THEN 'Tối nay sân ở Trung tâm Văn hóa - Thể thao Quận 8 khá thoáng. Nhóm mình còn thiếu một bạn đánh cầu lông cùng.'
+                WHEN 905 THEN 'Vừa xem xong trận bóng ở khu thể thao Cao Lỗ, không khí vui hơn mình nghĩ. Cuối tuần chắc quay lại chơi tiếp.'
+                WHEN 906 THEN 'Chiều đi bộ ngang khu Đồng Diều thấy trời mát, ngồi nghỉ một lúc rồi mới về làm bài. Ở gần trường có chỗ thư giãn vậy cũng tiện.'
+                WHEN 907 THEN 'Mình vừa chụp được mấy tấm hoàng hôn ở khu Đồng Diều. Ánh sáng tầm năm rưỡi chiều đẹp lắm, bạn nào thích chụp ảnh thử ghé nhé.'
+                WHEN 908 THEN 'Tan học chạy qua Cầu Chánh Hưng đúng giờ cao điểm nên hơi đông. Mọi người đi hướng Phạm Hùng nhớ xuất phát sớm một chút.'
+                WHEN 909 THEN 'Qua Cầu Chánh Hưng buổi tối nhìn đèn hai bên kênh khá đẹp. Mình dừng gần đó mua ly nước rồi về, gió mát dễ chịu.'
+                WHEN 910 THEN 'Sáng ghé Chợ Phạm Thế Hiển mua trái cây, cô bán hàng chỉ mình lựa được mấy trái ngon mà giá vẫn vừa túi tiền sinh viên.'
+                WHEN 911 THEN 'Ai ở khu Cao Lỗ chưa biết ăn gì chiều nay thì thử đi một vòng gần Chợ Phạm Thế Hiển nhé, nhiều món nhỏ dễ chọn mà không quá đắt.'
                 ELSE IF(
                     MOD(post_no, 25) = 0,
                     NULL,
@@ -2158,15 +2170,15 @@ WHERE post.like_count <> (SELECT COUNT(*) FROM `post_likes` item WHERE item.post
    OR post.comment_count <> (SELECT COUNT(*) FROM `comments` item WHERE item.post_id = post.id AND item.status <> 'DELETED')
    OR post.repost_count <> (SELECT COUNT(*) FROM `post_reposts` item WHERE item.post_id = post.id)
 UNION ALL
-SELECT 'invalid_binh_tri_dong_nearby_seed', COUNT(*)
+SELECT 'invalid_cao_lo_nearby_seed', COUNT(*)
 FROM (SELECT 1) AS expected
-WHERE (SELECT COUNT(*) FROM `locations` WHERE `google_place_id` LIKE 'demo-binhtri-%') <> 5
+WHERE (SELECT COUNT(*) FROM `locations` WHERE `google_place_id` LIKE 'demo-caolo-%') <> 5
    OR (SELECT COUNT(*)
        FROM `posts` post
        JOIN `locations` location ON location.id = post.location_id
-       WHERE location.google_place_id LIKE 'demo-binhtri-%'
-         AND post.id BETWEEN 902 AND 907
-         AND post.status = 'PUBLISHED') <> 6;
+       WHERE location.google_place_id LIKE 'demo-caolo-%'
+         AND post.id BETWEEN 902 AND 911
+         AND post.status = 'PUBLISHED') <> 10;
 
 SELECT `status`, COUNT(*) AS total
 FROM `posts`

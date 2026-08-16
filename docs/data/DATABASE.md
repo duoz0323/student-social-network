@@ -2,12 +2,13 @@
 
 `README.md` là nguồn sự thật cao nhất. Schema vật lý được mô tả tại `database/student_social_network.sql`; DBML tương ứng nằm tại `database/student_social_network.dbml`. SQL và DBML phải được cập nhật đồng thời.
 
-## 0. Messaging trực tiếp và ảnh
+## 0. Messaging trực tiếp, ảnh và chia sẻ bài viết
 
 - `conversations`: cặp participant low/high duy nhất, last message nullable và index
   `(last_message_at DESC, id DESC)` cho Inbox.
 - `conversation_members`: khóa chính `(conversation_id, user_id)`, marker đọc nullable và index theo user.
-- `messages`: `TEXT|IMAGE`, content nullable cho message chỉ có ảnh, fingerprint SHA-256 canonical,
+- `messages`: `TEXT|IMAGE|POST_SHARE`, content nullable cho message chỉ có ảnh hoặc share không lời nhắn,
+  `shared_post_id` nullable tham chiếu `posts` với `ON DELETE SET NULL`, fingerprint SHA-256 canonical,
   UUID client dùng collation `ascii_bin`, unique `(sender_id, client_message_id)` và index
   `(conversation_id, id DESC)`.
 - `message_attachments`: quan hệ N-1 tới message, chỉ `IMAGE`/`CLOUDINARY`, lưu public ID nội bộ,
@@ -17,7 +18,8 @@
   điểm retry cho file upload đã thành rác; scheduler khóa/xử lý từng task trong transaction riêng.
 - Composite FK bảo đảm sender là member. Service bảo đảm hai member khớp participant và các marker
   last/read thuộc đúng conversation.
-- Schema Messaging hiện hành nằm trực tiếp trong SQL canonical và DBML; dự án không tự chạy migration khi Backend khởi động.
+- Schema Messaging hiện hành nằm trong SQL canonical và DBML. Database đang tồn tại nâng cấp thủ công bằng
+  `database/migrations/20260815_post_share_v1.sql`; Backend không tự chạy migration khi khởi động.
 
 ## Repost
 

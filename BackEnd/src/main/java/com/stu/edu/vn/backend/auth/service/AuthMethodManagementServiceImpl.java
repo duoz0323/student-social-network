@@ -5,6 +5,9 @@ import com.stu.edu.vn.backend.auth.delivery.OtpDeliveryResult;
 import com.stu.edu.vn.backend.auth.delivery.RegistrationOtpSender;
 import com.stu.edu.vn.backend.auth.dto.AuthMethodResponse;
 import com.stu.edu.vn.backend.auth.dto.AuthMethodsResponse;
+import com.stu.edu.vn.backend.auth.dto.CompleteEmailLinkRequest;
+import com.stu.edu.vn.backend.auth.dto.VerifiedEmailLinkResponse;
+import com.stu.edu.vn.backend.auth.dto.LinkOtpRequest;
 import com.stu.edu.vn.backend.auth.dto.FacebookAuthRequest;
 import com.stu.edu.vn.backend.auth.dto.GoogleAuthRequest;
 import com.stu.edu.vn.backend.auth.dto.LinkChallengeResponse;
@@ -62,6 +65,11 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
     }
 
     @Override
+    public VerifiedEmailLinkResponse verifyEmailOtp(String token, LinkOtpRequest request) {
+        return linkTransactionService.verifyOtp(currentUserProvider.getCurrentUserId(), token, request.code());
+    }
+
+    @Override
     public AuthMethodsResponse list() {
         Long userId = currentUserProvider.getCurrentUserId();
         User user = userRepository.findById(userId)
@@ -70,12 +78,9 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
         List<UserAuthProvider> providers = providerRepository.findAllByUserIdOrderByProviderAsc(userId);
         int loginMethodCount = completeLocalCount(user) + providers.size();
         List<AuthMethodResponse> methods = new ArrayList<>();
-        if (user.getEmail() != null && user.getEmailVerifiedAt() != null) {
-            methods.add(local(user, AuthMethod.EMAIL, user.getEmail(), loginMethodCount));
-        }
-        providers.forEach(link -> methods.add(new AuthMethodResponse(
-                link.getProvider() == AuthProvider.GOOGLE ? AuthMethod.GOOGLE : AuthMethod.FACEBOOK,
-                null, true, link.getCreatedAt(), loginMethodCount > 1, false)));
+        methods.add(local(user, loginMethodCount));
+        methods.add(social(AuthMethod.GOOGLE, providers, loginMethodCount));
+        methods.add(social(AuthMethod.FACEBOOK, providers, loginMethodCount));
         return new AuthMethodsResponse(List.copyOf(methods));
     }
 
@@ -94,8 +99,8 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
     }
 
     @Override
-    public AuthMethodResponse verify(String token, String code, AuthMethodLinkPurpose purpose) {
-        return linkTransactionService.verify(currentUserProvider.getCurrentUserId(), token, code, purpose);
+    public AuthMethodResponse completeEmailLink(String token, CompleteEmailLinkRequest request) {
+        return linkTransactionService.complete(currentUserProvider.getCurrentUserId(), token, request);
     }
 
     @Override
@@ -147,9 +152,27 @@ public class AuthMethodManagementServiceImpl implements AuthMethodManagementServ
         return count;
     }
 
-    private AuthMethodResponse local(User user, AuthMethod method, String value, int count) {
-        boolean available = user.getPasswordHash() != null;
-        return new AuthMethodResponse(method, masker.mask(new NormalizedEmail(value)), true,
-                user.getCreatedAt(), available && count > 1, available);
+    private AuthMethodResponse local(User user, int count) {
+        boolean verified = user.getEmail() != null && user.getEmailVerifiedAt() != null;
+        boolean ready = verified && user.getPasswordHash() != null;
+        var state = !verified
+                ? com.stu.edu.vn.backend.auth.enums.EmailLoginState.NOT_LINKED
+                : ready
+                        ? com.stu.edu.vn.backend.auth.enums.EmailLoginState.READY
+                        : com.stu.edu.vn.backend.auth.enums.EmailLoginState.VERIFIED_NO_PASSWORD;
+        return new AuthMethodResponse(AuthMethod.EMAIL,
+                verified ? masker.mask(new NormalizedEmail(user.getEmail())) : null,
+                verified, verified, verified ? user.getEmailVerifiedAt() : null,
+                !verified, ready && count > 1, user.getPasswordHash() != null, ready,
+                state, verified && !ready, ready);
+    }
+
+    private AuthMethodResponse social(AuthMethod method, List<UserAuthProvider> providers, int count) {
+        AuthProvider provider = method == AuthMethod.GOOGLE ? AuthProvider.GOOGLE : AuthProvider.FACEBOOK;
+        UserAuthProvider link = providers.stream().filter(item -> item.getProvider() == provider).findFirst().orElse(null);
+        boolean linked = link != null;
+        return new AuthMethodResponse(method, null, linked, linked,
+                linked ? link.getCreatedAt() : null, !linked, linked && count > 1,
+                false, false, null, false, false);
     }
 }

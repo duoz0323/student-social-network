@@ -31,6 +31,15 @@ public class MessagingController {
         return ApiResponse.success("Lấy số tin nhắn chưa đọc thành công", messagingService.getUnreadCount());
     }
 
+    @GetMapping("/share-recipients")
+    public ApiResponse<PageResponse<ShareRecipientResponse>> getShareRecipients(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+        return ApiResponse.success("Lấy danh sách người nhận bài viết thành công",
+                messagingService.getShareRecipients(keyword, page, size));
+    }
+
     @PutMapping("/direct/{recipientUserId}")
     public ApiResponse<DirectConversationResponse> openDirectConversation(
             @PathVariable @Positive Long recipientUserId) {

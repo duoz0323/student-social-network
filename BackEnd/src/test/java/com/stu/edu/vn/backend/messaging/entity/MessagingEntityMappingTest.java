@@ -21,6 +21,7 @@ class MessagingEntityMappingTest {
         assertLazy(ConversationMember.class, "lastReadMessage");
         assertLazy(Message.class, "conversation");
         assertLazy(Message.class, "sender");
+        assertLazy(Message.class, "sharedPost");
     }
 
     @Test

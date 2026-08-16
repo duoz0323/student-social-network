@@ -4,6 +4,7 @@ import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
+import { getContentModerationMessage } from '../utils/contentModeration.js';
 import PostHashtagPicker from './PostHashtagPicker.jsx';
 import LocationPicker from '../locations/LocationPicker.jsx';
 import SelectedLocation from '../locations/SelectedLocation.jsx';
@@ -92,7 +93,7 @@ export default function PostComposer({ mode, onClose }) {
         location: selectedLocation,
       });
       if (!result.ok) {
-        setError(result.message);
+        setError(getContentModerationMessage(result) ?? result.message);
         return;
       }
       // Object URL đang được mock data dùng để hiển thị bài vừa tạo nên chưa thu hồi tại đây.

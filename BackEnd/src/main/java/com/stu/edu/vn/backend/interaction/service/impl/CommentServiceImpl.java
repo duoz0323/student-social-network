@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.interaction.enums.CommentStatus;
 import com.stu.edu.vn.backend.interaction.mapper.CommentMapper;
 import com.stu.edu.vn.backend.interaction.repository.CommentRepository;
 import com.stu.edu.vn.backend.interaction.service.CommentService;
+import com.stu.edu.vn.backend.moderation.service.ContentModerationService;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.enums.PostStatus;
@@ -33,6 +34,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Triển khai bình luận và reply một cấp, không tự cập nhật posts.comment_count vì database trigger đã xử lý.
@@ -50,6 +52,8 @@ public class CommentServiceImpl implements CommentService {
     private final EntityManager entityManager;
     private final Clock clock;
     private final UserRelationshipPolicyService relationshipPolicyService;
+    private final ContentModerationService contentModerationService;
+    private final TransactionTemplate transactionTemplate;
 
     public CommentServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -61,7 +65,9 @@ public class CommentServiceImpl implements CommentService {
             NotificationService notificationService,
             EntityManager entityManager,
             Clock clock,
-            UserRelationshipPolicyService relationshipPolicyService
+            UserRelationshipPolicyService relationshipPolicyService,
+            ContentModerationService contentModerationService,
+            TransactionTemplate transactionTemplate
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -73,66 +79,43 @@ public class CommentServiceImpl implements CommentService {
         this.entityManager = entityManager;
         this.clock = clock;
         this.relationshipPolicyService = relationshipPolicyService;
+        this.contentModerationService = contentModerationService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
-    @Transactional
     public CommentResponse createComment(Long postId, CreateCommentRequest request) {
         Long userId = currentUserProvider.getCurrentUserId();
-        User currentUser = ensureCurrentUserCanInteract(userId);
+        ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
-        PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
+        findAccessibleInteractionTarget(userId, postId);
+        contentModerationService.requireAllowed(content);
 
-        // Dùng reference để tạo khóa ngoại post_id mà không cần tải toàn bộ entity bài viết.
-        Post postReference = postRepository.getReferenceById(postId);
-        Comment comment = commentRepository.saveAndFlush(new Comment(postReference, currentUser, content));
-
-        // Bình luận gốc thông báo cho tác giả Post; reply có luồng COMMENT_REPLY riêng.
-        notificationService.createPostCommentNotification(
-                userId,
-                target.getAuthorId(),
-                postId,
-                comment.getId()
-        );
-
-        // Refresh để lấy created_at do MySQL tự sinh và authorProfile phục vụ response.
-        entityManager.refresh(comment);
-        return commentMapper.toResponse(comment);
+        CommentResponse response = transactionTemplate.execute(status ->
+                createCommentInTransaction(userId, postId, content));
+        if (response == null) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+        return response;
     }
 
     @Override
-    @Transactional
     public CommentResponse createReply(Long parentCommentId, CreateCommentRequest request) {
         Long userId = currentUserProvider.getCurrentUserId();
-        User currentUser = ensureCurrentUserCanInteract(userId);
+        ensureCurrentUserCanInteract(userId);
         String content = validateCommentContent(request);
 
-        Comment parentComment = commentRepository.findForReplyCreationById(parentCommentId)
+        Comment parentComment = commentRepository.findWithPostAndParentById(parentCommentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_PARENT_NOT_FOUND));
-        if (parentComment.getStatus() != CommentStatus.PUBLISHED) {
-            throw new BusinessException(ErrorCode.COMMENT_PARENT_NOT_AVAILABLE);
-        }
-        if (parentComment.getParentComment() != null) {
-            throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
-        }
+        validateReplyTarget(userId, parentComment);
+        contentModerationService.requireAllowed(content);
 
-        Long postId = parentComment.getPost().getId();
-        assertPostCanBeAccessed(userId, postId);
-        // Không cho tạo Reply trực tiếp vào bình luận của tài khoản có Block với người hiện tại.
-        relationshipPolicyService.assertNoBlock(userId, parentComment.getAuthor().getId());
-
-        // post_id luôn lấy từ bình luận cha để Client không thể gắn reply sang bài viết khác.
-        Comment reply = commentRepository.saveAndFlush(
-                new Comment(parentComment.getPost(), currentUser, parentComment, content)
-        );
-        notificationService.createCommentReplyNotification(
-                userId,
-                parentComment.getAuthor().getId(),
-                postId,
-                reply.getId()
-        );
-        entityManager.refresh(reply);
-        return commentMapper.toResponse(reply);
+        CommentResponse response = transactionTemplate.execute(status ->
+                createReplyInTransaction(userId, parentCommentId, content));
+        if (response == null) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+        return response;
     }
 
     @Override
@@ -220,6 +203,44 @@ public class CommentServiceImpl implements CommentService {
             throw new BusinessException(ErrorCode.PROFILE_NOT_COMPLETED);
         }
         return currentUser;
+    }
+
+    private CommentResponse createCommentInTransaction(Long userId, Long postId, String content) {
+        User currentUser = ensureCurrentUserCanInteract(userId);
+        PostInteractionTargetProjection target = findAccessibleInteractionTarget(userId, postId);
+        // Dùng reference để tạo khóa ngoại post_id mà không cần tải toàn bộ entity bài viết.
+        Post postReference = postRepository.getReferenceById(postId);
+        Comment comment = commentRepository.saveAndFlush(new Comment(postReference, currentUser, content));
+        notificationService.createPostCommentNotification(userId, target.getAuthorId(), postId, comment.getId());
+        entityManager.refresh(comment);
+        return commentMapper.toResponse(comment);
+    }
+
+    private CommentResponse createReplyInTransaction(Long userId, Long parentCommentId, String content) {
+        User currentUser = ensureCurrentUserCanInteract(userId);
+        Comment parentComment = commentRepository.findForReplyCreationById(parentCommentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_PARENT_NOT_FOUND));
+        validateReplyTarget(userId, parentComment);
+        Long postId = parentComment.getPost().getId();
+        Comment reply = commentRepository.saveAndFlush(
+                new Comment(parentComment.getPost(), currentUser, parentComment, content)
+        );
+        notificationService.createCommentReplyNotification(
+                userId, parentComment.getAuthor().getId(), postId, reply.getId());
+        entityManager.refresh(reply);
+        return commentMapper.toResponse(reply);
+    }
+
+    private void validateReplyTarget(Long userId, Comment parentComment) {
+        if (parentComment.getStatus() != CommentStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.COMMENT_PARENT_NOT_AVAILABLE);
+        }
+        if (parentComment.getParentComment() != null) {
+            throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
+        }
+        assertPostCanBeAccessed(userId, parentComment.getPost().getId());
+        // Không cho tạo Reply trực tiếp vào bình luận của tài khoản có Block với người hiện tại.
+        relationshipPolicyService.assertNoBlock(userId, parentComment.getAuthor().getId());
     }
 
     private void ensurePostIsPublished(Long postId) {

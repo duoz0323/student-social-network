@@ -420,6 +420,8 @@ Profile người khác → Nhắn tin → PUT open direct → /messages/:convers
 Sidebar Tin nhắn → /messages → Inbox cursor
 Mở conversation → tải page message mới nhất → cuộn lên để prepend page cũ
 Gửi text → optimistic UUID v4 → REST POST → merge REST/WebSocket echo
+Chia sẻ Post → mở modal → tải recipient từ Backend → chọn một người → bấm Gửi → open/reuse conversation → REST POST `sharedPostId` → bubble `POST_SHARE`
+Modal chưa chọn người → Sao chép URL canonical hoặc Facebook Share Dialog/Web Sharer → không tạo message/Notification/Repost
 Message nhận đã hiển thị ở cuối → REST mark read → MESSAGES_READ cho các tab hai bên
 Gõ nội dung → SEND typing START/refresh → participant còn lại thấy "đang nhập..." → STOP/expiry xóa chỉ báo
 Reconnect/tab visible → reconcile unread, Inbox và conversation đang mở bằng REST
@@ -428,6 +430,10 @@ Reconnect/tab visible → reconcile unread, Inbox và conversation đang mở b�
 `MessagingContext` subscribe `/user/queue/messaging` trên connection dùng chung. Badge Messaging tách khỏi
 Notification. Khi disconnected và tab visible, polling REST khoảng 30 giây; lỗi Block/403/404 xóa nội dung
 conversation khỏi state và điều hướng an toàn về Inbox.
+
+History và event `POST_SHARE` chỉ dùng snapshot Backend hydrate theo quyền viewer hiện tại. Khi bài bị
+xóa/ẩn, author không còn hợp lệ hoặc Block thay đổi, bubble giữ vị trí trong hội thoại nhưng hiển thị trạng
+thái không còn khả dụng.
 
 Composer chỉ phát START ở lần nhập đầu, refresh tối đa mỗi 3 giây khi tiếp tục hoạt động và STOP sau 2 giây
 idle, khi submit, input blank, blur hoặc rời conversation. Khi socket disconnected không gửi frame và reconnect

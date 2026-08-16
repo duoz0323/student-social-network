@@ -95,7 +95,7 @@ Ghi chú chuẩn cho FUTURE_DEVELOPMENT: Màn hình hoặc chi tiết được g
 | Mã | Tên màn hình | Ảnh | Actor | Mục đích | Chức năng thể hiện | Liên quan/điều hướng | Ghi chú |
 |---|---|---|---|---|---|---|---|
 | MSG-01 | Inbox | Chưa có ảnh chuẩn | User | Xem conversation đã có message. | Avatar, displayName, preview, thời gian, unread, cursor load-more. | `/messages`; chọn item đến MSG-02. | Desktop split-view, mobile route riêng. |
-| MSG-02 | Conversation detail | Chưa có ảnh chuẩn | User | Đọc và gửi text một-một. | Cursor history, bubble, seen marker, optimistic/failed retry, composer. | `/messages/:conversationId`; mobile quay lại MSG-01. | Content render dạng text; REST/MySQL là nguồn sự thật. |
+| MSG-02 | Conversation detail | Chưa có ảnh chuẩn | User | Đọc và gửi text, ảnh hoặc bài viết chia sẻ một-một. | Cursor history, bubble, shared-post card/unavailable state, seen marker, optimistic/failed retry, composer. | `/messages/:conversationId`; mobile quay lại MSG-01. | Snapshot Post theo quyền viewer; REST/MySQL là nguồn sự thật. |
 
 ## Search, Saved Posts và Liked Posts
 

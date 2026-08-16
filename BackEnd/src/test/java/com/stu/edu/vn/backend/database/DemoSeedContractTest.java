@@ -10,15 +10,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
-/** Bảo vệ hai artifact database canonical và dữ liệu demo 1.000 tài khoản trong file import duy nhất. */
+/** Bảo vệ artifact database canonical, migration thủ công và dữ liệu demo 1.000 tài khoản. */
 class DemoSeedContractTest {
-    private static final double BINH_TRI_DONG_LATITUDE = 10.7586500d;
-    private static final double BINH_TRI_DONG_LONGITUDE = 106.6048500d;
-    private static final Pattern BINH_TRI_DONG_LOCATION = Pattern.compile(
-            "\\('demo-binhtri-[^']+',\\s*'[^']+',\\s*'[^']+',\\s*([0-9.]+),\\s*([0-9.]+)\\)");
+    private static final double CAO_LO_LATITUDE = 10.7387550d;
+    private static final double CAO_LO_LONGITUDE = 106.6777880d;
+    private static final Pattern CAO_LO_LOCATION = Pattern.compile(
+            "\\('demo-caolo-[^']+',\\s*'[^']+',\\s*'[^']+',\\s*([0-9.]+),\\s*([0-9.]+)\\)");
 
     @Test
-    void databaseDirectoryKeepsOnlyCanonicalSqlAndDbml() throws Exception {
+    void databaseDirectoryKeepsCanonicalArtifactsAndVersionedMigrations() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -30,9 +30,15 @@ class DemoSeedContractTest {
                     .toList();
         }
 
-        assertThat(files).containsExactly(
+        // Hai artifact canonical luôn nằm ở thư mục gốc; migration hợp lệ nằm riêng trong migrations/.
+        assertThat(files)
+                .contains(
                 "student_social_network.dbml",
-                "student_social_network.sql");
+                "student_social_network.sql",
+                "migrations/20260815_post_share_v1.sql")
+                .allMatch(path -> path.equals("student_social_network.dbml")
+                        || path.equals("student_social_network.sql")
+                        || path.matches("migrations/\\d{8}_[a-z0-9_]+\\.sql"));
     }
 
     @Test
@@ -51,29 +57,31 @@ class DemoSeedContractTest {
     }
 
     @Test
-    void demoSeedProvidesPublishedNearbyPostsAroundBinhTriDong() throws Exception {
+    void demoSeedProvidesPublishedNearbyPostsAroundCaoLo() throws Exception {
         String seed = Files.readString(databaseDirectory().resolve("student_social_network.sql"));
-        List<double[]> coordinates = extractBinhTriDongCoordinates(seed);
+        List<double[]> coordinates = extractCaoLoCoordinates(seed);
 
-        // Các điểm demo phải thật sự nằm trong bán kính 5 km từ Chợ Bình Trị Đông để manual E2E có dữ liệu.
+        // Các điểm demo phải nằm trong bán kính 5 km từ STU trên đường Cao Lỗ để manual E2E có dữ liệu.
         assertThat(coordinates).hasSize(5);
         assertThat(coordinates)
                 .allSatisfy(coordinate -> assertThat(distanceKm(
-                        BINH_TRI_DONG_LATITUDE,
-                        BINH_TRI_DONG_LONGITUDE,
+                        CAO_LO_LATITUDE,
+                        CAO_LO_LONGITUDE,
                         coordinate[0],
                         coordinate[1])).isLessThanOrEqualTo(5.0d));
 
         assertThat(seed)
-                .contains("WHEN 902 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-aeon-mall')")
-                .contains("WHEN 907 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-binhtri-tan-khai-temple')")
-                .contains("WHEN 902 THEN 'Cuối tuần ghé AEON Mall Bình Tân học nhóm")
-                .contains("WHEN 907 THEN 'Một góc kiến trúc và không gian yên tĩnh ở Đình Tân Khai")
-                .contains("'invalid_binh_tri_dong_nearby_seed'");
+                .contains("WHEN 902 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-stu')")
+                .contains("WHEN 911 THEN (SELECT id FROM `locations` WHERE `google_place_id` = 'demo-caolo-pham-the-hien-market')")
+                .contains("WHEN 902 THEN 'Sáng nay học ở STU từ tiết một")
+                .contains("WHEN 911 THEN 'Ai ở khu Cao Lỗ chưa biết ăn gì chiều nay")
+                .contains("AND post.id BETWEEN 902 AND 911")
+                .contains("AND post.status = 'PUBLISHED') <> 10")
+                .contains("'invalid_cao_lo_nearby_seed'");
     }
 
-    private List<double[]> extractBinhTriDongCoordinates(String seed) {
-        Matcher matcher = BINH_TRI_DONG_LOCATION.matcher(seed);
+    private List<double[]> extractCaoLoCoordinates(String seed) {
+        Matcher matcher = CAO_LO_LOCATION.matcher(seed);
         List<double[]> coordinates = new ArrayList<>();
         while (matcher.find()) {
             coordinates.add(new double[]{

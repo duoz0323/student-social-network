@@ -86,19 +86,24 @@ class OfficialGoogleIdentityVerifierTest {
     }
 
     @Test
-    void missingEmailIsRejected() throws Exception {
+    void missingEmailKeepsVerifiedProviderIdentityWithoutLocalEmail() throws Exception {
         GoogleIdToken.Payload payload = validPayload().setEmail(null);
         GoogleIdToken verifiedToken = token(payload);
         when(sdkVerifier.verify("token")).thenReturn(verifiedToken);
-        assertError(() -> verifier.verify("token"), ErrorCode.AUTH_GOOGLE_EMAIL_MISSING);
+        VerifiedGoogleIdentity identity = verifier.verify("token");
+        assertThat(identity.subject()).isEqualTo("google-sub");
+        assertThat(identity.email()).isNull();
+        assertThat(identity.emailVerified()).isFalse();
     }
 
     @Test
-    void unverifiedEmailIsRejected() throws Exception {
+    void unverifiedEmailIsProviderMetadataButNotVerifiedLocalEmail() throws Exception {
         GoogleIdToken.Payload payload = validPayload().setEmailVerified(false);
         GoogleIdToken verifiedToken = token(payload);
         when(sdkVerifier.verify("token")).thenReturn(verifiedToken);
-        assertError(() -> verifier.verify("token"), ErrorCode.AUTH_GOOGLE_EMAIL_NOT_VERIFIED);
+        VerifiedGoogleIdentity identity = verifier.verify("token");
+        assertThat(identity.email()).isEqualTo("student@example.com");
+        assertThat(identity.emailVerified()).isFalse();
     }
 
     private GoogleIdToken.Payload validPayload() {

@@ -258,6 +258,7 @@ Table auth_method_link_challenges {
   active_user_purpose_key varchar(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
   flow_token_hash char(64) [unique, note: "CHARSET ascii COLLATE ascii_bin"]
   otp_hash char(64) [note: "CHARSET ascii COLLATE ascii_bin"]
+  otp_verified_at datetime(6)
   otp_version int [not null, default: '1', note: "UNSIGNED"]
   otp_expires_at datetime(6) [not null]
   failed_attempts tinyint [not null, default: '0', note: "UNSIGNED"]
@@ -333,7 +334,7 @@ Table reauthentication_challenges {
     (status, terminal_at, id) [name: "idx_reauth_cleanup"]
   }
 
-  Note: "chk_reauth_proof_method: CHECK ((`proof_method` in (_utf8mb4'LOCAL_PASSWORD',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_scope: CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD'))) | chk_reauth_target_method: CHECK ((`target_auth_method` in (_utf8mb4'EMAIL',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_reauth_times: CHECK ((`expires_at` > `created_at`)) | chk_reauth_lifecycle: CHECK (((`status` = _utf8mb4'ACTIVE' and `token_hash` is not null and `active_user_scope_key` = concat(cast(`user_id` as char),_utf8mb4':',`scope`) and `terminal_at` is null) or (`status` in (_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `token_hash` is null and `active_user_scope_key` is null and `terminal_at` is not null)))"
+  Note: "chk_reauth_proof_method: CHECK ((`proof_method` in (_utf8mb4'LOCAL_PASSWORD',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_scope: CHECK ((`scope` in (_utf8mb4'UNLINK_AUTH_METHOD',_utf8mb4'SET_PASSWORD'))) | chk_reauth_target_method: CHECK ((`target_auth_method` in (_utf8mb4'EMAIL',_utf8mb4'GOOGLE',_utf8mb4'FACEBOOK'))) | chk_reauth_status: CHECK ((`status` in (_utf8mb4'ACTIVE',_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED'))) | chk_reauth_times: CHECK ((`expires_at` > `created_at`)) | chk_reauth_lifecycle: CHECK (((`status` = _utf8mb4'ACTIVE' and `token_hash` is not null and `active_user_scope_key` = concat(cast(`user_id` as char),_utf8mb4':',`scope`) and `terminal_at` is null) or (`status` in (_utf8mb4'CONSUMED',_utf8mb4'CANCELLED',_utf8mb4'EXPIRED') and `token_hash` is null and `active_user_scope_key` is null and `terminal_at` is not null)))"
 }
 
 Table password_recovery_challenges {
@@ -827,8 +828,9 @@ Table messages {
   conversation_id bigint [not null, note: "UNSIGNED"]
   sender_id bigint [not null, note: "UNSIGNED"]
   client_message_id char(36) [not null, note: "CHARACTER SET ascii COLLATE ascii_bin"]
-  type varchar(16) [not null, note: "MySQL ENUM('TEXT','IMAGE')"]
+  type varchar(16) [not null, note: "MySQL ENUM('TEXT','IMAGE','POST_SHARE')"]
   content varchar(2000)
+  shared_post_id bigint [note: "UNSIGNED; nullable để giữ Message khi Post bị hard delete ngoài dự kiến"]
   payload_fingerprint char(64) [not null, note: "CHARACTER SET ascii COLLATE ascii_bin"]
   created_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`]
   updated_at datetime(6) [not null, default: `CURRENT_TIMESTAMP(6)`, note: "ON UPDATE CURRENT_TIMESTAMP(6)"]
@@ -836,9 +838,10 @@ Table messages {
   Indexes {
     (sender_id, client_message_id) [unique, name: "uq_messages_sender_client_message"]
     (conversation_id, id) [name: "idx_messages_conversation_cursor", note: "id DESC"]
+    (shared_post_id, id) [name: "idx_messages_shared_post"]
   }
 
-  Note: "chk_messages_payload_shape: TEXT requires nonblank content; IMAGE may use nullable caption | chk_messages_content_length: CHECK (CHAR_LENGTH(content) <= 2000)"
+  Note: "chk_messages_payload_shape: TEXT requires nonblank content; IMAGE and POST_SHARE may use nullable caption. Service enforces shared_post_id/type because MySQL forbids CHECK on a foreign-key column using ON DELETE SET NULL | chk_messages_content_length: CHECK (CHAR_LENGTH(content) <= 2000)"
 }
 
 Table message_attachments {
@@ -917,6 +920,7 @@ Ref fk_conversation_members_user: conversation_members.user_id > users.id [delet
 Ref fk_conversation_members_last_read_message: conversation_members.last_read_message_id > messages.id [delete: restrict, update: restrict]
 Ref fk_messages_conversation: messages.conversation_id > conversations.id [delete: cascade, update: restrict]
 Ref fk_messages_sender_member: messages.(conversation_id, sender_id) > conversation_members.(conversation_id, user_id) [delete: restrict, update: restrict]
+Ref fk_messages_shared_post: messages.shared_post_id > posts.id [delete: set null, update: restrict]
 Ref fk_follows_follower: follows.follower_id > users.id [delete: cascade, update: restrict]
 Ref fk_message_attachments_message: message_attachments.message_id > messages.id [delete: cascade, update: restrict]
 Ref fk_follows_following: follows.following_id > users.id [delete: cascade, update: restrict]

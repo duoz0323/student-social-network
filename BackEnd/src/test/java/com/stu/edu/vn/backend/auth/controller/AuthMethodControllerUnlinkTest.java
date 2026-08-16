@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.stu.edu.vn.backend.auth.enums.AuthMethod;
 import com.stu.edu.vn.backend.auth.service.AuthMethodManagementService;
+import com.stu.edu.vn.backend.auth.service.PasswordManagementService;
 import com.stu.edu.vn.backend.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +18,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class AuthMethodControllerUnlinkTest {
     private final AuthMethodManagementService service =
             org.mockito.Mockito.mock(AuthMethodManagementService.class);
+    private final PasswordManagementService passwordService =
+            org.mockito.Mockito.mock(PasswordManagementService.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthMethodController(service))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthMethodController(service, passwordService))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 

@@ -3,8 +3,10 @@ package com.stu.edu.vn.backend.messaging.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import com.stu.edu.vn.backend.post.repository.PostRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 
 /** Kiểm tra query keyset, block filter và unread không lệch contract. */
 class MessagingRepositoryContractTest {
@@ -42,5 +44,34 @@ class MessagingRepositoryContractTest {
                 "sender_profile.profile_completed_at IS NOT NULL",
                 "recipient_profile.profile_completed_at IS NOT NULL", "user_blocks")
                 .doesNotContain("messages ", "notifications", "user_restrictions");
+    }
+
+    @Test
+    void shareRecipientDiscoveryFiltersEligibilityAtDatabaseAndSupportsUsernameSearch() throws Exception {
+        Query query = ConversationRepository.class.getMethod(
+                "findShareRecipients", Long.class, String.class, Pageable.class).getAnnotation(Query.class);
+        assertThat(query.value()).contains(
+                "target.role = 'USER'", "target.status = 'ACTIVE'",
+                "profile.profile_completed_at IS NOT NULL", "user_blocks",
+                "conversation.last_message_id IS NOT NULL", "follows follow_relation",
+                "follow_relation.follower_id = target.id",
+                "follow_relation.following_id = :viewerId",
+                "LOWER(profile.username)", "LOWER(profile.display_name)",
+                "ORDER BY existingConversationPriority DESC")
+                .doesNotContain("user_restrictions");
+    }
+
+    @Test
+    void sharedPostHydrationFiltersPostAuthorOnboardingAndBlockInBothDirections() throws Exception {
+        Query query = PostRepository.class.getMethod(
+                "findVisibleSharedPosts", Long.class, java.util.Collection.class,
+                com.stu.edu.vn.backend.post.enums.PostStatus.class).getAnnotation(Query.class);
+        assertThat(query.value()).contains(
+                "post.status = :status",
+                "UserRole.USER", "UserStatus.ACTIVE",
+                "profile.profileCompletedAt IS NOT NULL",
+                "blockRelation.id.blockerId = :viewerId AND blockRelation.id.blockedId = author.id",
+                "blockRelation.id.blockerId = author.id AND blockRelation.id.blockedId = :viewerId")
+                .doesNotContain("UserRestriction");
     }
 }

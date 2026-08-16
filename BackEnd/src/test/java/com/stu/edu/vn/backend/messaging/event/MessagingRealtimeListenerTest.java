@@ -5,17 +5,23 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.stu.edu.vn.backend.messaging.dto.response.MessagingRealtimeEnvelope;
+import com.stu.edu.vn.backend.messaging.dto.response.MessageCreatedRealtimeData;
+import com.stu.edu.vn.backend.messaging.dto.response.SharedPostAuthorResponse;
+import com.stu.edu.vn.backend.messaging.dto.response.SharedPostResponse;
 import com.stu.edu.vn.backend.messaging.enums.MessagingRealtimeEventType;
 import com.stu.edu.vn.backend.messaging.projection.MessageRealtimeProjection;
 import com.stu.edu.vn.backend.messaging.projection.MessagesReadRealtimeProjection;
 import com.stu.edu.vn.backend.messaging.repository.ConversationMemberRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageAttachmentRepository;
+import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,11 +37,13 @@ class MessagingRealtimeListenerTest {
     private final ConversationMemberRepository memberRepository = mock(ConversationMemberRepository.class);
     private final SimpMessagingTemplate template = mock(SimpMessagingTemplate.class);
     private final MessageAttachmentRepository attachmentRepository = mock(MessageAttachmentRepository.class);
+    private final SharedPostMessageLoader sharedPostMessageLoader = mock(SharedPostMessageLoader.class);
     private MessagingRealtimeListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new MessagingRealtimeListener(messageRepository, memberRepository, attachmentRepository, template,
+        listener = new MessagingRealtimeListener(messageRepository, memberRepository, attachmentRepository,
+                sharedPostMessageLoader, template,
                 Clock.fixed(Instant.parse("2026-08-03T03:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -78,6 +86,32 @@ class MessagingRealtimeListenerTest {
                 .convertAndSendToUser(eq("10"), eq("/queue/messaging"), any());
         listener.onMessageCreated(new MessageCreatedEvent(901L, 15L));
         verify(template).convertAndSendToUser(eq("20"), eq("/queue/messaging"), any());
+    }
+
+    @Test
+    void postShareRealtimeHydratesPreviewSeparatelyForEachViewer() {
+        MessageRealtimeProjection row = messageProjection();
+        when(row.getType()).thenReturn("POST_SHARE");
+        when(row.getSharedPostId()).thenReturn(125L);
+        SharedPostResponse preview = new SharedPostResponse(125L,
+                new SharedPostAuthorResponse(30L, "author", "Tác giả", null),
+                "Nội dung", List.of(), 1, 2, 3);
+        when(sharedPostMessageLoader.loadVisible(10L, List.of(125L))).thenReturn(Map.of(125L, preview));
+        when(sharedPostMessageLoader.loadVisible(20L, List.of(125L))).thenReturn(Map.of());
+        when(messageRepository.findVisibleMessageForRealtime(901L)).thenReturn(Optional.of(row));
+
+        listener.onMessageCreated(new MessageCreatedEvent(901L, 15L));
+
+        ArgumentCaptor<MessagingRealtimeEnvelope> sender = ArgumentCaptor.forClass(MessagingRealtimeEnvelope.class);
+        ArgumentCaptor<MessagingRealtimeEnvelope> recipient = ArgumentCaptor.forClass(MessagingRealtimeEnvelope.class);
+        verify(template).convertAndSendToUser(eq("10"), eq("/queue/messaging"), sender.capture());
+        verify(template).convertAndSendToUser(eq("20"), eq("/queue/messaging"), recipient.capture());
+        MessageCreatedRealtimeData senderData = (MessageCreatedRealtimeData) sender.getValue().data();
+        MessageCreatedRealtimeData recipientData = (MessageCreatedRealtimeData) recipient.getValue().data();
+        assertThat(senderData.sharedPost()).isEqualTo(preview);
+        assertThat(senderData.sharedPostUnavailable()).isFalse();
+        assertThat(recipientData.sharedPost()).isNull();
+        assertThat(recipientData.sharedPostUnavailable()).isTrue();
     }
 
     @Test

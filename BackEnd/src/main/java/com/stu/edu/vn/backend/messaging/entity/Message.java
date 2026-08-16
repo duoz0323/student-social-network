@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.messaging.entity;
 
 import com.stu.edu.vn.backend.common.entity.BaseAuditEntity;
 import com.stu.edu.vn.backend.messaging.enums.MessageType;
+import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -37,6 +38,10 @@ public class Message extends BaseAuditEntity {
     @Column(name = "content", length = 2000)
     private String content;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shared_post_id")
+    private Post sharedPost;
+
     @Column(name = "payload_fingerprint", nullable = false, length = 64, columnDefinition = "char(64)")
     private String payloadFingerprint;
 
@@ -46,11 +51,17 @@ public class Message extends BaseAuditEntity {
 
     public Message(Conversation conversation, User sender, String clientMessageId, MessageType type,
                    String content, String payloadFingerprint) {
+        this(conversation, sender, clientMessageId, type, content, null, payloadFingerprint);
+    }
+
+    public Message(Conversation conversation, User sender, String clientMessageId, MessageType type,
+                   String content, Post sharedPost, String payloadFingerprint) {
         this.conversation = conversation;
         this.sender = sender;
         this.clientMessageId = clientMessageId;
         this.type = type;
         this.content = content;
+        this.sharedPost = sharedPost;
         this.payloadFingerprint = payloadFingerprint == null
                 ? com.stu.edu.vn.backend.messaging.support.MessagePayloadFingerprint.text(conversation.getId(), content)
                 : payloadFingerprint;

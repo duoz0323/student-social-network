@@ -69,6 +69,19 @@
 - Chỉ user đăng nhập được comment.
 - Chỉ tác giả comment được xóa comment.
 - Không comment bài HIDDEN/DELETED.
+- Text Comment/Reply phải qua pipeline moderation dùng chung sau kiểm tra quyền và trước persist.
+
+### AI-assisted Content Moderation V1
+
+- Áp dụng text-only cho Post create, Post update khi text thay đổi, Comment và Reply.
+- Backend quyết định `ALLOW/WARNING/BLOCK`; WARNING/BLOCK và provider unavailable đều không persist.
+- Không giữ transaction database trong external inference call.
+- Rejected content không tạo counter side effect, Notification/realtime, Report, Moderation Case hoặc penalty.
+- Không tự khóa user và không thay đổi Block/Restrict/Report/Admin semantics hiện tại.
+- Provider duy nhất là local FastAPI/PhoBERT; không được bổ sung lại adapter hoặc API key AI trả phí khi chưa có quyết định nghiệp vụ mới.
+- Local label phải map cố định `CLEAN→ALLOW`, `OFFENSIVE→WARNING`, `HATE→BLOCK`; không thêm threshold phức tạp cho model local khi chưa có yêu cầu mới.
+- Không log raw text inference. Nội dung vượt context model phải chunk theo token và lấy severity cao nhất, không truncation âm thầm.
+- Scope V1 chỉ là toxic/offensive/hate speech tiếng Việt; không tuyên bố bao phủ media hoặc mọi chính sách an toàn.
 
 ## 7. Save
 

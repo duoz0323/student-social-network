@@ -13,6 +13,7 @@ import UserRestrictionAction from '../../profile/components/UserRestrictionActio
 import EditPostMedia from './EditPostMedia.jsx';
 import PostHashtagPicker from './PostHashtagPicker.jsx';
 import { copyPostLink, resolvePostAuthor, toPostEditDraft, toPostView } from '../utils/postViewModel.js';
+import { getContentModerationMessage } from '../utils/contentModeration.js';
 import { formatPostEditCountdown, postEditRemainingSeconds } from '../utils/postEditWindow.js';
 import LocationPicker from '../locations/LocationPicker.jsx';
 import SelectedLocation from '../locations/SelectedLocation.jsx';
@@ -20,6 +21,7 @@ import { googleMapsLocationUrl } from '../locations/locationUtils.js';
 import { resolveLocationUpdate } from '../locations/locationMultipart.js';
 import { postApi } from '../../../api/index.js';
 import { publishPostActivity, subscribePostActivity } from '../utils/postActivitySync.js';
+import SharePostDialog from './SharePostDialog.jsx';
 
 function SuccessIcon() {
   return (
@@ -143,6 +145,7 @@ export default function PostCard({
   const [editing, setEditing] = useState(false);
   const [deleteStep, setDeleteStep] = useState(null); // null | 'confirm' | 'success'
   const [reporting, setReporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [restrictionConfirmOpen, setRestrictionConfirmOpen] = useState(false);
   const [restrictedByMe, setRestrictedByMe] = useState(Boolean(initialPost.author?.restrictedByMe));
   const [draft, setDraft] = useState(content);
@@ -320,7 +323,9 @@ export default function PostCard({
       setEditing(false);
       setLocationPickerOpen(false);
     } catch (requestError) {
-      setEditError(requestError.message || 'Không thể cập nhật bài viết.');
+      setEditError(getContentModerationMessage(requestError)
+        ?? requestError.message
+        ?? 'Không thể cập nhật bài viết.');
     } finally {
       setEditSubmitting(false);
     }
@@ -586,7 +591,7 @@ export default function PostCard({
             <RepostIcon />
             <span className="font-normal">{formatNumber(repostCount)}</span>
           </button>
-          <button className="post-action" onClick={handleCopyPostLink} title="Chia sẻ liên kết">
+          <button className="post-action" onClick={() => setSharing(true)} title="Chia sẻ bài viết" aria-label="Chia sẻ bài viết">
             <ShareIcon />
           </button>
         </footer>
@@ -700,6 +705,7 @@ export default function PostCard({
 
       {/* Flow báo cáo bài viết */}
       <ReportPostFlow open={reporting} post={post} onClose={() => setReporting(false)} />
+      <SharePostDialog open={sharing} postId={post.id} onClose={() => setSharing(false)} onToast={showToast} />
     </article>
   );
 }

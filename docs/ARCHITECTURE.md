@@ -187,6 +187,17 @@ Media:
 - Database lưu URL và metadata.
 - Không lưu BLOB.
 
+### AI-assisted Content Moderation V1
+
+- `ContentModerationService` là cổng dùng chung của Post/Comment/Reply; `ModerationProvider` cô lập FastAPI/PhoBERT local duy nhất khỏi service nghiệp vụ.
+- Provider adapter chỉ trả assessment đã map về category nội bộ. `ModerationPolicy` của Backend mới tạo quyết định `ALLOW/WARNING/BLOCK`.
+- Validation quyền/trạng thái/độ dài chạy trước inference; external call không nằm trong transaction MySQL. Sau `ALLOW`, service mở transaction ngắn và recheck invariant trước persist.
+- Provider timeout/unavailable/invalid response fail closed. WARNING/BLOCK không tạo entity hoặc downstream event.
+- Không có bảng AI log/attempt trong V1; Report/Moderation Case/Admin vẫn là bounded flow hậu kiểm độc lập.
+- FastAPI local nạp checkpoint `visolex/phobert-v2-hsd` đúng một lần trong lifespan, chạy CPU mặc định và tự chọn CUDA khi có. `/health` tách khỏi `/ready`; Backend gọi `POST /v1/moderation` qua connect/read timeout.
+- Runtime pin revision checkpoint/base model, không thực thi custom remote code, xác minh `id2label` chính xác và nạp `model.safetensors` vào kiến trúc đã khóa. Sai mapping/state-dict làm startup fail; lỗi tải vận hành làm readiness fail.
+- Context hữu dụng tối đa 256 token gồm special token. Service chia payload theo token, infer mọi chunk rồi tổng hợp `HATE > OFFENSIVE > CLEAN`; cùng severity chọn confidence cao hơn. Raw text không được ghi log.
+
 ## 7. Feed
 
 ### Following
@@ -282,6 +293,8 @@ MySQL 8 dùng CTE/projection để lọc access, tính score, áp dụng keyset 
 - MySQL dùng `conversations`, `conversation_members`, `messages`, `message_attachments` và
   `media_cleanup_tasks`; unique participant pair và unique
   `(sender_id, client_message_id)` là hàng rào chống trùng cuối cùng.
+- `messages.shared_post_id` tham chiếu nullable tới `posts` với `ON DELETE SET NULL`; type `POST_SHARE`
+  được Service suy ra từ request và dùng fingerprint gồm conversation, post và content.
 - Inbox và history dùng keyset cursor Base64URL, lấy `limit + 1`, không dùng offset hoặc count tổng.
 - Service lấy sender từ SecurityContext, kiểm tra role/status/onboarding, Follow đúng hướng và Block
   hai chiều. Open/send cùng dùng `UserPairLockCoordinator` với Block theo thứ tự low/high user ID.
@@ -292,6 +305,8 @@ MySQL 8 dùng CTE/projection để lọc access, tính score, áp dụng keyset 
   MIME khai báo, magic bytes/khả năng giải mã, dimensions, size và SHA-256 trước khi upload.
 - Cloudinary lưu ảnh chat dạng `authenticated`. Upload ở ngoài transaction MySQL; transaction ngắn khóa pair/conversation, recheck idempotency rồi lưu message + attachments. Rollback/race xóa bù, lỗi xóa tạo durable cleanup task trong transaction độc lập.
 - REST/history/realtime chỉ trả attachment metadata. Endpoint access kiểm tra lại account/profile/membership/Block rồi tạo signed URL TTL cấu hình; storage public ID không đi ra client.
+- `SharedPostMessageLoader` tải batch Post/Profile/Media cho một page history, lọc `PUBLISHED`, author `USER`/`ACTIVE`/đã onboarding và Block hai chiều theo viewer. Cùng một message vì thế có snapshot khác nhau theo participant; bài không còn xem được trả `sharedPostUnavailable` thay vì làm hỏng history.
+- Endpoint recipient discovery dùng truy vấn phân trang tại database, ưu tiên conversation đã có message rồi follower hợp lệ. Frontend chỉ mở/tái sử dụng conversation sau khi user bấm Gửi; Facebook share chỉ dùng SDK dialog hoặc Web Sharer và không giữ provider token.
 - `MessagingContext` dùng connection manager chung, merge optimistic/REST/WebSocket theo `messageId` hoặc `clientMessageId`, reconcile qua REST khi reconnect/tab visible và polling 30 giây khi disconnected. Không tạo Notification row, Outbox hay STOMP client thứ hai.
 - Typing dùng cùng connection manager qua `/app/messaging/typing`; inbound interceptor chỉ allowlist chính xác destination này và vẫn từ chối mọi client `SEND` khác. Controller không nhận identity từ payload; service read-only xác thực principal, account/profile, hai member và Block bằng projection rồi phát riêng recipient.
 - `TypingRateLimiter` là fixed window in-memory tối đa 4 frame/user/giây, có cleanup key cũ và chỉ bảo vệ từng application instance. Frontend phát START lần đầu, refresh sau mỗi 3 giây hoạt động, STOP sau 2 giây idle/submit/blank/blur/leave; receiver dedupe `eventId` và tự xóa START sau 5 giây. Typing không dùng transaction after-commit vì không có state bền vững.

@@ -2,6 +2,7 @@ package com.stu.edu.vn.backend.post.service.impl;
 
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
+import com.stu.edu.vn.backend.moderation.service.ContentModerationService;
 import com.stu.edu.vn.backend.post.dto.request.CreatePostRequest;
 import com.stu.edu.vn.backend.post.dto.request.UpdatePostRequest;
 import com.stu.edu.vn.backend.post.dto.request.PostLocationRequest;
@@ -43,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.HashSet;
 import lombok.RequiredArgsConstructor;
@@ -85,12 +87,15 @@ public class PostServiceImpl implements PostService {
     private final EntityManager entityManager;
     private final Clock clock;
     private final UserRelationshipPolicyService relationshipPolicyService;
+    private final ContentModerationService contentModerationService;
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {
         Long authorId = currentUserProvider.getCurrentUserId();
         AuthorContext authorContext = ensureAuthorCanCreatePost(authorId);
         CreatePostCommand command = validateRequest(request);
+        // Chỉ gửi text đã qua business validation; bài chỉ có media không gọi provider.
+        contentModerationService.requireAllowed(command.content());
 
         List<UploadedPostMedia> uploadedMedia = uploadMedia(command.mediaFiles());
         try {
@@ -129,7 +134,6 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    @Transactional
     public PostDetailResponse updatePost(Long postId, UpdatePostRequest request) {
         Long viewerId = currentUserProvider.getCurrentUserId();
         ensureViewerCanUsePostApi(viewerId);
@@ -140,22 +144,24 @@ public class PostServiceImpl implements PostService {
         ensureCanEditPost(post, viewerId);
 
         UpdatePostCommand command = validateUpdateRequest(post, request);
-        List<UploadedPostMedia> uploadedMedia = uploadMedia(command.newMediaFiles());
-        registerStorageCleanup(uploadedMedia, command.removedMedia());
+        if (!Objects.equals(post.getContent(), command.content())) {
+            // Quyền và cửa sổ sửa được kiểm tra trước để không tốn AI call cho request vốn không hợp lệ.
+            contentModerationService.requireAllowed(command.content());
+        }
 
-        UpdatedPostData updatedData = updatePostInDatabase(post, command, uploadedMedia);
-        boolean owner = post.getAuthor().getId().equals(viewerId);
-        boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
-        boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
-        return postMapper.toDetailResponse(
-                post,
-                post.getAuthorProfile(),
-                updatedData.media(),
-                updatedData.hashtag(),
-                owner,
-                likedByCurrentUser,
-                reposted
-        );
+        List<UploadedPostMedia> uploadedMedia = uploadMedia(command.newMediaFiles());
+        try {
+            PostDetailResponse response = transactionTemplate.execute(status ->
+                    updatePostInTransaction(postId, viewerId, command, uploadedMedia));
+            if (response == null) {
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            }
+            return response;
+        } catch (RuntimeException exception) {
+            // Upload diễn ra ngoài transaction; mọi lỗi trước commit phải xóa bù media mới.
+            cleanupUploadedMedia(uploadedMedia);
+            throw exception;
+        }
     }
 
     @Override
@@ -338,6 +344,31 @@ public class PostServiceImpl implements PostService {
         );
     }
 
+    private PostDetailResponse updatePostInTransaction(
+            Long postId,
+            Long viewerId,
+            UpdatePostCommand command,
+            List<UploadedPostMedia> uploadedMedia
+    ) {
+        Post lockedPost = postRepository.findDetailHeaderByIdAndStatusForUpdate(postId, PostStatus.PUBLISHED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        // Recheck quyền và deadline sau external call để chống race với thay đổi trạng thái đồng thời.
+        ensureCanEditPost(lockedPost, viewerId);
+        registerStorageCleanup(command.removedMedia());
+        UpdatedPostData updatedData = updatePostInDatabase(lockedPost, command, uploadedMedia);
+        boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
+        boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
+        return postMapper.toDetailResponse(
+                lockedPost,
+                lockedPost.getAuthorProfile(),
+                updatedData.media(),
+                updatedData.hashtag(),
+                true,
+                likedByCurrentUser,
+                reposted
+        );
+    }
+
     private void applyLocationUpdate(Post post, LocationAction action, PostLocationRequest location) {
         switch (action) {
             case KEEP -> { }
@@ -364,7 +395,7 @@ public class PostServiceImpl implements PostService {
         return postMediaRepository.saveAllAndFlush(media);
     }
 
-    private void registerStorageCleanup(List<UploadedPostMedia> uploadedMedia, List<PostMedia> removedMedia) {
+    private void registerStorageCleanup(List<PostMedia> removedMedia) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             // Trường hợp unit test gọi service trực tiếp không qua Spring proxy; runtime thật sẽ có transaction do @Transactional.
             return;
@@ -374,14 +405,6 @@ public class PostServiceImpl implements PostService {
             public void afterCommit() {
                 // Chỉ xóa media cũ trên storage sau khi database commit thành công để tránh mất file khi transaction rollback.
                 cleanupRemovedMediaFiles(removedMedia);
-            }
-
-            @Override
-            public void afterCompletion(int status) {
-                if (status != STATUS_COMMITTED) {
-                    // Nếu transaction rollback, xóa media mới đã upload để không để lại file mồ côi.
-                    cleanupUploadedMedia(uploadedMedia);
-                }
             }
         });
     }

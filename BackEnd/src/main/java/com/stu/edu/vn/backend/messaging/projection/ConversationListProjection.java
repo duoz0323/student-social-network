@@ -10,6 +10,7 @@ public interface ConversationListProjection {
     String getAvatarUrl();
     Long getLastMessageId();
     Long getLastMessageSenderId();
+    String getLastMessageType();
     String getLastMessageContent();
     LocalDateTime getLastMessageAt();
     Long getUnreadCount();

@@ -54,12 +54,12 @@ public class OfficialGoogleIdentityVerifier implements GoogleIdentityVerifier {
             throw new BusinessException(ErrorCode.AUTH_GOOGLE_TOKEN_EXPIRED);
         }
         String subject = requireText(payload.getSubject(), ErrorCode.AUTH_GOOGLE_SUBJECT_MISSING);
-        String email = requireText(payload.getEmail(), ErrorCode.AUTH_GOOGLE_EMAIL_MISSING);
-        if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
-            throw new BusinessException(ErrorCode.AUTH_GOOGLE_EMAIL_NOT_VERIFIED);
-        }
+        // Google subject vẫn là identity chính; email thiếu/chưa verified chỉ không được dùng làm local email.
+        String email = optionalText(payload.getEmail());
+        boolean emailVerified = email != null && Boolean.TRUE.equals(payload.getEmailVerified());
         return new VerifiedGoogleIdentity(
-                subject, email, true, stringClaim(payload, "name"), stringClaim(payload, "picture"), payload.getIssuer()
+                subject, email, emailVerified,
+                stringClaim(payload, "name"), stringClaim(payload, "picture"), payload.getIssuer()
         );
     }
 
@@ -77,5 +77,9 @@ public class OfficialGoogleIdentityVerifier implements GoogleIdentityVerifier {
     private String stringClaim(GoogleIdToken.Payload payload, String name) {
         Object value = payload.get(name);
         return value instanceof String text && !text.isBlank() ? text : null;
+    }
+
+    private String optionalText(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

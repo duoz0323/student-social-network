@@ -8,6 +8,7 @@ import CommentSection from '../components/CommentSection.jsx';
 import PostCard from '../components/PostCard.jsx';
 import { loadPostDetailData } from '../utils/postDetailLoader.js';
 import { toPostView } from '../utils/postViewModel.js';
+import { getContentModerationMessage } from '../utils/contentModeration.js';
 import { publishPostActivity, subscribePostActivity } from '../utils/postActivitySync.js';
 
 export default function PostDetailPage() {
@@ -68,7 +69,7 @@ export default function PostDetailPage() {
       setError('');
       return created;
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getContentModerationMessage(requestError) ?? requestError.message);
       return null;
     }
   }
@@ -95,7 +96,7 @@ export default function PostDetailPage() {
       setError('');
       return page.content ?? [];
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getContentModerationMessage(requestError) ?? requestError.message);
       return null;
     }
   }
@@ -117,7 +118,7 @@ export default function PostDetailPage() {
       setError('');
       return created;
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getContentModerationMessage(requestError) ?? requestError.message);
       return null;
     }
   }

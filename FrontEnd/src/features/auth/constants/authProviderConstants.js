@@ -12,4 +12,5 @@ export const REAUTHENTICATION_METHODS = Object.freeze({
 });
 
 export const UNLINK_PURPOSE = 'UNLINK_AUTH_METHOD';
+export const SET_PASSWORD_PURPOSE = 'SET_PASSWORD';
 export const AUTH_PROVIDER_TYPES = Object.freeze(['EMAIL', 'GOOGLE', 'FACEBOOK']);

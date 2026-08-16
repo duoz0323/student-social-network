@@ -9,12 +9,20 @@ import com.stu.edu.vn.backend.common.exception.*;
 import com.stu.edu.vn.backend.follow.repository.FollowRepository;
 import com.stu.edu.vn.backend.messaging.dto.request.SendMessageRequest;
 import com.stu.edu.vn.backend.messaging.dto.request.MarkConversationReadRequest;
+import com.stu.edu.vn.backend.messaging.dto.response.SharedPostAuthorResponse;
+import com.stu.edu.vn.backend.messaging.dto.response.SharedPostResponse;
 import com.stu.edu.vn.backend.messaging.cursor.MessageCursor;
 import com.stu.edu.vn.backend.messaging.entity.*;
 import com.stu.edu.vn.backend.messaging.event.MessageCreatedEvent;
 import com.stu.edu.vn.backend.messaging.event.MessagesReadEvent;
 import com.stu.edu.vn.backend.messaging.mapper.MessagingMapper;
 import com.stu.edu.vn.backend.messaging.repository.*;
+import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
+import com.stu.edu.vn.backend.post.repository.PostRepository;
+import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.post.enums.PostStatus;
+import com.stu.edu.vn.backend.messaging.enums.MessageType;
+import com.stu.edu.vn.backend.messaging.support.MessagePayloadFingerprint;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.*;
 import com.stu.edu.vn.backend.user.enums.*;
@@ -39,6 +47,8 @@ class MessagingServiceImplTest {
     private final ConversationMemberRepository memberRepository = mock(ConversationMemberRepository.class);
     private final MessageRepository messageRepository = mock(MessageRepository.class);
     private final MessageAttachmentRepository attachmentRepository = mock(MessageAttachmentRepository.class);
+    private final SharedPostMessageLoader sharedPostMessageLoader = mock(SharedPostMessageLoader.class);
+    private final PostRepository postRepository = mock(PostRepository.class);
     private final CursorCodec cursorCodec = mock(CursorCodec.class);
     private final EntityManager entityManager = mock(EntityManager.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
@@ -48,8 +58,10 @@ class MessagingServiceImplTest {
     void setUp() {
         service = new MessagingServiceImpl(currentUserProvider, userRepository, profileRepository,
                 blockRepository, followRepository, pairLock, conversationRepository, memberRepository,
-                messageRepository, attachmentRepository, new MessagingMapper(), cursorCodec, entityManager,
+                messageRepository, attachmentRepository, new MessagingMapper(), sharedPostMessageLoader,
+                postRepository, cursorCodec, entityManager,
                 Clock.systemUTC(), eventPublisher);
+        when(sharedPostMessageLoader.loadVisible(anyLong(), anyCollection())).thenReturn(Map.of());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
     }
 
@@ -177,6 +189,76 @@ class MessagingServiceImplTest {
     }
 
     @Test
+    void postSharePersistsReferenceOptionalCaptionAndPublishesCreatedEvent() {
+        Conversation conversation = prepareSendConversation();
+        conversation.setLastMessage(message(conversation, prepareEligible(20L), 40L, "old"));
+        Post sharedPost = mock(Post.class);
+        when(sharedPost.getId()).thenReturn(125L);
+        when(entityManager.getReference(Post.class, 125L)).thenReturn(sharedPost);
+        when(postRepository.findStatusById(125L)).thenReturn(Optional.of(PostStatus.PUBLISHED));
+        SharedPostResponse preview = sharedPostPreview(125L);
+        when(sharedPostMessageLoader.loadVisible(10L, List.of(125L))).thenReturn(Map.of(125L, preview));
+        when(sharedPostMessageLoader.loadVisible(20L, List.of(125L))).thenReturn(Map.of(125L, preview));
+        when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            Message message = invocation.getArgument(0);
+            ReflectionTestUtils.setField(message, "id", 90L);
+            ReflectionTestUtils.setField(message, "createdAt", java.time.LocalDateTime.now());
+            return message;
+        });
+
+        var response = service.sendMessage(50L, new SendMessageRequest(
+                "550e8400-e29b-41d4-a716-446655440000", "Bài này hay nè", 125L));
+
+        assertThat(response.replayed()).isFalse();
+        assertThat(response.message().type()).isEqualTo(MessageType.POST_SHARE);
+        assertThat(response.message().sharedPost()).isEqualTo(preview);
+        assertThat(response.message().sharedPostUnavailable()).isFalse();
+        verify(messageRepository).saveAndFlush(argThat(message -> message.getSharedPost().getId().equals(125L)
+                && message.getType() == MessageType.POST_SHARE));
+        verify(eventPublisher).publishEvent(new MessageCreatedEvent(90L, 50L));
+    }
+
+    @Test
+    void postShareRejectsMissingUnavailableAndTooLongCaption() {
+        Conversation conversation = prepareSendConversation();
+        conversation.setLastMessage(message(conversation, prepareEligible(20L), 40L, "old"));
+        String key = "550e8400-e29b-41d4-a716-446655440000";
+        when(postRepository.findStatusById(404L)).thenReturn(Optional.empty());
+        assertError(() -> service.sendMessage(50L, new SendMessageRequest(key, null, 404L)),
+                ErrorCode.POST_NOT_FOUND);
+
+        when(postRepository.findStatusById(125L)).thenReturn(Optional.of(PostStatus.HIDDEN));
+        when(sharedPostMessageLoader.loadVisible(10L, List.of(125L))).thenReturn(Map.of(125L, sharedPostPreview(125L)));
+        when(sharedPostMessageLoader.loadVisible(20L, List.of(125L))).thenReturn(Map.of());
+        assertError(() -> service.sendMessage(50L, new SendMessageRequest(key, null, 125L)),
+                ErrorCode.POST_NOT_AVAILABLE);
+        assertError(() -> service.sendMessage(50L, new SendMessageRequest(key, "😀".repeat(2001), 125L)),
+                ErrorCode.MESSAGE_CONTENT_TOO_LONG);
+        verify(messageRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void postShareIdempotencyIncludesPostAndCaption() {
+        Conversation conversation = prepareSendConversation();
+        Post sharedPost = mock(Post.class);
+        when(sharedPost.getId()).thenReturn(125L);
+        String key = "550e8400-e29b-41d4-a716-446655440000";
+        Message old = new Message(conversation, prepareEligible(10L), key, MessageType.POST_SHARE,
+                "caption", sharedPost, MessagePayloadFingerprint.postShare(50L, 125L, "caption"));
+        ReflectionTestUtils.setField(old, "id", 91L);
+        when(messageRepository.findBySenderAndClientMessageIdForUpdate(10L, key)).thenReturn(Optional.of(old));
+        when(sharedPostMessageLoader.loadVisible(10L, List.of(125L)))
+                .thenReturn(Map.of(125L, sharedPostPreview(125L)));
+
+        assertThat(service.sendMessage(50L, new SendMessageRequest(key, "caption", 125L)).replayed()).isTrue();
+        assertError(() -> service.sendMessage(50L, new SendMessageRequest(key, "changed", 125L)),
+                ErrorCode.IDEMPOTENCY_KEY_REUSED);
+        assertError(() -> service.sendMessage(50L, new SendMessageRequest(key, "caption", 126L)),
+                ErrorCode.IDEMPOTENCY_KEY_REUSED);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void historyReversesDatabaseDescendingPageAndBuildsCursorFromOldestReturned() {
         User sender = prepareEligible(10L);
         User recipient = user(20L, UserRole.USER, UserStatus.ACTIVE);
@@ -284,6 +366,45 @@ class MessagingServiceImplTest {
         Message message = new Message(conversation, sender, UUID.randomUUID().toString(), content);
         ReflectionTestUtils.setField(message, "id", id);
         return message;
+    }
+
+    @Test
+    void historyBatchHydratesSharedPostsPerViewerAndMarksUnavailableWithoutDeletingMessage() {
+        User sender = prepareEligible(10L);
+        User recipient = prepareEligible(20L);
+        Conversation conversation = new Conversation(sender, recipient);
+        ReflectionTestUtils.setField(conversation, "id", 50L);
+        when(conversationRepository.findById(50L)).thenReturn(Optional.of(conversation));
+        when(memberRepository.existsByIdConversationIdAndIdUserId(50L, 10L)).thenReturn(true);
+        Post availablePost = mock(Post.class);
+        Post unavailablePost = mock(Post.class);
+        when(availablePost.getId()).thenReturn(125L);
+        when(unavailablePost.getId()).thenReturn(126L);
+        Message available = new Message(conversation, recipient, UUID.randomUUID().toString(),
+                MessageType.POST_SHARE, null, availablePost,
+                MessagePayloadFingerprint.postShare(50L, 125L, null));
+        Message unavailable = new Message(conversation, recipient, UUID.randomUUID().toString(),
+                MessageType.POST_SHARE, null, unavailablePost,
+                MessagePayloadFingerprint.postShare(50L, 126L, null));
+        ReflectionTestUtils.setField(available, "id", 2L);
+        ReflectionTestUtils.setField(unavailable, "id", 1L);
+        when(messageRepository.findFirstPage(50L, 3)).thenReturn(List.of(available, unavailable));
+        when(sharedPostMessageLoader.loadVisible(10L, List.of(126L, 125L)))
+                .thenReturn(Map.of(125L, sharedPostPreview(125L)));
+
+        var page = service.getMessages(50L, 2, null);
+
+        assertThat(page.content()).extracting(item -> item.messageId()).containsExactly(1L, 2L);
+        assertThat(page.content().get(0).sharedPostUnavailable()).isTrue();
+        assertThat(page.content().get(0).sharedPost()).isNull();
+        assertThat(page.content().get(1).sharedPost()).isNotNull();
+        verify(sharedPostMessageLoader).loadVisible(10L, List.of(126L, 125L));
+    }
+
+    private SharedPostResponse sharedPostPreview(Long postId) {
+        return new SharedPostResponse(postId,
+                new SharedPostAuthorResponse(30L, "author", "Tác giả", null),
+                "Nội dung", List.of(), 2, 3, 1);
     }
 
     private void assertError(Runnable action, ErrorCode expected) {

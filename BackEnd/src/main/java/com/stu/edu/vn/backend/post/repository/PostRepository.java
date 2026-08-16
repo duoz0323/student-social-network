@@ -215,6 +215,29 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // Tìm bài theo id và trạng thái để loại bài HIDDEN/DELETED khỏi truy vấn thông thường.
     Optional<Post> findByIdAndStatus(Long id, PostStatus status);
 
+    /** Batch-load đúng các PostCard mà viewer còn quyền xem để Messaging không làm lộ preview cũ. */
+    @Query("""
+            SELECT post
+            FROM Post post
+            JOIN FETCH post.author author
+            WHERE post.id IN :postIds
+              AND post.status = :status
+              AND author.role = com.stu.edu.vn.backend.user.enums.UserRole.USER
+              AND author.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              AND EXISTS (
+                  SELECT profile.userId FROM UserProfile profile
+                  WHERE profile.userId = author.id AND profile.profileCompletedAt IS NOT NULL
+              )
+              AND NOT EXISTS (
+                  SELECT blockRelation.id.blockerId FROM UserBlock blockRelation
+                  WHERE (blockRelation.id.blockerId = :viewerId AND blockRelation.id.blockedId = author.id)
+                     OR (blockRelation.id.blockerId = author.id AND blockRelation.id.blockedId = :viewerId)
+              )
+            """)
+    List<Post> findVisibleSharedPosts(@Param("viewerId") Long viewerId,
+                                      @Param("postIds") Collection<Long> postIds,
+                                      @Param("status") PostStatus status);
+
     // Lấy riêng trạng thái để Like/Unlike phân biệt post không tồn tại với post HIDDEN/DELETED.
     @Query("select p.status from Post p where p.id = :postId")
     Optional<PostStatus> findStatusById(@Param("postId") Long postId);
@@ -285,6 +308,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @EntityGraph(attributePaths = {"author", "authorProfile", "location"})
     @Query("select p from Post p where p.id = :postId and p.status = :status")
     Optional<Post> findDetailHeaderByIdAndStatus(
+            @Param("postId") Long postId,
+            @Param("status") PostStatus status
+    );
+
+    /** Khóa Post trong transaction cập nhật ngắn sau khi moderation và upload đã hoàn tất. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"author", "authorProfile", "location"})
+    @Query("select p from Post p where p.id = :postId and p.status = :status")
+    Optional<Post> findDetailHeaderByIdAndStatusForUpdate(
             @Param("postId") Long postId,
             @Param("status") PostStatus status
     );

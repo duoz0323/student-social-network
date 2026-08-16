@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.messaging.projection.MessageRealtimeProjection;
 import com.stu.edu.vn.backend.messaging.repository.ConversationMemberRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageAttachmentRepository;
+import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -75,11 +76,13 @@ class MessagingAfterCommitTransactionTest {
         @Bean MessageRepository messageRepository() { return mock(MessageRepository.class); }
         @Bean ConversationMemberRepository memberRepository() { return mock(ConversationMemberRepository.class); }
         @Bean MessageAttachmentRepository attachmentRepository() { return mock(MessageAttachmentRepository.class); }
+        @Bean SharedPostMessageLoader sharedPostMessageLoader() { return mock(SharedPostMessageLoader.class); }
         @Bean SimpMessagingTemplate template() { return mock(SimpMessagingTemplate.class); }
         @Bean Clock clock() { return Clock.systemUTC(); }
         @Bean MessagingRealtimeListener listener(MessageRepository messages, ConversationMemberRepository members,
-                MessageAttachmentRepository attachments, SimpMessagingTemplate template, Clock clock) {
-            return new MessagingRealtimeListener(messages, members, attachments, template, clock);
+                MessageAttachmentRepository attachments, SharedPostMessageLoader sharedPosts,
+                SimpMessagingTemplate template, Clock clock) {
+            return new MessagingRealtimeListener(messages, members, attachments, sharedPosts, template, clock);
         }
         @Bean TransactionalPublisher publisher(ApplicationEventPublisher events) { return new TransactionalPublisher(events); }
     }

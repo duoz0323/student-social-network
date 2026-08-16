@@ -1,6 +1,6 @@
 # Trạng thái triển khai hiện tại
 
-> Cập nhật ngày 11/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
+> Cập nhật ngày 16/08/2026. `README.md` vẫn là nguồn sự thật cao nhất về phạm vi và nghiệp vụ.
 > File này chỉ ghi nhận mức độ triển khai thực tế để chuẩn bị kế hoạch phát triển tiếp theo.
 
 ## Quy ước trạng thái
@@ -32,6 +32,7 @@
 | Gắn, thay đổi và gỡ Location tùy chọn trên Post | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Create/update hỗ trợ Location tùy chọn, resolve dùng chung theo Place ID, mọi Post response và Admin detail trả Location; Frontend dùng Google Places picker. MySQL integration test cần database test riêng. |
 | Like/Unlike và danh sách bài đã thích | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách `/liked` dùng Cursor Pagination. |
 | Bình luận và reply một cấp | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Reply một cấp đã có endpoint dù README xếp ưu tiên P2. |
+| AI-assisted Content Moderation V1 | IMPLEMENTED | IMPLEMENTED | TESTED | NOT INTEGRATED | Chỉ dùng FastAPI/PhoBERT local, token chunking, ALLOW/WARNING/BLOCK và fail-closed; smoke model thật pass nhưng chưa manual E2E toàn luồng giao diện. |
 | Save/Unsave và danh sách bài đã lưu | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Danh sách dùng Cursor Pagination. |
 | Repost/Unrepost, Profile Repost và Following activity | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Luồng chính đã tích hợp cùng Block/Restrict; MySQL concurrency test cần `REPOST_TEST_DB_URL`. |
 | Personalized For You V1 (rule-based) | IMPLEMENTED | IMPLEMENTED | TESTED | TESTED | Database-side ranking từ recency/engagement/Follow/Academic/Interest/history/exact hashtag ID; cursor freeze `rankingAt`. Chờ manual E2E để nâng `INTEGRATED`. |
@@ -48,6 +49,7 @@
 | Nhắn tin trực tiếp Giai đoạn 1C | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Database/REST + after-commit realtime + responsive UI text đã có; E2E hai browser chưa chạy. |
 | Ảnh trong Messaging một-một | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Multipart/private media/durable cleanup, UI gửi/hiển thị ảnh và signed access URL đã tích hợp. |
 | Typing Indicator Messaging Giai đoạn 1D | IMPLEMENTED | IMPLEMENTED | TESTED | INTEGRATED | Ephemeral STOMP SEND exact allowlist, recipient-only events và UI timeout đã có; không DB, MySQL test hay E2E hai browser. |
+| Chia sẻ bài viết qua Messaging V1 | IMPLEMENTED | IMPLEMENTED | TESTED | PARTIAL | `POST_SHARE`, recipient discovery, viewer-specific snapshot, Share Modal/copy link/Facebook và migration thủ công đã có; chưa chạy migration MySQL thật hoặc smoke test E2E hai browser. |
 
 ## Thay đổi đang có trong worktree
 
@@ -67,6 +69,8 @@
   fingerprint idempotency, durable cleanup và UI gửi/hiển thị ảnh.
 - Typing Indicator dùng cùng connection STOMP, chỉ allow `/app/messaging/typing`, kiểm tra membership/account/Block,
   giới hạn 4 frame/user/giây trong từng instance và hiển thị có expiry 5 giây; không lưu DB hay thay đổi unread.
+- Chia sẻ bài viết dùng message `POST_SHARE` tham chiếu Post, recipient discovery phân trang, snapshot hydrate
+  theo từng viewer và Share Modal gửi DM/copy link/Facebook; không tạo Notification hay tăng Repost count.
 - Location P1 đã hoàn tất từ schema/JPA đến API create/update, batch enrichment response, Admin detail và Frontend Google Places picker. Backend không gọi Google Places để xác minh; Discovery Map V1 Backend đã dùng lại schema này mà không migration.
 - Repost đã tích hợp với Profile, Following Feed, Notification realtime và các bộ lọc Block/Restrict.
 - Moderation Case, chỉnh sửa hồ sơ người dùng bởi Admin và analytics hoạt động người dùng đã tích hợp xuyên suốt Backend, schema và Admin UI.
@@ -74,9 +78,10 @@
 - Admin Academic Management V1 đã tích hợp Backend/API, audit log và Admin UI cho School/Faculty/Major/Interest; không bao gồm hard delete, cấu hình Recommendation, School Suggestion hoặc AI/ML.
 - Student Recommendation V1 đã có API rule-based, database-side ranking/pagination, UI “Có thể bạn biết”, test tự động và manual E2E thành công; trạng thái `INTEGRATED`.
 - Personalized For You V1 đã triển khai/test bằng MySQL 8 theo deterministic rule-based score; không tạo bảng/index/cache/job mới, không thay public API và chưa manual E2E nên chưa đánh dấu `INTEGRATED`.
-- Location-aware Discovery V1 đã có Backend query và Frontend tab `Gần bạn`; canonical seed có 6 Post tại 5 địa điểm công cộng quanh Bình Trị Đông để manual test radius. Automated test, lint và build đạt, chưa manual E2E với quyền Geolocation/MySQL thực nên chưa `INTEGRATED`.
+- Location-aware Discovery V1 đã có Backend query và Frontend tab `Gần bạn`; canonical seed có 10 Post `PUBLISHED`, chia đều tại 5 địa điểm công cộng quanh đường Cao Lỗ, Quận 8 để manual test radius. Automated test, lint và build đạt, chưa manual E2E với quyền Geolocation/MySQL thực nên chưa `INTEGRATED`.
 - Discovery Map V1 đã có hai API Backend, marker aggregation MySQL, Location Posts keyset/cursor bind Location, Map/cluster/panel responsive phía Frontend và GPS click-only không lưu trữ. Manual E2E ngày 2026-08-14 đã xác minh render/explicit search/marker, cluster click, Location Posts 8 trang không trùng, marker/viewport race, Block, Restrict, HIDDEN, Repost, responsive và hồi quy Nearby/For You/Following/Places. GPS-success chưa thực thi được do browser tích hợp từ chối location và Chrome/Edge DevTools không khả dụng, nên vẫn `NOT INTEGRATED`; DELETED, timeout/unavailable và `truncated=true` giữ automated-only theo phạm vi đã chốt.
 - AI/ML Feed Recommendation: `NOT IMPLEMENTED`.
+- Local AI Content Moderation đã có `ai-service`, model pin revision/cache, readiness, unit test và smoke inference thật; không thay database và không còn adapter, API key hoặc cấu hình AI trả phí.
 
 ## Điểm chưa đồng bộ hoặc cần xác nhận
 
@@ -91,10 +96,11 @@
    read, constraint và race Block-send/Block-open đã chạy thành công trên container test tạm.
 7. Cần cấu hình `VITE_GOOGLE_MAPS_API_KEY` theo từng môi trường và giới hạn key theo HTTP referrer/API trong Google Cloud Console trước khi kiểm thử Places thật.
 
-## Kết quả quality gate ngày 10/08/2026
+## Kết quả quality gate ngày 16/08/2026
 
-- Backend: `831` test, `0` failure, `0` error, `63` test tích hợp được skip do thiếu biến môi trường/database test; `mvn test` và `mvn clean package` đều pass.
-- Frontend: `129` test pass; ESLint pass; production build pass.
+- Backend: `936` test, `0` failure, `0` error, `72` test tích hợp được skip do thiếu biến môi trường/database test; `mvn clean test` và `mvn -DskipTests package` đều pass.
+- Frontend: `171` test pass; ESLint pass; production build pass.
+- Local AI service: `11` pytest pass; checkpoint thật nạp thành công trên CPU; `/health`, `/ready`, `/v1/moderation` smoke pass. Manual E2E giao diện vẫn chưa chạy nên feature giữ `NOT INTEGRATED`.
 - Kiểm tra merge: không còn conflict marker và `git diff --check` không phát hiện lỗi whitespace.
 
 ## Thứ tự đề xuất trước chức năng tiếp theo

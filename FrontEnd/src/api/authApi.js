@@ -33,8 +33,11 @@ export const authApi = Object.freeze({
   getAuthProviders: (signal) => requestData(httpClient.get(AUTH_ENDPOINTS.authProviders, { signal })),
   linkEmail: (email, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.linkEmail, { email }, { signal })),
   verifyLinkedEmail: (code, linkFlowToken, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.verifyLinkedEmail, { code }, flowTokenConfig(linkFlowToken, { signal }))),
+  completeLinkedEmail: (payload, linkFlowToken, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.completeLinkedEmail, withoutUndefined(payload), flowTokenConfig(linkFlowToken, { signal }))),
   resendLinkedEmail: (linkFlowToken, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.resendLinkedEmail, undefined, flowTokenConfig(linkFlowToken, { signal }))),
   linkGoogle: (payload, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.linkGoogle, withoutUndefined(payload), { signal })),
   linkFacebook: (payload, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.linkFacebook, withoutUndefined(payload), { signal })),
+  setPassword: (payload, reauthenticationToken, signal) => requestData(httpClient.post(AUTH_ENDPOINTS.password, withoutUndefined(payload), flowTokenConfig(reauthenticationToken, { signal }))),
+  changePassword: (payload, signal) => requestData(httpClient.patch(AUTH_ENDPOINTS.password, withoutUndefined(payload), { signal })),
   unlinkProvider: (provider, reauthenticationToken, signal) => requestData(httpClient.delete(AUTH_ENDPOINTS.unlinkProvider(provider), flowTokenConfig(reauthenticationToken, { signal }))),
 });

@@ -47,14 +47,83 @@ export function toPostEditDraft(postDetail = {}) {
   };
 }
 
-/** Tạo và sao chép permalink của bài viết tại một điểm duy nhất. */
+export const FACEBOOK_SHARE_STATUS = Object.freeze({
+  OPENED: 'OPENED',
+  PUBLIC_URL_REQUIRED: 'PUBLIC_URL_REQUIRED',
+  POPUP_BLOCKED: 'POPUP_BLOCKED',
+});
+
+function configuredPublicOrigin() {
+  return import.meta.env?.VITE_PUBLIC_APP_URL?.trim()
+    || globalThis.window?.location?.origin
+    || 'http://localhost';
+}
+
+/** Tạo permalink tuyệt đối từ route Post Detail, ưu tiên domain public cấu hình cho external share. */
+export function canonicalPostUrl(postId, origin = configuredPublicOrigin()) {
+  return new URL(`/posts/${encodeURIComponent(postId)}`, origin).toString();
+}
+
+function isPublicShareUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    const privateIpv4 = /^10\.|^192\.168\.|^127\.|^172\.(1[6-9]|2\d|3[01])\./.test(host);
+    return ['http:', 'https:'].includes(url.protocol)
+      && host !== 'localhost'
+      && host !== '::1'
+      && !host.endsWith('.localhost')
+      && !host.endsWith('.local')
+      && !privateIpv4;
+  } catch {
+    return false;
+  }
+}
+
+/** Sao chép permalink và dùng fallback DOM cho browser chưa có Clipboard API. */
 export async function copyPostLink(postId) {
-  const url = new URL(`/posts/${encodeURIComponent(postId)}`, window.location.origin).toString();
-  if (!navigator.clipboard?.writeText) {
+  const url = canonicalPostUrl(postId);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return url;
+  }
+  if (!globalThis.document?.createElement) {
     throw new Error('Trình duyệt không hỗ trợ sao chép tự động.');
   }
-  await navigator.clipboard.writeText(url);
+  const input = globalThis.document.createElement('textarea');
+  input.value = url;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  globalThis.document.body.appendChild(input);
+  input.select();
+  const copied = globalThis.document.execCommand?.('copy');
+  input.remove();
+  if (!copied) throw new Error('Trình duyệt không hỗ trợ sao chép tự động.');
   return url;
+}
+
+/** Mở Facebook Share Dialog/Web Sharer bằng URL public, không dùng provider token. */
+export function openFacebookPostShare(
+  postId,
+  openWindow = globalThis.window?.open,
+  facebookSdk = globalThis.window?.FB,
+  origin,
+) {
+  const postUrl = canonicalPostUrl(postId, origin ?? configuredPublicOrigin());
+  if (!isPublicShareUrl(postUrl)) return FACEBOOK_SHARE_STATUS.PUBLIC_URL_REQUIRED;
+
+  if (typeof facebookSdk?.ui === 'function') {
+    facebookSdk.ui({ method: 'share', href: postUrl });
+    return FACEBOOK_SHARE_STATUS.OPENED;
+  }
+  const shareUrl = new URL('https://www.facebook.com/sharer/sharer.php');
+  shareUrl.searchParams.set('u', postUrl);
+  const popup = openWindow?.(shareUrl.toString(), 'facebook-share', 'popup,width=640,height=720');
+  if (!popup) return FACEBOOK_SHARE_STATUS.POPUP_BLOCKED;
+  // Cắt liên kết về cửa sổ gốc ngay sau khi đã lấy handle để vừa chống tabnabbing vừa phát hiện popup block.
+  try { popup.opener = null; } catch { /* Browser có thể không cho ghi thuộc tính cross-origin. */ }
+  return FACEBOOK_SHARE_STATUS.OPENED;
 }
 
 /**

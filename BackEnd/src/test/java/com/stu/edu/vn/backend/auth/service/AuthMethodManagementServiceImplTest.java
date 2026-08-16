@@ -60,10 +60,13 @@ class AuthMethodManagementServiceImplTest {
 
         var result = service.list();
 
-        assertThat(result.methods()).singleElement().satisfies(method -> {
+        assertThat(result.methods()).hasSize(3);
+        assertThat(result.methods().get(0)).satisfies(method -> {
             assertThat(method.type()).isEqualTo(AuthMethod.EMAIL);
             assertThat(method.maskedIdentifier()).isEqualTo("s***@example.com");
             assertThat(method.localLoginAvailable()).isFalse();
+            assertThat(method.state()).isEqualTo(com.stu.edu.vn.backend.auth.enums.EmailLoginState.VERIFIED_NO_PASSWORD);
+            assertThat(method.canSetPassword()).isTrue();
         });
     }
 

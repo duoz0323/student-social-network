@@ -29,8 +29,8 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     public GoogleAuthResponse authenticate(GoogleAuthRequest request, String ipAddress) {
         VerifiedGoogleIdentity identity = identityVerifier.verify(request.idToken());
         try {
-            return map(transactionService.authenticate(AuthProvider.GOOGLE, identity.subject(), identity.email(), true,
-                    false, request.deviceId(), request.deviceInfo(), ipAddress));
+            return map(transactionService.authenticate(AuthProvider.GOOGLE, identity.subject(), identity.email(),
+                    identity.emailVerified(), true, request.deviceId(), request.deviceInfo(), ipAddress));
         } catch (DataIntegrityViolationException race) {
             return transactionService.authenticateAfterRace(AuthProvider.GOOGLE, identity.subject(),
                             request.deviceId(), request.deviceInfo(), ipAddress)
@@ -42,8 +42,9 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     public GoogleAuthResponse authenticate(GoogleAuthRequest request, String registrationFlowToken, String ipAddress) {
         VerifiedGoogleIdentity identity = identityVerifier.verify(request.idToken());
         try {
-            return map(transactionService.authenticate(AuthProvider.GOOGLE, identity.subject(), identity.email(), true,
-                    false, registrationFlowToken, request.deviceId(), request.deviceInfo(), ipAddress));
+            return map(transactionService.authenticate(AuthProvider.GOOGLE, identity.subject(), identity.email(),
+                    identity.emailVerified(), true, registrationFlowToken,
+                    request.deviceId(), request.deviceInfo(), ipAddress));
         } catch (DataIntegrityViolationException race) {
             // Request thua unique race đọc lại provider thắng cuộc trong transaction mới, không lộ constraint.
             return transactionService.authenticateAfterRace(AuthProvider.GOOGLE, identity.subject(), request.deviceId(), request.deviceInfo(), ipAddress)

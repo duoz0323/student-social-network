@@ -16,6 +16,10 @@ import com.stu.edu.vn.backend.messaging.mapper.MessagingMapper;
 import com.stu.edu.vn.backend.messaging.projection.ConversationListProjection;
 import com.stu.edu.vn.backend.messaging.repository.*;
 import com.stu.edu.vn.backend.messaging.service.MessagingService;
+import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
+import com.stu.edu.vn.backend.messaging.support.MessagePayloadFingerprint;
+import com.stu.edu.vn.backend.post.entity.Post;
+import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.*;
 import com.stu.edu.vn.backend.user.enums.*;
@@ -28,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 
 /** Điều phối authorization, Block/Follow, keyset, idempotency và marker đọc trong transaction. */
 @Service
@@ -44,6 +49,8 @@ public class MessagingServiceImpl implements MessagingService {
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository attachmentRepository;
     private final MessagingMapper messagingMapper;
+    private final SharedPostMessageLoader sharedPostMessageLoader;
+    private final PostRepository postRepository;
     private final CursorCodec cursorCodec;
     private final EntityManager entityManager;
     private final Clock clock;
@@ -123,9 +130,15 @@ public class MessagingServiceImpl implements MessagingService {
                         pageDescending.stream().map(Message::getId).toList());
         Map<Long, List<MessageAttachment>> attachmentsByMessage = attachmentRows.stream()
                 .collect(java.util.stream.Collectors.groupingBy(item -> item.getMessage().getId()));
+        List<Long> sharedPostIds = pageDescending.stream()
+                .filter(message -> message.getType() == MessageType.POST_SHARE && message.getSharedPost() != null)
+                .map(message -> message.getSharedPost().getId()).distinct().toList();
+        Map<Long, SharedPostResponse> sharedPosts =
+                sharedPostMessageLoader.loadVisible(userId, sharedPostIds);
         List<MessageResponse> responses = pageDescending.stream()
                 .map(message -> messagingMapper.toMessageResponse(
-                        message, attachmentsByMessage.getOrDefault(message.getId(), List.of())))
+                        message, attachmentsByMessage.getOrDefault(message.getId(), List.of()),
+                        message.getSharedPost() == null ? null : sharedPosts.get(message.getSharedPost().getId())))
                 .toList();
         return new CursorPageResponse<>(responses, nextCursor, hasNext);
     }
@@ -145,28 +158,46 @@ public class MessagingServiceImpl implements MessagingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONVERSATION_NOT_FOUND));
         requireNotBlocked(senderId, otherUserId);
         String clientMessageId = requireUuidV4(request == null ? null : request.clientMessageId());
-        String content = requireContent(request == null ? null : request.content());
+        Long sharedPostId = request == null ? null : request.sharedPostId();
+        MessageType messageType = sharedPostId == null ? MessageType.TEXT : MessageType.POST_SHARE;
+        String content = sharedPostId == null
+                ? requireContent(request == null ? null : request.content())
+                : requireOptionalContent(request.content());
+        String fingerprint = messageType == MessageType.POST_SHARE
+                ? MessagePayloadFingerprint.postShare(conversationId, sharedPostId, content)
+                : MessagePayloadFingerprint.text(conversationId, content);
         Optional<Message> replay = messageRepository.findBySenderAndClientMessageIdForUpdate(senderId, clientMessageId);
         if (replay.isPresent()) {
             Message old = replay.get();
-            if (old.getType() != MessageType.TEXT || !old.getConversation().getId().equals(conversationId)
-                    || !old.getContent().equals(content)) {
+            if (old.getType() != messageType || !old.getConversation().getId().equals(conversationId)
+                    || !old.getPayloadFingerprint().equals(fingerprint)) {
                 throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED);
             }
-            return new SendMessageResponse(messagingMapper.toMessageResponse(old), true);
+            var preview = old.getSharedPost() == null ? null
+                    : sharedPostMessageLoader.loadVisible(senderId, List.of(old.getSharedPost().getId()))
+                    .get(old.getSharedPost().getId());
+            return new SendMessageResponse(messagingMapper.toMessageResponse(old, List.of(), preview), true);
         }
         if (conversation.getLastMessage() == null
                 && !followRepository.existsByIdFollowerIdAndIdFollowingId(otherUserId, sender.getId())) {
             throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
         }
-        Message message = messageRepository.saveAndFlush(new Message(conversation, sender, clientMessageId, content));
+        Post sharedPost = null;
+        SharedPostResponse senderPreview = null;
+        if (messageType == MessageType.POST_SHARE) {
+            requireShareablePost(sharedPostId, senderId, otherUserId);
+            sharedPost = entityManager.getReference(Post.class, sharedPostId);
+            senderPreview = sharedPostMessageLoader.loadVisible(senderId, List.of(sharedPostId)).get(sharedPostId);
+        }
+        Message message = messageRepository.saveAndFlush(new Message(conversation, sender, clientMessageId,
+                messageType, content, sharedPost, fingerprint));
         entityManager.refresh(message);
         conversation.setLastMessage(message);
         conversation.setLastMessageAt(message.getCreatedAt());
         conversationRepository.save(conversation);
         // Event nhẹ được ghi nhận trong transaction; listener chỉ chạy khi transaction commit thành công.
         eventPublisher.publishEvent(new MessageCreatedEvent(message.getId(), conversation.getId()));
-        return new SendMessageResponse(messagingMapper.toMessageResponse(message), false);
+        return new SendMessageResponse(messagingMapper.toMessageResponse(message, List.of(), senderPreview), false);
     }
 
     @Override
@@ -201,6 +232,28 @@ public class MessagingServiceImpl implements MessagingService {
     public MessagingUnreadCountResponse getUnreadCount() {
         Long userId = requireCurrentMessagingUser().getId();
         return new MessagingUnreadCountResponse(messageRepository.countUnread(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.stu.edu.vn.backend.common.api.PageResponse<ShareRecipientResponse> getShareRecipients(
+            String keyword, int page, int size) {
+        Long userId = requireCurrentMessagingUser().getId();
+        if (page < 0 || size < 1 || size > 50) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.codePointCount(0, normalizedKeyword.length()) > 100) {
+            throw new BusinessException(ErrorCode.SEARCH_KEYWORD_TOO_LONG);
+        }
+        var result = conversationRepository.findShareRecipients(
+                userId, normalizedKeyword, PageRequest.of(page, size));
+        return new com.stu.edu.vn.backend.common.api.PageResponse<>(result.getContent().stream()
+                .map(item -> new ShareRecipientResponse(item.getUserId(), item.getUsername(),
+                        item.getDisplayName(), item.getAvatarUrl(), item.getConversationId(),
+                        Integer.valueOf(1).equals(item.getExistingConversationPriority())))
+                .toList(), result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages(), result.isFirst(), result.isLast());
     }
 
     private User requireCurrentMessagingUser() {
@@ -273,5 +326,26 @@ public class MessagingServiceImpl implements MessagingService {
             throw new BusinessException(ErrorCode.MESSAGE_CONTENT_TOO_LONG);
         }
         return content;
+    }
+
+    private String requireOptionalContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+        if (content.codePointCount(0, content.length()) > 2000) {
+            throw new BusinessException(ErrorCode.MESSAGE_CONTENT_TOO_LONG);
+        }
+        return content;
+    }
+
+    private void requireShareablePost(Long postId, Long senderId, Long recipientId) {
+        if (postId == null || postId <= 0 || postRepository.findStatusById(postId).isEmpty()) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
+        boolean senderCanView = sharedPostMessageLoader.loadVisible(senderId, List.of(postId)).containsKey(postId);
+        boolean recipientCanView = sharedPostMessageLoader.loadVisible(recipientId, List.of(postId)).containsKey(postId);
+        if (!senderCanView || !recipientCanView) {
+            throw new BusinessException(ErrorCode.POST_NOT_AVAILABLE);
+        }
     }
 }

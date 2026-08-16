@@ -63,6 +63,7 @@ export function moveConversationToFront(conversations, data, currentUserId) {
     lastMessage: {
       messageId: data.messageId,
       senderId: data.senderId,
+      type: data.type,
       contentPreview: data.content,
       createdAt: data.createdAt,
     },

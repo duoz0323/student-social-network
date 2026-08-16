@@ -55,6 +55,11 @@ media:
     batch-size: ${MEDIA_CLEANUP_BATCH_SIZE:50}
     retry-delay: ${MEDIA_CLEANUP_RETRY_DELAY:5m}
 
+content-moderation:
+  local-base-url: ${AI_MODERATION_LOCAL_BASE_URL:http://127.0.0.1:8001}
+  connect-timeout: ${AI_MODERATION_CONNECT_TIMEOUT:3s}
+  read-timeout: ${AI_MODERATION_READ_TIMEOUT:5s}
+
 security:
   client-ip:
     trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}

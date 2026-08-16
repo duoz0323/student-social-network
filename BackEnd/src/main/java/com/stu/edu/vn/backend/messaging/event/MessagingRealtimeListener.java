@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.messaging.enums.MessagingRealtimeEventType;
 import com.stu.edu.vn.backend.messaging.repository.ConversationMemberRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageAttachmentRepository;
 import com.stu.edu.vn.backend.messaging.repository.MessageRepository;
+import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class MessagingRealtimeListener {
     private final MessageRepository messageRepository;
     private final ConversationMemberRepository memberRepository;
     private final MessageAttachmentRepository attachmentRepository;
+    private final SharedPostMessageLoader sharedPostMessageLoader;
     private final SimpMessagingTemplate messagingTemplate;
     private final Clock clock;
 
@@ -47,20 +49,31 @@ public class MessagingRealtimeListener {
                     .stream().map(item -> new MessageAttachmentResponse(item.getId(), item.getMediaType(),
                             item.getMimeType(), item.getFileSizeBytes(), item.getWidth(), item.getHeight(),
                             item.getDisplayOrder())).toList();
-            var data = new MessageCreatedRealtimeData(
-                    projection.getMessageId(), projection.getConversationId(), projection.getSenderId(),
-                    projection.getClientMessageId(), MessageType.valueOf(projection.getType()),
-                    projection.getContent(), attachments, projection.getCreatedAt());
             String eventId = UUID.randomUUID().toString();
             LocalDateTime occurredAt = LocalDateTime.now(clock);
             send(projection.getParticipantLowId(), MessagingRealtimeEventType.MESSAGE_CREATED,
-                    eventId, occurredAt, data);
+                    eventId, occurredAt, toMessageCreatedData(projection, attachments,
+                            projection.getParticipantLowId()));
             send(projection.getParticipantHighId(), MessagingRealtimeEventType.MESSAGE_CREATED,
-                    eventId, occurredAt, data);
+                    eventId, occurredAt, toMessageCreatedData(projection, attachments,
+                            projection.getParticipantHighId()));
         } catch (RuntimeException exception) {
             log.warn("Không thể xử lý Messaging realtime messageId={} conversationId={}",
                     event.messageId(), event.conversationId(), exception);
         }
+    }
+
+    private MessageCreatedRealtimeData toMessageCreatedData(
+            com.stu.edu.vn.backend.messaging.projection.MessageRealtimeProjection projection,
+            java.util.List<MessageAttachmentResponse> attachments, Long viewerId) {
+        var sharedPost = projection.getSharedPostId() == null ? null
+                : sharedPostMessageLoader.loadVisible(viewerId, java.util.List.of(projection.getSharedPostId()))
+                .get(projection.getSharedPostId());
+        MessageType type = MessageType.valueOf(projection.getType());
+        return new MessageCreatedRealtimeData(
+                projection.getMessageId(), projection.getConversationId(), projection.getSenderId(),
+                projection.getClientMessageId(), type, projection.getContent(), attachments, sharedPost,
+                type == MessageType.POST_SHARE && sharedPost == null, projection.getCreatedAt());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
