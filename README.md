@@ -1534,6 +1534,15 @@ deployment/tunnel public và cấu hình origin tương ứng, sau đó khởi �
 npm run dev
 ```
 
+### 6. Deploy Render và Aiven
+
+- Repository dùng [`render.yaml`](render.yaml) để cố định cấu hình Spring Web Service và React Static Site, gồm health check `/health`, SPA rewrite và cache asset.
+- Backend production vẫn dùng `ddl-auto: validate`; deploy không tự sửa schema Aiven. Nếu Aiven còn schema cũ, phải backup và chạy migration nâng cấp đã review trước khi deploy code mới.
+- JDBC URL Aiven phải dùng TLS (`sslMode=REQUIRED`), đúng hostname, port và database trong Aiven Console.
+- Render Free có cold start và giới hạn 512 MB RAM; Frontend production dùng timeout 75 giây, còn Backend giới hạn JVM, Tomcat thread và Hikari pool phù hợp một instance demo.
+- AI moderation PhoBERT không phù hợp RAM của Render Free. `AI_MODERATION_LOCAL_BASE_URL` phải trỏ đến một AI service đủ RAM; nếu provider không sẵn sàng, Post/Comment/Reply có text tiếp tục fail closed đúng contract.
+- Checklist biến môi trường, nâng schema an toàn và xử lý lỗi xem tại [`docs/deployment/RENDER-AIVEN.md`](docs/deployment/RENDER-AIVEN.md).
+
 ---
 
 ## 🧪 Kiểm thử

@@ -4,10 +4,11 @@ import java.util.Set;
 import org.springframework.http.HttpMethod;
 
 /**
- * Nguồn duy nhất khai báo các endpoint Auth public để SecurityConfig và JWT filter không bị lệch nhau.
+ * Nguồn duy nhất khai báo các endpoint public để SecurityConfig và JWT filter không bị lệch nhau.
  */
 final class SecurityPaths {
 
+    static final String HEALTH = "/health";
     static final String REGISTRATIONS = "/api/v1/auth/registrations";
     static final String VERIFY_REGISTRATION = "/api/v1/auth/registrations/verify";
     static final String RESEND_REGISTRATION = "/api/v1/auth/registrations/resend";
@@ -36,7 +37,7 @@ final class SecurityPaths {
             RESOLVE_SOCIAL_CONFLICT,
             PASSWORD_RECOVERY, PASSWORD_RECOVERY_VERIFY, PASSWORD_RECOVERY_RESEND, PASSWORD_RECOVERY_COMPLETE
     );
-    static final Set<String> PUBLIC_GET_AUTH_ENDPOINTS = Set.of(REGISTRATION_STATUS);
+    static final Set<String> PUBLIC_GET_AUTH_ENDPOINTS = Set.of(HEALTH, REGISTRATION_STATUS);
 
     static boolean isPublic(String method, String requestUri) {
         return (HttpMethod.POST.matches(method) && PUBLIC_POST_AUTH_ENDPOINTS.contains(requestUri))

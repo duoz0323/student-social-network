@@ -30,7 +30,9 @@ class SecurityPathsTest {
                         "/api/v1/auth/register"
                 );
         assertThat(SecurityPaths.PUBLIC_GET_AUTH_ENDPOINTS)
-                .containsExactly("/api/v1/auth/registrations/status");
+                .containsExactlyInAnyOrder("/health", "/api/v1/auth/registrations/status");
+        assertThat(SecurityPaths.isPublic("GET", "/health")).isTrue();
+        assertThat(SecurityPaths.isPublic("POST", "/health")).isFalse();
         assertThat(SecurityPaths.isPublic("GET", "/api/v1/auth/registrations/status")).isTrue();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/login")).isTrue();
         assertThat(SecurityPaths.isPublic("POST", "/api/v1/auth/refresh-token")).isTrue();
