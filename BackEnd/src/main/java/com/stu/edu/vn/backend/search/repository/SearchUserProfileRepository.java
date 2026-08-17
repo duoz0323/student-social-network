@@ -18,6 +18,7 @@ public interface SearchUserProfileRepository extends JpaRepository<UserProfile, 
                     FROM user_profiles up
                     JOIN users u ON u.id = up.user_id
                     WHERE u.status = 'ACTIVE'
+                      AND u.role = 'USER'
                       AND up.profile_completed_at IS NOT NULL
                       AND up.display_name IS NOT NULL
                       AND up.display_name LIKE CONCAT('%', :keyword, '%') ESCAPE '='
@@ -35,6 +36,7 @@ public interface SearchUserProfileRepository extends JpaRepository<UserProfile, 
                     FROM user_profiles up
                     JOIN users u ON u.id = up.user_id
                     WHERE u.status = 'ACTIVE'
+                      AND u.role = 'USER'
                       AND up.profile_completed_at IS NOT NULL
                       AND up.display_name IS NOT NULL
                       AND up.display_name LIKE CONCAT('%', :keyword, '%') ESCAPE '='

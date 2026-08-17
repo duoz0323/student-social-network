@@ -39,6 +39,7 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -89,6 +90,7 @@ public class PostServiceImpl implements PostService {
     private final Clock clock;
     private final UserRelationshipPolicyService relationshipPolicyService;
     private final ContentModerationService contentModerationService;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     @Override
     public PostResponse createPost(CreatePostRequest request) {
@@ -139,7 +141,8 @@ public class PostServiceImpl implements PostService {
         boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
         boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(viewerId, postId);
         return postMapper.toDetailResponse(
-                post, post.getAuthorProfile(), media, hashtag, owner, likedByCurrentUser, reposted);
+                post, post.getAuthorProfile(), media, hashtag, owner, likedByCurrentUser, reposted,
+                publicUserBadgeService.getBadges(post.getAuthor().getId()));
     }
 
     @Override
@@ -158,7 +161,8 @@ public class PostServiceImpl implements PostService {
         boolean likedByCurrentUser = postLikeRepository.existsByIdUserIdAndIdPostId(authorId, postId);
         boolean reposted = postRepostRepository.existsByIdUserIdAndIdPostId(authorId, postId);
         PostDetailResponse detail = postMapper.toDetailResponse(
-                post, post.getAuthorProfile(), media, hashtag, true, likedByCurrentUser, reposted);
+                post, post.getAuthorProfile(), media, hashtag, true, likedByCurrentUser, reposted,
+                publicUserBadgeService.getBadges(post.getAuthor().getId()));
         return OwnedPostDetailResponse.from(
                 detail, post.getStatus(), post.getHiddenAt(), post.getHiddenReason(), post.getDeletedAt());
     }
@@ -406,7 +410,8 @@ public class PostServiceImpl implements PostService {
                 updatedData.hashtag(),
                 true,
                 likedByCurrentUser,
-                reposted
+                reposted,
+                publicUserBadgeService.getBadges(lockedPost.getAuthor().getId())
         );
     }
 
@@ -491,7 +496,8 @@ public class PostServiceImpl implements PostService {
 
         // Refresh để lấy các giá trị do MySQL tự sinh như created_at, updated_at và published_at.
         entityManager.refresh(post);
-        return postMapper.toResponse(post, authorContext.profile(), media, command.hashtag());
+        return postMapper.toResponse(post, authorContext.profile(), media, command.hashtag(),
+                publicUserBadgeService.getBadges(authorContext.author().getId()));
     }
 
     private List<PostMedia> savePostMedia(Post post, List<UploadedPostMedia> uploadedMedia) {

@@ -42,4 +42,5 @@ export const socialApi = Object.freeze({
   markNotificationRead: (id, signal) => requestData(httpClient.patch(DISCOVERY_ENDPOINTS.notificationRead(id), undefined, { signal })),
   markAllNotificationsRead: (signal) => requestData(httpClient.patch(DISCOVERY_ENDPOINTS.notificationReadAll, undefined, { signal })),
   deleteNotification: (id, signal) => requestData(httpClient.delete(DISCOVERY_ENDPOINTS.notification(id), { signal })),
+  getNotificationModerationDetail: (id, signal) => requestData(httpClient.get(DISCOVERY_ENDPOINTS.notificationModerationDetail(id), { signal })),
 });

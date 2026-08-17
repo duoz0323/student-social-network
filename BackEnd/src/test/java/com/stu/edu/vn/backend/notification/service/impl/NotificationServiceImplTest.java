@@ -14,6 +14,7 @@ import com.stu.edu.vn.backend.notification.enums.NotificationType;
 import com.stu.edu.vn.backend.notification.event.NotificationCreatedEvent;
 import com.stu.edu.vn.backend.notification.mapper.NotificationMapper;
 import com.stu.edu.vn.backend.notification.repository.NotificationRepository;
+import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
@@ -144,6 +145,28 @@ class NotificationServiceImplTest {
     }
 
     @Test
+    void violationWarningsUseImmutableTypesAndHideAdminIdentity() {
+        User recipient = user(20L);
+        Post post = new Post(recipient, "Nội dung vi phạm cần lưu snapshot");
+        ReflectionTestUtils.setField(post, "id", 100L);
+        post.setHiddenReason("HARMFUL_CONTENT");
+        when(entityManager.getReference(User.class, 20L)).thenReturn(recipient);
+        when(entityManager.getReference(Post.class, 100L)).thenReturn(post);
+
+        service.createContentViolationWarningNotification(20L, 100L, true);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo(NotificationType.CONTENT_VIOLATION_FINAL_WARNING);
+        assertThat(captor.getValue().getActor()).isNull();
+        assertThat(captor.getValue().getRecipient().getId()).isEqualTo(20L);
+        assertThat(captor.getValue().getPost().getId()).isEqualTo(100L);
+        assertThat(captor.getValue().getModerationReason()).isEqualTo("HARMFUL_CONTENT");
+        assertThat(captor.getValue().getModerationPostSummary()).isEqualTo("Nội dung vi phạm cần lưu snapshot");
+        verify(eventPublisher).publishEvent(new NotificationCreatedEvent(99L, 20L));
+    }
+
+    @Test
     void adminProfileUpdateCreatesSystemNotificationWithoutAdminActor() {
         User recipient = user(20L);
         when(entityManager.getReference(User.class, 20L)).thenReturn(recipient);
@@ -170,6 +193,49 @@ class NotificationServiceImplTest {
 
         assertThat(response.notificationId()).isEqualTo(30L);
         assertThat(response.readAt()).isEqualTo(LocalDateTime.of(2026, 7, 18, 10, 0));
+    }
+
+    @Test
+    void moderationDetailReturnsSnapshotOnlyToNotificationOwner() {
+        Post post = new Post(user(20L), "Nội dung hiện tại");
+        ReflectionTestUtils.setField(post, "id", 100L);
+        Notification notification = new Notification(
+                user(20L), null, NotificationType.CONTENT_VIOLATION_FINAL_WARNING,
+                post, null, null, "MISINFORMATION", "Snapshot tại thời điểm xử lý");
+        ReflectionTestUtils.setField(notification, "id", 30L);
+        ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.of(2026, 7, 18, 9, 30));
+        when(notificationRepository.findByIdAndRecipient_IdAndDeletedAtIsNull(30L, 20L))
+                .thenReturn(Optional.of(notification));
+
+        var response = service.getModerationDetail(30L);
+
+        assertThat(response.postId()).isEqualTo(100L);
+        assertThat(response.reasonCode()).isEqualTo("MISINFORMATION");
+        assertThat(response.postSummary()).isEqualTo("Snapshot tại thời điểm xử lý");
+        assertThat(response.violationCount()).isEqualTo(2);
+        assertThat(response.violationThreshold()).isEqualTo(3);
+    }
+
+    @Test
+    void hiddenPostModerationDetailKeepsViolationCountNullWithoutUnboxingFailure() {
+        Post post = new Post(user(20L), "Nội dung hiện tại");
+        ReflectionTestUtils.setField(post, "id", 100L);
+        Notification notification = new Notification(
+                user(20L), null, NotificationType.POST_HIDDEN_BY_ADMIN,
+                post, null, null, "HARMFUL_CONTENT", "Snapshot bài viết bị ẩn");
+        ReflectionTestUtils.setField(notification, "id", 31L);
+        ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.of(2026, 7, 18, 9, 35));
+        when(notificationRepository.findByIdAndRecipient_IdAndDeletedAtIsNull(31L, 20L))
+                .thenReturn(Optional.of(notification));
+
+        var response = service.getModerationDetail(31L);
+
+        assertThat(response.type()).isEqualTo(NotificationType.POST_HIDDEN_BY_ADMIN);
+        assertThat(response.postId()).isEqualTo(100L);
+        assertThat(response.reasonCode()).isEqualTo("HARMFUL_CONTENT");
+        assertThat(response.postSummary()).isEqualTo("Snapshot bài viết bị ẩn");
+        assertThat(response.violationCount()).isNull();
+        assertThat(response.violationThreshold()).isEqualTo(3);
     }
 
     @Test

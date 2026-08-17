@@ -8,6 +8,7 @@ import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.security.JwtService;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -114,6 +115,16 @@ class StompJwtChannelInterceptorTest {
     }
 
     @Test
+    void onlyAdminCanSubscribeAdminNotificationDestination() {
+        assertThat(interceptor.preSend(
+                message(StompCommand.SUBSCRIBE, "/user/queue/admin-notifications", authenticatedAdmin(20L)), null))
+                .isNotNull();
+        assertThatThrownBy(() -> interceptor.preSend(
+                message(StompCommand.SUBSCRIBE, "/user/queue/admin-notifications", authenticatedUser(10L)), null))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void clientCannotSubscribeDestinationOutsideAllowlist() {
         Authentication authentication = authenticatedUser(10L);
 
@@ -191,6 +202,14 @@ class StompJwtChannelInterceptorTest {
 
     private Authentication authenticatedUser(Long id) {
         User user = activeUser(id);
+        CustomUserPrincipal principal = new CustomUserPrincipal(id, user.getRole(), user.getStatus());
+        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities());
+    }
+
+    private Authentication authenticatedAdmin(Long id) {
+        User user = activeUser(id);
+        user.setRole(UserRole.ADMIN);
         CustomUserPrincipal principal = new CustomUserPrincipal(id, user.getRole(), user.getStatus());
         return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());

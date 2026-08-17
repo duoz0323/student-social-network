@@ -21,6 +21,7 @@ export default function OnboardingStep1Name({
   usernameError,
   availabilityStatus,
   canContinue,
+  usernameLocked = false,
 }) {
   const displayNameValid = displayName.trim().length >= 2;
   const availabilityView = AVAILABILITY_VIEW[availabilityStatus];
@@ -70,6 +71,7 @@ export default function OnboardingStep1Name({
             <input
               id="onboarding-username"
               value={username}
+              disabled={usernameLocked}
               onChange={(event) => onUsernameChange(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && canContinue && onNext()}
               placeholder="duoz_03"
@@ -87,7 +89,9 @@ export default function OnboardingStep1Name({
             ) : null}
           </div>
           <p id="username-helper" className="mt-2 text-xs text-zinc-400">
-            3–30 ký tự, chỉ gồm chữ thường, số, dấu chấm và gạch dưới.
+            {usernameLocked
+              ? 'Tên người dùng không thể thay đổi sau khi hồ sơ cơ bản đã hoàn tất.'
+              : '3–30 ký tự, chỉ gồm chữ thường, số, dấu chấm và gạch dưới.'}
           </p>
           <div id="username-status" className="mt-1 min-h-5 text-xs" aria-live="polite">
             {usernameError ? <span className="text-red-600">{usernameError}</span> : null}

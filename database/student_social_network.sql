@@ -9,8 +9,8 @@
 --   * Admin RBAC, tạo/khóa/mở Admin, cấp lại/tự đổi mật khẩu và phân quyền.
 --   * Academic Admin audit actions.
 --   * Collaborator, Managed Social Identity và moderation suggestions.
--- Các migration rời trong database/ chỉ dùng để nâng cấp database đang có dữ liệu;
--- không chạy lại chúng sau khi đã import mới bằng file này.
+--   * Community Standards, moderation notification snapshot và Admin Realtime Notification.
+-- Thư mục database/ chỉ giữ artifact canonical SQL + DBML; dự án không phân phối migration rời.
 
 DROP DATABASE IF EXISTS `student_social_network`;
 CREATE DATABASE `student_social_network` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
@@ -972,10 +972,12 @@ CREATE TABLE `notifications` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `recipient_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned DEFAULT NULL,
-  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','PROFILE_UPDATED_BY_ADMIN','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
+  `type` enum('FOLLOW','POST_LIKE','POST_COMMENT','COMMENT_REPLY','POST_REPOST','REPORT_RESOLVED','REPORT_REJECTED','POST_HIDDEN_BY_ADMIN','POST_RESTORED_BY_ADMIN','PROFILE_UPDATED_BY_ADMIN','CONTENT_VIOLATION_WARNING','CONTENT_VIOLATION_FINAL_WARNING','ACCOUNT_BLOCKED','ACCOUNT_UNBLOCKED') NOT NULL,
   `post_id` bigint unsigned DEFAULT NULL,
   `comment_id` bigint unsigned DEFAULT NULL,
   `report_id` bigint unsigned DEFAULT NULL,
+  `moderation_reason` varchar(64) DEFAULT NULL,
+  `moderation_post_summary` varchar(500) DEFAULT NULL,
   `read_at` datetime(6) DEFAULT NULL,
   `deleted_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -994,6 +996,35 @@ CREATE TABLE `notifications` (
   CONSTRAINT `fk_notifications_report` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Admin Notification có lifecycle và authorization riêng; không dùng chung bảng notifications của USER.
+DROP TABLE IF EXISTS `admin_notifications`;
+CREATE TABLE `admin_notifications` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `recipient_admin_id` bigint unsigned NOT NULL,
+  `actor_admin_id` bigint unsigned DEFAULT NULL,
+  `type` varchar(64) NOT NULL,
+  `title` varchar(200) NOT NULL,
+  `message` varchar(500) NOT NULL,
+  `required_permission_code` varchar(100) DEFAULT NULL,
+  `reference_type` varchar(64) DEFAULT NULL,
+  `reference_id` bigint unsigned DEFAULT NULL,
+  `event_key` varchar(190) NOT NULL,
+  `read_at` datetime(6) DEFAULT NULL,
+  `deleted_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_admin_notifications_recipient_event` (`recipient_admin_id`,`event_key`),
+  KEY `idx_admin_notifications_recipient_created` (`recipient_admin_id`,`deleted_at`,`created_at` DESC,`id` DESC),
+  KEY `idx_admin_notifications_recipient_unread` (`recipient_admin_id`,`deleted_at`,`read_at`,`id`),
+  KEY `idx_admin_notifications_actor` (`actor_admin_id`),
+  KEY `idx_admin_notifications_permission` (`required_permission_code`),
+  CONSTRAINT `fk_admin_notifications_recipient` FOREIGN KEY (`recipient_admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_admin_notifications_actor` FOREIGN KEY (`actor_admin_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
+  CONSTRAINT `chk_admin_notifications_reference` CHECK ((`reference_type` IS NULL AND `reference_id` IS NULL) OR (`reference_type` IS NOT NULL AND `reference_id` IS NOT NULL)),
+  CONSTRAINT `chk_admin_notifications_event_key` CHECK (char_length(trim(`event_key`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Các quy tắc actor theo loại và chặn tự thông báo được kiểm tra ở service. MySQL không cho
 -- actor_id tham gia CHECK đồng thời dùng foreign key ON DELETE SET NULL (ERROR 3823).
@@ -1380,6 +1411,14 @@ SELECT r.id, p.id FROM `roles` r CROSS JOIN `permissions` p WHERE r.code = 'COLL
 
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('MODERATION_SUGGESTION_VIEW','MODERATION_SUGGESTION_DETAIL_VIEW','MODERATION_SUGGESTION_REVIEW') WHERE r.code = 'MODERATOR';
+
+-- Các quyền tạo Admin và tái phân quyền chỉ thuộc SUPER_ADMIN.
+DELETE rp
+FROM `role_permissions` rp
+JOIN `roles` r ON r.id = rp.role_id
+JOIN `permissions` p ON p.id = rp.permission_id
+WHERE r.code <> 'SUPER_ADMIN'
+  AND p.code IN ('ADMIN_CREATE','ADMIN_ROLE_ASSIGN','ADMIN_ROLE_REVOKE');
 
 DROP TABLE IF EXISTS `user_interests`;
 CREATE TABLE `user_interests` (

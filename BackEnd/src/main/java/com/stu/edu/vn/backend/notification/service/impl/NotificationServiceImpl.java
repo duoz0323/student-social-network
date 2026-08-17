@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.notification.dto.response.NotificationReadAllRespo
 import com.stu.edu.vn.backend.notification.dto.response.NotificationReadResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationUnreadCountResponse;
+import com.stu.edu.vn.backend.notification.dto.response.ModerationNotificationDetailResponse;
 import com.stu.edu.vn.backend.notification.entity.Notification;
 import com.stu.edu.vn.backend.notification.enums.NotificationType;
 import com.stu.edu.vn.backend.notification.event.NotificationCreatedEvent;
@@ -38,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class NotificationServiceImpl implements NotificationService {
+
+    private static final int VIOLATION_THRESHOLD = 3;
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
@@ -208,6 +211,46 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ModerationNotificationDetailResponse getModerationDetail(Long notificationId) {
+        Long currentUserId = getEligibleCurrentUserId();
+        Notification notification = notificationRepository
+                .findByIdAndRecipient_IdAndDeletedAtIsNull(notificationId, currentUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        if (!isModerationDetailType(notification.getType())) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND);
+        }
+
+        Post post = notification.getPost();
+        String reason = notification.getModerationReason();
+        String summary = notification.getModerationPostSummary();
+        // Fallback chỉ dành cho notification cũ được tạo trước migration snapshot.
+        if (post != null) {
+            if (reason == null) reason = post.getHiddenReason();
+            if (summary == null) summary = summarizePost(post.getContent());
+        }
+        Integer violationCount = null;
+        if (notification.getType() == NotificationType.CONTENT_VIOLATION_WARNING) {
+            violationCount = 1;
+        } else if (notification.getType() == NotificationType.CONTENT_VIOLATION_FINAL_WARNING) {
+            violationCount = 2;
+        }
+        // Thông báo ẩn bài không phải một mốc cảnh báo, vì vậy giữ null và tránh Java tự unbox null thành int.
+        return new ModerationNotificationDetailResponse(
+                notification.getId(), notification.getType(), post == null ? null : post.getId(), summary,
+                reason, violationCount, VIOLATION_THRESHOLD, notification.getCreatedAt());
+    }
+
+    @Override
+    @Transactional
+    public void createContentViolationWarningNotification(Long recipientId, Long postId, boolean finalWarning) {
+        // Hai type cố định giữ đúng snapshot 1/3 hoặc 2/3 mà không phụ thuộc trạng thái hiện tại khi đọc lại.
+        createNotification(null, recipientId, finalWarning
+                ? NotificationType.CONTENT_VIOLATION_FINAL_WARNING
+                : NotificationType.CONTENT_VIOLATION_WARNING, postId, null, null);
+    }
+
+    @Override
     @Transactional
     public void createAccountBlockedNotification(Long recipientId) {
         createNotification(null, recipientId, NotificationType.ACCOUNT_BLOCKED, null, null, null);
@@ -245,8 +288,11 @@ public class NotificationServiceImpl implements NotificationService {
         Post post = postId == null ? null : entityManager.getReference(Post.class, postId);
         Comment comment = commentId == null ? null : entityManager.getReference(Comment.class, commentId);
         Report report = reportId == null ? null : entityManager.getReference(Report.class, reportId);
+        boolean moderationDetail = isModerationDetailType(type) && post != null;
         Notification notification = notificationRepository.saveAndFlush(
-                new Notification(recipient, actor, type, post, comment, report));
+                new Notification(recipient, actor, type, post, comment, report,
+                        moderationDetail ? post.getHiddenReason() : null,
+                        moderationDetail ? summarizePost(post.getContent()) : null));
         // Event chỉ mang định danh; listener sẽ đọc lại dữ liệu đã commit và áp dụng lại visibility.
         eventPublisher.publishEvent(new NotificationCreatedEvent(notification.getId(), recipientId));
     }
@@ -255,6 +301,18 @@ public class NotificationServiceImpl implements NotificationService {
         return type == NotificationType.POST_LIKE
                 || type == NotificationType.POST_COMMENT
                 || type == NotificationType.COMMENT_REPLY;
+    }
+
+    private boolean isModerationDetailType(NotificationType type) {
+        return type == NotificationType.POST_HIDDEN_BY_ADMIN
+                || type == NotificationType.CONTENT_VIOLATION_WARNING
+                || type == NotificationType.CONTENT_VIOLATION_FINAL_WARNING;
+    }
+
+    private String summarizePost(String content) {
+        String normalized = content == null ? "" : content.strip().replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) return "Bài viết chỉ chứa nội dung đa phương tiện.";
+        return normalized.length() <= 500 ? normalized : normalized.substring(0, 497) + "...";
     }
 
     private Long getEligibleCurrentUserId() {

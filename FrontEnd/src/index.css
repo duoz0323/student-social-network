@@ -57,6 +57,31 @@
   color-scheme: inherit;
 }
 
+/*
+ * Palette trung tính riêng cho khu vực quản trị. Các biến này cho phép những trang
+ * cũ và mới dùng chung một hệ trắng–đen, đồng thời giữ status color có ngữ nghĩa.
+ */
+.admin-theme {
+  --admin-canvas: #fafafa;
+  --admin-surface: #ffffff;
+  --admin-surface-subtle: #f4f4f5;
+  --admin-surface-hover: #e4e4e7;
+  --admin-border: #e4e4e7;
+  --admin-border-strong: #a1a1aa;
+  --admin-text: #18181b;
+  --admin-text-muted: #71717a;
+  --admin-control: #ffffff;
+  background-color: var(--admin-canvas);
+  color: var(--admin-text);
+}
+
+.admin-theme input,
+.admin-theme textarea,
+.admin-theme select {
+  background-color: var(--admin-control);
+  color: var(--admin-text);
+}
+
 /* Breakpoint của trang Admin dựa trên chiều rộng content thực tế sau khi sidebar thu/mở. */
 .admin-content-container {
   container: admin-content / inline-size;
@@ -432,6 +457,197 @@ a {
     border-radius: var(--radius-control);
     background: #ffffff;
     padding: 3px;
+  }
+
+  /*
+   * Theme Admin tối dùng nền đen trung tính và surface phân tầng rõ. Selector được
+   * scope để không làm thay đổi màu của khu vực người dùng hoặc trang xác thực.
+   */
+  .admin-theme {
+    --admin-canvas: #09090b;
+    --admin-surface: #18181b;
+    --admin-surface-subtle: #27272a;
+    --admin-surface-hover: #3f3f46;
+    --admin-border: #3f3f46;
+    --admin-border-strong: #71717a;
+    --admin-text: #fafafa;
+    --admin-text-muted: #a1a1aa;
+    --admin-control: #18181b;
+    color-scheme: dark;
+  }
+
+  .admin-theme.bg-white,
+  .admin-theme > main.bg-white {
+    background-color: var(--admin-canvas);
+  }
+
+  .admin-theme .bg-white {
+    background-color: var(--admin-surface);
+  }
+
+  .admin-theme .bg-zinc-50,
+  .admin-theme .bg-slate-50,
+  .admin-theme .bg-gray-50,
+  .admin-theme .bg-zinc-50\/50 {
+    background-color: var(--admin-surface-subtle);
+  }
+
+  .admin-theme .bg-zinc-100,
+  .admin-theme .bg-zinc-200,
+  .admin-theme .bg-zinc-300,
+  .admin-theme .bg-zinc-400,
+  .admin-theme .bg-slate-100,
+  .admin-theme .bg-slate-200,
+  .admin-theme .bg-gray-100,
+  .admin-theme .bg-gray-200 {
+    background-color: var(--admin-surface-hover);
+  }
+
+  .admin-theme .text-black,
+  .admin-theme .text-zinc-950,
+  .admin-theme .text-zinc-900,
+  .admin-theme .text-zinc-800,
+  .admin-theme .text-slate-900,
+  .admin-theme .text-slate-800 {
+    color: var(--admin-text);
+  }
+
+  .admin-theme .text-zinc-700,
+  .admin-theme .text-zinc-600,
+  .admin-theme .text-zinc-500,
+  .admin-theme .text-zinc-400,
+  .admin-theme .text-slate-700,
+  .admin-theme .text-slate-600,
+  .admin-theme .text-slate-500,
+  .admin-theme .text-slate-400,
+  .admin-theme .text-gray-500 {
+    color: var(--admin-text-muted);
+  }
+
+  .admin-theme .border-zinc-100,
+  .admin-theme .border-zinc-200,
+  .admin-theme .border-zinc-300,
+  .admin-theme .border-slate-100,
+  .admin-theme .border-slate-200,
+  .admin-theme .divide-zinc-100 > :not(:last-child) {
+    border-color: var(--admin-border);
+  }
+
+  .admin-theme .border-zinc-400,
+  .admin-theme .border-zinc-500,
+  .admin-theme .border-slate-400 {
+    border-color: var(--admin-border-strong);
+  }
+
+  .admin-theme .hover\:bg-zinc-50:hover,
+  .admin-theme .hover\:bg-zinc-50\/70:hover,
+  .admin-theme .hover\:bg-zinc-100:hover,
+  .admin-theme .hover\:bg-zinc-200:hover,
+  .admin-theme .hover\:bg-zinc-200\/50:hover,
+  .admin-theme .hover\:bg-slate-50:hover,
+  .admin-theme .hover\:bg-slate-100:hover,
+  .admin-theme .hover\:bg-white:hover {
+    background-color: var(--admin-surface-hover);
+  }
+
+  .admin-theme .hover\:text-zinc-800:hover,
+  .admin-theme .hover\:text-zinc-900:hover,
+  .admin-theme .hover\:text-zinc-950:hover,
+  .admin-theme .hover\:text-slate-700:hover {
+    color: var(--admin-text);
+  }
+
+  .admin-theme .focus\:ring-zinc-100:focus,
+  .admin-theme .focus\:ring-zinc-200:focus,
+  .admin-theme .focus\:ring-zinc-300:focus,
+  .admin-theme .focus\:ring-zinc-500:focus,
+  .admin-theme .ring-zinc-200,
+  .admin-theme .ring-zinc-900 {
+    --tw-ring-color: var(--admin-border-strong);
+  }
+
+  /* Nền status được làm sâu hơn để badge/cảnh báo không phát sáng trên canvas tối. */
+  .admin-theme .bg-blue-50,
+  .admin-theme .bg-blue-50\/60,
+  .admin-theme .bg-blue-50\/80,
+  .admin-theme .bg-blue-200,
+  .admin-theme .bg-sky-50 { background-color: #172554; }
+  .admin-theme .bg-emerald-50,
+  .admin-theme .bg-emerald-50\/60,
+  .admin-theme .bg-emerald-100 { background-color: #052e24; }
+  .admin-theme .bg-amber-50,
+  .admin-theme .bg-amber-50\/60,
+  .admin-theme .bg-amber-100 { background-color: #422006; }
+  .admin-theme .bg-red-50,
+  .admin-theme .bg-red-50\/50,
+  .admin-theme .bg-red-100,
+  .admin-theme .bg-rose-50,
+  .admin-theme .bg-rose-100 { background-color: #450a0a; }
+  .admin-theme .bg-indigo-50,
+  .admin-theme .bg-indigo-50\/40,
+  .admin-theme .bg-indigo-100,
+  .admin-theme .bg-violet-50,
+  .admin-theme .bg-violet-50\/50,
+  .admin-theme .bg-violet-50\/60,
+  .admin-theme .bg-violet-50\/70,
+  .admin-theme .bg-violet-100,
+  .admin-theme .bg-pink-50 { background-color: #2e1065; }
+
+  .admin-theme .text-blue-600,
+  .admin-theme .text-blue-700,
+  .admin-theme .text-blue-950,
+  .admin-theme .text-sky-700 { color: #bfdbfe; }
+  .admin-theme .text-emerald-600,
+  .admin-theme .text-emerald-700,
+  .admin-theme .text-emerald-800,
+  .admin-theme .text-emerald-900 { color: #a7f3d0; }
+  .admin-theme .text-amber-700,
+  .admin-theme .text-amber-800,
+  .admin-theme .text-amber-900,
+  .admin-theme .text-amber-900\/80 { color: #fde68a; }
+  .admin-theme .text-red-600,
+  .admin-theme .text-red-700,
+  .admin-theme .text-red-800,
+  .admin-theme .text-rose-500,
+  .admin-theme .text-rose-600,
+  .admin-theme .text-rose-700 { color: #fecaca; }
+  .admin-theme .text-indigo-600,
+  .admin-theme .text-indigo-700,
+  .admin-theme .text-violet-600,
+  .admin-theme .text-violet-700,
+  .admin-theme .text-violet-800,
+  .admin-theme .text-pink-700 { color: #ddd6fe; }
+
+  .admin-theme .border-blue-500,
+  .admin-theme .border-blue-600 { border-color: #60a5fa; }
+  .admin-theme .border-emerald-200 { border-color: #047857; }
+  .admin-theme .border-amber-200,
+  .admin-theme .border-amber-300 { border-color: #a16207; }
+  .admin-theme .border-red-200,
+  .admin-theme .border-rose-200 { border-color: #b91c1c; }
+  .admin-theme .border-indigo-200,
+  .admin-theme .border-violet-100 { border-color: #6d28d9; }
+
+  .admin-theme input,
+  .admin-theme textarea,
+  .admin-theme select {
+    border-color: var(--admin-border);
+    background-color: var(--admin-control);
+    color: var(--admin-text);
+  }
+
+  .admin-theme input::placeholder,
+  .admin-theme textarea::placeholder {
+    color: var(--admin-text-muted);
+  }
+
+  .admin-theme svg .fill-zinc-950 { fill: var(--admin-text); }
+  .admin-theme svg .fill-zinc-500,
+  .admin-theme svg .fill-zinc-400 { fill: var(--admin-text-muted); }
+
+  .admin-theme img[alt='UniShare'] {
+    background: #ffffff;
+    padding: 2px;
   }
 }
 

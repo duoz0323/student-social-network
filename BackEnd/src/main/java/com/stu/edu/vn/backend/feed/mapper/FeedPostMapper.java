@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import java.util.List;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -24,7 +25,7 @@ public interface FeedPostMapper {
     @Mapping(target = "commentCount", source = "post.commentCount")
     @Mapping(target = "repostCount", source = "post.repostCount")
     @Mapping(target = "publishedAt", source = "post.publishedAt")
-    @Mapping(target = "author", source = "profile")
+    @Mapping(target = "author", expression = "java(new PostAuthorResponse(profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl(), badges))")
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "likedByCurrentUser", source = "liked")
@@ -32,19 +33,21 @@ public interface FeedPostMapper {
     @Mapping(target = "repostedByCurrentUser", source = "reposted")
     @Mapping(target = "location", source = "location")
     FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
-                                String hashtag, boolean liked, boolean saved, boolean reposted, Location location);
+                                String hashtag, boolean liked, boolean saved, boolean reposted, Location location,
+                                List<PublicUserBadge> badges);
 
     default FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
                                         String hashtag, boolean liked, boolean saved) {
-        return toResponse(post, profile, media, hashtag, liked, saved, false, null);
+        return toResponse(post, profile, media, hashtag, liked, saved, false, null, List.of());
     }
 
     default FeedPostResponse toResponse(Post post, UserProfile profile, List<PostMedia> media,
                                         String hashtag, boolean liked, boolean saved, Location location) {
-        return toResponse(post, profile, media, hashtag, liked, saved, false, location);
+        return toResponse(post, profile, media, hashtag, liked, saved, false, location, List.of());
     }
 
     @Mapping(target = "id", source = "userId")
+    @Mapping(target = "badges", expression = "java(java.util.List.of())")
     PostAuthorResponse toAuthor(UserProfile profile);
 
     @Mapping(target = "url", source = "mediaUrl")

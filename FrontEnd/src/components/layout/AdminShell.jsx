@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, GraduationCap, Hash, LayoutDashboard, Users, FileText, Flag, History, LogOut, ShieldCheck, SlidersHorizontal, UserCircle } from 'lucide-react';
-import logo from '../../assets/brand/logo-light.jpg';
+import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, Compass, GraduationCap, Hash, LayoutDashboard, Users, FileText, Flag, History, LogOut, ShieldAlert, ShieldCheck, SlidersHorizontal, UserCircle } from 'lucide-react';
 import Button from '../common/Button.jsx';
 import { useApp } from '../../contexts/AppContext.jsx';
+import useThemeLogo from '../../hooks/useThemeLogo.js';
 import AdminToastProvider from '../../features/admin/components/AdminToastProvider.jsx';
-import { getAdminPageTitle } from '../../features/admin/utils/adminPageTitle.js';
+import { getAdminPageTitle, hasPageOwnedAdminHeader } from '../../features/admin/utils/adminPageTitle.js';
 import { useAuth } from '../../features/auth/hooks/useAuth.js';
 import { ADMIN_PERMISSIONS, getAdminNavigationScopes, getPrimaryAdminRoleLabel } from '../../features/admin/constants/adminRbac.js';
+import AdminNotificationBell from '../../features/admin/notifications/AdminNotificationBell.jsx';
+import Avatar from '../common/Avatar.jsx';
 
 export default function AdminShell() {
   const { currentUser, logout } = useApp();
+  // Logo quản trị đổi cùng color scheme để nhận diện luôn rõ trên nền sidebar.
+  const logo = useThemeLogo();
   const auth = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const pageOwnsHeader = hasPageOwnedAdminHeader(location.pathname);
   // Màn hình nhỏ khởi tạo sidebar ở trạng thái thu gọn để không che khu vực nội dung chính.
   const [isCollapsed, setIsCollapsed] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
@@ -23,10 +28,12 @@ export default function AdminShell() {
   const isAnalyticsRoute = analyticsPaths.includes(location.pathname);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(isAnalyticsRoute);
   const collaboratorItems = [
-    { to: '/admin/profile', label: 'Hồ sơ của tôi', icon: UserCircle },
     { to: '/admin/collaborator', label: 'Dashboard', icon: LayoutDashboard, end: true, permission: ADMIN_PERMISSIONS.COLLABORATOR_DASHBOARD_VIEW },
+    { to: '/admin/collaborator/profile', label: 'Hồ sơ cộng tác viên', icon: UserCircle, permission: ADMIN_PERMISSIONS.COLLABORATOR_DASHBOARD_VIEW },
     { to: '/admin/collaborator/posts', label: 'Nội dung của tôi', icon: FileText, permission: ADMIN_PERMISSIONS.COLLABORATOR_POST_VIEW_OWN },
     { to: '/admin/collaborator/hashtags', label: 'Hashtag', icon: Hash, permission: ADMIN_PERMISSIONS.COLLABORATOR_HASHTAG_VIEW },
+    { to: '/admin/collaborator/explore', label: 'Khám phá nội dung', icon: Compass, permission: ADMIN_PERMISSIONS.COLLABORATOR_EXPLORE_VIEW },
+    { to: '/admin/collaborator/moderation-suggestions', label: 'Đề xuất của tôi', icon: ShieldAlert, permission: ADMIN_PERMISSIONS.COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN },
   ];
   const regularItems = [
     { to: '/admin/profile', label: 'Hồ sơ của tôi', icon: UserCircle },
@@ -36,6 +43,7 @@ export default function AdminShell() {
     { to: '/admin/hashtags', label: 'Hashtag', icon: Hash, permission: ADMIN_PERMISSIONS.HASHTAG_VIEW },
     { to: '/admin/academic', label: 'Dữ liệu học thuật', icon: GraduationCap },
     { to: '/admin/reports', label: 'Báo cáo', icon: Flag, permission: ADMIN_PERMISSIONS.REPORT_VIEW },
+    { to: '/admin/moderation-suggestions', label: 'Đề xuất kiểm duyệt', icon: ShieldAlert, permission: ADMIN_PERMISSIONS.MODERATION_SUGGESTION_VIEW },
     {
       label: 'Thống kê',
       icon: BarChart3,
@@ -188,9 +196,12 @@ export default function AdminShell() {
         {/* Footer Actions */}
         <div className={`mt-auto border-t border-zinc-200 bg-zinc-50 ${isCollapsed ? 'p-3' : 'p-6'}`}>
           <div className={`flex items-center ${isCollapsed ? 'mb-4 justify-center' : 'mb-6 gap-3 px-2'}`}>
-            <div className="h-10 w-10 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center font-bold border border-zinc-300">
-              {currentUser?.displayName?.charAt(0).toUpperCase()}
-            </div>
+            <Avatar
+              src={currentUser?.avatarUrl}
+              name={currentUser?.displayName}
+              size="sm"
+              className="!h-10 !w-10 shrink-0 border border-zinc-300"
+            />
             <div className={isCollapsed ? 'sr-only' : 'flex-1 overflow-hidden'}>
               <p className="text-sm font-semibold text-zinc-950 truncate">{currentUser?.displayName}</p>
               <p className="truncate text-xs text-zinc-500">{getPrimaryAdminRoleLabel(auth.adminRoles)}</p>
@@ -220,8 +231,24 @@ export default function AdminShell() {
         isCollapsed ? 'ml-16 md:ml-20' : 'ml-16 md:ml-72'
       }`}>
         <AdminToastProvider>
-          <div className="admin-content-container mx-auto w-full max-w-[100rem]">
-            <Outlet />
+          <div className="admin-content-container relative mx-auto w-full max-w-[100rem]">
+            {pageOwnsHeader ? (
+              <div className="absolute right-0 top-0 z-10">
+                <AdminNotificationBell />
+              </div>
+            ) : (
+              <header className="mb-6 flex min-h-11 items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Khu vực quản trị</p>
+                  <h1 className="text-2xl font-bold text-zinc-950">{getAdminPageTitle(location.pathname)}</h1>
+                </div>
+                <AdminNotificationBell />
+              </header>
+            )}
+            {/* Header riêng chừa đúng một khoảng cho chuông, nhờ đó tiêu đề và chuông nằm cùng hàng. */}
+            <div className={pageOwnsHeader ? '[&>section>header:first-child]:pr-14 sm:[&>section>header:first-child]:pr-16' : ''}>
+              <Outlet />
+            </div>
           </div>
         </AdminToastProvider>
       </main>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useApp } from '../../../contexts/AppContext.jsx';
 import AuthForm from '../components/AuthForm.jsx';
 import AuthEntryLayout from '../components/AuthEntryLayout.jsx';
+import BlockedAccountPanel from '../components/BlockedAccountPanel.jsx';
 import { useLogin } from '../hooks/useLogin.js';
 import { getAuthenticatedHome, getSafeReturnPath } from '../utils/authNavigation.js';
 
@@ -12,6 +13,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ email: '', password: '' });
+  const [blockedDetails, setBlockedDetails] = useState(() => (
+    location.state?.reason === 'BLOCKED' ? {} : null
+  ));
   const [successMessage, setSuccessMessage] = useState(() => (
     location.state?.reason === 'PASSWORD_RESET_SUCCESS'
       ? 'Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.'
@@ -37,7 +41,8 @@ export default function LoginPage() {
       const returnPath = getSafeReturnPath(location.state?.from, session);
       setForm((current) => ({ ...current, password: '' }));
       navigate(returnPath ?? getAuthenticatedHome(session), { replace: true });
-    } catch {
+    } catch (error) {
+      if (error.code === 'ACCOUNT_BLOCKED') setBlockedDetails(error.details ?? {});
       // Mật khẩu không được giữ lại sau một lần đăng nhập thất bại.
       setForm((current) => ({ ...current, password: '' }));
     }
@@ -55,7 +60,9 @@ export default function LoginPage() {
 
   return (
     <AuthEntryLayout title="Đăng nhập">
-      <AuthForm
+      {blockedDetails ? (
+        <BlockedAccountPanel details={blockedDetails} onBack={() => { setBlockedDetails(null); setMessage(''); }} />
+      ) : <AuthForm
         type="login"
         form={form}
         setForm={setForm}
@@ -71,7 +78,7 @@ export default function LoginPage() {
         onGoogleConflict={() => navigate('/auth/social-conflict', { replace: true })}
         onFacebookAuthenticated={finishSocialAuthentication}
         onFacebookConflict={() => navigate('/auth/social-conflict', { replace: true })}
-      />
+      />}
     </AuthEntryLayout>
   );
 }

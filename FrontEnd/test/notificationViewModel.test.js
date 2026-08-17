@@ -29,6 +29,16 @@ test('thông báo hệ thống không gắn tên actor và không điều hướ
   assert.equal(getNotificationTarget(notification), null);
 });
 
+test('warning 1/3 và final warning 2/3 dùng deep link Account Standing', () => {
+  const warning = { type: 'CONTENT_VIOLATION_WARNING', actor: null };
+  const finalWarning = { type: 'CONTENT_VIOLATION_FINAL_WARNING', actor: null };
+
+  assert.match(getNotificationPresentation(warning).message, /1\/3/);
+  assert.match(getNotificationPresentation(finalWarning).message, /2\/3/);
+  assert.equal(getNotificationTarget(warning), '/settings/account-status');
+  assert.equal(getNotificationTarget(finalWarning), '/settings/account-status');
+});
+
 test('hiển thị lý do hệ thống khi admin điều chỉnh hồ sơ người dùng', () => {
   const notification = { type: 'PROFILE_UPDATED_BY_ADMIN', actor: null };
 

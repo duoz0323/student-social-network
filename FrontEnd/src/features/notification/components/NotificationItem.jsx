@@ -63,6 +63,16 @@ const TYPE_PRESENTATION = {
     icon: ShieldAlert,
     iconClass: 'bg-orange-600 text-white',
   },
+  CONTENT_VIOLATION_WARNING: {
+    message: 'cảnh báo: nội dung của bạn đã được xác nhận vi phạm (1/3). Xem chi tiết',
+    icon: ShieldAlert,
+    iconClass: 'bg-amber-500 text-white',
+  },
+  CONTENT_VIOLATION_FINAL_WARNING: {
+    message: 'cảnh báo cuối cùng: tài khoản đã có 2/3 lần vi phạm. Xem chi tiết',
+    icon: ShieldAlert,
+    iconClass: 'bg-orange-600 text-white',
+  },
   ACCOUNT_BLOCKED: {
     message: 'đã khóa tài khoản của bạn',
     icon: LockKeyhole,

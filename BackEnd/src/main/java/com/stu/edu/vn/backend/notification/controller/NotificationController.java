@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.notification.dto.response.NotificationReadAllRespo
 import com.stu.edu.vn.backend.notification.dto.response.NotificationReadResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationUnreadCountResponse;
+import com.stu.edu.vn.backend.notification.dto.response.ModerationNotificationDetailResponse;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -64,6 +65,16 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Đánh dấu thông báo đã đọc thành công",
                 notificationService.markAsRead(notificationId)
+        ));
+    }
+
+    @GetMapping("/{notificationId}/moderation-detail")
+    public ResponseEntity<ApiResponse<ModerationNotificationDetailResponse>> getModerationDetail(
+            @PathVariable @Positive Long notificationId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy chi tiết quyết định kiểm duyệt thành công",
+                notificationService.getModerationDetail(notificationId)
         ));
     }
 

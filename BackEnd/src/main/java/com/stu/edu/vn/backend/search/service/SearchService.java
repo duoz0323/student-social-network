@@ -15,4 +15,8 @@ public interface SearchService {
 
     CursorPageResponse<SearchPostResponse> searchPosts(
             String keyword, SearchPostType type, String cursor, int limit);
+
+    /** Tìm bài viết với viewer đã được module gọi xác thực và resolve trước. */
+    CursorPageResponse<SearchPostResponse> searchPostsAs(
+            Long viewerId, String keyword, SearchPostType type, String cursor, int limit);
 }

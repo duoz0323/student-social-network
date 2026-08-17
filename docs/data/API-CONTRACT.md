@@ -1094,6 +1094,8 @@ Quy tắc Location khi update:
 - `GET /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_VIEW_OWN` và chỉ trả bài thuộc Managed Social Identity đang liên kết với Admin hiện tại.
 - Response dùng `OwnedPostDetailResponse`, gồm đầy đủ nội dung, tác giả, media, hashtag, Location, counter, trạng thái `PUBLISHED/HIDDEN/DELETED`, thời điểm ẩn/xóa và lý do ẩn nếu có.
 - Endpoint chi tiết cho phép tác giả xem lại bài `HIDDEN` hoặc `DELETED`; bài của Managed Social Identity khác vẫn trả `POST_NOT_FOUND`.
+- `GET /api/v1/admin/collaborator/posts/{postId}/comments?page=0&size=20` và `GET /api/v1/admin/collaborator/posts/{postId}/comments/{commentId}/replies?page=0&size=20` yêu cầu `COLLABORATOR_POST_VIEW_OWN`, trả `PageResponse<CommentResponse>` và chỉ đọc thảo luận công khai của bài `PUBLISHED` thuộc Managed Social Identity hiện tại.
+- Backend resolve viewer từ JWT Admin, kiểm tra quyền sở hữu bài trước khi đọc, kiểm tra bình luận cha thuộc đúng `postId` và tái sử dụng chính sách Block hai chiều; Client không gửi `socialUserId` hoặc `viewerId`.
 - `PUT /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_UPDATE_OWN`, chỉ nhận bài `PUBLISHED` thuộc danh tính hiện tại và vẫn áp dụng giới hạn sửa 15 phút.
 - `DELETE /api/v1/admin/collaborator/posts/{postId}` yêu cầu `COLLABORATOR_POST_DELETE_OWN`, chỉ xóa mềm bài `PUBLISHED` thuộc danh tính hiện tại.
 
@@ -1444,6 +1446,23 @@ Backend kiểm tra BCrypt của mật khẩu hiện tại, xác nhận và polic
 ghi `CHANGE_ADMIN_PASSWORD`, thu hồi toàn bộ Refresh Token trong cùng transaction và không trả dữ liệu mật khẩu.
 Thành công yêu cầu Client xóa phiên và đăng nhập lại. Sai mật khẩu hiện tại trả 401
 `AUTH_CURRENT_PASSWORD_INVALID`.
+
+### Hồ sơ công khai của Collaborator
+
+`GET/PUT /api/v1/admin/collaborator/social-identity` và
+`POST /api/v1/admin/collaborator/social-identity/avatar` chỉ dành cho Admin có quyền Collaborator.
+Response Managed Social Identity là nguồn duy nhất cho username, tên hiển thị, avatar và bio public tại trang hồ sơ,
+Dashboard và sidebar Collaborator. Cùng trang hợp nhất gọi `GET/PUT /api/v1/admin/profile` để đọc và chỉnh độc lập
+`displayName`, `dateOfBirth`, `bio` của hồ sơ Admin; email đăng nhập, username kỹ thuật, trạng thái và role vẫn chỉ đọc.
+Các giá trị hồ sơ Admin không được dùng làm social actor.
+
+`PUT /api/v1/admin/collaborator/social-identity` chỉ nhận `displayName` và `bio`; không nhận `username`.
+Username Managed Social Identity được thiết lập một lần khi tạo và Backend không ghi lại trường này trong luồng cập nhật.
+Frontend phải trình bày username dạng chỉ đọc. Avatar tiếp tục được cập nhật riêng qua endpoint multipart nêu trên.
+
+Mọi API xã hội ngoài `/api/v1/admin/**` yêu cầu `users.role = USER`. `ADMIN/NORMAL` nhận `403` và không
+được xuất hiện trong Search, public Profile hoặc danh sách Follow. `USER/MANAGED` không đăng nhập trực tiếp;
+Backend resolve danh tính này từ JWT Admin tại endpoint Collaborator chuyên biệt.
 
 ### GET `/api/v1/admin/admins?page=0&size=20`
 

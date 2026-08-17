@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getAdminNavigationScopes } from './adminRbac.js';
+import { getAdminNavigationScopes, getAdminProfilePath, usesManagedIdentityPresentation } from './adminRbac.js';
 
 test('giữ menu quản trị đầy đủ cho Master Admin dù có toàn bộ permission cộng tác viên', () => {
   assert.deepEqual(getAdminNavigationScopes(['SUPER_ADMIN']), {
@@ -21,4 +21,16 @@ test('giữ chức năng của cả hai nhóm khi tài khoản mang nhiều role
     showRegularAdmin: true,
     showCollaborator: true,
   });
+});
+
+test('hồ sơ của cộng tác viên thuần đi tới trang hợp nhất', () => {
+  assert.equal(getAdminProfilePath(['COLLABORATOR']), '/admin/collaborator/profile');
+  assert.equal(getAdminProfilePath(['MODERATOR', 'COLLABORATOR']), '/admin/profile');
+  assert.equal(getAdminProfilePath(['SUPER_ADMIN']), '/admin/profile');
+});
+
+test('chỉ cộng tác viên thuần dùng Managed Identity trên sidebar', () => {
+  assert.equal(usesManagedIdentityPresentation(['COLLABORATOR']), true);
+  assert.equal(usesManagedIdentityPresentation(['MODERATOR', 'COLLABORATOR']), false);
+  assert.equal(usesManagedIdentityPresentation(['SUPER_ADMIN']), false);
 });

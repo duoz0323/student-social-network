@@ -21,6 +21,8 @@ import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
@@ -40,6 +42,8 @@ class FollowServiceImplTest {
     private final UserProfileRepository userProfileRepository = org.mockito.Mockito.mock(UserProfileRepository.class);
     private final FollowRepository followRepository = org.mockito.Mockito.mock(FollowRepository.class);
     private final FollowMapper followMapper = new FollowMapper();
+    private final com.stu.edu.vn.backend.user.service.PublicUserBadgeService badgeService =
+            org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.service.PublicUserBadgeService.class);
     private final NotificationService notificationService = org.mockito.Mockito.mock(NotificationService.class);
     private final UserRelationshipPolicyService relationshipPolicyService =
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
@@ -54,6 +58,7 @@ class FollowServiceImplTest {
                 userProfileRepository,
                 followRepository,
                 followMapper,
+                badgeService,
                 notificationService,
                 relationshipPolicyService
         );
@@ -61,6 +66,7 @@ class FollowServiceImplTest {
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(10L)));
         when(userRepository.findById(20L)).thenReturn(Optional.of(user(20L, UserStatus.ACTIVE)));
+        when(badgeService.getBadgesByUserIds(any())).thenReturn(java.util.Map.of());
     }
 
     @Test
@@ -74,6 +80,19 @@ class FollowServiceImplTest {
         assertThat(captor.getValue().getId().getFollowerId()).isEqualTo(10L);
         assertThat(captor.getValue().getId().getFollowingId()).isEqualTo(20L);
         assertThat(response).isEqualTo(new FollowStatusResponse(20L, true));
+    }
+
+    @Test
+    void normalUserCanFollowManagedSocialIdentityThroughExistingFollowFlow() {
+        User managed = user(20L, UserStatus.ACTIVE);
+        managed.setAccountType(UserAccountType.MANAGED);
+        when(userRepository.findById(20L)).thenReturn(Optional.of(managed));
+
+        FollowStatusResponse response = followService.followUser(20L);
+
+        assertThat(response.followedByCurrentUser()).isTrue();
+        verify(followRepository).saveAndFlush(any(Follow.class));
+        verify(notificationService).createFollowNotification(10L, 20L);
     }
 
     @Test
@@ -99,6 +118,16 @@ class FollowServiceImplTest {
 
         assertBusinessError(() -> followService.followUser(20L), ErrorCode.USER_NOT_FOUND);
         verify(followRepository, never()).existsByIdFollowerIdAndIdFollowingId(any(), any());
+    }
+
+    @Test
+    void followRejectsAdminTargetAsNotFound() {
+        User admin = user(20L, UserStatus.ACTIVE);
+        admin.setRole(UserRole.ADMIN);
+        when(userRepository.findById(20L)).thenReturn(Optional.of(admin));
+
+        assertBusinessError(() -> followService.followUser(20L), ErrorCode.USER_NOT_FOUND);
+        verify(followRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -167,6 +196,7 @@ class FollowServiceImplTest {
         User user = new User("student" + id + "@example.com", "hash");
         ReflectionTestUtils.setField(user, "id", id);
         user.setStatus(status);
+        user.setRole(UserRole.USER);
         return user;
     }
 

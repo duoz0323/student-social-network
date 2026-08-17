@@ -8,9 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.stu.edu.vn.backend.notification.enums.NotificationType;
 import org.junit.jupiter.api.Test;
 
-/** Bảo vệ artifact database canonical, migration thủ công và dữ liệu demo 1.000 tài khoản. */
+/** Bảo vệ hai artifact database canonical và dữ liệu demo 1.000 tài khoản. */
 class DemoSeedContractTest {
     private static final double CAO_LO_LATITUDE = 10.7387550d;
     private static final double CAO_LO_LONGITUDE = 106.6777880d;
@@ -18,7 +19,7 @@ class DemoSeedContractTest {
             "\\('demo-caolo-[^']+',\\s*'[^']+',\\s*'[^']+',\\s*([0-9.]+),\\s*([0-9.]+)\\)");
 
     @Test
-    void databaseDirectoryKeepsOnlyCanonicalArtifactsAndConsolidatedMigration() throws Exception {
+    void databaseDirectoryKeepsOnlyCanonicalSqlAndDbml() throws Exception {
         Path database = databaseDirectory();
         List<String> files;
         try (var paths = Files.walk(database)) {
@@ -30,10 +31,9 @@ class DemoSeedContractTest {
                     .toList();
         }
 
-        // Thư mục database chỉ giữ một file rebuild, một migration tổng và DBML đối chiếu.
+        // Không giữ migration rời; SQL và DBML là hai nguồn schema được push cùng nhau.
         assertThat(files)
                 .containsExactly(
-                "V20260816__admin_rbac_collaborator_features.sql",
                 "student_social_network.dbml",
                 "student_social_network.sql");
         assertThat(files).allMatch(file -> file.endsWith(".sql") || file.endsWith(".dbml"));
@@ -76,6 +76,7 @@ class DemoSeedContractTest {
                 .contains("CREATE TABLE `admin_roles`")
                 .contains("CREATE TABLE `admin_social_identities`")
                 .contains("CREATE TABLE `moderation_suggestions`")
+                .contains("CREATE TABLE `admin_notifications`")
                 .contains("`account_type` varchar(16) NOT NULL DEFAULT 'NORMAL'")
                 .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
                 .contains("'CREATE_ACADEMIC_DATA'")
@@ -83,6 +84,16 @@ class DemoSeedContractTest {
                 .contains("'CHANGE_ADMIN_PASSWORD'")
                 .contains("'COLLABORATOR_POST_CREATED'")
                 .contains("'MODERATION_SUGGESTION_REVIEW'");
+    }
+
+    @Test
+    void notificationTypeEnumMatchesCanonicalSchema() throws Exception {
+        String canonical = Files.readString(databaseDirectory().resolve("student_social_network.sql"));
+
+        // Mọi giá trị Java có thể persist phải tồn tại trong schema canonical.
+        for (NotificationType type : NotificationType.values()) {
+            assertThat(canonical).contains("'" + type.name() + "'");
+        }
     }
 
     @Test

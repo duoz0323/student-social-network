@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.auth.mapper.AuthMapper;
 import com.stu.edu.vn.backend.auth.repository.RefreshTokenRepository;
 import com.stu.edu.vn.backend.auth.support.EmailNormalizer;
 import com.stu.edu.vn.backend.auth.support.NormalizedEmail;
+import com.stu.edu.vn.backend.auth.support.AccountBlockedErrors;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.security.JwtProperties;
@@ -62,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Trạng thái tài khoản phải được kiểm tra trước khi phát hành bất kỳ phiên đăng nhập nào.
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.USER_BLOCKED);
+            throw AccountBlockedErrors.forUser(user);
         }
 
         ensureEmailVerified(user);
@@ -121,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.USER_BLOCKED);
+            throw AccountBlockedErrors.forUser(user);
         }
 
         UserProfile profile = userProfileRepository.findById(user.getId())

@@ -57,7 +57,8 @@ class MessagingImageServiceImplTest {
     void setUp() {
         service = new MessagingImageServiceImpl(current, users, profiles, blocks, follows, pairLock,
                 conversations, members, messages, attachments, validator, storage, cleanup,
-                transactions, entityManager, events);
+                transactions, entityManager, events,
+                new com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy(users, profiles));
         when(transactions.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
@@ -75,7 +76,7 @@ class MessagingImageServiceImplTest {
         when(conversations.findByIdForUpdate(15L)).thenReturn(Optional.of(conversation));
         when(members.existsByIdConversationIdAndIdUserId(15L, 10L)).thenReturn(true);
         when(blocks.existsEitherDirection(10L, 20L)).thenReturn(false);
-        when(follows.existsByIdFollowerIdAndIdFollowingId(20L, 10L)).thenReturn(true);
+        when(follows.existsMutualFollow(10L, 20L)).thenReturn(true);
         image = new ValidatedMessageImage(
                 new MockMultipartFile("images", "a.png", "image/png", new byte[]{1, 2, 3}),
                 "image/png", 3, 2, 3, "a".repeat(64));

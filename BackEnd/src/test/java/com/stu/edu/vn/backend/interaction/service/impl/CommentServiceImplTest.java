@@ -31,6 +31,7 @@ import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
@@ -64,6 +65,8 @@ class CommentServiceImplTest {
     private final ContentModerationService contentModerationService =
             org.mockito.Mockito.mock(ContentModerationService.class);
     private final TransactionTemplate transactionTemplate = org.mockito.Mockito.mock(TransactionTemplate.class);
+    private final PublicUserBadgeService publicUserBadgeService =
+            org.mockito.Mockito.mock(PublicUserBadgeService.class);
 
     private CommentServiceImpl commentService;
 
@@ -81,7 +84,8 @@ class CommentServiceImplTest {
                 clock,
                 relationshipPolicyService,
                 contentModerationService,
-                transactionTemplate
+                transactionTemplate,
+                publicUserBadgeService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
@@ -97,6 +101,8 @@ class CommentServiceImplTest {
         });
         when(commentRepository.findWithPostAndParentById(any()))
                 .thenAnswer(invocation -> commentRepository.findForReplyCreationById(invocation.getArgument(0)));
+        when(publicUserBadgeService.getBadges(any())).thenReturn(List.of());
+        when(publicUserBadgeService.getBadgesByUserIds(any())).thenReturn(java.util.Map.of());
     }
 
     @Test
@@ -278,6 +284,19 @@ class CommentServiceImplTest {
 
         assertThat(responses.content()).extracting(CommentResponse::commentId).containsExactly(100L);
         assertThat(responses.content().getFirst().parentCommentId()).isEqualTo(90L);
+    }
+
+    @Test
+    void getPublishedRepliesForPostRejectsCommentFromAnotherPost() {
+        Comment parent = savedComment(new Comment(post(2L), user(20L), "Binh luan bai khac"), 90L);
+        when(commentRepository.findWithPostAndParentById(90L)).thenReturn(Optional.of(parent));
+
+        assertThatThrownBy(() -> commentService.getPublishedRepliesForPostAs(10L, 1L, 90L, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.COMMENT_NOT_FOUND);
+
+        verify(commentRepository, never()).findVisibleReplies(any(), any(), any(), any());
     }
 
     @Test

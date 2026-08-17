@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.anyCollection;
 
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,11 +71,21 @@ class ModerationSuggestionServiceTest {
         when(repository.findByIdForUpdate(7L)).thenReturn(Optional.of(suggestion));
         when(currentUserProvider.getCurrentUserId()).thenReturn(20L);
         when(userRepository.findById(20L)).thenReturn(Optional.of(reviewer));
+        ModerationSuggestionActorProjection suggesterActor = actor(
+                15L, "cong_tac_vien", "Nguyễn Văn Cộng", "COLLABORATOR");
+        ModerationSuggestionActorProjection reviewerActor = actor(
+                20L, "kiem_duyet_vien", "Trần Văn Duyệt", "MODERATOR");
+        when(repository.findActorsByAdminIds(anyCollection()))
+                .thenReturn(List.of(suggesterActor, reviewerActor));
 
         ModerationSuggestionResponse accepted = service.review(7L, ModerationSuggestionStatus.ACCEPTED);
 
         assertThat(accepted.status()).isEqualTo(ModerationSuggestionStatus.ACCEPTED);
         assertThat(accepted.reviewedBy()).isEqualTo(20L);
+        assertThat(accepted.suggester().displayName()).isEqualTo("Nguyễn Văn Cộng");
+        assertThat(accepted.suggester().roles()).containsExactly("COLLABORATOR");
+        assertThat(accepted.reviewer().displayName()).isEqualTo("Trần Văn Duyệt");
+        assertThat(accepted.reviewer().roles()).containsExactly("MODERATOR");
         verify(actionRepository).save(org.mockito.ArgumentMatchers.any());
         assertThatThrownBy(() -> service.review(7L, ModerationSuggestionStatus.REJECTED))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
@@ -91,5 +104,15 @@ class ModerationSuggestionServiceTest {
         ReflectionTestUtils.setField(post, "id", id);
         ReflectionTestUtils.setField(post, "publishedAt", LocalDateTime.of(2026, 8, 15, 9, 0));
         return post;
+    }
+
+    private ModerationSuggestionActorProjection actor(
+            Long id, String username, String displayName, String roleCodes) {
+        ModerationSuggestionActorProjection actor = mock(ModerationSuggestionActorProjection.class);
+        when(actor.getAdminId()).thenReturn(id);
+        when(actor.getUsername()).thenReturn(username);
+        when(actor.getDisplayName()).thenReturn(displayName);
+        when(actor.getRoleCodes()).thenReturn(roleCodes);
+        return actor;
     }
 }

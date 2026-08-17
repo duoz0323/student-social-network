@@ -32,8 +32,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             SELECT COUNT(*) FROM messages m
             JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = :userId
             JOIN conversations c ON c.id = m.conversation_id
+            JOIN users low_user ON low_user.id = c.participant_low_id
+            JOIN users high_user ON high_user.id = c.participant_high_id
             WHERE m.sender_id <> :userId AND m.id > COALESCE(cm.last_read_message_id, 0)
               AND c.last_message_id IS NOT NULL
+              AND low_user.account_type = 'NORMAL' AND high_user.account_type = 'NORMAL'
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub
                 WHERE (ub.blocker_id = c.participant_low_id AND ub.blocked_id = c.participant_high_id)
@@ -58,6 +61,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             WHERE m.id = :messageId
               AND low_user.role = 'USER' AND low_user.status = 'ACTIVE'
               AND high_user.role = 'USER' AND high_user.status = 'ACTIVE'
+              AND low_user.account_type = 'NORMAL' AND high_user.account_type = 'NORMAL'
               AND low_profile.profile_completed_at IS NOT NULL
               AND high_profile.profile_completed_at IS NOT NULL
               AND NOT EXISTS (

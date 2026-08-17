@@ -24,11 +24,13 @@ import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +56,7 @@ public class CommentServiceImpl implements CommentService {
     private final UserRelationshipPolicyService relationshipPolicyService;
     private final ContentModerationService contentModerationService;
     private final TransactionTemplate transactionTemplate;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     public CommentServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -67,7 +70,8 @@ public class CommentServiceImpl implements CommentService {
             Clock clock,
             UserRelationshipPolicyService relationshipPolicyService,
             ContentModerationService contentModerationService,
-            TransactionTemplate transactionTemplate
+            TransactionTemplate transactionTemplate,
+            PublicUserBadgeService publicUserBadgeService
     ) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
@@ -81,6 +85,7 @@ public class CommentServiceImpl implements CommentService {
         this.relationshipPolicyService = relationshipPolicyService;
         this.contentModerationService = contentModerationService;
         this.transactionTemplate = transactionTemplate;
+        this.publicUserBadgeService = publicUserBadgeService;
     }
 
     @Override
@@ -100,7 +105,7 @@ public class CommentServiceImpl implements CommentService {
         if (response == null) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
-        return response;
+        return withBadges(response, publicUserBadgeService.getBadges(response.userId()));
     }
 
     @Override
@@ -123,7 +128,7 @@ public class CommentServiceImpl implements CommentService {
         if (response == null) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
-        return response;
+        return withBadges(response, publicUserBadgeService.getBadges(response.userId()));
     }
 
     @Override
@@ -146,11 +151,13 @@ public class CommentServiceImpl implements CommentService {
         );
         List<Long> commentIds = comments.getContent().stream().map(Comment::getId).toList();
         Map<Long, Long> replyCounts = getPublishedReplyCounts(commentIds, userId);
+        Map<Long, List<com.stu.edu.vn.backend.user.enums.PublicUserBadge>> badgesByUserId =
+                publicUserBadgeService.getBadgesByUserIds(comments.getContent().stream()
+                        .map(comment -> comment.getAuthor().getId()).toList());
 
-        return PageResponse.from(comments.map(comment -> commentMapper.toResponse(
-                comment,
-                replyCounts.getOrDefault(comment.getId(), 0L)
-        )));
+        return PageResponse.from(comments.map(comment -> withBadges(commentMapper.toResponse(
+                        comment, replyCounts.getOrDefault(comment.getId(), 0L)),
+                badgesByUserId.getOrDefault(comment.getAuthor().getId(), List.of()))));
     }
 
     @Override
@@ -162,6 +169,13 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CommentResponse> getPublishedRepliesAs(Long userId, Long parentCommentId, int page, int size) {
+        return getPublishedRepliesForPostAs(userId, null, parentCommentId, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getPublishedRepliesForPostAs(
+            Long userId, Long postId, Long parentCommentId, int page, int size) {
         ensureCurrentUserCanInteract(userId);
 
         Comment parentComment = commentRepository.findWithPostAndParentById(parentCommentId)
@@ -169,19 +183,25 @@ public class CommentServiceImpl implements CommentService {
         if (parentComment.getParentComment() != null) {
             throw new BusinessException(ErrorCode.COMMENT_REPLY_DEPTH_EXCEEDED);
         }
+        // Khi API lồng dưới bài viết, không cho dùng comment của một bài khác để đọc chéo hội thoại.
+        if (postId != null && !Objects.equals(parentComment.getPost().getId(), postId)) {
+            throw new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
+        }
         assertPostCanBeAccessed(userId, parentComment.getPost().getId());
         // Cha có Block với viewer thì ẩn cả nhánh, kể cả khi viewer là chủ bài viết.
         relationshipPolicyService.assertNoBlock(userId, parentComment.getAuthor().getId());
 
-        Page<CommentResponse> replies = commentRepository
-                .findVisibleReplies(
+        Page<Comment> replies = commentRepository.findVisibleReplies(
                         parentCommentId,
                         userId,
                         CommentStatus.PUBLISHED,
                         PageRequest.of(page, size)
-                )
-                .map(commentMapper::toResponse);
-        return PageResponse.from(replies);
+                );
+        Map<Long, List<com.stu.edu.vn.backend.user.enums.PublicUserBadge>> badgesByUserId =
+                publicUserBadgeService.getBadgesByUserIds(replies.getContent().stream()
+                        .map(reply -> reply.getAuthor().getId()).toList());
+        return PageResponse.from(replies.map(reply -> withBadges(commentMapper.toResponse(reply),
+                badgesByUserId.getOrDefault(reply.getAuthor().getId(), List.of()))));
     }
 
     @Override
@@ -310,5 +330,15 @@ public class CommentServiceImpl implements CommentService {
                         projection -> projection.getCommentId(),
                         projection -> projection.getReplyCount()
                 ));
+    }
+
+    /** Bổ sung metadata hiển thị mà không để mapper hoặc Entity phụ thuộc RBAC quản trị. */
+    private CommentResponse withBadges(
+            CommentResponse response,
+            List<com.stu.edu.vn.backend.user.enums.PublicUserBadge> badges
+    ) {
+        return new CommentResponse(response.commentId(), response.postId(), response.parentCommentId(),
+                response.userId(), response.displayName(), response.avatarUrl(), response.content(),
+                response.createdAt(), response.replyCount(), response.deleted(), badges);
     }
 }

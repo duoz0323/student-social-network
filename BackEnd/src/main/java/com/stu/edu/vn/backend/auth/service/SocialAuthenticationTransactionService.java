@@ -22,6 +22,7 @@ import com.stu.edu.vn.backend.security.JwtService;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.auth.support.AccountBlockedErrors;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
@@ -189,7 +190,7 @@ public class SocialAuthenticationTransactionService {
     }
 
     private SocialAuthResult issueSession(User user, AuthProvider provider, String deviceId, String deviceInfo, String ipAddress) {
-        if (user.getStatus() != UserStatus.ACTIVE) throw new BusinessException(ErrorCode.USER_BLOCKED);
+        if (user.getStatus() != UserStatus.ACTIVE) throw AccountBlockedErrors.forUser(user);
         UserProfile profile = profileRepository.findById(user.getId()).orElseThrow(() -> new BusinessException(
                 provider == AuthProvider.FACEBOOK ? ErrorCode.AUTH_FACEBOOK_AUTHENTICATION_FAILED : ErrorCode.AUTH_GOOGLE_AUTHENTICATION_FAILED));
         IssuedRefreshToken refresh = refreshTokenIssuer.issue(user, deviceId, deviceInfo, ipAddress);

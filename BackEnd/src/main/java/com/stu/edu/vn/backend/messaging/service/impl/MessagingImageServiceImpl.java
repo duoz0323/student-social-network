@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.messaging.enums.MessageType;
 import com.stu.edu.vn.backend.messaging.event.MessageCreatedEvent;
 import com.stu.edu.vn.backend.messaging.repository.*;
 import com.stu.edu.vn.backend.messaging.service.MessagingImageService;
+import com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy;
 import com.stu.edu.vn.backend.messaging.support.MessagePayloadFingerprint;
 import com.stu.edu.vn.backend.messaging.validation.*;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
@@ -48,6 +49,7 @@ public class MessagingImageServiceImpl implements MessagingImageService {
     private final TransactionTemplate transactionTemplate;
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventPublisher;
+    private final MessagingEligibilityPolicy messagingEligibilityPolicy;
 
     @Override
     public SendMessageResponse sendImageMessage(Long conversationId, SendImageMessageRequest request) {
@@ -115,8 +117,8 @@ public class MessagingImageServiceImpl implements MessagingImageService {
             return new PersistResult(replay);
         }
         if (conversation.getLastMessage() == null
-                && !followRepository.existsByIdFollowerIdAndIdFollowingId(otherUserId, senderId)) {
-            throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
+                && !followRepository.existsMutualFollow(senderId, otherUserId)) {
+            throw new BusinessException(ErrorCode.DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED);
         }
         Message message = messageRepository.saveAndFlush(
                 new Message(conversation, sender, clientMessageId, type, content, fingerprint));
@@ -182,13 +184,7 @@ public class MessagingImageServiceImpl implements MessagingImageService {
     }
 
     private User requireEligible(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGING_NOT_ALLOWED));
-        if (user.getRole() != UserRole.USER || user.getStatus() != UserStatus.ACTIVE
-                || !profileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(userId)) {
-            throw new BusinessException(ErrorCode.MESSAGING_NOT_ALLOWED);
-        }
-        return user;
+        return messagingEligibilityPolicy.requireEligible(userId);
     }
 
     private Conversation requireMemberConversation(Long conversationId, Long userId) {

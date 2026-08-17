@@ -1,5 +1,9 @@
 package com.stu.edu.vn.backend.admin.service.impl;
 
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType;
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationType;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationEvent;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationRouter;
 import com.stu.edu.vn.backend.admin.dto.request.AdminHidePostRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminPostDetailResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminPostListItemResponse;
@@ -32,6 +36,7 @@ import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** Triển khai truy vấn và transaction kiểm duyệt bài viết dành cho ADMIN. */
 @Service
@@ -47,6 +52,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final EntityManager entityManager;
     private final Clock clock;
     private final NotificationService notificationService;
+    private AdminNotificationRouter adminNotificationRouter;
 
     public AdminPostServiceImpl(
             AdminPostRepository adminPostRepository,
@@ -64,6 +70,11 @@ public class AdminPostServiceImpl implements AdminPostService {
         this.entityManager = entityManager;
         this.clock = clock;
         this.notificationService = notificationService;
+    }
+
+    @Autowired
+    void setAdminNotificationRouter(AdminNotificationRouter adminNotificationRouter) {
+        this.adminNotificationRouter = adminNotificationRouter;
     }
 
     @Override
@@ -112,9 +123,10 @@ public class AdminPostServiceImpl implements AdminPostService {
                 post, adminReference, LocalDateTime.now(clock), request.reasonCode());
 
         // Audit và trạng thái Post cùng thuộc transaction; lỗi lưu hoặc flush sẽ rollback cả hai.
-        adminActionRepository.save(new AdminAction(adminReference, AdminActionType.HIDE_POST,
+        AdminAction action = adminActionRepository.save(new AdminAction(adminReference, AdminActionType.HIDE_POST,
                 AdminTargetType.POST, post.getId(), reason));
         notificationService.createPostHiddenByAdminNotification(post.getAuthor().getId(), post.getId());
+        notifyPostAction(principal.getUserId(), post.getId(), action == null ? null : action.getId(), true);
         return flushRefreshAndMap(post, principal.getUserId());
     }
 
@@ -137,10 +149,22 @@ public class AdminPostServiceImpl implements AdminPostService {
         post.setHiddenReason(null);
 
         // Không sửa action HIDE_POST cũ; mỗi lần khôi phục ghi một action độc lập.
-        adminActionRepository.save(new AdminAction(adminReference, AdminActionType.RESTORE_POST,
+        AdminAction action = adminActionRepository.save(new AdminAction(adminReference, AdminActionType.RESTORE_POST,
                 AdminTargetType.POST, post.getId(), RESTORE_NOTE));
         notificationService.createPostRestoredByAdminNotification(post.getAuthor().getId(), post.getId());
+        notifyPostAction(principal.getUserId(), post.getId(), action == null ? null : action.getId(), false);
         return flushRefreshAndMap(post, principal.getUserId());
+    }
+
+    private void notifyPostAction(Long actorId, Long postId, Long actionId, boolean hidden) {
+        if (adminNotificationRouter == null) return;
+        adminNotificationRouter.notifyByPermission("POST_VIEW", actorId, new AdminNotificationEvent(
+                hidden ? AdminNotificationType.POST_HIDDEN_BY_ADMIN : AdminNotificationType.POST_RESTORED_BY_ADMIN,
+                hidden ? "Bài viết đã bị ẩn" : "Bài viết đã được khôi phục",
+                hidden ? "Một bài viết vừa bị quản trị viên ẩn." : "Một bài viết vừa được quản trị viên khôi phục.",
+                AdminNotificationReferenceType.POST,
+                postId,
+                "ADMIN_ACTION:" + actionId + ":" + (hidden ? "POST_HIDDEN" : "POST_RESTORED")));
     }
 
     private CustomUserPrincipal requireActiveAdmin() {

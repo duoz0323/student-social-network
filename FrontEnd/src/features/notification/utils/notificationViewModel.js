@@ -9,6 +9,8 @@ export const NOTIFICATION_TYPE_LABELS = Object.freeze({
   POST_HIDDEN_BY_ADMIN: 'Bài viết của bạn đã bị ẩn',
   POST_RESTORED_BY_ADMIN: 'Bài viết của bạn đã được khôi phục',
   PROFILE_UPDATED_BY_ADMIN: 'Hồ sơ của bạn đã được quản trị viên điều chỉnh vì nội dung vi phạm Tiêu chuẩn hệ thống',
+  CONTENT_VIOLATION_WARNING: 'Cảnh báo vi phạm: tài khoản của bạn hiện có 1/3 lần vi phạm đã xác nhận',
+  CONTENT_VIOLATION_FINAL_WARNING: 'Cảnh báo cuối cùng: tài khoản của bạn hiện có 2/3 lần vi phạm đã xác nhận',
   ACCOUNT_BLOCKED: 'Tài khoản của bạn đã bị khóa',
   ACCOUNT_UNBLOCKED: 'Tài khoản của bạn đã được mở khóa',
 });
@@ -19,6 +21,8 @@ const SYSTEM_NOTIFICATION_TYPES = new Set([
   'POST_HIDDEN_BY_ADMIN',
   'POST_RESTORED_BY_ADMIN',
   'PROFILE_UPDATED_BY_ADMIN',
+  'CONTENT_VIOLATION_WARNING',
+  'CONTENT_VIOLATION_FINAL_WARNING',
   'ACCOUNT_BLOCKED',
   'ACCOUNT_UNBLOCKED',
 ]);
@@ -37,6 +41,9 @@ export function getNotificationPresentation(notification) {
 }
 
 export function getNotificationTarget(notification) {
+  if (['CONTENT_VIOLATION_WARNING', 'CONTENT_VIOLATION_FINAL_WARNING', 'ACCOUNT_BLOCKED'].includes(notification?.type)) {
+    return '/settings/account-status';
+  }
   if (notification?.postId) return `/posts/${encodeURIComponent(notification.postId)}`;
   if (notification?.actor?.userId) return `/profile/${encodeURIComponent(notification.actor.userId)}`;
   return null;

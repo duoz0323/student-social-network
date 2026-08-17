@@ -6,6 +6,7 @@ import {
   createAcademicSelection,
   createEntryYears,
   mapAcademicProfileError,
+  nextAcademicDropdownOpen,
   selectFaculty,
   selectSchool,
   shouldSearchAcademic,
@@ -19,12 +20,20 @@ test('Academic master endpoints encode đúng parent ID cho School, Faculty và 
   assert.equal(ACADEMIC_ENDPOINTS.interests, '/api/v1/interests');
 });
 
-test('autocomplete không search input rỗng và khóa Faculty/Major khi thiếu parent', () => {
+test('autocomplete mở danh sách khi click dù chưa nhập và khóa Faculty/Major khi thiếu parent', () => {
   assert.equal(shouldSearchAcademic({ kind: 'school', keyword: 'STU', searchActive: true }), true);
-  assert.equal(shouldSearchAcademic({ kind: 'school', keyword: '   ', searchActive: true }), false);
+  assert.equal(shouldSearchAcademic({ kind: 'school', keyword: '   ', searchActive: true }), true);
+  assert.equal(shouldSearchAcademic({ kind: 'school', keyword: '', searchActive: false }), false);
   assert.equal(shouldSearchAcademic({ kind: 'faculty', keyword: 'CNTT', searchActive: true }), false);
   assert.equal(shouldSearchAcademic({ kind: 'faculty', parentId: 1, keyword: 'CNTT', searchActive: true }), true);
   assert.equal(shouldSearchAcademic({ kind: 'major', parentId: 2, keyword: 'IT', searchActive: true, disabled: true }), false);
+});
+
+test('autocomplete đóng khi click lần hai hoặc click ngoài và mở lại được', () => {
+  assert.equal(nextAcademicDropdownOpen(false, 'toggle'), true);
+  assert.equal(nextAcademicDropdownOpen(true, 'toggle'), false);
+  assert.equal(nextAcademicDropdownOpen(true, 'close'), false);
+  assert.equal(nextAcademicDropdownOpen(false, 'open'), true);
 });
 
 test('đổi School xóa Faculty và Major thuộc hierarchy cũ', () => {

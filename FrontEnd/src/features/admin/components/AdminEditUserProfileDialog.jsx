@@ -64,8 +64,8 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
     <Modal
       open
       size="md"
-      className="!max-w-[560px] !rounded-lg !bg-white"
-      bodyClassName="bg-white px-6 pb-6 pt-5 !text-black [color-scheme:light]"
+      className="admin-theme !max-w-[560px] !rounded-lg !bg-[var(--admin-surface)]"
+      bodyClassName="bg-[var(--admin-surface)] px-6 pb-6 pt-5 text-[var(--admin-text)]"
       customHeader={(
         <header className="flex shrink-0 items-start justify-between rounded-t-lg border-b border-slate-100 bg-white px-6 py-5">
           <div>
@@ -94,7 +94,7 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
             <p className="text-sm font-semibold text-slate-700">Ảnh đại diện</p>
             <p className="mt-1 text-xs text-slate-500">JPG, JPEG, PNG hoặc WEBP; tối đa 10 MB.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <label className={`inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white transition hover:bg-blue-700 ${submitting ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
+              <label className={`inline-flex h-9 items-center gap-2 rounded-md bg-zinc-950 px-3 text-xs font-semibold text-white transition hover:bg-zinc-800 ${submitting ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
                 <Camera className="h-4 w-4" aria-hidden="true" />
                 Chọn ảnh
                 <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={submitting} onChange={selectAvatar} />
@@ -118,7 +118,7 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
           value={draft.displayName}
           maxLength={ADMIN_PROFILE_LIMITS.maximumDisplayNameLength}
           onChange={(event) => updateField('displayName', event.target.value)}
-          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm !text-black placeholder:!text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm placeholder:!text-slate-400 outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100"
           required
         />
         <p className={`mt-1 text-xs ${displayNameLength > 0 && displayNameLength < 2 ? 'text-red-600' : 'text-slate-400'}`}>
@@ -134,7 +134,7 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
           value={draft.dateOfBirth}
           max={maximumBirthDate}
           onChange={(event) => updateField('dateOfBirth', event.target.value)}
-          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm !text-black [color-scheme:light] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100"
           required
         />
         <p className="mt-1 text-xs text-slate-400">Người dùng phải đủ 18 tuổi.</p>
@@ -149,7 +149,7 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
           maxLength={ADMIN_PROFILE_LIMITS.maximumBioLength}
           rows={5}
           onChange={(event) => updateField('bio', event.target.value)}
-          className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 !text-black placeholder:!text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 placeholder:!text-slate-400 outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100"
           placeholder="Nhập phần giới thiệu người dùng"
         />
 
@@ -157,7 +157,7 @@ export default function AdminEditUserProfileDialog({ user, submitting, error, on
           <Button className="!h-10 !rounded-md !border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-50" variant="secondary" disabled={submitting} onClick={onClose}>
             Hủy
           </Button>
-          <Button className="!h-10 !rounded-md !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700" type="submit" disabled={!canSubmit}>
+          <Button className="!h-10 !rounded-md" type="submit" disabled={!canSubmit}>
             {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </div>

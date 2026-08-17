@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, KeyRound, Plus, RefreshCw, ShieldCheck, UserCheck, UserX } from 'lucide-react';
+import { ChevronRight, KeyRound, Plus, RefreshCw, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react';
 import { adminApi } from '../../../api/adminApi.js';
+import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import Pagination from '../../../components/common/Pagination.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.js';
 import { ADMIN_PERMISSIONS, getAdminRoleLabel } from '../constants/adminRbac.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 import AdminStatusBadge from '../components/AdminStatusBadge.jsx';
+import AdminPageHeader from '../components/AdminPageHeader.jsx';
 import { canManageMasterProtectedAccount, isMasterAdmin } from '../utils/adminAccountPolicy.js';
 
 const EMPTY_FORM = {
@@ -229,16 +231,19 @@ export default function AdminManagementPage() {
 
   return (
     <section className="flex h-[calc(100vh-4rem)] min-h-0 flex-col gap-4 overflow-hidden lg:h-[calc(100vh-6rem)]">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-950">Quản trị viên</h1>
-
-        </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => load(page)} disabled={busy} className="rounded-lg border px-3 py-2 text-sm"><RefreshCw size={16} /></button>
-          {canCreate && <button type="button" onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white"><Plus size={16} /> Tạo admin</button>}
-        </div>
-      </header>
+      <AdminPageHeader
+        icon={UsersRound}
+        title="Quản trị viên"
+        description="Quản lý tài khoản, vai trò và trạng thái của đội ngũ quản trị."
+        actions={(
+          <>
+            <Button variant="secondary" size="sm" onClick={() => load(page)} disabled={busy} title="Tải lại danh sách" aria-label="Tải lại danh sách">
+              <RefreshCw size={16} />
+            </Button>
+            {canCreate ? <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} /> Tạo quản trị viên</Button> : null}
+          </>
+        )}
+      />
 
       {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 

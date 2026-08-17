@@ -1,13 +1,19 @@
 export const MAX_INTERESTS = 10;
 export const MIN_ENTRY_YEAR = 1900;
 
-export function shouldSearchAcademic({ kind, parentId, keyword, searchActive, disabled }) {
+export function shouldSearchAcademic({ kind, parentId, searchActive, disabled }) {
   return Boolean(
     searchActive
     && !disabled
-    && keyword?.trim()
     && (kind === 'school' || parentId),
   );
+}
+
+// Chuẩn hóa hành vi đóng/mở để click lần hai và click ra ngoài không làm dropdown kẹt loading.
+export function nextAcademicDropdownOpen(currentOpen, action) {
+  if (action === 'toggle') return !currentOpen;
+  if (action === 'close') return false;
+  return true;
 }
 
 export function createAcademicSelection(profile = {}) {

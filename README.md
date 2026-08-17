@@ -361,9 +361,9 @@ Trạng thái nghiệp vụ: `INTEGRATED` và `TESTED`. Restrict là quan hệ m
 Trạng thái nghiệp vụ: Database, REST Core, realtime WebSocket, giao diện text, gửi/hiển thị ảnh, chia sẻ bài viết V1 và Typing Indicator Giai đoạn 1D `TESTED`. Text/ảnh/typing đã `INTEGRATED`; chia sẻ bài viết có migration MySQL thủ công nhưng chưa chạy trên database thật hoặc smoke test E2E hai trình duyệt.
 
 - Conversation một-một hỗ trợ `TEXT`, chỉ ảnh hoặc ảnh kèm chú thích, và `POST_SHARE` tham chiếu bài viết kèm lời nhắn tùy chọn. Nội dung/chú thích tối đa 2.000 Unicode code point; mỗi message ảnh có tối đa 5 ảnh JPG/JPEG/PNG/WEBP, mỗi ảnh tối đa 10 MB; video và tài liệu chưa hỗ trợ.
-- Chỉ tài khoản `USER`, `ACTIVE` và đã hoàn tất hồ sơ được dùng Messaging; `ADMIN` không dùng Messaging như tài khoản xã hội và không được nhắn chính mình.
+- Chỉ tài khoản `USER`, `ACTIVE`, `account_type = NORMAL` và đã hoàn tất hồ sơ ở cả hai phía được dùng Messaging; `ADMIN` và Managed Social Identity không dùng Messaging như tài khoản xã hội, đồng thời người dùng không được nhắn chính mình.
 - Một cặp người dùng chỉ có một conversation logic, chuẩn hóa bằng `participant_low_id` và `participant_high_id`; conversation và đúng hai member được tạo trong cùng transaction.
-- A chỉ được bắt đầu conversation với B khi B đang Follow A. Conversation rỗng không xuất hiện trong Inbox và phải kiểm tra lại điều kiện Follow khi gửi tin đầu tiên; sau tin đầu tiên, Unfollow không đóng conversation.
+- A chỉ được mở hoặc bắt đầu conversation từ hồ sơ của B khi A và B đang Follow lẫn nhau. Conversation rỗng không xuất hiện trong Inbox và phải kiểm tra lại điều kiện Follow hai chiều khi gửi tin đầu tiên; sau tin đầu tiên, Unfollow không đóng conversation hoặc xóa lịch sử đã có.
 - Database gồm `conversations`, `conversation_members`, `messages`, `message_attachments` và `media_cleanup_tasks`; `messages.shared_post_id` là tham chiếu nullable tới bài viết, dùng `ON DELETE SET NULL` để giữ lịch sử message khi bài bị xóa cứng. Cặp participant, `(sender_id, client_message_id)`, thứ tự attachment và định danh storage là duy nhất. `last_message_id` và `last_read_message_id` phải thuộc đúng conversation và được Service kiểm soát ngoài foreign key.
 - REST Core dùng cùng POST JSON để gửi text hoặc `POST_SHARE` với `clientMessageId`, `content` tùy chọn và `sharedPostId`; Backend tự xác định type, kiểm tra khả năng xem bài của cả sender/recipient và áp dụng fingerprint idempotency gồm conversation, post và content. Cùng path POST với `multipart/form-data` nhận `images` tối đa 5. URL ảnh chat ngắn hạn chỉ được cấp qua `GET /api/v1/message-attachments/{attachmentId}/access` sau khi kiểm tra lại quyền.
 - `GET /api/v1/conversations/share-recipients` trả danh sách phân trang gồm conversation đã có message và follower đủ điều kiện; loại self, Block hai chiều, tài khoản không phải `USER`/không `ACTIVE`/chưa onboarding. Restrict không ảnh hưởng danh sách.
@@ -620,9 +620,17 @@ Trạng thái Moderation Case:
 - `RESOLVED_NO_VIOLATION`: Admin kết luận bài không vi phạm; các Report trong case chuyển `REJECTED`.
 - `RESOLVED_ACTION_TAKEN`: Admin kết luận có vi phạm và đã áp dụng hành động; các Report chuyển `RESOLVED`.
 
-Mỗi Moderation Case chuyển sang `RESOLVED_ACTION_TAKEN` được tính đúng một lần vi phạm bài viết cho tác giả,
-không phụ thuộc số Report/reporter trong case. Khi tổng số case vi phạm của tác giả đạt 3, Backend tự động khóa
-tài khoản bằng lý do `REPEATED_VIOLATION`, thu hồi Refresh Token, ghi lịch sử trạng thái, Admin Action và thông báo.
+#### Community Standards & Account Standing — Backend/Frontend `IMPLEMENTED`, automated test `TESTED`
+
+- `/policies/community-standards` là trang chính sách sử dụng nội bộ public cho Guest, USER và ADMIN; đây không phải tuyên bố về một bộ điều khoản pháp lý đầy đủ. Login, Register và Settings đều có entry point tới trang này.
+- Mỗi Moderation Case chuyển thành công từ `OPEN` sang `RESOLVED_ACTION_TAKEN` được tính đúng một lần vi phạm bài viết cho tác giả, không phụ thuộc số Report/reporter trong case. `reports`, `report_count`, Notification, Profile Report và state Frontend không phải nguồn đếm.
+- Lần vi phạm thứ nhất tạo system Notification cảnh báo `1/3`; lần thứ hai tạo cảnh báo cuối `2/3`. Hai Notification dùng type riêng để nội dung lịch sử không thay đổi theo số đếm mới và deep-link tới `/settings/account-status`.
+- Khi tổng số case vi phạm đạt từ 3, Backend không gửi thông điệp “còn 0 lần” mà tự động khóa với lý do `REPEATED_VIOLATION`, thu hồi Refresh Token, ghi Account Status History, Admin Action và system Notification.
+- `GET /api/v1/account/standing` chỉ đọc tài khoản USER hiện tại từ JWT và trả `status`, `confirmedViolationCount`, `violationThreshold`, `remainingBeforeBlock`; không nhận `userId` và không trả reporter, ghi chú nội bộ hoặc metadata kiểm duyệt.
+- `/settings/account-status` hiển thị dữ liệu authoritative từ API, gồm loading, error/retry và link về Tiêu chuẩn cộng đồng. Frontend không suy ra số vi phạm từ Notification.
+- Khóa thủ công vẫn dùng lý do hiện hành, lịch sử trạng thái, Admin Action, thu hồi Refresh Token và Notification. Auth trả `ACCOUNT_BLOCKED` kèm `reasonCode`, `blockedAt`, thông điệp public-safe; màn hình Login hiển thị dedicated blocked state, không lộ Admin, reporter hoặc internal note.
+- Ẩn/khôi phục Post, chỉnh hồ sơ USER, khóa/mở khóa tài khoản đều tạo system Notification bằng hạ tầng MySQL + realtime best-effort `AFTER_COMMIT` hiện có. Mở khóa không xóa hoặc đặt lại lịch sử vi phạm đã xác nhận.
+- Admin UI yêu cầu xác nhận cho cả khóa và mở khóa. User Block A→B vẫn độc lập hoàn toàn với Account Block bằng `users.status = BLOCKED`.
 
 Admin xử lý trực tiếp từ `OPEN` sang một trong hai kết quả cuối. Không có bước tiếp nhận, trạng thái
 `IN_REVIEW`, trạng thái `CLOSED`, `assigned_admin_id` hoặc `closed_at`. Case đã giải quyết không nhận
@@ -639,8 +647,13 @@ không tồn tại hai case `OPEN` cho cùng bài.
 
 - Chỉ tài khoản được tạo từ cấu hình Bootstrap được giữ `SUPER_ADMIN` và có quyền tạo tài khoản quản trị hỗ trợ, gán/thu hồi role hoặc cấu hình permission. Các tài khoản `ADMIN` hỗ trợ có thể mang nhiều vai trò nghiệp vụ nhưng không được nhận `SUPER_ADMIN` hay quyền phân quyền tiếp.
 - `SUPER_ADMIN` nhận toàn bộ permission hiện có và permission bổ sung trong tương lai; `USER_MANAGER` có Dashboard Tổng quan, quản lý người dùng và thống kê người dùng; `MODERATOR` có Dashboard Tổng quan, bài viết, hashtag, báo cáo và quyền duyệt đề xuất kiểm duyệt; `ADS_MANAGER` chỉ có Dashboard Tổng quan vì module Ads chưa được triển khai.
-- `COLLABORATOR` là role hệ thống có bộ permission cố định và có khu vực riêng tại `/admin/collaborator/**`; role này không dùng Dashboard Tổng quan và không nhận permission của module quản trị khác. Khi Master Admin gán role, Backend tự tạo hoặc kích hoạt Managed Social Identity trong cùng transaction, nên tài khoản nhận ngay toàn bộ chức năng: tạo, sửa, xóa mềm bài viết của chính danh tính; xem analytics thật; khám phá; like/unlike; comment/reply; repost/unrepost; xem/tìm hashtag và gửi/xem đề xuất kiểm duyệt của chính mình.
+- `COLLABORATOR` là role hệ thống có bộ permission cố định và có khu vực riêng tại `/admin/collaborator/**`; role này không dùng Dashboard Tổng quan và không nhận permission của module quản trị khác. Khi Master Admin gán role, Backend tự tạo hoặc kích hoạt Managed Social Identity trong cùng transaction, nên tài khoản nhận ngay toàn bộ chức năng: tạo, sửa, xóa mềm bài viết của chính danh tính; xem bình luận/reply công khai trên bài `PUBLISHED` của mình; xem analytics thật; khám phá; like/unlike; comment/reply; repost/unrepost; xem/tìm hashtag và gửi/xem đề xuất kiểm duyệt của chính mình.
+- Ranh giới actor là bắt buộc: `ADMIN/NORMAL` chỉ đăng nhập và quản trị, không được dùng API xã hội hoặc xuất hiện như hồ sơ công khai; `USER/NORMAL` là người dùng xã hội thông thường; `USER/MANAGED` là danh tính công khai của Collaborator, không đăng nhập trực tiếp và chỉ được điều khiển qua `/api/v1/admin/collaborator/**`. Các truy vấn Search, Profile, Follow và danh sách public phải loại `users.role = ADMIN`.
+- Luồng Moderation Suggestion có Backend/Database/Frontend `IMPLEMENTED`, automated test và Frontend lint/build mục tiêu `TESTED`: Cộng tác viên dùng “Khám phá nội dung” để xem hoặc tìm kiếm bài viết theo nội dung và gửi một đề xuất gồm lý do cùng mô tả tùy chọn, sau đó theo dõi tại “Đề xuất của tôi”; Moderator dùng “Đề xuất kiểm duyệt” để xem rõ tên hiển thị, username, avatar và các vai trò hiện tại của người đề xuất, xem chi tiết rồi chấp nhận hoặc từ chối. Sau khi xử lý, chi tiết đề xuất cũng hiển thị người xử lý cùng vai trò hiện tại; API không trả email hoặc dữ liệu xác thực trong các actor này. Tìm kiếm được thực hiện phía Backend với cursor và luôn dùng Managed Social Identity làm viewer. Mỗi cộng tác viên không thể tạo hai đề xuất `PENDING` cho cùng một bài. Chấp nhận đề xuất chỉ ghi nhận kết quả đánh giá, không tự động ẩn bài. Thông báo tạo mới điều hướng Moderator tới chi tiết đề xuất; thông báo kết quả điều hướng Cộng tác viên về đề xuất tương ứng.
 - Mỗi Collaborator có đúng một Managed Social Identity. Khi thu hồi role, Backend vô hiệu hóa liên kết nhưng không xóa Social User, bài viết hoặc lịch sử; khi gán lại role, danh tính cũ được kích hoạt lại. Danh tính này là user nội bộ loại `MANAGED`, không đại diện cá nhân nên không lưu ngày sinh, không có thông tin đăng nhập và không được phát hành Refresh Token; hồ sơ vẫn được đánh dấu sẵn sàng để nội dung xuất hiện trong feed. Mọi bài viết/tương tác vẫn đi qua cùng policy, repository, counter và notification của user thường. Client không được gửi `authorId` hoặc `socialUserId` để lựa chọn actor.
+- Managed Collaborator Public Identity V1 có trạng thái Backend/API/Frontend `IMPLEMENTED`, automated test mục tiêu, Frontend lint/build `TESTED`; chưa `INTEGRATED` cho đến khi hoàn tất manual E2E với MySQL, hai tài khoản Browser và WebSocket thật. Public identity luôn đọc `username`, `display_name`, avatar và bio đã persist từ `user_profiles` của `admin_social_identities.social_user_id`; username được gán đúng một lần khi tạo danh tính và bất biến về sau. Khu vực `/admin/collaborator/profile` là trang “Hồ sơ cộng tác viên” hợp nhất, chỉ cho chỉnh tên hiển thị, avatar và bio public, đồng thời cho xem thông tin tài khoản đăng nhập và đổi mật khẩu. Tài khoản chỉ có role `COLLABORATOR` không hiển thị thêm mục “Hồ sơ của tôi”; route `/admin/profile` cũ tự chuyển về trang hợp nhất. Backend tự resolve actor từ JWT Admin hiện tại.
+- Badge public `COLLABORATOR` do Backend quyết định và chỉ active khi Social User còn là `MANAGED`, liên kết `admin_social_identities` là `ACTIVE`, Admin owner còn `ACTIVE` và vẫn có role `COLLABORATOR`. Thu hồi role không xóa profile, Post hoặc lịch sử nhưng làm badge biến mất. USER thường vẫn Follow/Unfollow Managed Identity qua bảng `follows` và các semantics Feed, Post, Block, Restrict hiện hành không thay đổi.
+- Messaging chỉ hỗ trợ `NORMAL USER ACTIVE` đã hoàn tất profile ở cả hai phía. Managed Identity chỉ có action Follow/Unfollow và không có action Nhắn tin. Trên hồ sơ USER thường, action Nhắn tin vẫn hiển thị nhưng chỉ mở được khi hai người đang Follow lẫn nhau; Frontend thông báo rõ điều kiện này và Backend kiểm tra lại để chống bypass. Managed Identity bị Backend từ chối tại open/send/history/read/attachment/typing/realtime/inbox/unread, và bị lọc trực tiếp tại truy vấn `share-recipients` để giữ đúng pagination; conversation legacy có participant `MANAGED` không bị xóa nhưng không được expose qua Messaging thông thường.
 - Đề xuất kiểm duyệt có trạng thái `PENDING`, `ACCEPTED`, `REJECTED`; một Collaborator không được có hai đề xuất `PENDING` cho cùng bài. Chấp nhận đề xuất chỉ ghi nhận quyết định và audit, không tự động ẩn bài hay tạo kết luận vi phạm.
 - Database dùng `roles`, `permissions`, `role_permissions`, `admin_roles`; unique key trên bảng nối ngăn gán trùng. `users.role` không bị thay thế.
 - Bootstrap Admin được gán `SUPER_ADMIN`; nếu tài khoản bootstrap ADMIN đã tồn tại thì bảo đảm role này được gán nhưng không đổi mật khẩu. Các API phân quyền kiểm tra trực tiếp email actor khớp `BOOTSTRAP_ADMIN_EMAIL`, không chỉ tin role/permission trong Access Token.
@@ -648,12 +661,27 @@ không tồn tại hai case `OPEN` cho cùng bài.
 - Các permission `ADMIN_CREATE`, `ADMIN_ROLE_ASSIGN`, `ADMIN_ROLE_REVOKE` là quyền không thể ủy quyền: chỉ `SUPER_ADMIN` Bootstrap được giữ và không thể thêm vào role nghiệp vụ khác.
 - Thay đổi tài khoản/role admin được ghi `admin_actions` với actor, action, target, role trong note và timestamp. Tài khoản admin hỗ trợ bị vô hiệu hóa bằng trạng thái `BLOCKED`, không xóa cứng; quản trị viên có permission `ADMIN_ENABLE` được mở khóa tài khoản về `ACTIVE`. Master Admin không thể bị vô hiệu hóa.
 - Quản trị viên có permission `ADMIN_PASSWORD_RESET` được cấp lại mật khẩu cho một tài khoản ADMIN hỗ trợ. Backend áp dụng policy mật khẩu, chỉ lưu BCrypt hash, không trả hoặc ghi log mật khẩu, ghi action `RESET_ADMIN_PASSWORD` và thu hồi toàn bộ Refresh Token của tài khoản đích trong cùng transaction; trạng thái `ACTIVE`/`BLOCKED` của tài khoản không bị thay đổi. Master Admin không nhận thao tác này từ màn hình quản trị và chỉ tự đổi mật khẩu tại `/admin/profile`.
-- Mọi ADMIN đang hoạt động có trang `/admin/profile` để xem email, username, trạng thái, role/permission và tự sửa tên hiển thị, ngày sinh, bio. Email, username, role, permission và trạng thái là dữ liệu chỉ đọc; Backend luôn lấy tài khoản đích từ JWT.
+- ADMIN thường và tài khoản đa vai trò đang hoạt động có trang `/admin/profile` để xem email, username, trạng thái, role/permission và tự sửa tên hiển thị, ngày sinh, bio. Tài khoản chỉ có role `COLLABORATOR` dùng trang hợp nhất `/admin/collaborator/profile`: phần công khai hiển thị username chỉ đọc và cho sửa tên hiển thị, avatar, bio của Managed Public Identity; phần hồ sơ quản trị cho sửa độc lập tên hiển thị, ngày sinh và bio của `ADMIN/NORMAL`; email, username kỹ thuật, trạng thái và role chỉ đọc. Mọi username chỉ được thiết lập khi tạo hoặc onboarding và không được sửa qua API hồ sơ. Managed Public Identity vẫn là nguồn duy nhất cho username, tên hiển thị, avatar và bio trên Dashboard/sidebar Collaborator và mọi bề mặt USER nhìn thấy. Hai bản ghi giữ `users.id` và username database riêng vì `user_profiles.username` là định danh unique toàn hệ thống. Backend luôn lấy cả Admin hiện tại và Managed Identity tương ứng từ JWT, không nhận ID đích từ Client.
 - Tự đổi mật khẩu yêu cầu đúng mật khẩu hiện tại; mật khẩu mới phải khớp xác nhận, đạt policy và khác mật khẩu cũ. Backend lưu BCrypt hash, ghi `CHANGE_ADMIN_PASSWORD`, thu hồi toàn bộ Refresh Token và Frontend yêu cầu đăng nhập lại.
 - Frontend đọc claims đã ký để bảo vệ route, lọc sidebar và ẩn action không được phép; Backend dùng method security theo từng permission và vẫn là hàng rào cuối cùng.
 - Khu vực quản trị tách thành `Quản trị viên` tại `/admin/admins` để xem/tạo/vô hiệu hóa Admin và gán role, cùng `Phân quyền` tại `/admin/permissions` để bật/tắt từng permission theo nhóm chức năng. `DASHBOARD_BASIC_VIEW` bắt buộc cho mọi role; quyền của `SUPER_ADMIN` là bất biến.
 - Tại trang Phân quyền, SUPER_ADMIN có thể nhập tên để tạo role tùy chỉnh. Backend chuẩn hóa tên, sinh `code` ASCII uppercase snake case duy nhất, tạo `reserved = false` và gán `DASHBOARD_BASIC_VIEW` mặc định trước khi cho cấu hình thêm permission.
 - Cập nhật permission của role thay toàn bộ snapshot `role_permissions` trong transaction, ghi audit và thu hồi Refresh Token của mọi Admin đang mang role đó. Access Token đã phát hành chỉ hết hiệu lực theo TTL ngắn hạn.
+
+#### Admin Realtime Notification V1 — `IMPLEMENTED` + automated test `TESTED`, chưa `INTEGRATED`
+
+- Mọi tài khoản `ADMIN` đang `ACTIVE` có Notification Center dùng domain `admin_notifications` riêng, không thay đổi semantics của bảng `notifications` dành cho USER.
+- Audience nghiệp vụ được resolve từ effective permission hiện tại trong MySQL qua `admin_roles`, `roles`, `role_permissions` và `permissions`; custom role tự nhận đúng event khi được gán permission tương ứng. Direct recipient dùng cho sự kiện cá nhân như kết quả Moderation Suggestion; role-holder direct audience chỉ dùng cho thay đổi chính role đó.
+- `(recipient_admin_id, event_key)` là hàng rào chống trùng cho retry, admin nhiều role hoặc match nhiều permission. Permission-based self-notification của actor bị loại; chỉ ADMIN `ACTIVE` được nhận event mới.
+- MySQL và REST là source of truth. API danh sách dùng cursor Base64URL opaque theo `created_at DESC, id DESC`, mặc định 10 và tối đa 20; hỗ trợ unread count, read one idempotent, read-all theo visibility hiện tại và soft delete.
+- List, unread count, read-all và realtime đều kiểm tra lại `required_permission_code` theo RBAC hiện tại; thu hồi permission giữ row lịch sử nhưng ẩn row và loại khỏi badge. Notification không cấp quyền truy cập tài nguyên đích.
+- Realtime dùng shared native WebSocket/STOMP `/ws`, không tạo connection hoặc client thứ hai. ADMIN subscribe `/user/queue/admin-notifications`; row được lưu trong business transaction và chỉ phát best-effort tại `AFTER_COMMIT`. Broker lỗi không rollback MySQL.
+- Frontend có chuông/badge/dropdown và trang `/admin/notifications`, dedupe theo notification ID, reconcile qua REST khi reconnect, foreground, mở center và sau mutation; các tab đồng bộ mutation qua `BroadcastChannel`.
+- Event V1 đã nối với Post/Profile Report, Moderation Suggestion, User/Post/Hashtag management, auto-block repeated violation và Admin/RBAC lifecycle. ADS_MANAGER vẫn có center với empty state và không có Ads event giả.
+- Notification kiểm duyệt của USER có modal chi tiết cho `POST_HIDDEN_BY_ADMIN`, `CONTENT_VIOLATION_WARNING` và `CONTENT_VIOLATION_FINAL_WARNING`. Backend chỉ cho chính người nhận đọc, không lộ danh tính Admin, đồng thời lưu snapshot mã lý do và nội dung ngắn để quyết định cũ vẫn giải thích được khi Post được khôi phục hoặc thay đổi. Cảnh báo 1/3–2/3 tham chiếu đúng bài vi phạm; modal hiển thị lý do, nội dung liên quan, thời điểm và mức cảnh báo.
+- Automated backend/frontend test, lint và build đã chạy; migration MySQL thật và manual E2E nhiều tài khoản/WebSocket chưa chạy nên trạng thái là `NOT INTEGRATED`.
+
+Checklist manual E2E: [`docs/testing/ADMIN-REALTIME-NOTIFICATION-V1-E2E-CHECKLIST.md`](docs/testing/ADMIN-REALTIME-NOTIFICATION-V1-E2E-CHECKLIST.md).
 
 #### Quản lý người dùng
 
@@ -962,8 +990,7 @@ student-social-network/
 │
 ├── database/
 │   ├── student_social_network.sql
-│   ├── student_social_network.dbml
-│   └── V20260816__admin_rbac_collaborator_features.sql  # Migration tổng cho database đang tồn tại
+│   └── student_social_network.dbml
 │
 ├── docs/
 │   ├── api/
@@ -1297,6 +1324,14 @@ PATCH /api/v1/admin/moderation-cases/{caseId}/resolve-action
 Frontend chỉ gửi hành động nghiệp vụ và kết luận; `status` cùng `resolved_by` do Backend xác định từ
 state machine và JWT Principal.
 
+API Account Standing dành cho USER hiện tại:
+
+```http
+GET /api/v1/account/standing
+```
+
+Current account lấy từ JWT; API không nhận `userId` từ Client.
+
 API quản lý Admin/RBAC:
 
 ```http
@@ -1415,6 +1450,10 @@ Từ PowerShell:
 ```powershell
 cmd /c "mysql --default-character-set=utf8mb4 -u root -p < database\student_social_network.sql"
 ```
+
+Nếu database đã tồn tại và cần giữ dữ liệu, không import lại file canonical. Repository không phân phối migration rời;
+phải backup và xây dựng script nâng cấp riêng đã được review cho đúng schema nguồn thực tế. Backend dùng
+`ddl-auto: validate` và không tự sửa schema khi khởi động.
 
 ### 4. Cấu hình Backend
 

@@ -7,6 +7,9 @@ import com.stu.edu.vn.backend.common.api.*;
 import com.stu.edu.vn.backend.feed.dto.FeedPostResponse;
 import com.stu.edu.vn.backend.feed.service.FeedService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
+import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
+import com.stu.edu.vn.backend.search.enums.SearchPostType;
+import com.stu.edu.vn.backend.search.service.SearchService;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CollaboratorExploreController {
     private final FeedService feedService;
+    private final SearchService searchService;
     private final AdminHashtagService hashtagService;
     private final CollaboratorSocialIdentityResolver identityResolver;
     private final CurrentUserProvider currentUserProvider;
@@ -33,6 +37,17 @@ public class CollaboratorExploreController {
         Long socialUserId = identityResolver.resolveActive(currentUserProvider.getCurrentUserId()).getId();
         return ResponseEntity.ok(ApiResponse.success("Khám phá nội dung thành công",
                 feedService.getForYouAs(socialUserId, cursor, limit)));
+    }
+
+    @GetMapping("/explore/search")
+    @PreAuthorize("hasAuthority('COLLABORATOR_EXPLORE_VIEW')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<SearchPostResponse>>> searchContent(
+            @RequestParam("q") @NotBlank @Size(max = 100) String keyword,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(20) int limit) {
+        Long socialUserId = identityResolver.resolveActive(currentUserProvider.getCurrentUserId()).getId();
+        return ResponseEntity.ok(ApiResponse.success("Tìm nội dung khám phá thành công",
+                searchService.searchPostsAs(socialUserId, keyword, SearchPostType.CONTENT, cursor, limit)));
     }
 
     @GetMapping("/hashtags")

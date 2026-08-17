@@ -15,6 +15,7 @@ import { googleMapsLocationUrl } from '../../../post/locations/locationUtils.js'
 import { resolveLocationUpdate } from '../../../post/locations/locationMultipart.js';
 import { formatPostEditCountdown, postEditRemainingSeconds } from '../../../post/utils/postEditWindow.js';
 import { ADMIN_PERMISSIONS } from '../../constants/adminRbac.js';
+import CollaboratorCommentDiscussion from '../components/CollaboratorCommentDiscussion.jsx';
 import { collaboratorApi } from '../services/collaboratorApi.js';
 
 const STATUS_META = Object.freeze({
@@ -168,8 +169,8 @@ export default function CollaboratorPostDetailPage() {
             {post.content ? <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-900">{post.content}</p> : <p className="text-sm italic text-zinc-500">Bài viết không có nội dung văn bản.</p>}
             {post.hashtag ? <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"><Hash size={14} />{post.hashtag}</div> : null}
             {post.location ? (
-              <a href={googleMapsLocationUrl(post.location)} target="_blank" rel="noreferrer" className="mt-2 flex items-start gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition hover:border-indigo-200 hover:bg-indigo-50/40">
-                <MapPin size={16} className="mt-0.5 shrink-0 text-indigo-600" />
+              <a href={googleMapsLocationUrl(post.location)} target="_blank" rel="noreferrer" className="mt-2 flex items-start gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition hover:border-zinc-400 hover:bg-zinc-100">
+                <MapPin size={16} className="mt-0.5 shrink-0 text-zinc-700" />
                 <span><span className="block text-sm font-semibold text-zinc-900">{post.location.displayName}</span>{post.location.formattedAddress ? <span className="mt-0.5 block text-xs text-zinc-500">{post.location.formattedAddress}</span> : null}</span>
               </a>
             ) : null}
@@ -201,14 +202,21 @@ export default function CollaboratorPostDetailPage() {
         </aside>
       </div>
 
+      <CollaboratorCommentDiscussion
+        key={`${post.id}:${post.status}`}
+        postId={post.id}
+        commentCount={post.commentCount}
+        postStatus={post.status}
+      />
+
       <Modal open={Boolean(edit)} title="Chỉnh sửa bài viết" onClose={closeEdit} size="lg"
         footer={<><Button variant="secondary" onClick={closeEdit} disabled={saving}>Hủy</Button><Button onClick={saveEdit} loading={saving} loadingLabel="Đang lưu..." disabled={!edit || edit.mediaBusy || (!edit.content.trim() && edit.totalCount === 0)}>Lưu thay đổi</Button></>}>
         {edit ? <div className="space-y-4">
           <div className="flex items-center gap-3"><Avatar src={post.author?.avatarUrl} name={post.author?.displayName} size="sm" /><p className="font-bold text-zinc-950">{post.author?.displayName}</p></div>
-          <div><textarea value={edit.content} maxLength={500} rows={6} disabled={saving} onChange={(event) => setEdit((current) => ({ ...current, content: event.target.value }))} className="w-full resize-none rounded-xl border border-zinc-300 p-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Nội dung bài viết" /><p className="mt-1 text-right text-xs text-zinc-500">{edit.content.length}/500</p></div>
-          <div><label htmlFor="collaborator-edit-hashtag" className="mb-1.5 block text-sm font-semibold text-zinc-800">Hashtag</label><input id="collaborator-edit-hashtag" value={edit.hashtag} maxLength={100} disabled={saving} onChange={(event) => setEdit((current) => ({ ...current, hashtag: event.target.value }))} className="w-full rounded-xl border border-zinc-300 p-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Một hashtag, không cần nhập ký tự #" /></div>
+          <div><textarea value={edit.content} maxLength={500} rows={6} disabled={saving} onChange={(event) => setEdit((current) => ({ ...current, content: event.target.value }))} className="w-full resize-none rounded-xl border border-zinc-300 p-3 text-sm outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100" placeholder="Nội dung bài viết" /><p className="mt-1 text-right text-xs text-zinc-500">{edit.content.length}/500</p></div>
+          <div><label htmlFor="collaborator-edit-hashtag" className="mb-1.5 block text-sm font-semibold text-zinc-800">Hashtag</label><input id="collaborator-edit-hashtag" value={edit.hashtag} maxLength={100} disabled={saving} onChange={(event) => setEdit((current) => ({ ...current, hashtag: event.target.value }))} className="w-full rounded-xl border border-zinc-300 p-3 text-sm outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100" placeholder="Một hashtag, không cần nhập ký tự #" /></div>
           <EditPostMedia media={post.media ?? []} disabled={saving} onBusyChange={(mediaBusy) => setEdit((current) => current && ({ ...current, mediaBusy }))} onChange={(selection) => setEdit((current) => current && ({ ...current, ...selection }))} />
-          <div><p className="text-sm font-semibold text-zinc-800">Địa điểm</p><SelectedLocation location={edit.location} onRemove={() => !saving && setEdit((current) => ({ ...current, location: null }))} /><button type="button" disabled={saving} onClick={() => setLocationPickerOpen((open) => !open)} className="mt-2 text-sm font-semibold text-indigo-600 disabled:opacity-50">{edit.location ? 'Thay đổi địa điểm' : 'Gắn địa điểm'}</button>{locationPickerOpen ? <LocationPicker onSelect={(location) => setEdit((current) => ({ ...current, location }))} onClose={() => setLocationPickerOpen(false)} /> : null}</div>
+          <div><p className="text-sm font-semibold text-zinc-800">Địa điểm</p><SelectedLocation location={edit.location} onRemove={() => !saving && setEdit((current) => ({ ...current, location: null }))} /><button type="button" disabled={saving} onClick={() => setLocationPickerOpen((open) => !open)} className="mt-2 text-sm font-semibold text-zinc-700 hover:text-zinc-950 disabled:opacity-50">{edit.location ? 'Thay đổi địa điểm' : 'Gắn địa điểm'}</button>{locationPickerOpen ? <LocationPicker onSelect={(location) => setEdit((current) => ({ ...current, location }))} onClose={() => setLocationPickerOpen(false)} /> : null}</div>
           {editError ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{editError}</p> : null}
         </div> : null}
       </Modal>

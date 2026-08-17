@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import java.util.List;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -31,7 +32,7 @@ public interface PostMapper {
     @Mapping(target = "publishedAt", source = "post.publishedAt")
     @Mapping(target = "createdAt", source = "post.createdAt")
     @Mapping(target = "updatedAt", source = "post.updatedAt")
-    @Mapping(target = "author", source = "authorProfile")
+    @Mapping(target = "author", expression = "java(new PostAuthorResponse(authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl(), badges))")
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "location", source = "post.location")
@@ -40,7 +41,8 @@ public interface PostMapper {
             Post post,
             UserProfile authorProfile,
             List<PostMedia> media,
-            String hashtag
+            String hashtag,
+            List<PublicUserBadge> badges
     );
 
     @Mapping(target = "id", source = "post.id")
@@ -52,7 +54,7 @@ public interface PostMapper {
     @Mapping(target = "publishedAt", source = "post.publishedAt")
     @Mapping(target = "createdAt", source = "post.createdAt")
     @Mapping(target = "updatedAt", source = "post.updatedAt")
-    @Mapping(target = "author", source = "authorProfile")
+    @Mapping(target = "author", expression = "java(new PostAuthorResponse(authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl(), badges))")
     @Mapping(target = "media", source = "media")
     @Mapping(target = "hashtag", source = "hashtag")
     @Mapping(target = "viewer", expression = "java(new PostViewerResponse(owner, likedByCurrentUser))")
@@ -65,15 +67,17 @@ public interface PostMapper {
             String hashtag,
             boolean owner,
             boolean likedByCurrentUser,
-            boolean reposted
+            boolean reposted,
+            List<PublicUserBadge> badges
     );
 
     default PostDetailResponse toDetailResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                                 String hashtag, boolean owner) {
-        return toDetailResponse(post, authorProfile, media, hashtag, owner, false, false);
+        return toDetailResponse(post, authorProfile, media, hashtag, owner, false, false, List.of());
     }
 
     @Mapping(target = "id", source = "userId")
+    @Mapping(target = "badges", expression = "java(java.util.List.of())")
     PostAuthorResponse toAuthorResponse(UserProfile authorProfile);
 
     @Mapping(target = "url", source = "mediaUrl")

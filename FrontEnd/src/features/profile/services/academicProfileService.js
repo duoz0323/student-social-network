@@ -2,7 +2,8 @@ import { ACADEMIC_ENDPOINTS } from '../../../api/apiEndpoints.js';
 import { httpClient } from '../../../api/httpClient.js';
 import { compactParams, requestData } from '../../../api/requestData.js';
 
-const AUTOCOMPLETE_LIMIT = 10;
+// Lấy mức tối đa API cho phép để lần mở đầu hiển thị nhiều master data hiện có nhất.
+const AUTOCOMPLETE_LIMIT = 20;
 
 // Master data luôn được đọc từ Backend để Frontend không hard-code tên trường, khoa hoặc ngành.
 export const academicProfileService = Object.freeze({

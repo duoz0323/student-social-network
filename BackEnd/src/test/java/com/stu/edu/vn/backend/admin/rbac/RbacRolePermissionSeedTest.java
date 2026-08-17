@@ -31,12 +31,9 @@ class RbacRolePermissionSeedTest {
     }
 
     @Test
-    void baselineAndConsolidatedMigrationSupportAllAdminContracts() throws IOException {
-        // Khóa đồng bộ contract giữa file rebuild và migration tổng duy nhất.
+    void canonicalSchemaSupportsAllAdminContracts() throws IOException {
+        // Repository chỉ giữ SQL canonical; mọi contract Admin phải tồn tại trực tiếp trong artifact này.
         assertThat(Files.readString(resolveDatabasePath("student_social_network.sql")))
-                .contains("'UPDATE_ROLE_PERMISSIONS'", "'CREATE_ACADEMIC_DATA'", "'ACADEMIC_DATA'");
-
-        assertThat(Files.readString(resolveDatabasePath("V20260816__admin_rbac_collaborator_features.sql")))
                 .contains("'UPDATE_ROLE_PERMISSIONS'")
                 .contains("'ENABLE_ADMIN'")
                 .contains("'ADMIN_ENABLE'")
@@ -44,17 +41,14 @@ class RbacRolePermissionSeedTest {
                 .contains("'ADMIN_PASSWORD_RESET'")
                 .contains("'CREATE_ADMIN_ROLE'")
                 .contains("'UPDATE_ADMIN_PROFILE'")
-                .contains("'CHANGE_ADMIN_PASSWORD'");
-
-        assertThat(Files.readString(resolveDatabasePath("V20260816__admin_rbac_collaborator_features.sql")))
+                .contains("'CHANGE_ADMIN_PASSWORD'")
                 .contains("WHERE r.code <> 'SUPER_ADMIN'")
-                .contains("'ADMIN_CREATE', 'ADMIN_ROLE_ASSIGN', 'ADMIN_ROLE_REVOKE'")
-                .contains("CREATE TABLE IF NOT EXISTS `admin_social_identities`")
-                .contains("CREATE TABLE IF NOT EXISTS `moderation_suggestions`")
+                .contains("'ADMIN_CREATE','ADMIN_ROLE_ASSIGN','ADMIN_ROLE_REVOKE'")
+                .contains("CREATE TABLE `admin_social_identities`")
+                .contains("CREATE TABLE `moderation_suggestions`")
                 .contains("'COLLABORATOR_POST_CREATE'")
                 .contains("r.code = 'COLLABORATOR'")
                 .contains("p.code LIKE 'COLLABORATOR\\_%'")
-                .contains("DROP CHECK `chk_user_profiles_completion_requires_birth_date`")
                 .contains("owner_account_type <> 'MANAGED'")
                 .contains("CREATE TRIGGER `trg_user_profiles_completion_birth_insert`")
                 .contains("'CREATE_ACADEMIC_DATA'", "'ACADEMIC_DATA'");

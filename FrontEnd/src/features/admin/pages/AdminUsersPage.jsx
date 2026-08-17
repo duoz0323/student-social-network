@@ -4,6 +4,7 @@ import { adminApi } from '../../../api/index.js';
 import DataTable from '../../../components/common/DataTable.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import BlockUserDialog from '../components/BlockUserDialog.jsx';
+import UnblockUserDialog from '../components/UnblockUserDialog.jsx';
 import AdminEditUserProfileDialog from '../components/AdminEditUserProfileDialog.jsx';
 import AdminUserDetailDialog from '../components/AdminUserDetailDialog.jsx';
 import AdminUserAnalytics from '../components/AdminUserAnalytics.jsx';
@@ -23,6 +24,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [blockTarget, setBlockTarget] = useState(null);
+  const [unblockTarget, setUnblockTarget] = useState(null);
   const [actionUserId, setActionUserId] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [userDetail, setUserDetail] = useState(null);
@@ -134,8 +136,9 @@ export default function AdminUsersPage() {
       setBlockTarget(target);
       return;
     }
+    const target = userDetail;
     closeUserDetail();
-    await unblockUser(userDetail);
+    setUnblockTarget(target);
   }
 
   async function confirmBlock(reasonCode) {
@@ -157,12 +160,14 @@ export default function AdminUsersPage() {
     setActionUserId(user.userId);
     try {
       await adminApi.unblockUser(user.userId);
+      setUnblockTarget(null);
       await load();
       setStatisticsRevision((current) => current + 1);
       showToast('Mở khóa tài khoản thành công!');
     } catch (requestError) {
       setError(requestError.message);
       showToast(requestError.message || 'Không thể mở khóa tài khoản.', { type: 'error' });
+      throw requestError;
     } finally {
       setActionUserId(null);
     }
@@ -199,6 +204,14 @@ export default function AdminUsersPage() {
           user={blockTarget}
           onClose={() => setBlockTarget(null)}
           onConfirm={confirmBlock}
+        />
+      ) : null}
+      {unblockTarget ? (
+        <UnblockUserDialog
+          key={unblockTarget.userId}
+          user={unblockTarget}
+          onClose={() => setUnblockTarget(null)}
+          onConfirm={unblockUser}
         />
       ) : null}
       {selectedUserId ? (

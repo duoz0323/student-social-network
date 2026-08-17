@@ -60,9 +60,13 @@ class MessagingServiceImplTest {
                 blockRepository, followRepository, pairLock, conversationRepository, memberRepository,
                 messageRepository, attachmentRepository, new MessagingMapper(), sharedPostMessageLoader,
                 postRepository, cursorCodec, entityManager,
-                Clock.systemUTC(), eventPublisher);
+                Clock.systemUTC(), eventPublisher,
+                new com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy(
+                        userRepository, profileRepository));
         when(sharedPostMessageLoader.loadVisible(anyLong(), anyCollection())).thenReturn(Map.of());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userRepository.findById(20L)).thenReturn(Optional.of(user(20L, UserRole.USER, UserStatus.ACTIVE)));
+        when(profileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(20L)).thenReturn(true);
     }
 
     @Test
@@ -93,13 +97,13 @@ class MessagingServiceImplTest {
     }
 
     @Test
-    void openUsesRecipientFollowsSenderDirectionAndCreatesExactlyTwoMembers() {
+    void openRequiresMutualFollowAndCreatesExactlyTwoMembers() {
         User sender = prepareEligible(10L);
         User recipient = prepareEligible(20L);
         when(blockRepository.existsEitherDirection(10L, 20L)).thenReturn(false);
         when(conversationRepository.findPairForUpdate(10L, 20L))
                 .thenReturn(Optional.empty());
-        when(followRepository.existsByIdFollowerIdAndIdFollowingId(20L, 10L)).thenReturn(true);
+        when(followRepository.existsMutualFollow(10L, 20L)).thenReturn(true);
         when(conversationRepository.saveAndFlush(any())).thenAnswer(invocation -> {
             Conversation item = invocation.getArgument(0);
             ReflectionTestUtils.setField(item, "id", 99L);
@@ -108,8 +112,7 @@ class MessagingServiceImplTest {
         when(profileRepository.findById(20L)).thenReturn(Optional.of(profile(recipient, "Recipient")));
 
         assertThat(service.openDirectConversation(20L).conversationId()).isEqualTo(99L);
-        verify(followRepository).existsByIdFollowerIdAndIdFollowingId(20L, 10L);
-        verify(followRepository, never()).existsByIdFollowerIdAndIdFollowingId(10L, 20L);
+        verify(followRepository).existsMutualFollow(10L, 20L);
         verify(memberRepository).saveAll(argThat(items -> {
             List<ConversationMember> members = new ArrayList<>();
             items.forEach(members::add);
@@ -125,7 +128,8 @@ class MessagingServiceImplTest {
         prepareEligible(20L);
         when(conversationRepository.findPairForUpdate(10L, 20L))
                 .thenReturn(Optional.empty());
-        assertError(() -> service.openDirectConversation(20L), ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
+        assertError(() -> service.openDirectConversation(20L),
+                ErrorCode.DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED);
         verify(conversationRepository, never()).saveAndFlush(any());
     }
 
@@ -143,7 +147,7 @@ class MessagingServiceImplTest {
     @Test
     void emojiCountsAsCodePointAndUuidMustBeVersionFour() {
         Conversation conversation = prepareSendConversation();
-        when(followRepository.existsByIdFollowerIdAndIdFollowingId(20L, 10L)).thenReturn(true);
+        when(followRepository.existsMutualFollow(10L, 20L)).thenReturn(true);
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> {
             Message message = invocation.getArgument(0);
             ReflectionTestUtils.setField(message, "id", 70L);
@@ -163,10 +167,10 @@ class MessagingServiceImplTest {
     @Test
     void firstMessageRechecksFollowAfterEmptyConversation() {
         prepareSendConversation();
-        when(followRepository.existsByIdFollowerIdAndIdFollowingId(20L, 10L)).thenReturn(false);
+        when(followRepository.existsMutualFollow(10L, 20L)).thenReturn(false);
         assertError(() -> service.sendMessage(50L,
                 new SendMessageRequest("550e8400-e29b-41d4-a716-446655440000", "hello")),
-                ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
+                ErrorCode.DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED);
         verify(messageRepository, never()).saveAndFlush(any());
         verify(eventPublisher, never()).publishEvent(any());
     }

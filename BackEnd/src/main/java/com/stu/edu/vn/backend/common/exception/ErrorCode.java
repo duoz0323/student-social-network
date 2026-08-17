@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
  * Mã lỗi nghiệp vụ dùng chung để response lỗi nhất quán giữa các module.
  */
 public enum ErrorCode {
+    ADMIN_NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo quản trị"),
     MANAGED_ACCOUNT_LOGIN_FORBIDDEN(HttpStatus.FORBIDDEN, "Danh tính xã hội được quản lý không thể đăng nhập trực tiếp"),
     COLLABORATOR_SOCIAL_IDENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "Cộng tác viên chưa có danh tính xã hội"),
     COLLABORATOR_SOCIAL_IDENTITY_DISABLED(HttpStatus.FORBIDDEN, "Danh tính xã hội của cộng tác viên đã bị vô hiệu hóa"),
@@ -188,6 +189,8 @@ public enum ErrorCode {
     PROFILE_NOT_COMPLETED(HttpStatus.FORBIDDEN, "Bạn cần hoàn tất hồ sơ trước khi sử dụng chức năng này"),
     MESSAGING_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Tài khoản không được phép sử dụng chức năng nhắn tin"),
     CANNOT_MESSAGE_SELF(HttpStatus.BAD_REQUEST, "Bạn không thể nhắn tin cho chính mình"),
+    DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED(HttpStatus.FORBIDDEN,
+            "Hai bạn cần theo dõi lẫn nhau trước khi có thể trò chuyện"),
     DIRECT_MESSAGE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Không thể bắt đầu hoặc tiếp tục cuộc trò chuyện này"),
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy cuộc trò chuyện"),
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tin nhắn"),
@@ -302,6 +305,7 @@ public enum ErrorCode {
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "Access Token không hợp lệ"),
     ACCESS_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Access Token đã hết hạn"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"),
+    ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN, "Tài khoản của bạn đã bị khóa"),
     USER_BLOCKED(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này"),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức HTTP không được hỗ trợ cho API này"),

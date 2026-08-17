@@ -7,12 +7,14 @@ import com.stu.edu.vn.backend.follow.dto.response.FollowUserResponse;
 import com.stu.edu.vn.backend.follow.entity.Follow;
 import com.stu.edu.vn.backend.follow.mapper.FollowMapper;
 import com.stu.edu.vn.backend.follow.repository.FollowRepository;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import com.stu.edu.vn.backend.follow.service.FollowService;
 import com.stu.edu.vn.backend.notification.service.NotificationService;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
@@ -32,6 +34,7 @@ public class FollowServiceImpl implements FollowService {
     private final UserProfileRepository userProfileRepository;
     private final FollowRepository followRepository;
     private final FollowMapper followMapper;
+    private final PublicUserBadgeService publicUserBadgeService;
     private final NotificationService notificationService;
     private final UserRelationshipPolicyService relationshipPolicyService;
 
@@ -41,6 +44,7 @@ public class FollowServiceImpl implements FollowService {
             UserProfileRepository userProfileRepository,
             FollowRepository followRepository,
             FollowMapper followMapper,
+            PublicUserBadgeService publicUserBadgeService,
             NotificationService notificationService,
             UserRelationshipPolicyService relationshipPolicyService
     ) {
@@ -49,6 +53,7 @@ public class FollowServiceImpl implements FollowService {
         this.userProfileRepository = userProfileRepository;
         this.followRepository = followRepository;
         this.followMapper = followMapper;
+        this.publicUserBadgeService = publicUserBadgeService;
         this.notificationService = notificationService;
         this.relationshipPolicyService = relationshipPolicyService;
     }
@@ -102,10 +107,11 @@ public class FollowServiceImpl implements FollowService {
         ensureListOwnerIsActive(userId);
         relationshipPolicyService.assertNoBlock(currentUserId, userId);
 
-        return followRepository.findActiveFollowers(userId, currentUserId)
-                .stream()
-                .map(followMapper::toResponse)
-                .toList();
+        var rows = followRepository.findActiveFollowers(userId, currentUserId);
+        var badges = publicUserBadgeService.getBadgesByUserIds(
+                rows.stream().map(item -> item.getUserId()).toList());
+        return rows.stream().map(item -> followMapper.toResponse(
+                item, badges.getOrDefault(item.getUserId(), List.of()))).toList();
     }
 
     @Override
@@ -116,16 +122,17 @@ public class FollowServiceImpl implements FollowService {
         ensureListOwnerIsActive(userId);
         relationshipPolicyService.assertNoBlock(currentUserId, userId);
 
-        return followRepository.findActiveFollowing(userId, currentUserId)
-                .stream()
-                .map(followMapper::toResponse)
-                .toList();
+        var rows = followRepository.findActiveFollowing(userId, currentUserId);
+        var badges = publicUserBadgeService.getBadgesByUserIds(
+                rows.stream().map(item -> item.getUserId()).toList());
+        return rows.stream().map(item -> followMapper.toResponse(
+                item, badges.getOrDefault(item.getUserId(), List.of()))).toList();
     }
 
     private User ensureCurrentUserCanUseSocialFeatures(Long currentUserId) {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        if (currentUser.getStatus() != UserStatus.ACTIVE) {
+        if (currentUser.getRole() != UserRole.USER || currentUser.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.USER_BLOCKED);
         }
 
@@ -146,7 +153,7 @@ public class FollowServiceImpl implements FollowService {
     private User findActiveTargetUser(Long userId) {
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        if (targetUser.getStatus() != UserStatus.ACTIVE) {
+        if (targetUser.getRole() != UserRole.USER || targetUser.getStatus() != UserStatus.ACTIVE) {
             // Target BLOCKED được coi là không khả dụng để không lộ trạng thái tài khoản nội bộ.
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }

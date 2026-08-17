@@ -1,5 +1,9 @@
 package com.stu.edu.vn.backend.report.service.impl;
 
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType;
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationType;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationEvent;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationRouter;
 import com.stu.edu.vn.backend.common.exception.BusinessException;
 import com.stu.edu.vn.backend.common.exception.ErrorCode;
 import com.stu.edu.vn.backend.report.dto.request.CreateProfileReportRequest;
@@ -23,6 +27,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Tạo báo cáo hồ sơ với snapshot và chống trùng trong cùng transaction. */
@@ -37,6 +42,7 @@ public class ProfileReportServiceImpl implements ProfileReportService {
     private final ProfileReportCaseRepository profileReportCaseRepository;
     private final EntityManager entityManager;
     private final Clock clock;
+    private AdminNotificationRouter adminNotificationRouter;
 
     public ProfileReportServiceImpl(
             CurrentUserProvider currentUserProvider,
@@ -56,6 +62,11 @@ public class ProfileReportServiceImpl implements ProfileReportService {
         this.profileReportCaseRepository = profileReportCaseRepository;
         this.entityManager = entityManager;
         this.clock = clock;
+    }
+
+    @Autowired
+    void setAdminNotificationRouter(AdminNotificationRouter adminNotificationRouter) {
+        this.adminNotificationRouter = adminNotificationRouter;
     }
 
     @Override
@@ -107,6 +118,15 @@ public class ProfileReportServiceImpl implements ProfileReportService {
             throw new BusinessException(ErrorCode.PROFILE_REPORT_ALREADY_PENDING);
         }
         entityManager.refresh(report);
+        if (adminNotificationRouter != null) {
+            adminNotificationRouter.notifyByPermission("REPORT_VIEW", null, new AdminNotificationEvent(
+                    AdminNotificationType.PROFILE_REPORT_CREATED,
+                    "Có báo cáo trang cá nhân mới",
+                    "Một trang cá nhân vừa nhận báo cáo mới.",
+                    AdminNotificationReferenceType.PROFILE_REPORT,
+                    reportCase.getId(),
+                    "PROFILE_REPORT_CREATED:PROFILE_REPORT:" + report.getId()));
+        }
         return new CreateProfileReportResponse(
                 report.getId(), reportedUserId, report.getReason(), report.getStatus(), report.getCreatedAt());
     }

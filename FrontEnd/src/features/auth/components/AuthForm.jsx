@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { CheckCircle2, CircleAlert, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, CircleAlert, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import Button from '../../../components/common/Button.jsx';
 import SocialAuthButtons from './SocialAuthButtons.jsx';
 import PasswordVisibilityIcon from './PasswordVisibilityIcon.jsx';
@@ -17,6 +17,26 @@ function getDisplayError(message, fieldErrors, retrySeconds) {
     if (fieldErrors[field]) return fieldErrors[field];
   }
   return '';
+}
+
+/** Entry point chính sách dùng chung để người dùng dễ nhận biết trên cả Login và Register. */
+function CommunityStandardsLink() {
+  return (
+    <Link
+      to="/policies/community-standards"
+      className="group mt-3 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3.5 py-3 text-left transition-all duration-200 hover:border-zinc-300 hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+      aria-label="Xem Tiêu chuẩn cộng đồng của UniShare"
+    >
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-zinc-950 text-white shadow-sm">
+        <ShieldCheck size={18} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold text-zinc-900">Tiêu chuẩn cộng đồng</span>
+        <span className="mt-0.5 block text-[11px] leading-4 text-zinc-500">Tìm hiểu cách cùng nhau giữ UniShare an toàn, tích cực.</span>
+      </span>
+      <ArrowUpRight className="shrink-0 text-zinc-400 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-700" size={17} aria-hidden="true" />
+    </Link>
+  );
 }
 
 // Form đăng nhập / đăng ký dùng chung, phân biệt qua prop `type`
@@ -248,11 +268,13 @@ export default function AuthForm({
                 disabled={submitting}
               />
               <span>
-                Tôi đồng ý với{' '}
-                <span className="cursor-pointer font-medium text-zinc-950 hover:underline">
-                  điều khoản sử dụng
-                </span>
-                .
+                Bằng việc sử dụng Student Social Network, tôi đồng ý tuân thủ{' '}
+                <Link
+                  to="/policies/community-standards"
+                  className="rounded-sm font-bold text-zinc-950 underline decoration-zinc-400 underline-offset-2 transition-colors hover:decoration-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                >
+                  Tiêu chuẩn cộng đồng
+                </Link>.
               </span>
             </label>
           </>
@@ -322,6 +344,7 @@ export default function AuthForm({
             </>
           )}
         </p>
+        <CommunityStandardsLink />
       </form>
     </div>
   );

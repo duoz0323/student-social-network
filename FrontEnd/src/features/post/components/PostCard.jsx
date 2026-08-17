@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
+import PublicIdentityBadge from '../../../components/common/PublicIdentityBadge.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { LoadingState } from '../../../components/common/StateBlock.jsx';
@@ -444,14 +445,18 @@ export default function PostCard({
             to={String(post.repostedBy.id) === String(currentUserId) ? '/profile/me' : `/profile/${post.repostedBy.id}`}
             className="mb-2 block text-[13px] font-semibold text-[var(--app-muted)] hover:text-[var(--app-text)]"
           >
-            {post.repostedBy.displayName} đã đăng lại
+            <span className="inline-flex items-center gap-1">
+              {post.repostedBy.displayName} đã đăng lại
+              <PublicIdentityBadge badges={post.repostedBy.badges} />
+            </span>
           </Link>
         )}
         {/* Header: tên tác giả + thời gian + nút menu */}
         <header className="flex items-start justify-between gap-3">
           <Link to={author.id === currentUserId ? '/profile/me' : `/profile/${author.id}`} className="min-w-0">
-            <p className="truncate text-[15px] font-bold text-[var(--app-text)]">
-              {author.displayName}
+            <p className="flex min-w-0 items-center text-[15px] font-bold text-[var(--app-text)]">
+              <span className="truncate">{author.displayName}</span>
+              <PublicIdentityBadge badges={author.badges} className="ml-1" />
               <span className="ml-1.5 font-normal text-[var(--app-muted)]">
                 · {shortTime(post.createdAt)}
                 {post.edited ? ' · đã sửa' : ''}

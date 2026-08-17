@@ -9,12 +9,15 @@ import com.stu.edu.vn.backend.user.dto.response.UserProfileResponse;
 import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
 import com.stu.edu.vn.backend.user.mapper.AcademicProfileResponseMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
 import com.stu.edu.vn.backend.user.service.UserProfileService;
 import com.stu.edu.vn.backend.user.service.UserRelationshipPolicyService;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final UserRelationshipPolicyService relationshipPolicyService;
     private final UserRestrictionRepository userRestrictionRepository;
     private final AcademicProfileValidationSupport academicValidationSupport;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     @Override
     @Transactional(readOnly = true)
@@ -89,7 +93,9 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
         UserProfile profile = userProfileRepository.findById(profileUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
-        if (profile.getUser().getStatus() != UserStatus.ACTIVE || !profile.isCompleted()) {
+        if (profile.getUser().getRole() != UserRole.USER
+                || profile.getUser().getStatus() != UserStatus.ACTIVE
+                || !profile.isCompleted()) {
             // Không tiết lộ trạng thái khóa hoặc onboarding của tài khoản qua API hồ sơ công khai.
             throw new BusinessException(ErrorCode.PROFILE_NOT_FOUND);
         }
@@ -116,7 +122,12 @@ public class UserProfileServiceImpl implements UserProfileService {
                 !profileUserId.equals(currentUserId)
                         && userRestrictionRepository.existsByIdRestrictorIdAndIdRestrictedId(
                         currentUserId, profileUserId),
-                profile.getUser().getAccountType() == com.stu.edu.vn.backend.user.enums.UserAccountType.MANAGED
+                profile.getUser().getAccountType() == UserAccountType.MANAGED,
+                publicUserBadgeService.getBadges(profileUserId),
+                !profileUserId.equals(currentUserId),
+                !profileUserId.equals(currentUserId)
+                        && profile.getUser().getAccountType() == UserAccountType.NORMAL
+                        && followRepository.existsMutualFollow(currentUserId, profileUserId)
         );
     }
 }

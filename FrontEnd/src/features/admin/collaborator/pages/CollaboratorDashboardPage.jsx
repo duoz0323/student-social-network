@@ -60,7 +60,7 @@ function DashboardHeader({ displayName, canCreatePost }) {
       <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl">Xin chào, {displayName || 'Cộng tác viên'} <span aria-hidden="true"></span></h1>
 
     </div>
-    {canCreatePost ? <Link to="/admin/collaborator/posts?create=1" className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:self-auto">
+    {canCreatePost ? <Link to="/admin/collaborator/posts?create=1" className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 sm:self-auto">
       <Plus size={17} /> Tạo bài viết
     </Link> : null}
   </header>;
@@ -81,7 +81,7 @@ function TrendPanel({ days, setDays, series }) {
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div><h2 className="text-lg font-bold text-zinc-950">Hiệu quả nội dung</h2><p className="mt-1 text-xs text-zinc-500">Tổng lượt thích, bình luận và đăng lại theo ngày.</p></div>
       <div className="flex rounded-xl bg-zinc-100 p-1" aria-label="Khoảng thời gian thống kê">
-        {RANGE_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setDays(option.value)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${days === option.value ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-950'}`}>{option.label}</button>)}
+        {RANGE_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setDays(option.value)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${days === option.value ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-600 hover:text-zinc-950'}`}>{option.label}</button>)}
       </div>
     </div>
     <InteractionTrendChart series={series} />
@@ -105,7 +105,7 @@ function InteractionTrendChart({ series }) {
 
 function TopPosts({ posts = [] }) {
   return <article className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-    <div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-bold text-zinc-950">Bài viết nổi bật</h2><Link to="/admin/collaborator/posts" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Xem tất cả</Link></div>
+    <div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-bold text-zinc-950">Bài viết nổi bật</h2><Link to="/admin/collaborator/posts" className="text-xs font-semibold text-zinc-700 hover:text-zinc-950 hover:underline">Xem tất cả</Link></div>
     {posts.length ? <div className="space-y-5">{posts.slice(0, 3).map((post) => <TopPostItem key={post.postId} post={post} />)}</div> : <p className="py-16 text-center text-sm text-zinc-500">Chưa có bài viết nổi bật.</p>}
   </article>;
 }
@@ -113,6 +113,6 @@ function TopPosts({ posts = [] }) {
 function TopPostItem({ post }) {
   return <Link to={`/admin/collaborator/posts/${post.postId}`} className="group grid grid-cols-[56px_minmax(0,1fr)] gap-3">
     {post.thumbnail ? <img src={post.thumbnail} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-50 text-indigo-400"><FileText size={22} /></div>}
-    <div className="min-w-0"><p className="truncate text-sm font-semibold text-zinc-900 group-hover:text-indigo-600">{post.contentPreview || 'Bài viết chỉ có media'}</p><p className="mt-1 truncate text-xs text-zinc-500">{post.hashtag ? `#${post.hashtag} · ` : ''}{shortTime(post.createdAt)}</p><div className="mt-2 flex gap-3 text-xs text-zinc-500"><span className="inline-flex items-center gap-1"><Heart size={12} className="text-rose-500" fill="currentColor" />{formatNumber(post.likeCount)}</span><span className="inline-flex items-center gap-1"><MessageCircle size={12} />{formatNumber(post.commentCount)}</span><span className="inline-flex items-center gap-1"><Repeat2 size={12} />{formatNumber(post.repostCount)}</span></div></div>
+    <div className="min-w-0"><p className="truncate text-sm font-semibold text-zinc-900 group-hover:text-zinc-950 group-hover:underline">{post.contentPreview || 'Bài viết chỉ có media'}</p><p className="mt-1 truncate text-xs text-zinc-500">{post.hashtag ? `#${post.hashtag} · ` : ''}{shortTime(post.createdAt)}</p><div className="mt-2 flex gap-3 text-xs text-zinc-500"><span className="inline-flex items-center gap-1"><Heart size={12} className="text-rose-500" fill="currentColor" />{formatNumber(post.likeCount)}</span><span className="inline-flex items-center gap-1"><MessageCircle size={12} />{formatNumber(post.commentCount)}</span><span className="inline-flex items-center gap-1"><Repeat2 size={12} />{formatNumber(post.repostCount)}</span></div></div>
   </Link>;
 }

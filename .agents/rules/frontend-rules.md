@@ -176,5 +176,5 @@ Form phải:
   - `FrontEnd/src/assets/brand/logo-light.jpg` – nền đen, chữ Ui trắng (dùng cho giao diện sáng).
   - `FrontEnd/src/assets/brand/logo-dark.jpg` – nền trắng, chữ Ui đen (dùng cho giao diện tối).
 - Trong React component, dùng hook `useThemeLogo()` từ `src/hooks/useThemeLogo.js` để tự động chọn logo phù hợp với theme.
-- AdminShell cố định theme sáng nên import trực tiếp `logo-light.jpg`.
+- AdminShell theo `prefers-color-scheme`, dùng `useThemeLogo()` và palette trung tính riêng để giữ độ tương phản ở cả giao diện sáng/tối.
 - Nếu logo trong ảnh Stitch khác với logo chính thức thì bỏ qua logo trong ảnh và sử dụng file logo chính thức.

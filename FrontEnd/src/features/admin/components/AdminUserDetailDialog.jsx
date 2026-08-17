@@ -47,8 +47,8 @@ export default function AdminUserDetailDialog({
     <Modal
       open
       size="md"
-      className="!max-w-[560px] !rounded-lg !bg-white"
-      bodyClassName="bg-white px-6 pb-6 pt-5 text-slate-800"
+      className="admin-theme !max-w-[560px] !rounded-lg !bg-[var(--admin-surface)]"
+      bodyClassName="bg-[var(--admin-surface)] px-6 pb-6 pt-5 text-slate-800"
       customHeader={(
         <header className="flex shrink-0 items-center justify-between rounded-t-lg border-b border-slate-100 bg-white px-6 py-5">
           <h2 className="text-base font-bold text-slate-800">Chi tiết người dùng</h2>
@@ -113,7 +113,7 @@ export default function AdminUserDetailDialog({
           {canEdit || canStatusAction ? (
             <div className="mt-5 grid grid-cols-2 gap-3">
               {canEdit && <Button
-                className="!h-10 w-full !rounded-md !border-blue-600 !bg-blue-600 !px-3 !text-white hover:!bg-blue-700"
+                className="!h-10 w-full !rounded-md !px-3"
                 onClick={onEdit}
               >
                 Sửa thông tin

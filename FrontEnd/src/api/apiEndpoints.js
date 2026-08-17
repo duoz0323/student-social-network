@@ -33,6 +33,7 @@ export const AUTH_ENDPOINTS = Object.freeze({
 });
 
 export const USER_ENDPOINTS = Object.freeze({
+  accountStanding: '/api/v1/account/standing',
   onboarding: USER_ONBOARDING_BASE,
   usernameAvailability: `${USER_ONBOARDING_BASE}/username-availability`,
   profile: '/api/v1/users/me/profile',
@@ -86,9 +87,15 @@ export const DISCOVERY_ENDPOINTS = Object.freeze({
   notificationReadAll: '/api/v1/notifications/read-all',
   notificationRead: (notificationId) => `/api/v1/notifications/${encodeURIComponent(notificationId)}/read`,
   notification: (notificationId) => `/api/v1/notifications/${encodeURIComponent(notificationId)}`,
+  notificationModerationDetail: (notificationId) => `/api/v1/notifications/${encodeURIComponent(notificationId)}/moderation-detail`,
 });
 
 export const ADMIN_ENDPOINTS = Object.freeze({
+  notifications: '/api/v1/admin/notifications',
+  notificationUnreadCount: '/api/v1/admin/notifications/unread-count',
+  notificationReadAll: '/api/v1/admin/notifications/read-all',
+  notificationRead: (notificationId) => `/api/v1/admin/notifications/${encodeURIComponent(notificationId)}/read`,
+  notification: (notificationId) => `/api/v1/admin/notifications/${encodeURIComponent(notificationId)}`,
   profile: '/api/v1/admin/profile',
   profilePassword: '/api/v1/admin/profile/password',
   admins: '/api/v1/admin/admins',
@@ -127,6 +134,10 @@ export const ADMIN_ENDPOINTS = Object.freeze({
   hidePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/hide`,
   restorePost: (postId) => `/api/v1/admin/posts/${encodeURIComponent(postId)}/restore`,
   moderationCases: '/api/v1/admin/moderation-cases',
+  moderationSuggestions: '/api/v1/admin/moderation-suggestions',
+  moderationSuggestion: (suggestionId) => `/api/v1/admin/moderation-suggestions/${encodeURIComponent(suggestionId)}`,
+  acceptModerationSuggestion: (suggestionId) => `/api/v1/admin/moderation-suggestions/${encodeURIComponent(suggestionId)}/accept`,
+  rejectModerationSuggestion: (suggestionId) => `/api/v1/admin/moderation-suggestions/${encodeURIComponent(suggestionId)}/reject`,
   moderationCase: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}`,
   resolveCaseNoViolation: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-no-violation`,
   resolveCaseAction: (caseId) => `/api/v1/admin/moderation-cases/${encodeURIComponent(caseId)}/resolve-action`,
@@ -146,13 +157,18 @@ export const ADMIN_ENDPOINTS = Object.freeze({
 const COLLABORATOR_BASE = '/api/v1/admin/collaborator';
 export const COLLABORATOR_ENDPOINTS = Object.freeze({
   identity: `${COLLABORATOR_BASE}/social-identity`,
+  identityAvatar: `${COLLABORATOR_BASE}/social-identity/avatar`,
   dashboard: `${COLLABORATOR_BASE}/dashboard`,
   posts: `${COLLABORATOR_BASE}/posts`,
   post: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}`,
   analytics: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/analytics`,
   hashtags: `${COLLABORATOR_BASE}/hashtags`,
+  explore: `${COLLABORATOR_BASE}/explore`,
+  exploreSearch: `${COLLABORATOR_BASE}/explore/search`,
+  moderationSuggestions: `${COLLABORATOR_BASE}/moderation-suggestions`,
   like: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/like`,
   comments: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/comments`,
+  commentReplies: (postId, commentId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/replies`,
   replies: (commentId) => `${COLLABORATOR_BASE}/comments/${encodeURIComponent(commentId)}/replies`,
   repost: (postId) => `${COLLABORATOR_BASE}/posts/${encodeURIComponent(postId)}/repost`,
 });

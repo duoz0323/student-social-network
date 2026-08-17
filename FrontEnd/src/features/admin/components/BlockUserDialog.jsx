@@ -57,6 +57,12 @@ export default function BlockUserDialog({ user, onClose, onConfirm }) {
         </p>
       </div>
 
+      <ul className="mb-4 list-disc space-y-1 pl-5 text-xs leading-5 text-[var(--app-muted)]">
+        <li>Thu hồi các Refresh Token hiện có.</li>
+        <li>Ghi lịch sử trạng thái và thao tác quản trị.</li>
+        <li>Tạo thông báo hệ thống cho người dùng.</li>
+      </ul>
+
       <fieldset disabled={submitting}>
         <legend className="mb-2 text-sm font-semibold text-[var(--app-text)]">
           Lý do khóa tài khoản <span className="text-red-600">*</span>

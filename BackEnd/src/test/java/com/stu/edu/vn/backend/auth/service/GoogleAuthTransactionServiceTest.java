@@ -92,7 +92,7 @@ class GoogleAuthTransactionServiceTest {
                 .thenReturn(Optional.of(new UserAuthProvider(user, AuthProvider.GOOGLE, "blocked-sub", "blocked@example.com", true)));
 
         assertThatThrownBy(() -> service.authenticate(identity("blocked-sub", "blocked@example.com"), null, null, null))
-                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_BLOCKED);
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.ACCOUNT_BLOCKED);
         verify(refreshTokenIssuer, never()).issue(any(), any(), any(), any());
     }
 

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Ban, BookOpen, CalendarDays, Flag, GraduationCap, MoreHorizontal, Sparkles, Shield } from 'lucide-react';
 import Avatar from '../../../components/common/Avatar.jsx';
 import Button from '../../../components/common/Button.jsx';
+import PublicIdentityBadge from '../../../components/common/PublicIdentityBadge.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { EmptyState } from '../../../components/common/StateBlock.jsx';
 import UserRestrictionAction from '../components/UserRestrictionAction.jsx';
@@ -194,6 +195,11 @@ export default function ProfilePage({ self = false }) {
 
   async function handleMessageClick() {
     if (startingMessage || !profile?.id) return;
+    if (profile.managedAccount) return;
+    if (!profile.canMessage) {
+      showToast('Hai bạn cần theo dõi lẫn nhau trước khi có thể trò chuyện.');
+      return;
+    }
     setStartingMessage(true);
     try {
       const result = await messagingApi.openDirectConversation(profile.id);
@@ -409,6 +415,13 @@ export default function ProfilePage({ self = false }) {
               ? current.followerCount + 1
               : current.followerCount,
           }));
+          try {
+            // Capability nhắn tin có thể đổi ngay khi Follow hoàn tất quan hệ hai chiều.
+            const refreshedProfile = await socialApi.getProfile(userTarget.id);
+            setProfile((current) => ({ ...current, canMessage: refreshedProfile.canMessage }));
+          } catch {
+            // Follow đã thành công; lần tải profile kế tiếp sẽ đồng bộ lại capability này.
+          }
         }
         setError('');
       } catch (requestError) {
@@ -437,6 +450,7 @@ export default function ProfilePage({ self = false }) {
             followerCount: response.followedByCurrentUser
               ? current.followerCount
               : Math.max(0, current.followerCount - 1),
+            canMessage: false,
           }));
         }
         setUnfollowTarget(null);
@@ -481,7 +495,9 @@ export default function ProfilePage({ self = false }) {
             </svg>
           </button>
         )}
-        <h2 className="text-[17px] font-bold text-[var(--app-text)]">{profile.displayName}</h2>
+        <h2 className="flex items-center gap-1 text-[17px] font-bold text-[var(--app-text)]">
+          {profile.displayName}<PublicIdentityBadge badges={profile.badges} />
+        </h2>
       </div>
       <div className="flex items-center gap-4 text-[var(--app-text)]">
         <button aria-label="Tìm kiếm" onClick={() => navigate('/search')}>
@@ -497,7 +513,9 @@ export default function ProfilePage({ self = false }) {
         <div className="px-6 pt-6 pb-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <h1 className="text-2xl font-bold text-[var(--app-text)]">{profile.displayName}</h1>
+              <h1 className="flex items-center gap-1.5 text-2xl font-bold text-[var(--app-text)]">
+                {profile.displayName}<PublicIdentityBadge badges={profile.badges} className="mt-0.5" />
+              </h1>
               {handle ? <p className="mt-0.5 text-[15px] text-[var(--app-muted)]">{handle}</p> : null}
             </div>
             <div className="shrink-0">
@@ -520,7 +538,7 @@ export default function ProfilePage({ self = false }) {
               </Button>
             ) : (
               <div className="flex gap-3">
-                <Button
+                {profile.canFollow !== false ? <Button
                   className="flex-1 !rounded-xl !font-semibold !h-[36px] text-[15px]"
                   disabled={sameUserId(followPendingId, profile.id)}
                   onClick={() => handleFollowClick(profile, isFollowing)}
@@ -528,15 +546,15 @@ export default function ProfilePage({ self = false }) {
                   {sameUserId(followPendingId, profile.id)
                     ? 'Đang xử lý...'
                     : (isFollowing ? 'Bỏ theo dõi' : 'Theo dõi')}
-                </Button>
-                <Button
+                </Button> : null}
+                {!profile.managedAccount ? <Button
                   variant="secondary"
                   className="flex-1 !rounded-xl !font-semibold !border-[var(--app-border-strong)] !h-[36px] text-[15px] text-[var(--app-text)]"
                   disabled={startingMessage}
                   onClick={handleMessageClick}
                 >
                   {startingMessage ? 'Đang mở...' : 'Nhắn tin'}
-                </Button>
+                </Button> : null}
                 <div ref={profileOptionsRef} className="relative shrink-0">
                   <button
                     type="button"
@@ -841,7 +859,9 @@ export default function ProfilePage({ self = false }) {
                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setFollowModal(null); navigate(user.id === currentUserId ? '/profile/me' : `/profile/${user.id}`) }}>
                   <Avatar src={user.avatarUrl} name={user.displayName} size="md" className="!w-10 !h-10 text-sm" />
                   <div className="flex flex-col">
-                    <span className="text-[14px] font-bold text-[var(--app-text)]">{userHandle.replace('@', '')}</span>
+                    <span className="flex items-center gap-1 text-[14px] font-bold text-[var(--app-text)]">
+                      {userHandle.replace('@', '')}<PublicIdentityBadge badges={user.badges} />
+                    </span>
                     <span className="text-[14px] text-[var(--app-muted)]">{user.displayName}</span>
                   </div>
                 </div>

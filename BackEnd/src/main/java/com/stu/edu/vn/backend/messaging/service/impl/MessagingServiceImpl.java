@@ -17,6 +17,7 @@ import com.stu.edu.vn.backend.messaging.projection.ConversationListProjection;
 import com.stu.edu.vn.backend.messaging.repository.*;
 import com.stu.edu.vn.backend.messaging.service.MessagingService;
 import com.stu.edu.vn.backend.messaging.service.SharedPostMessageLoader;
+import com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy;
 import com.stu.edu.vn.backend.messaging.support.MessagePayloadFingerprint;
 import com.stu.edu.vn.backend.post.entity.Post;
 import com.stu.edu.vn.backend.post.repository.PostRepository;
@@ -55,6 +56,7 @@ public class MessagingServiceImpl implements MessagingService {
     private final EntityManager entityManager;
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
+    private final MessagingEligibilityPolicy messagingEligibilityPolicy;
 
     @Override
     @Transactional(readOnly = true)
@@ -85,6 +87,7 @@ public class MessagingServiceImpl implements MessagingService {
         sender = requireMessagingUser(sender.getId());
         User recipient = requireMessagingUser(recipientUserId);
         requireNotBlocked(sender.getId(), recipientUserId);
+        requireMutualFollow(sender.getId(), recipientUserId);
         long lowId = Math.min(sender.getId(), recipientUserId);
         long highId = Math.max(sender.getId(), recipientUserId);
         Optional<Conversation> existing = conversationRepository.findPairForUpdate(lowId, highId);
@@ -92,10 +95,6 @@ public class MessagingServiceImpl implements MessagingService {
         if (existing.isPresent()) {
             conversation = existing.get();
         } else {
-            // Bắt đầu A -> B chỉ khi B đang Follow A, đúng hướng follower=B/following=A.
-            if (!followRepository.existsByIdFollowerIdAndIdFollowingId(recipientUserId, sender.getId())) {
-                throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
-            }
             User low = sender.getId().equals(lowId) ? sender : recipient;
             User high = sender.getId().equals(highId) ? sender : recipient;
             conversation = conversationRepository.saveAndFlush(new Conversation(low, high));
@@ -179,8 +178,8 @@ public class MessagingServiceImpl implements MessagingService {
             return new SendMessageResponse(messagingMapper.toMessageResponse(old, List.of(), preview), true);
         }
         if (conversation.getLastMessage() == null
-                && !followRepository.existsByIdFollowerIdAndIdFollowingId(otherUserId, sender.getId())) {
-            throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
+                && !followRepository.existsMutualFollow(sender.getId(), otherUserId)) {
+            throw new BusinessException(ErrorCode.DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED);
         }
         Post sharedPost = null;
         SharedPostResponse senderPreview = null;
@@ -206,6 +205,7 @@ public class MessagingServiceImpl implements MessagingService {
         User user = requireCurrentMessagingUser();
         Conversation initial = requireMemberConversation(conversationId, user.getId());
         Long otherUserId = initial.otherParticipantId(user.getId());
+        requireMessagingUser(otherUserId);
         userPairLockCoordinator.lockPair(user.getId(), otherUserId);
         requireNotBlocked(user.getId(), otherUserId);
         ConversationMember member = memberRepository.findForUpdate(conversationId, user.getId())
@@ -261,18 +261,14 @@ public class MessagingServiceImpl implements MessagingService {
     }
 
     private User requireMessagingUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGING_NOT_ALLOWED));
-        if (user.getRole() != UserRole.USER || user.getStatus() != UserStatus.ACTIVE
-                || !userProfileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(userId)) {
-            throw new BusinessException(ErrorCode.MESSAGING_NOT_ALLOWED);
-        }
-        return user;
+        return messagingEligibilityPolicy.requireEligible(userId);
     }
 
     private Conversation requireAccessibleConversation(Long conversationId, Long userId) {
         Conversation conversation = requireMemberConversation(conversationId, userId);
-        requireNotBlocked(userId, conversation.otherParticipantId(userId));
+        Long otherUserId = conversation.otherParticipantId(userId);
+        requireMessagingUser(otherUserId);
+        requireNotBlocked(userId, otherUserId);
         return conversation;
     }
 
@@ -286,6 +282,12 @@ public class MessagingServiceImpl implements MessagingService {
     private void requireNotBlocked(Long firstUserId, Long secondUserId) {
         if (userBlockRepository.existsEitherDirection(firstUserId, secondUserId)) {
             throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
+        }
+    }
+
+    private void requireMutualFollow(Long firstUserId, Long secondUserId) {
+        if (!followRepository.existsMutualFollow(firstUserId, secondUserId)) {
+            throw new BusinessException(ErrorCode.DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED);
         }
     }
 

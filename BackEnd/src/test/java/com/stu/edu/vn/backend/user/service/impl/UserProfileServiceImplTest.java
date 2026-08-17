@@ -22,6 +22,9 @@ import com.stu.edu.vn.backend.user.dto.response.UserProfileViewResponse;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
+import com.stu.edu.vn.backend.user.enums.UserAccountType;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 import com.stu.edu.vn.backend.user.mapper.UserProfileMapper;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRestrictionRepository;
@@ -54,6 +57,8 @@ class UserProfileServiceImplTest {
     private final MajorRepository majorRepository = org.mockito.Mockito.mock(MajorRepository.class);
     private final InterestCategoryRepository interestRepository =
             org.mockito.Mockito.mock(InterestCategoryRepository.class);
+    private final com.stu.edu.vn.backend.user.service.PublicUserBadgeService badgeService =
+            org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.service.PublicUserBadgeService.class);
 
     private UserProfileServiceImpl service;
 
@@ -70,8 +75,10 @@ class UserProfileServiceImplTest {
                 relationshipPolicyService,
                 userRestrictionRepository,
                 new AcademicProfileValidationSupport(
-                        schoolRepository, facultyRepository, majorRepository, interestRepository, clock)
+                        schoolRepository, facultyRepository, majorRepository, interestRepository, clock),
+                badgeService
         );
+        when(badgeService.getBadges(org.mockito.ArgumentMatchers.anyLong())).thenReturn(List.of());
     }
 
     @Test
@@ -81,6 +88,7 @@ class UserProfileServiceImplTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
         when(profile.getUser()).thenReturn(user);
+        when(user.getRole()).thenReturn(UserRole.USER);
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(profile.getUserId()).thenReturn(10L);
         when(profile.getUsername()).thenReturn("nguyenvana");
@@ -106,7 +114,93 @@ class UserProfileServiceImplTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
         when(profile.getUser()).thenReturn(user);
+        when(user.getRole()).thenReturn(UserRole.USER);
         when(user.getStatus()).thenReturn(UserStatus.BLOCKED);
+
+        assertThatThrownBy(() -> service.getPublicProfile(20L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PROFILE_NOT_FOUND);
+    }
+
+    @Test
+    void managedPublicProfileUsesPersistedFieldsBadgeAndDisablesMessaging() {
+        User managed = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(managed);
+        when(managed.getRole()).thenReturn(UserRole.USER);
+        when(managed.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(managed.getAccountType()).thenReturn(UserAccountType.MANAGED);
+        when(profile.getUserId()).thenReturn(20L);
+        when(profile.getUsername()).thenReturn("ban_truyen_thong");
+        when(profile.getDisplayName()).thenReturn("Ban Truyền thông");
+        when(profile.getAvatarUrl()).thenReturn("https://cdn.example/avatar.png");
+        when(profile.getBio()).thenReturn("Tin tức sinh viên");
+        when(profile.isCompleted()).thenReturn(true);
+        when(badgeService.getBadges(20L)).thenReturn(List.of(PublicUserBadge.COLLABORATOR));
+
+        UserProfileViewResponse response = service.getPublicProfile(20L);
+
+        assertThat(response.username()).isEqualTo("ban_truyen_thong");
+        assertThat(response.displayName()).isEqualTo("Ban Truyền thông");
+        assertThat(response.avatarUrl()).isEqualTo("https://cdn.example/avatar.png");
+        assertThat(response.bio()).isEqualTo("Tin tức sinh viên");
+        assertThat(response.badges()).containsExactly(PublicUserBadge.COLLABORATOR);
+        assertThat(response.canFollow()).isTrue();
+        assertThat(response.canMessage()).isFalse();
+    }
+
+    @Test
+    void normalPublicProfileKeepsMessagingCapabilityAndHasNoCollaboratorBadge() {
+        User normal = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(normal);
+        when(normal.getRole()).thenReturn(UserRole.USER);
+        when(normal.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(normal.getAccountType()).thenReturn(UserAccountType.NORMAL);
+        when(profile.getUserId()).thenReturn(20L);
+        when(profile.getUsername()).thenReturn("student_normal");
+        when(profile.getDisplayName()).thenReturn("Sinh viên thường");
+        when(profile.isCompleted()).thenReturn(true);
+        when(followRepository.existsMutualFollow(10L, 20L)).thenReturn(true);
+
+        UserProfileViewResponse response = service.getPublicProfile(20L);
+
+        assertThat(response.badges()).isEmpty();
+        assertThat(response.canMessage()).isTrue();
+    }
+
+    @Test
+    void normalPublicProfileRequiresMutualFollowForMessagingCapability() {
+        User normal = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(normal);
+        when(normal.getRole()).thenReturn(UserRole.USER);
+        when(normal.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(normal.getAccountType()).thenReturn(UserAccountType.NORMAL);
+        when(profile.getUserId()).thenReturn(20L);
+        when(profile.isCompleted()).thenReturn(true);
+        when(followRepository.existsMutualFollow(10L, 20L)).thenReturn(false);
+
+        assertThat(service.getPublicProfile(20L).canMessage()).isFalse();
+    }
+
+    @Test
+    void publicProfileDoesNotExposeAdminAccount() {
+        User admin = org.mockito.Mockito.mock(User.class);
+        UserProfile profile = org.mockito.Mockito.mock(UserProfile.class);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
+        when(userProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(profile.getUser()).thenReturn(admin);
+        when(admin.getRole()).thenReturn(UserRole.ADMIN);
+        when(admin.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(profile.isCompleted()).thenReturn(true);
 
         assertThatThrownBy(() -> service.getPublicProfile(20L))
                 .isInstanceOf(BusinessException.class)

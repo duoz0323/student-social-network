@@ -16,6 +16,18 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
     // Kiểm tra sớm giúp trả lỗi nghiệp vụ rõ ràng trước khi database chặn khóa chính trùng.
     boolean existsByIdFollowerIdAndIdFollowingId(Long followerId, Long followingId);
 
+    /** Kiểm tra một cặp người dùng đang Follow lẫn nhau bằng đúng một truy vấn. */
+    @Query("""
+            SELECT CASE WHEN COUNT(relation) = 2 THEN TRUE ELSE FALSE END
+            FROM Follow relation
+            WHERE (relation.id.followerId = :firstUserId AND relation.id.followingId = :secondUserId)
+               OR (relation.id.followerId = :secondUserId AND relation.id.followingId = :firstUserId)
+            """)
+    boolean existsMutualFollow(
+            @Param("firstUserId") Long firstUserId,
+            @Param("secondUserId") Long secondUserId
+    );
+
     // Hai phép đếm phục vụ phần thống kê trên trang hồ sơ.
     long countByIdFollowingId(Long followingId);
 
@@ -51,6 +63,7 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
             JOIN UserProfile profile ON profile.userId = follower.id
             WHERE relation.id.followingId = :userId
               AND follower.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              AND follower.role = com.stu.edu.vn.backend.user.enums.UserRole.USER
               AND NOT EXISTS (
                   SELECT blockRelation.id
                   FROM UserBlock blockRelation
@@ -84,6 +97,7 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
             JOIN UserProfile profile ON profile.userId = following_user.id
             WHERE relation.id.followerId = :userId
               AND following_user.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE
+              AND following_user.role = com.stu.edu.vn.backend.user.enums.UserRole.USER
               AND NOT EXISTS (
                   SELECT blockRelation.id
                   FROM UserBlock blockRelation

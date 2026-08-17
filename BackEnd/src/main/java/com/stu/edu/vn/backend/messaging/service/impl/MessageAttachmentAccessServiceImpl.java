@@ -5,6 +5,7 @@ import com.stu.edu.vn.backend.messaging.dto.response.MessageAttachmentAccessResp
 import com.stu.edu.vn.backend.messaging.entity.*;
 import com.stu.edu.vn.backend.messaging.repository.*;
 import com.stu.edu.vn.backend.messaging.service.MessageAttachmentAccessService;
+import com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy;
 import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.storage.*;
 import com.stu.edu.vn.backend.user.entity.User;
@@ -25,17 +26,13 @@ public class MessageAttachmentAccessServiceImpl implements MessageAttachmentAcce
     private final ConversationMemberRepository memberRepository;
     private final MessageAttachmentRepository attachmentRepository;
     private final CloudinaryStorageService storageService;
+    private final MessagingEligibilityPolicy messagingEligibilityPolicy;
 
     @Override
     @Transactional(readOnly = true)
     public MessageAttachmentAccessResponse createAccess(Long attachmentId) {
         Long userId = currentUserProvider.getCurrentUserId();
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_ATTACHMENT_NOT_FOUND));
-        if (user.getRole() != UserRole.USER || user.getStatus() != UserStatus.ACTIVE
-                || !profileRepository.existsByUserIdAndProfileCompletedAtIsNotNull(userId)) {
-            throw new BusinessException(ErrorCode.MESSAGING_NOT_ALLOWED);
-        }
+        messagingEligibilityPolicy.requireEligible(userId);
         MessageAttachment attachment = attachmentRepository.findForAccess(attachmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_ATTACHMENT_NOT_FOUND));
         Conversation conversation = attachment.getMessage().getConversation();
@@ -43,6 +40,7 @@ public class MessageAttachmentAccessServiceImpl implements MessageAttachmentAcce
             throw new BusinessException(ErrorCode.MESSAGE_ATTACHMENT_NOT_FOUND);
         }
         Long otherUserId = conversation.otherParticipantId(userId);
+        messagingEligibilityPolicy.requireEligible(otherUserId);
         if (blockRepository.existsEitherDirection(userId, otherUserId)) {
             throw new BusinessException(ErrorCode.DIRECT_MESSAGE_NOT_ALLOWED);
         }

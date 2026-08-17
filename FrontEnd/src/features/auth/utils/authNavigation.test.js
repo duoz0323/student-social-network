@@ -30,7 +30,7 @@ test('cho phép Cộng tác viên khôi phục trang hồ sơ Admin sau đăng n
   assert.equal(getSafeReturnPath('/admin/profile', session), '/admin/profile');
 });
 
-test('không khôi phục hai khu vực đã gỡ khỏi giao diện Cộng tác viên', () => {
+test('khôi phục hai khu vực nghiệp vụ của Cộng tác viên khi có đúng quyền', () => {
   const session = {
     user: { role: 'ADMIN', adminRoles: ['COLLABORATOR'] },
     profileCompleted: true,
@@ -41,6 +41,6 @@ test('không khôi phục hai khu vực đã gỡ khỏi giao diện Cộng tác
     ],
   };
 
-  assert.equal(getSafeReturnPath('/admin/collaborator/explore', session), null);
-  assert.equal(getSafeReturnPath('/admin/collaborator/moderation-suggestions', session), null);
+  assert.equal(getSafeReturnPath('/admin/collaborator/explore', session), '/admin/collaborator/explore');
+  assert.equal(getSafeReturnPath('/admin/collaborator/moderation-suggestions', session), '/admin/collaborator/moderation-suggestions');
 });

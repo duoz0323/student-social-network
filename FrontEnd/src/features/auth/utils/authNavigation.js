@@ -32,8 +32,8 @@ function canAccessAdminPath(requestedPath, session) {
   // Mọi ADMIN, gồm Cộng tác viên, đều được tự quản lý hồ sơ và mật khẩu.
   if (requestedPath === '/admin/profile') return true;
   if (requestedPath.startsWith('/admin/collaborator')) {
-    // Hai khu vực đã được gỡ khỏi UI; URL cũ không được khôi phục dù token còn permission legacy.
-    if (requestedPath.includes('/moderation-suggestions') || requestedPath.includes('/explore')) return false;
+    if (requestedPath.includes('/moderation-suggestions')) return permissions.has('COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN');
+    if (requestedPath.includes('/explore')) return permissions.has('COLLABORATOR_EXPLORE_VIEW');
     if (requestedPath.includes('/hashtags')) return permissions.has('COLLABORATOR_HASHTAG_VIEW');
     if (requestedPath.includes('/posts/create')) return permissions.has('COLLABORATOR_POST_CREATE');
     if (requestedPath.includes('/analytics')) return permissions.has('COLLABORATOR_POST_ANALYTICS_VIEW');
@@ -47,6 +47,9 @@ function canAccessAdminPath(requestedPath, session) {
   if (requestedPath.startsWith('/admin/hashtags')) return permissions.has('HASHTAG_VIEW');
   if (requestedPath.startsWith('/admin/reports') || requestedPath.startsWith('/admin/profile-reports')) {
     return permissions.has('REPORT_VIEW');
+  }
+  if (requestedPath.startsWith('/admin/moderation-suggestions')) {
+    return permissions.has('MODERATION_SUGGESTION_VIEW');
   }
   if (requestedPath.startsWith('/admin/admins')) return permissions.has('ADMIN_VIEW');
   if (requestedPath.startsWith('/admin/permissions')) return adminRoles.has('SUPER_ADMIN');

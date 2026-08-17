@@ -69,6 +69,18 @@ class StudentRecommendationSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void adminCannotUseSocialRecommendationEndpoint() throws Exception {
+        User admin = user(11L);
+        admin.setRole(UserRole.ADMIN);
+        authenticate("admin", admin, true);
+
+        mockMvc.perform(get("/api/v1/recommendations/students")
+                        .header("Authorization", "Bearer admin"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
     private void authenticate(String token, User user, boolean completed) {
         when(jwtService.extractUserIdFromAccessToken(token)).thenReturn(user.getId());
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));

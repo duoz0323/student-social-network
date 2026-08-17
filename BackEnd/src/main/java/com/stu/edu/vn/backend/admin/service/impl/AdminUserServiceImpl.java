@@ -1,5 +1,9 @@
 package com.stu.edu.vn.backend.admin.service.impl;
 
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType;
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationType;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationEvent;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationRouter;
 import com.stu.edu.vn.backend.admin.dto.request.AdminBlockUserRequest;
 import com.stu.edu.vn.backend.admin.dto.request.AdminUpdateUserProfileRequest;
 import com.stu.edu.vn.backend.admin.dto.response.AdminUserDetailResponse;
@@ -43,6 +47,7 @@ import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Triển khai truy vấn và transaction thay đổi trạng thái tài khoản USER dành cho ADMIN.
@@ -69,6 +74,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final CloudinaryStorageService cloudinaryStorageService;
     private final UserAvatarFileValidator avatarFileValidator;
     private final TransactionTemplate transactionTemplate;
+    private AdminNotificationRouter adminNotificationRouter;
 
     public AdminUserServiceImpl(
             AdminUserRepository adminUserRepository,
@@ -100,6 +106,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         this.cloudinaryStorageService = cloudinaryStorageService;
         this.avatarFileValidator = avatarFileValidator;
         this.transactionTemplate = transactionTemplate;
+    }
+
+    @Autowired
+    void setAdminNotificationRouter(AdminNotificationRouter adminNotificationRouter) {
+        this.adminNotificationRouter = adminNotificationRouter;
     }
 
     @Override
@@ -155,7 +166,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         profile.setBio(bio);
 
         User adminReference = entityManager.getReference(User.class, principal.getUserId());
-        adminActionRepository.save(new AdminAction(
+        AdminAction action = adminActionRepository.save(new AdminAction(
                 adminReference,
                 AdminActionType.UPDATE_USER_PROFILE,
                 AdminTargetType.USER,
@@ -163,6 +174,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 "ADMIN_UPDATE_PROFILE"
         ));
         notificationService.createUserProfileUpdatedByAdminNotification(target.getId());
+        notifyUserAction(principal.getUserId(), target.getId(), action == null ? null : action.getId(),
+                AdminNotificationType.USER_PROFILE_UPDATED_BY_ADMIN, "Hồ sơ người dùng đã được cập nhật");
 
         // Flush trước khi đọc projection để response phản ánh dữ liệu vừa cập nhật trong cùng transaction.
         entityManager.flush();
@@ -228,9 +241,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         refreshTokenRepository.revokeAllActiveByUserId(target.getId(), now);
         accountStatusHistoryRepository.save(new AccountStatusHistory(
                 target, UserStatus.ACTIVE, UserStatus.BLOCKED, adminReference, reason));
-        adminActionRepository.save(new AdminAction(
+        AdminAction action = adminActionRepository.save(new AdminAction(
                 adminReference, AdminActionType.BLOCK_USER, AdminTargetType.USER, target.getId(), reason));
         notificationService.createAccountBlockedNotification(target.getId());
+        notifyUserAction(principal.getUserId(), target.getId(), action == null ? null : action.getId(),
+                AdminNotificationType.USER_BLOCKED, "Tài khoản người dùng đã bị khóa");
 
         return flushRefreshAndMap(target);
     }
@@ -252,10 +267,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         accountStatusHistoryRepository.save(new AccountStatusHistory(
                 target, UserStatus.BLOCKED, UserStatus.ACTIVE, adminReference, UNBLOCK_REASON));
-        adminActionRepository.save(new AdminAction(
+        AdminAction action = adminActionRepository.save(new AdminAction(
                 adminReference, AdminActionType.UNBLOCK_USER, AdminTargetType.USER,
                 target.getId(), UNBLOCK_REASON));
         notificationService.createAccountUnblockedNotification(target.getId());
+        notifyUserAction(principal.getUserId(), target.getId(), action == null ? null : action.getId(),
+                AdminNotificationType.USER_UNBLOCKED, "Tài khoản người dùng đã được mở khóa");
 
         // Không gọi repository Refresh Token: token cũ đã revoke phải giữ nguyên sau khi mở khóa.
         return flushRefreshAndMap(target);
@@ -324,7 +341,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
 
         User adminReference = entityManager.getReference(User.class, principal.getUserId());
-        adminActionRepository.save(new AdminAction(
+        AdminAction action = adminActionRepository.save(new AdminAction(
                 adminReference,
                 AdminActionType.UPDATE_USER_PROFILE,
                 AdminTargetType.USER,
@@ -334,11 +351,21 @@ public class AdminUserServiceImpl implements AdminUserService {
                         : "ADMIN_UPDATE_PROFILE_AND_AVATAR"
         ));
         notificationService.createUserProfileUpdatedByAdminNotification(target.getId());
+        notifyUserAction(principal.getUserId(), target.getId(), action == null ? null : action.getId(),
+                AdminNotificationType.USER_PROFILE_UPDATED_BY_ADMIN, "Hồ sơ người dùng đã được cập nhật");
 
         entityManager.flush();
         AdminUserDetailProjection updated = adminUserRepository.findManagedUserDetail(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_USER_NOT_FOUND));
         return new AdminProfileUpdateResult(adminUserMapper.toDetail(updated), oldAvatarPublicId);
+    }
+
+    private void notifyUserAction(Long actorId, Long userId, Long actionId,
+            AdminNotificationType type, String title) {
+        if (adminNotificationRouter == null) return;
+        adminNotificationRouter.notifyByPermission("USER_VIEW", actorId, new AdminNotificationEvent(
+                type, title, title + ".", AdminNotificationReferenceType.USER, userId,
+                "ADMIN_ACTION:" + actionId + ":" + type.name()));
     }
 
     private void deleteOldAvatarAfterDatabaseSuccess(String oldAvatarPublicId) {

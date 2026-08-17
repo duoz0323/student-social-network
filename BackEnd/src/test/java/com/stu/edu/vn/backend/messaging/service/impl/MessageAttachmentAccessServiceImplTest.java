@@ -26,7 +26,8 @@ class MessageAttachmentAccessServiceImplTest {
     private final MessageAttachmentRepository attachments = mock(MessageAttachmentRepository.class);
     private final CloudinaryStorageService storage = mock(CloudinaryStorageService.class);
     private final MessageAttachmentAccessServiceImpl service = new MessageAttachmentAccessServiceImpl(
-            current, users, profiles, blocks, members, attachments, storage);
+            current, users, profiles, blocks, members, attachments, storage,
+            new com.stu.edu.vn.backend.messaging.service.MessagingEligibilityPolicy(users, profiles));
 
     @BeforeEach
     void setUp() {
@@ -34,6 +35,8 @@ class MessageAttachmentAccessServiceImplTest {
         User viewer = user(10L);
         when(users.findById(10L)).thenReturn(Optional.of(viewer));
         when(profiles.existsByUserIdAndProfileCompletedAtIsNotNull(10L)).thenReturn(true);
+        when(users.findById(20L)).thenReturn(Optional.of(user(20L)));
+        when(profiles.existsByUserIdAndProfileCompletedAtIsNotNull(20L)).thenReturn(true);
     }
 
     @Test

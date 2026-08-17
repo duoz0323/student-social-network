@@ -5,19 +5,15 @@ import {
   CalendarDays,
   Folder,
   Globe,
-  GraduationCap,
   Heart,
   Lightbulb,
   MessageCircle,
-  PencilLine,
-  Plus,
   UsersRound,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '../../../assets/brand/logo-dark.jpg';
 import studySpaceImg from '../../../assets/images/study_space.jpg';
 import avatarMinhAnh from '../../../assets/images/avatar_minh_anh.jpg';
-import avatarHoangNam from '../../../assets/images/avatar_hoang_nam.jpg';
 import avatarTraMy from '../../../assets/images/avatar_tra_my.jpg';
 
 const topics = [
@@ -135,31 +131,6 @@ export default function AuthEntryLayout({ children, title = 'Đăng nhập' }) {
 
             {/* Thẻ xem trước tương tác mạng xã hội */}
             <SocialPreview />
-
-            {/* Card gia nhập cộng đồng sinh viên */}
-            <div className="mt-4 flex items-center justify-between rounded-2xl border px-5 py-3" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)', boxShadow: 'var(--auth-card-shadow)' }}>
-              <div className="flex items-center">
-                <img src={avatarMinhAnh} alt="" className="h-8 w-8 rounded-full border-2 border-white object-cover shadow-xs" />
-                <img src={avatarHoangNam} alt="" className="-ml-2.5 h-8 w-8 rounded-full border-2 border-white object-cover shadow-xs" />
-                <img src={avatarTraMy} alt="" className="-ml-2.5 h-8 w-8 rounded-full border-2 border-white object-cover shadow-xs" />
-                <div className="-ml-2.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-zinc-950 text-white shadow-xs">
-                  <Plus size={16} strokeWidth={2.5} />
-                </div>
-              </div>
-              <div className="ml-4 min-w-0 flex-1">
-                <p className="text-xs font-bold text-zinc-900 sm:text-[13px]">Tham gia cộng đồng sinh viên</p>
-                <p className="text-[11px] text-zinc-500">Chia sẻ tri thức, kết nối đam mê</p>
-              </div>
-            </div>
-
-            {/* Thanh biểu tượng chân trang hero */}
-            <div className="mt-4 flex max-w-[500px] items-center justify-between px-6 text-zinc-400" aria-hidden="true">
-              <GraduationCap size={20} />
-              <PencilLine size={19} />
-              <MessageCircle size={19} />
-              <UsersRound size={19} />
-              <Bookmark size={19} />
-            </div>
           </div>
         </section>
 

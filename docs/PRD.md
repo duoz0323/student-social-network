@@ -70,7 +70,13 @@ Không được sử dụng chức năng mạng xã hội.
 
 Có role `ADMIN`.
 
-Ngoài quyền người dùng, Admin được phép:
+Admin chỉ dùng tài khoản `ADMIN/NORMAL` cho xác thực và nghiệp vụ quản trị; tài khoản này không phải social actor,
+không xuất hiện trong Search/Profile/Follow công khai và không gọi trực tiếp API xã hội. Riêng Collaborator thao tác
+xã hội bằng `USER/MANAGED` do Backend resolve qua các endpoint `/api/v1/admin/collaborator/**`.
+Tại chi tiết bài viết của chính Managed Identity, Collaborator được xem danh sách bình luận và reply công khai
+theo phân trang; Backend áp dụng quyền sở hữu bài viết và chính sách Block hiện hành trước khi trả dữ liệu.
+
+Admin được phép:
 
 - Quản lý School, Faculty, Major và Interest Category bằng list/search/create/update/ACTIVE-INACTIVE; không hard delete, không cascade status và có audit log.
 
@@ -314,8 +320,15 @@ Báo cáo trang cá nhân dùng `profile_report_cases` và `profile_reports` ri�
 - Lưu snapshot hồ sơ lúc gửi; Admin xem thêm hồ sơ và danh sách bài viết hiện tại.
 - Admin kết luận `RESOLVED`/`REJECTED`; khi xác nhận vi phạm có thể khóa ngay tài khoản target trong cùng transaction.
 
-Mỗi Moderation Case bài viết được kết luận `RESOLVED_ACTION_TAKEN` tính một lần vi phạm cho tác giả, dù case có
-nhiều reporter. Lần vi phạm thứ ba tự động khóa tài khoản với lý do `REPEATED_VIOLATION` và thu hồi mọi Refresh Token.
+Mỗi Moderation Case bài viết chuyển thành công từ `OPEN` sang `RESOLVED_ACTION_TAKEN` tính một lần vi phạm cho tác giả,
+dù case có nhiều reporter. Lần thứ nhất gửi cảnh báo `1/3`, lần thứ hai gửi cảnh báo cuối `2/3`; lần thứ ba tự động khóa
+tài khoản với lý do `REPEATED_VIOLATION`, thu hồi mọi Refresh Token, ghi lịch sử/Audit và gửi Notification. Profile Report,
+`reports` và `report_count` không tham gia bộ đếm này. Mở khóa không đặt lại lịch sử vi phạm.
+
+USER xem dữ liệu authoritative của chính mình tại `GET /api/v1/account/standing` và màn hình
+`/settings/account-status`. Guest, USER và ADMIN đọc được chính sách sử dụng nội bộ tại
+`/policies/community-standards`. Khi Auth từ chối tài khoản bị khóa, API trả `ACCOUNT_BLOCKED` với payload public-safe,
+không có reporter, danh tính Admin hoặc ghi chú kiểm duyệt nội bộ.
 
 ### 4.10 Quản trị
 

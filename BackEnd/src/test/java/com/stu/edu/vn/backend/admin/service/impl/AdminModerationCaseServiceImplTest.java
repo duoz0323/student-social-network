@@ -139,6 +139,38 @@ class AdminModerationCaseServiceImplTest {
     }
 
     @Test
+    void firstViolatedPostCaseCreatesFirstWarning() {
+        when(caseRepository.findById(20L)).thenReturn(Optional.of(moderationCase));
+        when(adminPostRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(post));
+        when(caseRepository.countByPost_Author_IdAndStatus(
+                2L, ModerationCaseStatus.RESOLVED_ACTION_TAKEN)).thenReturn(1L);
+
+        var response = service.resolveAction(20L, new ResolveModerationCaseActionRequest(
+                ModerationCaseAction.HIDE_POST, AdminPostHideReason.SPAM, null));
+
+        assertThat(response.authorViolationCount()).isEqualTo(1L);
+        assertThat(response.accountBlocked()).isFalse();
+        verify(notificationService).createContentViolationWarningNotification(2L, 10L, false);
+        verify(accountBlockService, never()).blockIfActive(any(), any(), any(), any());
+    }
+
+    @Test
+    void secondViolatedPostCaseCreatesFinalWarning() {
+        when(caseRepository.findById(20L)).thenReturn(Optional.of(moderationCase));
+        when(adminPostRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(post));
+        when(caseRepository.countByPost_Author_IdAndStatus(
+                2L, ModerationCaseStatus.RESOLVED_ACTION_TAKEN)).thenReturn(2L);
+
+        var response = service.resolveAction(20L, new ResolveModerationCaseActionRequest(
+                ModerationCaseAction.HIDE_POST, AdminPostHideReason.HARMFUL_CONTENT, null));
+
+        assertThat(response.authorViolationCount()).isEqualTo(2L);
+        assertThat(response.accountBlocked()).isFalse();
+        verify(notificationService).createContentViolationWarningNotification(2L, 10L, true);
+        verify(accountBlockService, never()).blockIfActive(any(), any(), any(), any());
+    }
+
+    @Test
     void thirdViolatedPostCaseBlocksAuthorExactlyOnce() {
         when(caseRepository.findById(20L)).thenReturn(Optional.of(moderationCase));
         when(adminPostRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(post));
@@ -154,6 +186,7 @@ class AdminModerationCaseServiceImplTest {
         verify(accountBlockService).blockIfActive(
                 2L, admin, LocalDateTime.of(2026, 7, 31, 3, 0),
                 AdminBlockReason.REPEATED_VIOLATION);
+        verify(notificationService, never()).createContentViolationWarningNotification(any(), any(), any(Boolean.class));
     }
 
     @Test
@@ -166,6 +199,8 @@ class AdminModerationCaseServiceImplTest {
                 .extracting(error -> ((BusinessException) error).getErrorCode())
                 .isEqualTo(ErrorCode.ADMIN_MODERATION_CASE_ALREADY_RESOLVED);
         verify(adminActionRepository, never()).save(any());
+        verify(notificationService, never()).createContentViolationWarningNotification(any(), any(), any(Boolean.class));
+        verify(accountBlockService, never()).blockIfActive(any(), any(), any(), any());
     }
 
     private User user(Long id, UserRole role) {

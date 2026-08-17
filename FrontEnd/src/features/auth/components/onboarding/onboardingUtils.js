@@ -50,14 +50,38 @@ export function todayIsoDate() {
   return `${year}-${month}-${day}`;
 }
 
+// Trả về lỗi ngày sinh rõ ràng để Frontend phản hồi trước khi Backend kiểm tra lại.
+export function getBirthDateValidationMessage(dateOfBirth, today = todayIsoDate()) {
+  if (!dateOfBirth) return 'Ngày sinh là bắt buộc để hoàn tất hồ sơ.';
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOfBirth);
+  if (!match) return 'Ngày sinh không đúng định dạng.';
+
+  const [, year, month, day] = match;
+  const candidate = new Date(Number(year), Number(month) - 1, Number(day));
+  const isValid = candidate.getFullYear() === Number(year)
+    && candidate.getMonth() === Number(month) - 1
+    && candidate.getDate() === Number(day);
+  if (!isValid) return 'Ngày sinh không hợp lệ.';
+  if (dateOfBirth > today) return 'Ngày sinh không được lớn hơn ngày hiện tại.';
+  if (calcAgeAtDate(dateOfBirth, today) < 18) {
+    return 'Bạn phải đủ 18 tuổi để tham gia sử dụng UniShare.';
+  }
+  return '';
+}
+
+// Tính tuổi theo một ngày mốc cố định để validation và test không lệch tại thời điểm chạy.
+export function calcAgeAtDate(dateOfBirth, today) {
+  const [birthYear, birthMonth, birthDay] = dateOfBirth.split('-').map(Number);
+  const [currentYear, currentMonth, currentDay] = today.split('-').map(Number);
+  let age = currentYear - birthYear;
+  if (currentMonth < birthMonth || (currentMonth === birthMonth && currentDay < birthDay)) age--;
+  return age;
+}
+
 // Tính tuổi chính xác từ ngày sinh dạng YYYY-MM-DD.
 export function calcAge(dateOfBirth) {
-  const [birthYear, birthMonth, birthDay] = dateOfBirth.split('-').map(Number);
-  const today = new Date();
-  let age = today.getFullYear() - birthYear;
-  const monthDifference = today.getMonth() + 1 - birthMonth;
-  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDay)) age--;
-  return age;
+  return calcAgeAtDate(dateOfBirth, todayIsoDate());
 }
 
 // Chuyển ngày từ contract API YYYY-MM-DD sang định dạng hiển thị DD/MM/YYYY.

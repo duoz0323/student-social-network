@@ -1,11 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  getBirthDateValidationMessage,
   getUsernameValidationMessage,
   mapUsernameErrorCode,
   normalizeUsernameInput,
   uploadOnboardingAvatar,
 } from '../src/features/auth/components/onboarding/onboardingUtils.js';
+
+test('ngày sinh onboarding báo rõ ngày sai, ngày tương lai và chưa đủ 18 tuổi', () => {
+  assert.match(getBirthDateValidationMessage('', '2026-08-17'), /bắt buộc/);
+  assert.match(getBirthDateValidationMessage('2026-02-31', '2026-08-17'), /không hợp lệ/);
+  assert.match(getBirthDateValidationMessage('2027-01-01', '2026-08-17'), /lớn hơn/);
+  assert.match(getBirthDateValidationMessage('2009-08-17', '2026-08-17'), /đủ 18 tuổi/);
+  assert.equal(getBirthDateValidationMessage('2008-08-17', '2026-08-17'), '');
+});
 
 test('upload avatar onboarding và giữ URL bền vững do Backend trả về', async () => {
   const file = { name: 'avatar.png' };

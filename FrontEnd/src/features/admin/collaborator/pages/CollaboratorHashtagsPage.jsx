@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Hash, Search } from 'lucide-react';
 import { EmptyState, LoadingState } from '../../../../components/common/StateBlock.jsx';
 import { collaboratorApi } from '../services/collaboratorApi.js';
+import AdminPageHeader from '../../components/AdminPageHeader.jsx';
 
 export default function CollaboratorHashtagsPage() {
   const [keyword, setKeyword] = useState('');
@@ -17,10 +18,11 @@ export default function CollaboratorHashtagsPage() {
 
   return (
     <section className="flex h-[calc(100vh-4rem)] min-h-0 flex-col gap-5 lg:h-[calc(100vh-6rem)]">
-      <header className="shrink-0">
-        <h1 className="text-3xl font-bold">Hashtag</h1>
-        <p className="mt-2 text-zinc-500">Chỉ xem và tìm kiếm; không có quyền sửa hoặc xóa.</p>
-      </header>
+      <AdminPageHeader
+        icon={Hash}
+        title="Hashtag"
+        description="Xem và tìm kiếm hashtag đang có trong hệ thống."
+      />
 
       <label className="relative block shrink-0">
         <span className="sr-only">Tìm hashtag</span>
@@ -29,7 +31,7 @@ export default function CollaboratorHashtagsPage() {
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="Tìm hashtag"
-          className="w-full rounded-xl border border-zinc-300 py-3 pl-11 pr-4 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          className="w-full rounded-xl border border-zinc-300 py-3 pl-11 pr-4 outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-100"
         />
       </label>
 

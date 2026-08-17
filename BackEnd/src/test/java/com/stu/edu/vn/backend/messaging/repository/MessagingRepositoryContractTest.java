@@ -16,6 +16,7 @@ class MessagingRepositoryContractTest {
                 "findInboxAfter", Long.class, java.time.LocalDateTime.class, Long.class, int.class);
         String query = method.getAnnotation(Query.class).value();
         assertThat(query).contains("c.last_message_id IS NOT NULL", "user_blocks",
+                "low_user.account_type = 'NORMAL'", "high_user.account_type = 'NORMAL'",
                 "c.last_message_at < :cursorAt", "c.id < :cursorId",
                 "ORDER BY c.last_message_at DESC, c.id DESC", "LIMIT :fetchLimit")
                 .doesNotContain("password_hash", "email");
@@ -30,7 +31,8 @@ class MessagingRepositoryContractTest {
                 "ORDER BY id DESC", "LIMIT :fetchLimit");
         assertThat(unread.value()).contains("m.sender_id <> :userId",
                 "m.id > COALESCE(cm.last_read_message_id, 0)", "user_blocks",
-                "c.last_message_id IS NOT NULL");
+                "c.last_message_id IS NOT NULL", "low_user.account_type = 'NORMAL'",
+                "high_user.account_type = 'NORMAL'");
     }
 
     @Test
@@ -40,7 +42,9 @@ class MessagingRepositoryContractTest {
         assertThat(typing.value()).contains(
                 "sender_member.user_id = :senderId",
                 "sender_user.role = 'USER'", "sender_user.status = 'ACTIVE'",
+                "sender_user.account_type = 'NORMAL'",
                 "recipient_user.role = 'USER'", "recipient_user.status = 'ACTIVE'",
+                "recipient_user.account_type = 'NORMAL'",
                 "sender_profile.profile_completed_at IS NOT NULL",
                 "recipient_profile.profile_completed_at IS NOT NULL", "user_blocks")
                 .doesNotContain("messages ", "notifications", "user_restrictions");
@@ -52,6 +56,7 @@ class MessagingRepositoryContractTest {
                 "findShareRecipients", Long.class, String.class, Pageable.class).getAnnotation(Query.class);
         assertThat(query.value()).contains(
                 "target.role = 'USER'", "target.status = 'ACTIVE'",
+                "target.account_type = 'NORMAL'",
                 "profile.profile_completed_at IS NOT NULL", "user_blocks",
                 "conversation.last_message_id IS NOT NULL", "follows follow_relation",
                 "follow_relation.follower_id = target.id",

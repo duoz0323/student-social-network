@@ -12,6 +12,8 @@ import {
 import { resolveCurrentFollowState } from '../features/profile/utils/followListState.js';
 import { publishPostActivity } from '../features/post/utils/postActivitySync.js';
 import { shouldLoadCurrentProfile, toCurrentUserProfile } from '../features/profile/utils/currentUserProfile.js';
+import { collaboratorApi } from '../features/admin/collaborator/services/collaboratorApi.js';
+import { usesManagedIdentityPresentation } from '../features/admin/constants/adminRbac.js';
 
 const AppContext = createContext(null);
 
@@ -48,10 +50,20 @@ export function AppProvider({ children }) {
     }
     try {
       if (authRole === 'ADMIN') {
-        // Auth response chỉ có id/role; hồ sơ Admin theo JWT là nguồn đúng cho tên hiển thị sidebar.
-        const profile = await adminApi.getProfile(signal);
+        // Cộng tác viên thuần phải dùng cùng Managed Identity với Profile/Feed/Search trên toàn bộ shell.
+        const managedPresentation = usesManagedIdentityPresentation(auth.adminRoles);
+        const profile = managedPresentation
+          ? await collaboratorApi.getIdentity(signal)
+          : await adminApi.getProfile(signal);
         if (!signal?.aborted && profile) {
-          updateCurrentUser(toCurrentUserProfile(profile, currentUserId));
+          const presentation = toCurrentUserProfile(profile, currentUserId);
+          updateCurrentUser({
+            ...presentation,
+            // JWT vẫn thuộc ADMIN/NORMAL; tuyệt đối không thay id phiên bằng social_user_id.
+            id: currentUserId,
+            username: profile.username ?? '',
+            managedSocialUserId: managedPresentation ? profile.userId : null,
+          });
           setMyProfile(null);
         }
         return profile;
@@ -76,7 +88,7 @@ export function AppProvider({ children }) {
     } catch {
       return null;
     }
-  }, [authProfileCompleted, authRole, currentUserId, updateCurrentUser]);
+  }, [auth.adminRoles, authProfileCompleted, authRole, currentUserId, updateCurrentUser]);
 
   useEffect(() => {
     const controller = new AbortController();

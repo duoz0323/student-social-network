@@ -72,6 +72,9 @@ public class SecurityConfig {
                         // Browser không gửi Bearer header ở WebSocket handshake; STOMP CONNECT xác thực riêng.
                         .requestMatchers("/ws").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // ADMIN/NORMAL chỉ dùng Auth và khu vực quản trị; không bao giờ là social actor.
+                        .requestMatchers("/api/v1/auth/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/v1/**").hasRole("USER")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

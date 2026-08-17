@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import AuthBootstrap from '../features/auth/components/AuthBootstrap.jsx';
 import { useAuth } from '../features/auth/hooks/useAuth.js';
 import { getAuthenticatedHome } from '../features/auth/utils/authNavigation.js';
+import { getAdminProfilePath } from '../features/admin/constants/adminRbac.js';
 
 function LoadingGuard({ children }) {
   return <AuthBootstrap>{children}</AuthBootstrap>;
@@ -65,4 +66,10 @@ export function AdminPermissionRoute({ children, permission, anyOf = [], adminRo
     ? auth.hasAdminRole(adminRole)
     : permission ? auth.hasPermission(permission) : anyOf.some(auth.hasPermission);
   return allowed ? children : <Navigate to="/403" replace />;
+}
+
+export function AdminProfileEntryRoute({ children }) {
+  const auth = useAuth();
+  const profilePath = getAdminProfilePath(auth.adminRoles);
+  return profilePath === '/admin/profile' ? children : <Navigate to={profilePath} replace />;
 }

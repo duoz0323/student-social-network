@@ -44,6 +44,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
             WHERE c.id = :conversationId
               AND sender_user.role = 'USER' AND sender_user.status = 'ACTIVE'
               AND recipient_user.role = 'USER' AND recipient_user.status = 'ACTIVE'
+              AND sender_user.account_type = 'NORMAL' AND recipient_user.account_type = 'NORMAL'
               AND sender_profile.profile_completed_at IS NOT NULL
               AND recipient_profile.profile_completed_at IS NOT NULL
               AND NOT EXISTS (
@@ -81,6 +82,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
              AND conversation.participant_high_id = GREATEST(:viewerId, target.id)
             WHERE target.id <> :viewerId
               AND target.role = 'USER' AND target.status = 'ACTIVE'
+              AND target.account_type = 'NORMAL'
               AND profile.profile_completed_at IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1 FROM user_blocks block_relation
@@ -110,6 +112,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
              AND conversation.participant_high_id = GREATEST(:viewerId, target.id)
             WHERE target.id <> :viewerId
               AND target.role = 'USER' AND target.status = 'ACTIVE'
+              AND target.account_type = 'NORMAL'
               AND profile.profile_completed_at IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1 FROM user_blocks block_relation
@@ -144,9 +147,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
             JOIN messages lm ON lm.id = c.last_message_id
             JOIN user_profiles up ON up.user_id = CASE WHEN c.participant_low_id = :userId
                                                        THEN c.participant_high_id ELSE c.participant_low_id END
+            JOIN users low_user ON low_user.id = c.participant_low_id
+            JOIN users high_user ON high_user.id = c.participant_high_id
             """;
     String INBOX_WHERE = """
             WHERE c.last_message_id IS NOT NULL
+              AND low_user.account_type = 'NORMAL' AND high_user.account_type = 'NORMAL'
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub
                 WHERE (ub.blocker_id = c.participant_low_id AND ub.blocked_id = c.participant_high_id)

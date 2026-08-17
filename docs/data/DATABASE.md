@@ -18,8 +18,8 @@
   điểm retry cho file upload đã thành rác; scheduler khóa/xử lý từng task trong transaction riêng.
 - Composite FK bảo đảm sender là member. Service bảo đảm hai member khớp participant và các marker
   last/read thuộc đúng conversation.
-- Schema Messaging hiện hành nằm trong SQL canonical và DBML. Database đang tồn tại nâng cấp thủ công bằng
-  migration tổng `database/V20260816__admin_rbac_collaborator_features.sql`; Backend không tự chạy migration khi khởi động.
+- Schema Messaging hiện hành nằm trong SQL canonical và DBML. Repository không phân phối migration rời;
+  Backend không tự thay đổi schema khi khởi động.
 
 ## Repost
 
@@ -30,7 +30,7 @@
 
 ## Hashtag và danh sách quản trị
 
-- Không bổ sung bảng hoặc cột nghiệp vụ hashtag; `V009` thêm audit tạo/xóa và target `HASHTAG`, còn `V010__add_admin_hashtag_update_action.sql` thêm `UPDATE_HASHTAG` mà không sửa migration cũ.
+- Không bổ sung bảng hoặc cột nghiệp vụ hashtag; SQL canonical đã chứa đầy đủ audit tạo, cập nhật, xóa và target `HASHTAG`.
 - `hashtags.post_count` là bộ đếm số quan hệ hiện tại và được trigger insert/delete trên `post_hashtags` duy trì atomic.
 - Ngày sử dụng mới nhất được đọc bằng `MAX(post_hashtags.created_at)`; hashtag không còn quan hệ có giá trị `NULL`.
 - API quản trị dùng projection tổng hợp và phân trang tại database, không tải collection bài viết nên không phát sinh N+1.
@@ -183,17 +183,15 @@ File `database/student_social_network.sql` là file import duy nhất: tự drop
 mysql --default-character-set=utf8mb4 -u root -p < database/student_social_network.sql
 ```
 
-### Migration tổng cho database đang có dữ liệu
+### Chính sách artifact canonical
 
-File `database/V20260816__admin_rbac_collaborator_features.sql` dùng để nâng cấp database nền hiện hữu mà không rebuild. File không chứa `DROP DATABASE`, `DROP TABLE`, seed user/post hoặc cập nhật dữ liệu nghiệp vụ ngoài master data RBAC. Migration hợp nhất Post Share, Login Methods/Set Password, Admin RBAC, Managed Social Identity, đề xuất kiểm duyệt, `users.account_type`, check/trigger hoàn tất hồ sơ và enum audit Academic/Admin/Collaborator. Những thay đổi thuần giao diện hoặc analytics dùng schema sẵn có không cần DDL bổ sung.
+Thư mục `database/` chỉ giữ `student_social_network.sql` và `student_social_network.dbml`. SQL canonical đã gồm Post Share,
+Login Methods/Set Password, Admin RBAC, Managed Social Identity, đề xuất kiểm duyệt, Community Standards,
+moderation notification snapshot và Admin Realtime Notification; DBML phải được cập nhật đồng thời.
 
-Chọn rõ database đích trong lệnh import; không chạy đồng thời file canonical rebuild:
-
-```bash
-mysql --default-character-set=utf8mb4 -u root -p student_social_network < database/V20260816__admin_rbac_collaborator_features.sql
-```
-
-Migration yêu cầu MySQL 8.0+, kiểm tra đầy đủ các bảng nền Auth, Messaging, User, Post và Admin trước khi sửa và có thể chạy lại. DDL MySQL tự commit, vì vậy vẫn phải backup trước khi áp dụng trên database dùng chung.
+Nếu database đã có dữ liệu và cần bảo tồn, không chạy file canonical vì file này rebuild toàn bộ database. Phải backup,
+đối chiếu schema nguồn và xây dựng script nâng cấp riêng được review cho môi trường đó; script vận hành này không được
+giữ như một nguồn schema thứ ba trong thư mục `database/`.
 
 Sau rebuild, phải kiểm tra số lượng, foreign key/unique/check constraint, counter của bài viết và chạy integration/concurrency test bằng MySQL nếu có cấu hình test database.
 
@@ -216,5 +214,5 @@ Giai đoạn 0E chỉ cập nhật file nguồn; không import, migrate hoặc r
 - Generated `pending_report_key` cùng unique index bảo đảm một reporter chỉ có một `PENDING` cho cùng target.
 - Snapshot lưu display name, avatar, bio và ngày sinh tại thời điểm gửi; không lưu email hoặc dữ liệu xác thực.
 - Check constraint cấm reporter trùng target và giữ invariant các trường resolution.
-- Migration: chạy `V007__add_profile_reports.sql`, sau đó `V008__group_profile_reports_into_cases.sql`; dự án không tự chạy migration.
+- SQL canonical đã tạo trực tiếp `profile_reports` và `profile_report_cases`; dự án không giữ migration rời hoặc tự sửa database hiện hữu.
 

@@ -3,6 +3,7 @@ package com.stu.edu.vn.backend.admin.collaborator.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 class ManagedSocialIdentityRoleLifecycleTest {
 
     @Test
+    void updateContractDoesNotAcceptUsername() {
+        assertThat(java.util.Arrays.stream(UpdateManagedSocialIdentityRequest.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName))
+                .containsExactly("displayName", "bio");
+    }
+
+    @Test
     void assigningCollaboratorRoleCreatesManagedIdentityAutomatically() {
         AdminSocialIdentityRepository identities = mock(AdminSocialIdentityRepository.class);
         UserRepository users = mock(UserRepository.class);
@@ -33,10 +41,12 @@ class ManagedSocialIdentityRoleLifecycleTest {
         User actor = user(1L, "master@example.com");
 
         when(identities.findByAdminId(15L)).thenReturn(Optional.empty());
-        when(validation.normalizeAndValidateUsername("collab_f")).thenReturn("collab_f");
-        when(profiles.existsByUsername("collab_f")).thenReturn(false);
-        when(validation.normalizeAndValidateDisplayName("Kênh UniShare")).thenReturn("Kênh UniShare");
-        when(validation.normalizeAndValidateBio(any())).thenReturn("Tài khoản nội dung được quản lý bởi UniShare.");
+        UserProfile adminProfile = new UserProfile(admin);
+        adminProfile.setDisplayName("Ban Truyền thông");
+        when(profiles.findById(15L)).thenReturn(Optional.of(adminProfile));
+        when(validation.normalizeAndValidateUsername("identity_f")).thenReturn("identity_f");
+        when(profiles.existsByUsername("identity_f")).thenReturn(false);
+        when(validation.normalizeAndValidateDisplayName("Ban Truyền thông")).thenReturn("Ban Truyền thông");
         when(users.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User managed = invocation.getArgument(0);
             ReflectionTestUtils.setField(managed, "id", 1050L);
@@ -77,6 +87,46 @@ class ManagedSocialIdentityRoleLifecycleTest {
         verify(identity).setStatus(ManagedSocialIdentityStatus.DISABLED);
         verify(identity).setStatus(ManagedSocialIdentityStatus.ACTIVE);
         verify(actions, org.mockito.Mockito.times(2)).save(any());
+    }
+
+    @Test
+    void collaboratorCanUpdateOnlyThePersistedPublicProfileOfItsManagedIdentity() {
+        AdminSocialIdentityRepository identities = mock(AdminSocialIdentityRepository.class);
+        UserRepository users = mock(UserRepository.class);
+        UserProfileRepository profiles = mock(UserProfileRepository.class);
+        UserProfileValidationSupport validation = mock(UserProfileValidationSupport.class);
+        CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
+        User managed = user(1050L, null);
+        managed.setAccountType(UserAccountType.MANAGED);
+        AdminSocialIdentity identity = mock(AdminSocialIdentity.class);
+        UserProfile profile = new UserProfile(managed);
+        profile.setUsername("identity_f");
+        profile.setDisplayName("Tên cũ");
+
+        when(currentUser.getCurrentUserId()).thenReturn(15L);
+        when(identities.findByAdminId(15L)).thenReturn(Optional.of(identity));
+        when(identity.getStatus()).thenReturn(ManagedSocialIdentityStatus.ACTIVE);
+        when(identity.getSocialUser()).thenReturn(managed);
+        when(profiles.findByIdForUpdate(1050L)).thenReturn(Optional.of(profile));
+        when(profiles.findById(1050L)).thenReturn(Optional.of(profile));
+        when(validation.normalizeAndValidateDisplayName("Ban Truyền thông")).thenReturn("Ban Truyền thông");
+        when(validation.normalizeAndValidateBio("Tin tức sinh viên")).thenReturn("Tin tức sinh viên");
+
+        ManagedSocialIdentityService service = new ManagedSocialIdentityService(identities,
+                new CollaboratorSocialIdentityResolver(identities), users, profiles,
+                mock(AdminRoleAssignmentRepository.class), validation, currentUser,
+                mock(AdminActionRepository.class), Clock.systemUTC());
+
+        ManagedSocialIdentityResponse response = service.updateCurrent(new UpdateManagedSocialIdentityRequest(
+                "Ban Truyền thông", "Tin tức sinh viên"));
+
+        assertThat(response.username()).isEqualTo("identity_f");
+        assertThat(response.displayName()).isEqualTo("Ban Truyền thông");
+        assertThat(response.avatarUrl()).isNull();
+        assertThat(response.bio()).isEqualTo("Tin tức sinh viên");
+        assertThat(response.managed()).isTrue();
+        verify(validation, never()).normalizeAndValidateUsername(any());
+        verify(profiles, never()).existsByUsername(any());
     }
 
     private ManagedSocialIdentityService service(AdminSocialIdentityRepository identities,

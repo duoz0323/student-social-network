@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Avatar from '../../../components/common/Avatar.jsx';
+import PublicIdentityBadge from '../../../components/common/PublicIdentityBadge.jsx';
 import { shortTime } from '../../../utils/formatters.js';
 import { shouldSubmitComposerOnEnter } from '../utils/commentComposer.js';
 import './CommentSection.css';
@@ -130,25 +131,30 @@ function ReplyItem({ reply, currentUser, deleting, onDelete }) {
         className="reply-avatar"
       />
       <div className="comment-reply__body">
-        <div className="comment-author-row">
-          <div className="comment-author">
-            <strong>{reply.displayName}</strong>
-            <span>{shortTime(reply.createdAt)}</span>
+        <div className="comment-bubble">
+          <div className="comment-author-row">
+            <div className="comment-author">
+              <strong className="inline-flex items-center gap-1">
+                {reply.displayName}
+                <PublicIdentityBadge badges={reply.badges} />
+              </strong>
+              <span>{shortTime(reply.createdAt)}</span>
+            </div>
+            {isOwner ? (
+              <button
+                type="button"
+                className="comment-delete"
+                disabled={deleting}
+                onClick={onDelete}
+                aria-label="Xóa câu trả lời"
+                title="Xóa câu trả lời"
+              >
+                <TrashIcon />
+              </button>
+            ) : null}
           </div>
-          {isOwner ? (
-            <button
-              type="button"
-              className="comment-delete"
-              disabled={deleting}
-              onClick={onDelete}
-              aria-label="Xóa câu trả lời"
-              title="Xóa câu trả lời"
-            >
-              <TrashIcon />
-            </button>
-          ) : null}
+          <p className="comment-content">{reply.content}</p>
         </div>
-        <p className="comment-content">{reply.content}</p>
       </div>
     </article>
   );
@@ -239,10 +245,12 @@ export default function CommentSection({
     <section className="comment-section" aria-labelledby="comment-section-title">
       <header className="comment-section__header">
         <div>
-          <h2 id="comment-section-title">Bình luận</h2>
+          <div className="comment-section__title-row">
+            <h2 id="comment-section-title">Bình luận</h2>
+            <span className="comment-section__count">{Number(commentCount) || 0}</span>
+          </div>
           <p>Chia sẻ suy nghĩ của bạn về bài viết.</p>
         </div>
-        <span className="comment-section__count">{Number(commentCount) || 0}</span>
       </header>
 
       <CommentComposer
@@ -273,26 +281,31 @@ export default function CommentSection({
               <article key={item.commentId} className="comment-thread">
                 <Avatar src={item.avatarUrl} name={item.displayName} size="sm" />
                 <div className="comment-thread__body">
-                  <div className="comment-author-row">
-                    <div className="comment-author">
-                      <strong>{item.displayName}</strong>
-                      <span>{shortTime(item.createdAt)}</span>
+                  {/* Gom danh tính và nội dung vào cùng bề mặt để mắt đọc theo từng bình luận dễ hơn. */}
+                  <div className="comment-bubble">
+                    <div className="comment-author-row">
+                      <div className="comment-author">
+                        <strong className="inline-flex items-center gap-1">
+                          {item.displayName}
+                          <PublicIdentityBadge badges={item.badges} />
+                        </strong>
+                        <span>{shortTime(item.createdAt)}</span>
+                      </div>
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          className="comment-delete"
+                          disabled={deletingCommentId === item.commentId}
+                          onClick={() => deleteItem(item.commentId)}
+                          aria-label="Xóa bình luận"
+                          title="Xóa bình luận"
+                        >
+                          <TrashIcon />
+                        </button>
+                      ) : null}
                     </div>
-                    {isOwner ? (
-                      <button
-                        type="button"
-                        className="comment-delete"
-                        disabled={deletingCommentId === item.commentId}
-                        onClick={() => deleteItem(item.commentId)}
-                        aria-label="Xóa bình luận"
-                        title="Xóa bình luận"
-                      >
-                        <TrashIcon />
-                      </button>
-                    ) : null}
+                    <p className="comment-content">{item.content}</p>
                   </div>
-
-                  <p className="comment-content">{item.content}</p>
 
                   <div className="comment-actions">
                     <button type="button" onClick={() => openReplyComposer(item.commentId)}>

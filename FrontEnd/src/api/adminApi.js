@@ -3,6 +3,21 @@ import { httpClient } from './httpClient.js';
 import { compactParams, requestData } from './requestData.js';
 
 export const adminApi = Object.freeze({
+  getNotifications: (params, signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.notifications, { params: compactParams(params), signal },
+  )),
+  getNotificationUnreadCount: (signal) => requestData(httpClient.get(
+    ADMIN_ENDPOINTS.notificationUnreadCount, { signal },
+  )),
+  markNotificationRead: (id, signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.notificationRead(id), undefined, { signal },
+  )),
+  markAllNotificationsRead: (signal) => requestData(httpClient.patch(
+    ADMIN_ENDPOINTS.notificationReadAll, undefined, { signal },
+  )),
+  deleteNotification: (id, signal) => requestData(httpClient.delete(
+    ADMIN_ENDPOINTS.notification(id), { signal },
+  )),
   getProfile: (signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.profile, { signal })),
   updateProfile: (payload, signal) => requestData(httpClient.put(ADMIN_ENDPOINTS.profile, payload, { signal })),
   changePassword: (payload, signal) => requestData(httpClient.patch(
@@ -100,6 +115,10 @@ export const adminApi = Object.freeze({
   hidePost: (id, reasonCode, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.hidePost(id), { reasonCode }, { signal })),
   restorePost: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.restorePost(id), undefined, { signal })),
   getModerationCases: (params, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.moderationCases, { params: compactParams(params), signal })),
+  getModerationSuggestions: (params, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.moderationSuggestions, { params: compactParams(params), signal })),
+  getModerationSuggestion: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.moderationSuggestion(id), { signal })),
+  acceptModerationSuggestion: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.acceptModerationSuggestion(id), undefined, { signal })),
+  rejectModerationSuggestion: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.rejectModerationSuggestion(id), undefined, { signal })),
   getModerationCase: (id, signal) => requestData(httpClient.get(ADMIN_ENDPOINTS.moderationCase(id), { signal })),
   resolveCaseNoViolation: (id, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.resolveCaseNoViolation(id), {}, { signal })),
   resolveCaseAction: (id, payload, signal) => requestData(httpClient.patch(ADMIN_ENDPOINTS.resolveCaseAction(id), payload, { signal })),

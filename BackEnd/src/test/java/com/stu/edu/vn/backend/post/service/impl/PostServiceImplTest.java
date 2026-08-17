@@ -89,6 +89,8 @@ class PostServiceImplTest {
             org.mockito.Mockito.mock(UserRelationshipPolicyService.class);
     private final ContentModerationService contentModerationService =
             org.mockito.Mockito.mock(ContentModerationService.class);
+    private final com.stu.edu.vn.backend.user.service.PublicUserBadgeService badgeService =
+            org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.service.PublicUserBadgeService.class);
 
     private final AtomicLong postIds = new AtomicLong(100);
     private final AtomicLong mediaIds = new AtomicLong(200);
@@ -118,12 +120,14 @@ class PostServiceImplTest {
                 entityManager,
                 clock,
                 relationshipPolicyService,
-                contentModerationService
+                contentModerationService,
+                badgeService
         );
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(completedProfile(10L)));
+        when(badgeService.getBadges(org.mockito.ArgumentMatchers.anyLong())).thenReturn(List.of());
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(new SimpleTransactionStatus());

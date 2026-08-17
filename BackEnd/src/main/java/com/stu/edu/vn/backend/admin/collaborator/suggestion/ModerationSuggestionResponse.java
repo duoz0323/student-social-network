@@ -11,5 +11,7 @@ public record ModerationSuggestionResponse(
         ModerationSuggestionStatus status,
         LocalDateTime createdAt,
         LocalDateTime reviewedAt,
-        Long reviewedBy
+        Long reviewedBy,
+        ModerationSuggestionActorResponse suggester,
+        ModerationSuggestionActorResponse reviewer
 ) { }

@@ -16,6 +16,7 @@ import com.stu.edu.vn.backend.post.service.PostLocationBatchLoader;
 import com.stu.edu.vn.backend.location.entity.Location;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ public class FeedPostBatchLoader {
     private final PostRepostRepository postRepostRepository;
     private final FeedPostMapper feedPostMapper;
     private final PostLocationBatchLoader postLocationBatchLoader;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     public List<FeedPostResponse> map(List<Post> posts, Long viewerId) {
         if (posts.isEmpty()) {
@@ -48,6 +50,7 @@ public class FeedPostBatchLoader {
         List<Long> authorIds = posts.stream().map(post -> post.getAuthor().getId()).distinct().toList();
         Map<Long, UserProfile> profiles = userProfileRepository.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(UserProfile::getUserId, Function.identity()));
+        var badges = publicUserBadgeService.getBadgesByUserIds(authorIds);
         Map<Long, List<PostMedia>> media = new HashMap<>();
         for (PostMedia item : postMediaRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(postIds)) {
             media.computeIfAbsent(item.getPost().getId(), ignored -> new ArrayList<>()).add(item);
@@ -66,7 +69,8 @@ public class FeedPostBatchLoader {
                 post, profiles.get(post.getAuthor().getId()),
                 media.getOrDefault(post.getId(), List.of()), hashtags.get(post.getId()),
                 liked.contains(post.getId()), saved.contains(post.getId()), reposted.contains(post.getId()),
-                locations.get(post.getId())
+                locations.get(post.getId()),
+                badges.getOrDefault(post.getAuthor().getId(), List.of())
         )).toList();
     }
 }

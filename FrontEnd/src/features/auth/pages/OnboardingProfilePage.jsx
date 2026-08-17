@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { onboardingService } from '../services/onboardingService.js';
 import {
   todayIsoDate,
-  calcAge,
+  getBirthDateValidationMessage,
   getUsernameValidationMessage,
   mapUsernameErrorCode,
   normalizeUsernameInput,
@@ -209,10 +209,7 @@ export default function OnboardingProfilePage() {
   const canContinue = form.displayName.trim().length >= 2
     && !localUsernameError
     && availabilityStatus === 'available';
-  const dateIsValid = Boolean(form.dateOfBirth)
-    && form.dateOfBirth <= todayIsoDate()
-    && calcAge(form.dateOfBirth) >= 18;
-  const canFinish = canContinue && dateIsValid;
+  const dateValidationError = getBirthDateValidationMessage(form.dateOfBirth, todayIsoDate());
 
   function moveToStep(nextStep) {
     setError('');
@@ -280,23 +277,31 @@ export default function OnboardingProfilePage() {
 
   // ── Validate bước 3: ngày sinh bắt buộc + ≥18 tuổi ──
   async function handleCompleteBasic() {
-    if (isSubmitting || !canFinish) return;
-    if (!form.dateOfBirth) {
-      setError('Ngày sinh là bắt buộc để hoàn tất hồ sơ.');
+    if (isSubmitting) return;
+    if (!canContinue) {
+      setError('Vui lòng kiểm tra lại tên hiển thị và tên người dùng.');
       return;
     }
-    if (form.dateOfBirth > todayIsoDate()) {
-      setError('Ngày sinh không được lớn hơn ngày hiện tại.');
-      return;
-    }
-    if (calcAge(form.dateOfBirth) < 18) {
-      setError('Bạn phải đủ 18 tuổi để tham gia sử dụng UniShare.');
+    if (dateValidationError) {
+      setError(dateValidationError);
       return;
     }
 
     setIsSubmitting(true);
     setError('');
     try {
+      if (basicCompleted) {
+        // Hồ sơ đã hoàn tất chỉ cập nhật các field được phép; username vẫn bất biến theo contract.
+        const updated = await socialApi.updateProfile(buildProfileUpdatePayload({ basic: form }));
+        setForm((current) => ({
+          ...current,
+          displayName: updated.displayName ?? current.displayName,
+          dateOfBirth: updated.dateOfBirth ?? current.dateOfBirth,
+          bio: updated.bio ?? '',
+        }));
+        moveToStep(2);
+        return;
+      }
       const result = await onboardingService.completeProfile(form);
       if (!result.profileCompleted) {
         throw new Error('Backend chưa xác nhận hồ sơ đã hoàn tất. Vui lòng thử lại.');
@@ -482,6 +487,7 @@ export default function OnboardingProfilePage() {
                   usernameError={usernameError}
                   availabilityStatus={availabilityStatus}
                   canContinue={canContinue}
+                  usernameLocked={basicCompleted}
                 />
               )}
 
@@ -506,8 +512,8 @@ export default function OnboardingProfilePage() {
                   onFinish={handleCompleteBasic}
                   onBack={goBackBasic}
                   error={error}
+                  dateError={form.dateOfBirth ? dateValidationError : ''}
                   isSubmitting={isSubmitting}
-                  canFinish={canFinish}
                 />
               )}
 
@@ -516,7 +522,10 @@ export default function OnboardingProfilePage() {
                   value={academic}
                   onChange={setAcademic}
                   onSave={saveAcademic}
-                  onSkip={() => moveToStep(3)}
+                  onBack={() => {
+                    setBasicStep(3);
+                    moveToStep(1);
+                  }}
                   error={error}
                   isSubmitting={isSubmitting}
                 />
@@ -527,7 +536,6 @@ export default function OnboardingProfilePage() {
                   value={interestIds}
                   onChange={setInterestIds}
                   onSave={saveInterests}
-                  onSkip={finishOptionalOnboarding}
                   onBack={() => moveToStep(2)}
                   error={error}
                   isSubmitting={isSubmitting}

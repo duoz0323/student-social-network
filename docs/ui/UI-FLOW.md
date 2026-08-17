@@ -340,9 +340,17 @@ UI không cho chọn `SUPER_ADMIN` và khóa ba permission phân quyền `ADMIN_
 ### 1.12.3 Hồ sơ quản trị viên
 
 ```text
-Admin hoặc Cộng tác viên mở /admin/profile từ sidebar
+Admin thường hoặc Admin đa vai trò mở /admin/profile từ sidebar
 → GET /api/v1/admin/profile
-→ sửa tên hiển thị, ngày sinh hoặc bio
+→ sửa tên hiển thị, ngày sinh hoặc bio của hồ sơ quản trị
+→ PUT /api/v1/admin/profile
+→ Cộng tác viên thuần mở /admin/collaborator/profile
+→ GET /api/v1/admin/collaborator/social-identity
+→ xem username ở trạng thái chỉ đọc; username đã tạo không thể thay đổi
+→ sửa tên hiển thị, avatar hoặc bio của Managed Public Identity
+→ PUT /api/v1/admin/collaborator/social-identity hoặc POST avatar
+→ Sidebar và Dashboard dùng ngay cùng Managed Public Identity
+→ trên cùng trang sửa riêng tên hiển thị, ngày sinh hoặc bio của hồ sơ Admin
 → PUT /api/v1/admin/profile
 → nhập mật khẩu hiện tại và mật khẩu mới
 → PATCH /api/v1/admin/profile/password
@@ -350,8 +358,23 @@ Admin hoặc Cộng tác viên mở /admin/profile từ sidebar
 → Frontend xóa phiên và chuyển về Đăng nhập
 ```
 
-Email, username, trạng thái, role và permission chỉ đọc. Backend luôn lấy quản trị viên hiện tại từ JWT,
-không nhận `adminId` do Frontend gửi lên.
+Email, username kỹ thuật, trạng thái, role và permission của Admin chỉ đọc. Managed Public Identity là nguồn
+username/tên/avatar/bio duy nhất cho các bề mặt Collaborator. Backend luôn lấy quản trị viên hiện tại từ JWT,
+không nhận `adminId` hoặc `socialUserId` do Frontend gửi lên.
+
+### 1.12.4 Cộng tác viên xem thảo luận trên bài viết của mình
+
+```text
+Cộng tác viên mở /admin/collaborator/posts/:postId
+→ GET /api/v1/admin/collaborator/posts/:postId
+→ nếu bài PUBLISHED, GET /api/v1/admin/collaborator/posts/:postId/comments?page=0&size=20
+→ hiển thị bình luận gốc, trạng thái tải/rỗng/lỗi và nút xem thêm
+→ khi mở một nhánh, GET /api/v1/admin/collaborator/posts/:postId/comments/:commentId/replies
+→ hiển thị reply một cấp theo chính sách Block của Managed Social Identity
+```
+
+Lỗi tải bình luận chỉ nằm trong khu vực thảo luận và không che nội dung bài đã tải thành công. Client không gửi
+`viewerId`, `authorId` hoặc `socialUserId`; Backend resolve Managed Identity từ JWT và kiểm tra bài thuộc danh tính đó.
 
 ### 1.13 Admin quản lý bài viết
 

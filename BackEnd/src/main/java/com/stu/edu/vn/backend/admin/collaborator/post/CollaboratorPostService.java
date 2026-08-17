@@ -5,6 +5,7 @@ import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.enums.AdminActionType;
 import com.stu.edu.vn.backend.admin.enums.AdminTargetType;
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
+import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.interaction.dto.request.CreateCommentRequest;
 import com.stu.edu.vn.backend.interaction.dto.response.CommentResponse;
 import com.stu.edu.vn.backend.interaction.service.CommentService;
@@ -42,6 +43,21 @@ public class CollaboratorPostService {
 
     public OwnedPostDetailResponse detail(Long postId) {
         return postService.getOwnedPostDetailAs(actor().socialUser().getId(), postId);
+    }
+
+    public PageResponse<CommentResponse> comments(Long postId, int page, int size) {
+        Actor actor = actor();
+        // Kiểm tra quyền sở hữu trước khi dùng policy hiển thị bình luận chung của Social User.
+        postService.getOwnedPostDetailAs(actor.socialUser().getId(), postId);
+        return commentService.getPublishedCommentsAs(actor.socialUser().getId(), postId, page, size);
+    }
+
+    public PageResponse<CommentResponse> replies(Long postId, Long commentId, int page, int size) {
+        Actor actor = actor();
+        // Bài viết và bình luận cha đều phải thuộc đúng hội thoại mà cộng tác viên đang xem.
+        postService.getOwnedPostDetailAs(actor.socialUser().getId(), postId);
+        return commentService.getPublishedRepliesForPostAs(
+                actor.socialUser().getId(), postId, commentId, page, size);
     }
 
     public PostDetailResponse update(Long postId, UpdatePostRequest request) {

@@ -33,7 +33,8 @@ const initialState = {
 
 function isAccessRevoked(error) {
   return [403, 404].includes(error?.status)
-    || ['DIRECT_MESSAGE_NOT_ALLOWED', 'CONVERSATION_NOT_FOUND', 'MESSAGING_NOT_ALLOWED'].includes(error?.code);
+    || ['DIRECT_MESSAGE_NOT_ALLOWED', 'DIRECT_MESSAGE_MUTUAL_FOLLOW_REQUIRED',
+      'CONVERSATION_NOT_FOUND', 'MESSAGING_NOT_ALLOWED'].includes(error?.code);
 }
 
 export function MessagingProvider({ children }) {

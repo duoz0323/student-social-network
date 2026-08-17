@@ -33,14 +33,14 @@ test('COLLABORATOR mới được đưa đến Dashboard riêng và chỉ khôi 
   assert.equal(getSafeReturnPath('/admin/users', collaborator), null);
 });
 
-test('URL Khám phá và Đề xuất xử lý cũ không còn được khôi phục cho COLLABORATOR', () => {
+test('URL Khám phá và Đề xuất của tôi được khôi phục theo permission COLLABORATOR', () => {
   const collaborator = adminSession([
     'COLLABORATOR_DASHBOARD_VIEW', 'COLLABORATOR_EXPLORE_VIEW',
     'COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN',
   ]);
 
-  assert.equal(getSafeReturnPath('/admin/collaborator/explore', collaborator), null);
-  assert.equal(getSafeReturnPath('/admin/collaborator/moderation-suggestions', collaborator), null);
+  assert.equal(getSafeReturnPath('/admin/collaborator/explore', collaborator), '/admin/collaborator/explore');
+  assert.equal(getSafeReturnPath('/admin/collaborator/moderation-suggestions', collaborator), '/admin/collaborator/moderation-suggestions');
 });
 
 test('Admin không có permission không được điều hướng vào khu vực quản trị', () => {

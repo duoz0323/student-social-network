@@ -78,6 +78,18 @@ public class ManagedSocialIdentityService {
                 normalizeNullable(request.avatarUrl()), bio));
     }
 
+    @Transactional
+    public ManagedSocialIdentityResponse updateCurrent(UpdateManagedSocialIdentityRequest request) {
+        Long adminId = currentUserProvider.getCurrentUserId();
+        User socialUser = identityResolver.resolveActive(adminId);
+        UserProfile profile = profileRepository.findByIdForUpdate(socialUser.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
+        // Username là định danh public bất biến, chỉ được gán một lần khi tạo Managed Identity.
+        profile.setDisplayName(profileValidation.normalizeAndValidateDisplayName(request.displayName()));
+        profile.setBio(profileValidation.normalizeAndValidateBio(request.bio()));
+        return response(socialUser);
+    }
+
     /** Gán role COLLABORATOR phải đồng thời bảo đảm tài khoản dùng được ngay khu vực cộng tác viên. */
     @Transactional
     public void activateOrCreateForRole(User admin, User actor) {
@@ -93,9 +105,12 @@ public class ManagedSocialIdentityService {
         }
 
         String username = nextDefaultUsername(admin.getId());
-        String displayName = profileValidation.normalizeAndValidateDisplayName("Kênh UniShare");
-        createIdentity(admin, actor, username, displayName, null,
-                profileValidation.normalizeAndValidateBio("Tài khoản nội dung được quản lý bởi UniShare."));
+        String displayName = profileRepository.findById(admin.getId())
+                .map(UserProfile::getDisplayName)
+                .filter(value -> value != null && !value.isBlank())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROFILE_NOT_FOUND));
+        createIdentity(admin, actor, username,
+                profileValidation.normalizeAndValidateDisplayName(displayName), null, null);
     }
 
     /** Thu hồi role chỉ vô hiệu hóa quyền điều khiển, không xóa Social User, bài viết hoặc lịch sử. */
@@ -134,7 +149,8 @@ public class ManagedSocialIdentityService {
     }
 
     private String nextDefaultUsername(Long adminId) {
-        String base = "collab_" + Long.toUnsignedString(adminId, 36);
+        // Username được tạo đúng một lần và trở thành định danh public bất biến của Managed Identity.
+        String base = "identity_" + Long.toUnsignedString(adminId, 36);
         for (int suffix = 0; suffix < 100; suffix++) {
             String candidate = suffix == 0 ? base : base + "_" + suffix;
             String username = profileValidation.normalizeAndValidateUsername(candidate);

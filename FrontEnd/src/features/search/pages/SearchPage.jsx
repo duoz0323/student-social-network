@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Search, Sparkles, X } from 'lucide-react';
 import { socialApi } from '../../../api/index.js';
 import Avatar from '../../../components/common/Avatar.jsx';
+import PublicIdentityBadge from '../../../components/common/PublicIdentityBadge.jsx';
 import { EmptyState, LoadingState } from '../../../components/common/StateBlock.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useApp } from '../../../contexts/AppContext.jsx';
@@ -383,8 +384,10 @@ export default function SearchPage() {
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14.5px] font-bold text-[var(--app-text)]">{user.displayName}</p>
-                      <p className="truncate text-[12.5px] text-[var(--app-muted)]">@{user.displayName?.toLowerCase().replace(/\s+/g, '')}</p>
+                      <p className="flex items-center gap-1 truncate text-[14.5px] font-bold text-[var(--app-text)]">
+                        {user.displayName}<PublicIdentityBadge badges={user.badges} />
+                      </p>
+                      <p className="truncate text-[12.5px] text-[var(--app-muted)]">@{user.username}</p>
                     </div>
 
                     {!isSelf && (
@@ -529,8 +532,10 @@ export default function SearchPage() {
                       className="min-w-0 flex-1 cursor-pointer text-left"
                       onClick={() => navigateToProfile(user.id)}
                     >
-                      <h3 className="truncate text-[15px] font-bold text-[var(--app-text)]">{user.displayName}</h3>
-                      <p className="truncate text-[13px] text-[var(--app-muted)]">@{user.displayName?.toLowerCase().replace(/\s+/g, '')}</p>
+                      <h3 className="flex items-center gap-1 truncate text-[15px] font-bold text-[var(--app-text)]">
+                        {user.displayName}<PublicIdentityBadge badges={user.badges} />
+                      </h3>
+                      <p className="truncate text-[13px] text-[var(--app-muted)]">@{user.username}</p>
                       {user.bio ? (
                         <p className="mt-1 text-[13px] text-[var(--app-text)] line-clamp-1">{user.bio}</p>
                       ) : null}

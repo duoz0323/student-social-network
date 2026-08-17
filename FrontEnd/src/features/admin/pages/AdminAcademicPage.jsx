@@ -7,6 +7,7 @@ import { LoadingState } from '../../../components/common/StateBlock.jsx';
 import { formatDateTime } from '../../../utils/formatters.js';
 import AdminAcademicFormDialog from '../components/AdminAcademicFormDialog.jsx';
 import AdminAcademicStatusDialog from '../components/AdminAcademicStatusDialog.jsx';
+import AdminPageHeader from '../components/AdminPageHeader.jsx';
 import { useAdminToast } from '../hooks/useAdminToast.js';
 
 const EMPTY_RESULT = Object.freeze({ content: [], totalElements: 0, totalPages: 0 });
@@ -184,18 +185,13 @@ export default function AdminAcademicPage() {
 
   return (
     <section className="flex h-[calc(100vh-4rem)] min-h-0 flex-col lg:h-[calc(100vh-6rem)]">
-      <header className="mb-5 shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
-            <GraduationCap size={22} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold text-zinc-950">Dữ liệu học thuật</h1>
-            <p className="mt-1 text-sm text-zinc-500">Quản lý hierarchy trường, khoa, ngành và danh mục sở thích.</p>
-          </div>
-          <Button onClick={openCreate}><Plus size={17} /> Tạo {kind.label.toLowerCase()}</Button>
-        </div>
-      </header>
+      <AdminPageHeader
+        className="mb-5"
+        icon={GraduationCap}
+        title="Dữ liệu học thuật"
+        description="Quản lý trường, khoa, ngành và danh mục sở thích."
+        actions={<Button onClick={openCreate}><Plus size={17} /> Tạo {kind.label.toLowerCase()}</Button>}
+      />
 
       <div className="mb-4 flex shrink-0 gap-2 border-b border-zinc-200">
         {[['academic', 'Trường / Khoa / Ngành', GraduationCap], ['interests', 'Sở thích', BookOpen]].map(([value, label, Icon]) => (

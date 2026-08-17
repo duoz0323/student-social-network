@@ -1,21 +1,26 @@
 package com.stu.edu.vn.backend.admin.collaborator.post;
 
 import com.stu.edu.vn.backend.common.api.ApiResponse;
+import com.stu.edu.vn.backend.common.api.PageResponse;
 import com.stu.edu.vn.backend.interaction.dto.request.CreateCommentRequest;
 import com.stu.edu.vn.backend.interaction.dto.response.CommentResponse;
 import com.stu.edu.vn.backend.post.dto.request.*;
 import com.stu.edu.vn.backend.post.dto.response.*;
 import com.stu.edu.vn.backend.post.enums.LocationAction;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/admin/collaborator")
 @RequiredArgsConstructor
+@Validated
 public class CollaboratorPostController {
     private final CollaboratorPostService service;
 
@@ -34,6 +39,27 @@ public class CollaboratorPostController {
     @PreAuthorize("hasAuthority('COLLABORATOR_POST_VIEW_OWN')")
     public ResponseEntity<ApiResponse<OwnedPostDetailResponse>> detail(@PathVariable Long postId) {
         return ResponseEntity.ok(ApiResponse.success("Lấy bài viết thành công", service.detail(postId)));
+    }
+
+    @GetMapping("/posts/{postId}/comments")
+    @PreAuthorize("hasAuthority('COLLABORATOR_POST_VIEW_OWN')")
+    public ResponseEntity<ApiResponse<PageResponse<CommentResponse>>> comments(
+            @PathVariable Long postId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy danh sách bình luận thành công", service.comments(postId, page, size)));
+    }
+
+    @GetMapping("/posts/{postId}/comments/{commentId}/replies")
+    @PreAuthorize("hasAuthority('COLLABORATOR_POST_VIEW_OWN')")
+    public ResponseEntity<ApiResponse<PageResponse<CommentResponse>>> replies(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy danh sách trả lời thành công", service.replies(postId, commentId, page, size)));
     }
 
     @PutMapping(value = "/posts/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

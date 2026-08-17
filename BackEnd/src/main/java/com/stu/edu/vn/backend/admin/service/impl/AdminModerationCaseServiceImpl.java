@@ -213,6 +213,10 @@ public class AdminModerationCaseServiceImpl implements AdminModerationCaseServic
         if (violationCount >= POST_VIOLATION_BLOCK_THRESHOLD) {
             accountBlocked = accountBlockService.blockIfActive(
                     post.getAuthor().getId(), admin, now, AdminBlockReason.REPEATED_VIOLATION);
+        } else if (violationCount == 1L || violationCount == 2L) {
+            // Chỉ phát warning sau transition OPEN -> RESOLVED_ACTION_TAKEN đã được khóa và flush thành công.
+            notificationService.createContentViolationWarningNotification(
+                    post.getAuthor().getId(), post.getId(), violationCount == 2L);
         }
         entityManager.flush();
         return toStatusResponse(moderationCase, post, principal.getUserId(), violationCount, accountBlocked);

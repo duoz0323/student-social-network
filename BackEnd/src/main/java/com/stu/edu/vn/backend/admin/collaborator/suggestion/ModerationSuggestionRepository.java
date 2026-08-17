@@ -1,6 +1,8 @@
 package com.stu.edu.vn.backend.admin.collaborator.suggestion;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,4 +25,20 @@ public interface ModerationSuggestionRepository extends JpaRepository<Moderation
     @EntityGraph(attributePaths = {"post", "suggestedBy", "reviewedBy"})
     @Query("select s from ModerationSuggestion s where s.id=:id")
     Optional<ModerationSuggestion> findByIdForUpdate(@Param("id") Long id);
+
+    /** Đọc hồ sơ và role của toàn bộ actor trong một lượt để trang danh sách không phát sinh N+1. */
+    @Query(value = """
+            SELECT u.id AS adminId, up.username AS username, up.display_name AS displayName,
+                   up.avatar_url AS avatarUrl,
+                   GROUP_CONCAT(r.code ORDER BY r.id SEPARATOR ',') AS roleCodes
+            FROM users u
+            LEFT JOIN user_profiles up ON up.user_id = u.id
+            LEFT JOIN admin_roles ar ON ar.admin_id = u.id
+            LEFT JOIN roles r ON r.id = ar.role_id
+            WHERE u.id IN (:adminIds)
+            GROUP BY u.id, up.username, up.display_name, up.avatar_url
+            ORDER BY u.id
+            """, nativeQuery = true)
+    List<ModerationSuggestionActorProjection> findActorsByAdminIds(
+            @Param("adminIds") Collection<Long> adminIds);
 }

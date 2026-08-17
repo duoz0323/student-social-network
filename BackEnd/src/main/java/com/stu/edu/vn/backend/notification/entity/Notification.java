@@ -54,6 +54,12 @@ public class Notification extends BaseAuditEntity {
     @JoinColumn(name = "report_id")
     private Report report;
 
+    @Column(name = "moderation_reason", length = 64)
+    private String moderationReason;
+
+    @Column(name = "moderation_post_summary", length = 500)
+    private String moderationPostSummary;
+
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
@@ -72,12 +78,27 @@ public class Notification extends BaseAuditEntity {
             Comment comment,
             Report report
     ) {
+        this(recipient, actor, type, post, comment, report, null, null);
+    }
+
+    public Notification(
+            User recipient,
+            User actor,
+            NotificationType type,
+            Post post,
+            Comment comment,
+            Report report,
+            String moderationReason,
+            String moderationPostSummary
+    ) {
         this.recipient = recipient;
         this.actor = actor;
         this.type = type;
         this.post = post;
         this.comment = comment;
         this.report = report;
+        this.moderationReason = moderationReason;
+        this.moderationPostSummary = moderationPostSummary;
     }
 
     public Long getId() {
@@ -106,6 +127,14 @@ public class Notification extends BaseAuditEntity {
 
     public Report getReport() {
         return report;
+    }
+
+    public String getModerationReason() {
+        return moderationReason;
+    }
+
+    public String getModerationPostSummary() {
+        return moderationPostSummary;
     }
 
     public LocalDateTime getReadAt() {

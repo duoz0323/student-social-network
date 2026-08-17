@@ -2,7 +2,7 @@ import AcademicProfileFields from '../../../profile/components/AcademicProfileFi
 import { ErrorMsg, PrimaryBtn, SecondaryBtn, SlidePanel, ArrowRightIcon } from './OnboardingShared.jsx';
 
 // Academic là bước tùy chọn sau khi hồ sơ cơ bản đã hoàn tất, không tham gia auth gate.
-export default function OnboardingStep2Academic({ value, onChange, onSave, onSkip, error, isSubmitting }) {
+export default function OnboardingStep2Academic({ value, onChange, onSave, onBack, error, isSubmitting }) {
   return (
     <SlidePanel stepKey="academic">
       <div className="mb-7">
@@ -18,7 +18,7 @@ export default function OnboardingStep2Academic({ value, onChange, onSave, onSki
       <ErrorMsg msg={error} />
 
       <div className="mt-8 grid grid-cols-2 gap-3">
-        <SecondaryBtn onClick={onSkip} disabled={isSubmitting}>Bỏ qua</SecondaryBtn>
+        <SecondaryBtn onClick={onBack} disabled={isSubmitting}>Quay lại</SecondaryBtn>
         <PrimaryBtn onClick={onSave} disabled={isSubmitting}>
           <span>{isSubmitting ? 'Đang lưu...' : 'Lưu & tiếp tục'}</span>
           {!isSubmitting ? <ArrowRightIcon size={18} /> : null}

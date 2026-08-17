@@ -21,6 +21,8 @@ public interface CommentService {
 
     PageResponse<CommentResponse> getPublishedReplies(Long parentCommentId, int page, int size);
     PageResponse<CommentResponse> getPublishedRepliesAs(Long userId, Long parentCommentId, int page, int size);
+    PageResponse<CommentResponse> getPublishedRepliesForPostAs(
+            Long userId, Long postId, Long parentCommentId, int page, int size);
 
     DeleteCommentResponse deleteComment(Long commentId);
 }

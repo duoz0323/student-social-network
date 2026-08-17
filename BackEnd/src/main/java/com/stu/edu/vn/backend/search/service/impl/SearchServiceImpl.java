@@ -31,6 +31,8 @@ import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -67,6 +69,7 @@ public class SearchServiceImpl implements SearchService {
     private final HashtagNormalizer hashtagNormalizer;
     private final CursorCodec cursorCodec;
     private final PostLocationBatchLoader postLocationBatchLoader;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     public SearchServiceImpl(CurrentUserProvider currentUserProvider, UserRepository userRepository,
                              SearchUserProfileRepository userProfileRepository, PostRepository postRepository,
@@ -74,7 +77,8 @@ public class SearchServiceImpl implements SearchService {
                              PostLikeRepository postLikeRepository, SavedPostRepository savedPostRepository,
                              PostRepostRepository postRepostRepository,
                              SearchPostMapper searchPostMapper, HashtagNormalizer hashtagNormalizer,
-                             CursorCodec cursorCodec, PostLocationBatchLoader postLocationBatchLoader) {
+                             CursorCodec cursorCodec, PostLocationBatchLoader postLocationBatchLoader,
+                             PublicUserBadgeService publicUserBadgeService) {
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -88,6 +92,7 @@ public class SearchServiceImpl implements SearchService {
         this.hashtagNormalizer = hashtagNormalizer;
         this.cursorCodec = cursorCodec;
         this.postLocationBatchLoader = postLocationBatchLoader;
+        this.publicUserBadgeService = publicUserBadgeService;
     }
 
     @Override
@@ -104,9 +109,12 @@ public class SearchServiceImpl implements SearchService {
                         currentUserId,
                         profiles.getContent().stream().map(UserProfile::getUserId).toList()
                 ));
+        Map<Long, List<PublicUserBadge>> badges = publicUserBadgeService.getBadgesByUserIds(
+                profiles.getContent().stream().map(UserProfile::getUserId).toList());
         Page<SearchUserResponse> result = profiles.map(profile -> toResponse(
                 profile,
-                followedUserIds.contains(profile.getUserId())
+                followedUserIds.contains(profile.getUserId()),
+                badges.getOrDefault(profile.getUserId(), List.of())
         ));
         return PageResponse.from(result);
     }
@@ -116,7 +124,14 @@ public class SearchServiceImpl implements SearchService {
     public CursorPageResponse<SearchPostResponse> searchPosts(
             String keyword, SearchPostType type, String encodedCursor, int limit) {
         Long currentUserId = currentUserProvider.getCurrentUserId();
-        ensureCurrentUserCanSearch(currentUserId);
+        return searchPostsAs(currentUserId, keyword, type, encodedCursor, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPageResponse<SearchPostResponse> searchPostsAs(
+            Long viewerId, String keyword, SearchPostType type, String encodedCursor, int limit) {
+        ensureCurrentUserCanSearch(viewerId);
         if (type == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
@@ -129,8 +144,8 @@ public class SearchServiceImpl implements SearchService {
 
         PageRequest fetchLimit = PageRequest.of(0, limit + 1);
         List<Post> fetched = type == SearchPostType.CONTENT
-                ? searchContentPosts(normalizedKeyword, currentUserId, encodedCursor, fetchLimit)
-                : searchHashtagPosts(normalizedKeyword, currentUserId, encodedCursor, fetchLimit);
+                ? searchContentPosts(normalizedKeyword, viewerId, encodedCursor, fetchLimit)
+                : searchHashtagPosts(normalizedKeyword, viewerId, encodedCursor, fetchLimit);
         boolean hasNext = fetched.size() > limit;
         List<Post> posts = hasNext ? fetched.subList(0, limit) : fetched;
         if (posts.isEmpty()) {
@@ -140,11 +155,13 @@ public class SearchServiceImpl implements SearchService {
 
         List<Long> postIds = posts.stream().map(Post::getId).toList();
         Map<Long, UserProfile> authorProfiles = loadAuthorProfiles(posts);
+        Map<Long, List<PublicUserBadge>> authorBadges = publicUserBadgeService.getBadgesByUserIds(
+                authorProfiles.keySet());
         Map<Long, List<PostMedia>> mediaByPostId = loadMedia(postIds);
         Map<Long, String> hashtagsByPostId = loadHashtags(postIds);
-        Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(currentUserId, postIds));
-        Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(currentUserId, postIds));
-        Set<Long> repostedPostIds = new HashSet<>(postRepostRepository.findRepostedPostIds(currentUserId, postIds));
+        Set<Long> likedPostIds = new HashSet<>(postLikeRepository.findLikedPostIds(viewerId, postIds));
+        Set<Long> savedPostIds = new HashSet<>(savedPostRepository.findSavedPostIds(viewerId, postIds));
+        Set<Long> repostedPostIds = new HashSet<>(postRepostRepository.findRepostedPostIds(viewerId, postIds));
         Map<Long, Location> locations = postLocationBatchLoader.loadByPostId(posts);
 
         List<SearchPostResponse> content = posts.stream().map(post -> searchPostMapper.toResponse(
@@ -155,7 +172,8 @@ public class SearchServiceImpl implements SearchService {
                 likedPostIds.contains(post.getId()),
                 savedPostIds.contains(post.getId()),
                 repostedPostIds.contains(post.getId()),
-                locations.get(post.getId())
+                locations.get(post.getId()),
+                authorBadges.getOrDefault(post.getAuthor().getId(), List.of())
         )).toList();
         String nextCursor = hasNext ? createSearchPostCursor(type, normalizedKeyword, posts.getLast()) : null;
         return new CursorPageResponse<>(content, nextCursor, hasNext);
@@ -275,10 +293,11 @@ public class SearchServiceImpl implements SearchService {
         return LikePatternEscaper.escape(keyword);
     }
 
-    private SearchUserResponse toResponse(UserProfile profile, boolean followedByCurrentUser) {
+    private SearchUserResponse toResponse(UserProfile profile, boolean followedByCurrentUser,
+                                          List<PublicUserBadge> badges) {
         return new SearchUserResponse(
-                profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl(), profile.getBio(),
-                followedByCurrentUser
+                profile.getUserId(), profile.getUsername(), profile.getDisplayName(), profile.getAvatarUrl(), profile.getBio(),
+                followedByCurrentUser, badges
         );
     }
 }

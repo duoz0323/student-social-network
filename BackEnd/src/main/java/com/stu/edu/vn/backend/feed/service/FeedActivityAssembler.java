@@ -11,6 +11,7 @@ import com.stu.edu.vn.backend.post.repository.PostRepository;
 import com.stu.edu.vn.backend.post.repository.projection.FeedActivityProjection;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
+import com.stu.edu.vn.backend.user.service.PublicUserBadgeService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class FeedActivityAssembler {
     private final PostRepository postRepository;
     private final UserProfileRepository userProfileRepository;
     private final FeedPostBatchLoader feedPostBatchLoader;
+    private final PublicUserBadgeService publicUserBadgeService;
 
     public List<FeedItemResponse> assemble(List<FeedActivityProjection> activities, Long viewerId) {
         if (activities.isEmpty()) {
@@ -55,8 +57,10 @@ public class FeedActivityAssembler {
                 .collect(Collectors.toMap(UserProfile::getUserId, Function.identity()));
 
         Map<Long, PostAuthorResponse> reposterResponses = new HashMap<>();
+        var reposterBadges = publicUserBadgeService.getBadgesByUserIds(reposterIds);
         reposters.forEach((userId, profile) -> reposterResponses.put(userId,
-                new PostAuthorResponse(profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl())));
+                new PostAuthorResponse(profile.getUserId(), profile.getDisplayName(), profile.getAvatarUrl(),
+                        reposterBadges.getOrDefault(userId, List.of()))));
 
         return java.util.stream.IntStream.range(0, activities.size())
                 .mapToObj(index -> {

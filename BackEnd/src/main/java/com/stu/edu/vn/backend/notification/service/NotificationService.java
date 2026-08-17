@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.notification.dto.response.NotificationReadAllRespo
 import com.stu.edu.vn.backend.notification.dto.response.NotificationReadResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationResponse;
 import com.stu.edu.vn.backend.notification.dto.response.NotificationUnreadCountResponse;
+import com.stu.edu.vn.backend.notification.dto.response.ModerationNotificationDetailResponse;
 
 /**
  * Contract truy vấn hộp thông báo và các lệnh nội bộ được gọi từ nghiệp vụ nguồn.
@@ -21,6 +22,8 @@ public interface NotificationService {
     NotificationReadAllResponse markAllAsRead();
 
     DeleteNotificationResponse deleteNotification(Long notificationId);
+
+    ModerationNotificationDetailResponse getModerationDetail(Long notificationId);
 
     void createFollowNotification(Long actorId, Long recipientId);
 
@@ -49,6 +52,8 @@ public interface NotificationService {
     void createPostRestoredByAdminNotification(Long recipientId, Long postId);
 
     void createUserProfileUpdatedByAdminNotification(Long recipientId);
+
+    void createContentViolationWarningNotification(Long recipientId, Long postId, boolean finalWarning);
 
     void createAccountBlockedNotification(Long recipientId);
 

@@ -9,6 +9,7 @@ import com.stu.edu.vn.backend.post.entity.PostMedia;
 import com.stu.edu.vn.backend.search.dto.response.SearchPostResponse;
 import com.stu.edu.vn.backend.user.entity.UserProfile;
 import java.util.List;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,9 +20,9 @@ public class SearchPostMapper {
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                          String hashtag, boolean liked, boolean saved, boolean reposted,
-                                         Location location) {
+                                         Location location, List<PublicUserBadge> badges) {
         PostAuthorResponse author = new PostAuthorResponse(
-                authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl());
+                authorProfile.getUserId(), authorProfile.getDisplayName(), authorProfile.getAvatarUrl(), badges);
         List<PostMediaResponse> mediaResponses = media.stream().map(this::toMediaResponse).toList();
         return new SearchPostResponse(
                 post.getId(), post.getContent(), post.isEdited(), post.getLikeCount(), post.getCommentCount(),
@@ -32,12 +33,12 @@ public class SearchPostMapper {
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                          String hashtag, boolean liked, boolean saved) {
-        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, null);
+        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, null, List.of());
     }
 
     public SearchPostResponse toResponse(Post post, UserProfile authorProfile, List<PostMedia> media,
                                          String hashtag, boolean liked, boolean saved, Location location) {
-        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, location);
+        return toResponse(post, authorProfile, media, hashtag, liked, saved, false, location, List.of());
     }
 
     private PostLocationResponse toLocation(Location location) {

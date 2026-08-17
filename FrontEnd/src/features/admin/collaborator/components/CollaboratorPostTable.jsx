@@ -11,7 +11,7 @@ export default function CollaboratorPostTable({ posts = [] }) {
         <span className="mt-2 inline-block rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold">{post.status}</span>
       </div>
       <div className="flex items-center text-sm font-semibold">
-        <Link className="text-indigo-600 hover:underline" to={`/admin/collaborator/posts/${post.postId}`}>Chi tiết</Link>
+        <Link className="text-zinc-700 transition hover:text-zinc-950 hover:underline" to={`/admin/collaborator/posts/${post.postId}`}>Chi tiết</Link>
       </div>
     </article>)}
   </div>;

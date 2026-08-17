@@ -158,7 +158,7 @@ class AuthServiceImplTest {
         ))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.USER_BLOCKED);
+                .isEqualTo(ErrorCode.ACCOUNT_BLOCKED);
 
         verify(userProfileRepository, never()).findById(23L);
         verify(passwordEncoder, never()).matches(anyString(), anyString());
@@ -389,7 +389,7 @@ class AuthServiceImplTest {
         assertThatThrownBy(() -> authService.refreshAccessToken(new RefreshTokenRequest("blocked-user-refresh-token")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.USER_BLOCKED);
+                .isEqualTo(ErrorCode.ACCOUNT_BLOCKED);
     }
 
     @Test

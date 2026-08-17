@@ -30,12 +30,28 @@ class FollowRepositoryContractTest {
         assertListQueryContract(following);
         assertThat(followers.value()).contains(
                 "follower.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE",
+                "follower.role = com.stu.edu.vn.backend.user.enums.UserRole.USER",
                 "relation.id.followerId DESC"
         );
         assertThat(following.value()).contains(
                 "following_user.status = com.stu.edu.vn.backend.user.enums.UserStatus.ACTIVE",
+                "following_user.role = com.stu.edu.vn.backend.user.enums.UserRole.USER",
                 "relation.id.followingId DESC"
         );
+    }
+
+    @Test
+    void mutualFollowUsesJpqlSoMySqlScalarKeepsBooleanType() throws Exception {
+        Query query = FollowRepository.class
+                .getMethod("existsMutualFollow", Long.class, Long.class)
+                .getAnnotation(Query.class);
+
+        // Native MySQL CASE trả 0/1 có thể làm lỗi ép kiểu khi tải profile USER thường.
+        assertThat(query.nativeQuery()).isFalse();
+        assertThat(query.value())
+                .contains("FROM Follow relation")
+                .contains("relation.id.followerId", "relation.id.followingId")
+                .contains("THEN TRUE ELSE FALSE");
     }
 
     private Query queryOf(String methodName) throws Exception {

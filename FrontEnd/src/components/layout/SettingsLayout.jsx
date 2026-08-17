@@ -1,11 +1,24 @@
-import { Ban, ChevronRight, KeyRound, Shield } from 'lucide-react';
+import { Ban, BookOpen, ChevronRight, KeyRound, Shield, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 const ACCOUNT_ITEMS = [
   {
+    to: '/settings/account-status',
+    label: 'Trạng thái tài khoản',
+    icon: ShieldCheck,
+  },
+  {
     to: '/settings/auth-providers',
     label: 'Phương thức đăng nhập',
     icon: KeyRound,
+  },
+];
+
+const POLICY_ITEMS = [
+  {
+    to: '/policies/community-standards',
+    label: 'Tiêu chuẩn cộng đồng',
+    icon: BookOpen,
   },
 ];
 
@@ -90,6 +103,7 @@ export default function SettingsLayout() {
           <nav className="space-y-3" aria-label="Danh mục cài đặt">
             <SettingsNavGroup label="Bảo mật & Xác thực" items={ACCOUNT_ITEMS} />
             <SettingsNavGroup label="Quyền riêng tư" items={PRIVACY_ITEMS} />
+            <SettingsNavGroup label="Chính sách" items={POLICY_ITEMS} />
           </nav>
         </aside>
 

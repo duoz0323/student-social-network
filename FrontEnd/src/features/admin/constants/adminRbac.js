@@ -19,6 +19,12 @@ export const ADMIN_PERMISSIONS = Object.freeze({
   COLLABORATOR_POST_DELETE_OWN: 'COLLABORATOR_POST_DELETE_OWN',
   COLLABORATOR_POST_ANALYTICS_VIEW: 'COLLABORATOR_POST_ANALYTICS_VIEW',
   COLLABORATOR_HASHTAG_VIEW: 'COLLABORATOR_HASHTAG_VIEW',
+  COLLABORATOR_EXPLORE_VIEW: 'COLLABORATOR_EXPLORE_VIEW',
+  COLLABORATOR_MODERATION_SUGGEST: 'COLLABORATOR_MODERATION_SUGGEST',
+  COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN: 'COLLABORATOR_MODERATION_SUGGESTION_VIEW_OWN',
+  MODERATION_SUGGESTION_VIEW: 'MODERATION_SUGGESTION_VIEW',
+  MODERATION_SUGGESTION_DETAIL_VIEW: 'MODERATION_SUGGESTION_DETAIL_VIEW',
+  MODERATION_SUGGESTION_REVIEW: 'MODERATION_SUGGESTION_REVIEW',
 });
 
 export const ALL_ADMIN_PERMISSIONS = Object.freeze(Object.values(ADMIN_PERMISSIONS));
@@ -68,4 +74,18 @@ export function getAdminNavigationScopes(adminRoles = []) {
   const showRegularAdmin = !showCollaborator
     || [...roles].some((roleCode) => roleCode !== 'COLLABORATOR');
   return { showRegularAdmin, showCollaborator };
+}
+
+/** Cộng tác viên thuần chỉ dùng trang hồ sơ hợp nhất; Admin đa vai trò vẫn có hồ sơ quản trị riêng. */
+export function getAdminProfilePath(adminRoles = []) {
+  const roles = new Set(adminRoles);
+  return roles.size === 1 && roles.has('COLLABORATOR')
+    ? '/admin/collaborator/profile'
+    : '/admin/profile';
+}
+
+/** Cộng tác viên thuần dùng Managed Identity làm nguồn tên/avatar trên toàn bộ shell quản trị. */
+export function usesManagedIdentityPresentation(adminRoles = []) {
+  const roles = new Set(adminRoles);
+  return roles.size === 1 && roles.has('COLLABORATOR');
 }

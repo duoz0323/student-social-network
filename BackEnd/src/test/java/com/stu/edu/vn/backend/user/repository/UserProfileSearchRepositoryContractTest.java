@@ -22,6 +22,7 @@ class UserProfileSearchRepositoryContractTest {
         assertThat(query.value())
                 .contains("LIKE CONCAT('%', :keyword, '%')")
                 .contains("u.status = 'ACTIVE'")
+                .contains("u.role = 'USER'")
                 .contains("up.profile_completed_at IS NOT NULL")
                 .contains("up.display_name IS NOT NULL")
                 .contains("CASE WHEN up.display_name LIKE CONCAT(:keyword, '%')")
@@ -29,7 +30,7 @@ class UserProfileSearchRepositoryContractTest {
                 .contains("up.user_id DESC")
                 .doesNotContain("email", "phone_number", "password_hash");
         assertThat(query.countQuery())
-                .contains("COUNT(*)", "LIKE CONCAT('%', :keyword, '%')", "u.status = 'ACTIVE'",
+                .contains("COUNT(*)", "LIKE CONCAT('%', :keyword, '%')", "u.status = 'ACTIVE'", "u.role = 'USER'",
                         "user_blocks", ":viewerId");
 
         Method followedIdsMethod = SearchUserProfileRepository.class.getMethod(

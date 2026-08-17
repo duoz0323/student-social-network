@@ -10,6 +10,8 @@ import Button from '../../../components/common/Button.jsx';
 import ContentShell from '../../../components/layout/ContentShell.jsx';
 import { useNotifications } from '../../../contexts/NotificationContext.jsx';
 import NotificationItem from '../components/NotificationItem.jsx';
+import ModerationNotificationDetailModal from '../components/ModerationNotificationDetailModal.jsx';
+import { isModerationDetailNotification } from '../utils/moderationNotification.js';
 
 function NotificationListSkeleton() {
   return (
@@ -33,6 +35,7 @@ export default function NotificationsPage() {
   const [openingId, setOpeningId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [detailNotification, setDetailNotification] = useState(null);
   const {
     notifications,
     unreadCount,
@@ -59,7 +62,11 @@ export default function NotificationsPage() {
     setOpeningId(item.notificationId);
     try {
       if (!item.readAt) await markAsRead(item.notificationId);
-      if (item.postId) navigate(`/posts/${item.postId}`);
+      if (isModerationDetailNotification(item)) {
+        setDetailNotification(item);
+      } else if (item.type === 'ACCOUNT_BLOCKED') {
+        navigate('/settings/account-status');
+      } else if (item.postId) navigate(`/posts/${item.postId}`);
       else if (item.actor?.userId) navigate(`/profile/${item.actor.userId}`);
       else await reconcile();
     } catch {
@@ -140,6 +147,7 @@ export default function NotificationsPage() {
   );
 
   return (
+    <>
     <ContentShell header={notificationTabs}>
 
       {error ? (
@@ -237,5 +245,7 @@ export default function NotificationsPage() {
         </div>
       )}
     </ContentShell>
+    {detailNotification ? <ModerationNotificationDetailModal notification={detailNotification} onClose={() => setDetailNotification(null)} /> : null}
+    </>
   );
 }

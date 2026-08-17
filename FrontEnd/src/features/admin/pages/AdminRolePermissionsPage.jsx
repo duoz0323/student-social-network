@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, LoaderCircle, Plus } from 'lucide-react';
+import { Check, ChevronDown, LoaderCircle, Plus, ShieldCheck } from 'lucide-react';
 import { adminApi } from '../../../api/adminApi.js';
+import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.js';
 import { useAdminToast } from '../hooks/useAdminToast.js';
+import AdminPageHeader from '../components/AdminPageHeader.jsx';
 import {
   ADMIN_PERMISSIONS,
   NON_DELEGABLE_ADMIN_PERMISSIONS,
@@ -129,22 +131,17 @@ export default function AdminRolePermissionsPage() {
   }
 
   return (
-    <section className="min-h-full rounded-2xl bg-white p-5 sm:p-7">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-950">Phân quyền</h1>
-          <p className="mt-1 text-sm text-zinc-500">Tạo vai trò mới và cấu hình quyền truy cập cho từng vai trò quản trị.</p>
-        </div>
-        {canUpdate && (
-          <button type="button" onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white">
-            <Plus size={16} /> Tạo vai trò
-          </button>
-        )}
-      </header>
+    <section className="min-h-full space-y-5">
+      <AdminPageHeader
+        icon={ShieldCheck}
+        title="Phân quyền"
+        description="Tạo vai trò mới và cấu hình quyền truy cập cho từng vai trò quản trị."
+        actions={canUpdate ? <Button onClick={() => setShowCreate(true)}><Plus size={16} /> Tạo vai trò</Button> : null}
+      />
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-      <div className="mt-1 max-w-xs">
+      <div className="max-w-xs">
         <label htmlFor="admin-role-select" className="mb-2 block text-xs font-medium text-slate-600">
           Chọn vai trò
         </label>
@@ -166,7 +163,7 @@ export default function AdminRolePermissionsPage() {
       </div>
 
       {selectedRole && (
-        <div className="mt-5 border-t border-slate-200 pt-5">
+        <div className="border-t border-slate-200 pt-5">
           {FIXED_SYSTEM_ROLES.has(selectedRole.code) && (
             <p className="mb-4 text-xs font-medium text-red-600">
               {selectedRole.code === 'SUPER_ADMIN'

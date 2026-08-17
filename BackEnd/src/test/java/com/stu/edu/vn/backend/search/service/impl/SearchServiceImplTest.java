@@ -49,6 +49,8 @@ class SearchServiceImplTest {
     private final CursorCodec cursorCodec = org.mockito.Mockito.mock(CursorCodec.class);
     private final PostRepostRepository postRepostRepository = org.mockito.Mockito.mock(PostRepostRepository.class);
     private final PostLocationBatchLoader postLocationBatchLoader = org.mockito.Mockito.mock(PostLocationBatchLoader.class);
+    private final com.stu.edu.vn.backend.user.service.PublicUserBadgeService badgeService =
+            org.mockito.Mockito.mock(com.stu.edu.vn.backend.user.service.PublicUserBadgeService.class);
     private SearchServiceImpl searchService;
 
     @BeforeEach
@@ -57,7 +59,8 @@ class SearchServiceImplTest {
                 currentUserProvider, userRepository, userProfileRepository, postRepository, postMediaRepository,
                 postHashtagRepository, postLikeRepository, savedPostRepository, postRepostRepository,
                 new SearchPostMapper(),
-                new HashtagNormalizer(), cursorCodec, postLocationBatchLoader);
+                new HashtagNormalizer(), cursorCodec, postLocationBatchLoader, badgeService);
+        when(badgeService.getBadgesByUserIds(any())).thenReturn(java.util.Map.of());
         when(currentUserProvider.getCurrentUserId()).thenReturn(10L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(user(10L, UserStatus.ACTIVE)));
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(profile(10L, "Current User", true)));

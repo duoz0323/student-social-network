@@ -5,6 +5,8 @@ import static org.mockito.Mockito.*;
 
 import com.stu.edu.vn.backend.admin.collaborator.identity.CollaboratorSocialIdentityResolver;
 import com.stu.edu.vn.backend.admin.repository.AdminActionRepository;
+import com.stu.edu.vn.backend.common.api.PageResponse;
+import com.stu.edu.vn.backend.interaction.dto.response.CommentResponse;
 import com.stu.edu.vn.backend.interaction.service.CommentService;
 import com.stu.edu.vn.backend.post.dto.request.CreatePostRequest;
 import com.stu.edu.vn.backend.post.dto.response.PostLikeResponse;
@@ -15,6 +17,7 @@ import com.stu.edu.vn.backend.security.CurrentUserProvider;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CollaboratorPostServiceTest {
@@ -66,6 +69,35 @@ class CollaboratorPostServiceTest {
         assertThat(response.likedByCurrentUser()).isTrue();
         verify(likes).likePostAs(1050L, 99L);
         verify(likes, never()).likePostAs(15L, 99L);
+    }
+
+    @Test
+    void discussionsRequireOwnedPostAndUseManagedIdentityAsViewer() {
+        CollaboratorSocialIdentityResolver resolver = mock(CollaboratorSocialIdentityResolver.class);
+        CurrentUserProvider current = mock(CurrentUserProvider.class);
+        UserRepository users = mock(UserRepository.class);
+        PostService posts = mock(PostService.class);
+        CommentService comments = mock(CommentService.class);
+        User admin = mock(User.class);
+        User managed = mock(User.class);
+        PageResponse<CommentResponse> expected = new PageResponse<>(List.of(), 0, 20, 0, 0, true, true);
+        when(current.getCurrentUserId()).thenReturn(15L);
+        when(users.findById(15L)).thenReturn(Optional.of(admin));
+        when(resolver.resolveActive(15L)).thenReturn(managed);
+        when(managed.getId()).thenReturn(1050L);
+        when(comments.getPublishedCommentsAs(1050L, 99L, 0, 20)).thenReturn(expected);
+        when(comments.getPublishedRepliesForPostAs(1050L, 99L, 501L, 0, 20)).thenReturn(expected);
+        CollaboratorPostService service = new CollaboratorPostService(
+                resolver, current, users, mock(AdminActionRepository.class), posts,
+                mock(PostLikeService.class), comments, mock(PostRepostService.class));
+
+        assertThat(service.comments(99L, 0, 20)).isSameAs(expected);
+        assertThat(service.replies(99L, 501L, 0, 20)).isSameAs(expected);
+
+        verify(posts, times(2)).getOwnedPostDetailAs(1050L, 99L);
+        verify(comments).getPublishedCommentsAs(1050L, 99L, 0, 20);
+        verify(comments).getPublishedRepliesForPostAs(1050L, 99L, 501L, 0, 20);
+        verify(comments, never()).getPublishedCommentsAs(eq(15L), anyLong(), anyInt(), anyInt());
     }
 
     @Test

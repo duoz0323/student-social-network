@@ -4,6 +4,7 @@ import com.stu.edu.vn.backend.security.CustomUserPrincipal;
 import com.stu.edu.vn.backend.security.JwtService;
 import com.stu.edu.vn.backend.user.entity.User;
 import com.stu.edu.vn.backend.user.enums.UserStatus;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.util.Optional;
@@ -33,10 +34,12 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
 
     static final String NOTIFICATION_DESTINATION = "/user/queue/notifications";
     static final String MESSAGING_DESTINATION = "/user/queue/messaging";
+    static final String ADMIN_NOTIFICATION_DESTINATION = "/user/queue/admin-notifications";
     static final String MESSAGING_TYPING_DESTINATION = "/app/messaging/typing";
     private static final Set<String> ALLOWED_SUBSCRIPTION_DESTINATIONS = Set.of(
             NOTIFICATION_DESTINATION,
-            MESSAGING_DESTINATION
+            MESSAGING_DESTINATION,
+            ADMIN_NOTIFICATION_DESTINATION
     );
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -105,6 +108,14 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         String destination = accessor.getDestination();
         if (destination == null || !ALLOWED_SUBSCRIPTION_DESTINATIONS.contains(destination)) {
             throw new AccessDeniedException("STOMP destination is not allowed");
+        }
+        if (ADMIN_NOTIFICATION_DESTINATION.equals(destination)) {
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof CustomUserPrincipal userPrincipal)
+                    || userPrincipal.getRole() != UserRole.ADMIN
+                    || userPrincipal.getStatus() != UserStatus.ACTIVE) {
+                throw new AccessDeniedException("Admin STOMP destination is not allowed");
+            }
         }
     }
 

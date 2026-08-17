@@ -1,5 +1,9 @@
 package com.stu.edu.vn.backend.admin.service.impl;
 
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType;
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationType;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationEvent;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationRouter;
 import com.stu.edu.vn.backend.admin.dto.response.AdminHashtagListItemResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminHashtagDeleteResponse;
 import com.stu.edu.vn.backend.admin.dto.response.AdminHashtagUpdateResponse;
@@ -26,6 +30,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** Triển khai truy vấn danh sách hashtag mà không phát sinh N+1. */
 @Service
@@ -38,6 +43,7 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
     private final HashtagNormalizer hashtagNormalizer;
     private final CurrentUserProvider currentUserProvider;
     private final EntityManager entityManager;
+    private AdminNotificationRouter adminNotificationRouter;
 
     public AdminHashtagServiceImpl(
             AdminHashtagRepository adminHashtagRepository,
@@ -51,6 +57,11 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
         this.hashtagNormalizer = hashtagNormalizer;
         this.currentUserProvider = currentUserProvider;
         this.entityManager = entityManager;
+    }
+
+    @Autowired
+    void setAdminNotificationRouter(AdminNotificationRouter adminNotificationRouter) {
+        this.adminNotificationRouter = adminNotificationRouter;
     }
 
     @Override
@@ -81,8 +92,10 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
             throw new BusinessException(ErrorCode.ADMIN_HASHTAG_ALREADY_EXISTS);
         }
         entityManager.refresh(hashtag);
-        saveAudit(principal.getUserId(), AdminActionType.CREATE_HASHTAG, hashtag.getId(),
+        AdminAction action = saveAudit(principal.getUserId(), AdminActionType.CREATE_HASHTAG, hashtag.getId(),
                 "#" + normalizedName);
+        notifyHashtag(principal.getUserId(), hashtag.getId(), action == null ? null : action.getId(),
+                AdminNotificationType.HASHTAG_CREATED, "Hashtag mới đã được tạo");
         return toResponse(hashtag);
     }
 
@@ -101,8 +114,10 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
         int detachedPostCount = adminHashtagRepository.deletePostRelations(hashtagId);
         adminHashtagRepository.delete(hashtag);
         adminHashtagRepository.flush();
-        saveAudit(principal.getUserId(), AdminActionType.DELETE_HASHTAG, hashtagId,
+        AdminAction action = saveAudit(principal.getUserId(), AdminActionType.DELETE_HASHTAG, hashtagId,
                 "#" + name + "; detachedPosts=" + detachedPostCount);
+        notifyHashtag(principal.getUserId(), hashtagId, action == null ? null : action.getId(),
+                AdminNotificationType.HASHTAG_DELETED, "Hashtag đã bị xóa");
         return new AdminHashtagDeleteResponse(hashtagId, name, detachedPostCount);
     }
 
@@ -133,8 +148,10 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
             // Unique constraint xử lý race khi hai ADMIN đổi hai hashtag về cùng tên.
             throw new BusinessException(ErrorCode.ADMIN_HASHTAG_ALREADY_EXISTS);
         }
-        saveAudit(principal.getUserId(), AdminActionType.UPDATE_HASHTAG, hashtagId,
+        AdminAction action = saveAudit(principal.getUserId(), AdminActionType.UPDATE_HASHTAG, hashtagId,
                 "old=#" + oldName + "; new=#" + normalizedName);
+        notifyHashtag(principal.getUserId(), hashtagId, action == null ? null : action.getId(),
+                AdminNotificationType.HASHTAG_UPDATED, "Hashtag đã được cập nhật");
         return new AdminHashtagUpdateResponse(hashtagId, normalizedName);
     }
 
@@ -182,10 +199,18 @@ public class AdminHashtagServiceImpl implements AdminHashtagService {
         return principal;
     }
 
-    private void saveAudit(Long adminId, AdminActionType actionType, Long hashtagId, String note) {
+    private AdminAction saveAudit(Long adminId, AdminActionType actionType, Long hashtagId, String note) {
         User adminReference = entityManager.getReference(User.class, adminId);
-        adminActionRepository.save(new AdminAction(
+        return adminActionRepository.save(new AdminAction(
                 adminReference, actionType, AdminTargetType.HASHTAG, hashtagId, note));
+    }
+
+    private void notifyHashtag(Long actorId, Long hashtagId, Long actionId,
+            AdminNotificationType type, String title) {
+        if (adminNotificationRouter == null) return;
+        adminNotificationRouter.notifyByPermission("HASHTAG_VIEW", actorId, new AdminNotificationEvent(
+                type, title, title + ".", AdminNotificationReferenceType.HASHTAG, hashtagId,
+                "ADMIN_ACTION:" + actionId + ":" + type.name()));
     }
 
     private String normalizeAndEscapeOptionalKeyword(String keyword) {

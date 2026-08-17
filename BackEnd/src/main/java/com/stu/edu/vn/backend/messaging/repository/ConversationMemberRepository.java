@@ -35,6 +35,7 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
               AND cm.last_read_message_id IS NOT NULL
               AND low_user.role = 'USER' AND low_user.status = 'ACTIVE'
               AND high_user.role = 'USER' AND high_user.status = 'ACTIVE'
+              AND low_user.account_type = 'NORMAL' AND high_user.account_type = 'NORMAL'
               AND low_profile.profile_completed_at IS NOT NULL
               AND high_profile.profile_completed_at IS NOT NULL
               AND NOT EXISTS (

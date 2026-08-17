@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isRequestCanceled } from '../../../api/apiError.js';
 import { academicProfileService } from '../services/academicProfileService.js';
 import {
   createEntryYears,
+  nextAcademicDropdownOpen,
   shouldSearchAcademic,
   selectFaculty,
   selectMajor,
@@ -33,11 +34,24 @@ function AcademicAutocomplete({
   placeholder,
   onSelect,
 }) {
+  const containerRef = useRef(null);
   const [query, setQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
   const [options, setOptions] = useState([]);
   const [status, setStatus] = useState('idle');
   const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    function handleOutsidePointerDown(event) {
+      if (containerRef.current?.contains(event.target)) return;
+      setSearchActive(false);
+      setOptions([]);
+      setStatus('idle');
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, []);
 
   useEffect(() => {
     const keyword = query.trim();
@@ -67,23 +81,49 @@ function AcademicAutocomplete({
   function handleQueryChange(event) {
     const nextQuery = event.target.value;
     setQuery(nextQuery);
-    setSearchActive(Boolean(nextQuery.trim()));
-    setStatus(nextQuery.trim() ? 'loading' : 'idle');
+    setSearchActive(true);
+    setStatus('loading');
     if (value) onSelect(null);
   }
 
-  function chooseOption(option) {
-    onSelect(option);
-    setQuery(optionLabel(option, kind));
+  function openDropdown() {
+    if (disabled || searchActive) return;
+    setQuery(value ? optionLabel(value, kind) : '');
+    setSearchActive(true);
+    setStatus('loading');
+    // Mỗi lần mở lại tạo một request lifecycle mới, kể cả query không đổi.
+    setRetryKey((key) => key + 1);
+  }
+
+  function closeDropdown() {
     setSearchActive(false);
     setOptions([]);
     setStatus('idle');
   }
 
-  const showDropdown = searchActive && Boolean(query.trim()) && !disabled;
+  function handleInputClick() {
+    const nextOpen = nextAcademicDropdownOpen(searchActive, 'toggle');
+    if (nextOpen) openDropdown();
+    else closeDropdown();
+  }
+
+  function handleInputKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDropdown();
+    }
+  }
+
+  function chooseOption(option) {
+    onSelect(option);
+    setQuery(optionLabel(option, kind));
+    closeDropdown();
+  }
+
+  const showDropdown = searchActive && !disabled;
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <label htmlFor={id} className="mb-2 block text-sm font-medium text-inherit">{label}</label>
       <input
         id={id}
@@ -92,6 +132,8 @@ function AcademicAutocomplete({
         disabled={disabled}
         placeholder={placeholder}
         autoComplete="off"
+        onClick={handleInputClick}
+        onKeyDown={handleInputKeyDown}
         onChange={handleQueryChange}
         className="app-field h-12 w-full rounded-xl border px-3.5 text-[15px] outline-none transition disabled:cursor-not-allowed disabled:opacity-55"
         aria-autocomplete="list"
@@ -104,7 +146,16 @@ function AcademicAutocomplete({
           {status === 'error' ? (
             <div className="px-3 py-3 text-sm text-red-600">
               <p>Không thể tải dữ liệu.</p>
-              <button type="button" className="mt-1 font-semibold underline" onClick={() => setRetryKey((key) => key + 1)}>Thử lại</button>
+              <button
+                type="button"
+                className="mt-1 font-semibold underline"
+                onClick={() => {
+                  setStatus('loading');
+                  setRetryKey((key) => key + 1);
+                }}
+              >
+                Thử lại
+              </button>
             </div>
           ) : null}
           {status === 'success' ? options.map((option) => (
@@ -136,7 +187,7 @@ export default function AcademicProfileFields({ value, onChange, disabled = fals
         kind="school"
         value={value.school}
         disabled={disabled}
-        placeholder="Nhập tên hoặc tên viết tắt của trường"
+        placeholder="Chọn hoặc nhập tên trường"
         onSelect={(school) => onChange(selectSchool(value, school))}
       />
       <AcademicAutocomplete
@@ -147,7 +198,7 @@ export default function AcademicProfileFields({ value, onChange, disabled = fals
         value={value.faculty}
         parentId={value.school?.id}
         disabled={disabled || !value.school?.id}
-        placeholder={value.school?.id ? 'Nhập tên khoa' : 'Chọn trường trước'}
+        placeholder={value.school?.id ? 'Chọn hoặc nhập tên khoa' : 'Chọn trường trước'}
         onSelect={(faculty) => onChange(selectFaculty(value, faculty))}
       />
       <AcademicAutocomplete
@@ -158,7 +209,7 @@ export default function AcademicProfileFields({ value, onChange, disabled = fals
         value={value.major}
         parentId={value.faculty?.id}
         disabled={disabled || !value.faculty?.id}
-        placeholder={value.faculty?.id ? 'Nhập tên ngành' : 'Chọn khoa trước'}
+        placeholder={value.faculty?.id ? 'Chọn hoặc nhập tên ngành' : 'Chọn khoa trước'}
         onSelect={(major) => onChange(selectMajor(value, major))}
       />
       <div>

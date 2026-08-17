@@ -120,7 +120,9 @@
 - Report phải thuộc Moderation Case; không có nhiều report đang hiệu lực cùng user và post.
 - Một post chỉ có một Moderation Case `OPEN`; case dùng `OPEN`, `RESOLVED_NO_VIOLATION`, `RESOLVED_ACTION_TAKEN`.
 - Report không tự động ẩn post.
-- Mỗi case bài viết `RESOLVED_ACTION_TAKEN` tính một strike; strike thứ ba tự động khóa USER và thu hồi phiên.
+- Mỗi transition case bài viết `OPEN → RESOLVED_ACTION_TAKEN` thành công tính một strike; strike 1 gửi warning `1/3`, strike 2 gửi final warning `2/3`, strike 3 tự động khóa USER và thu hồi phiên.
+- Account Standing chỉ đếm Moderation Case bài viết `RESOLVED_ACTION_TAKEN`; không đếm Report, `report_count`, Profile Report hoặc Notification và không reset khi mở khóa.
+- Auth tài khoản bị khóa trả `ACCOUNT_BLOCKED` cùng dữ liệu public-safe; không lộ reporter, Admin hoặc internal note.
 - Profile Report không cho tự báo cáo, không trùng `PENDING` theo reporter/target; tất cả lượt cùng target thuộc một Profile Report Case. Admin được chọn khóa USER ngay khi xác nhận vi phạm.
 
 ## 11. Admin

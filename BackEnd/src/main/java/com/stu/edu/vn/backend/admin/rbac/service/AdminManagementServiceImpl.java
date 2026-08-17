@@ -1,5 +1,9 @@
 package com.stu.edu.vn.backend.admin.rbac.service;
 
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType;
+import com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationType;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationEvent;
+import com.stu.edu.vn.backend.admin.notification.service.AdminNotificationRouter;
 import com.stu.edu.vn.backend.admin.entity.AdminAction;
 import com.stu.edu.vn.backend.admin.collaborator.identity.ManagedSocialIdentityService;
 import com.stu.edu.vn.backend.admin.enums.AdminActionType;
@@ -55,6 +59,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** Triển khai vòng đời tài khoản admin, gán role và bảo vệ Master Admin bất biến. */
 @Service
@@ -79,6 +84,12 @@ public class AdminManagementServiceImpl implements AdminManagementService {
     private final PasswordEncoder passwordEncoder;
     private final ManagedSocialIdentityService managedSocialIdentityService;
     private final Clock clock;
+    private AdminNotificationRouter adminNotificationRouter;
+
+    @Autowired
+    void setAdminNotificationRouter(AdminNotificationRouter adminNotificationRouter) {
+        this.adminNotificationRouter = adminNotificationRouter;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -189,8 +200,10 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         if (roles.stream().anyMatch(role -> AdminRoleCode.COLLABORATOR.name().equals(role.getCode()))) {
             managedSocialIdentityService.activateOrCreateForRole(savedAdmin, requireActor(actorId));
         }
-        saveAudit(actorId, AdminActionType.CREATE_ADMIN, savedAdmin.getId(),
+        AdminAction action = saveAudit(actorId, AdminActionType.CREATE_ADMIN, savedAdmin.getId(),
                 "roles=" + roles.stream().map(AdminRole::getCode).sorted().toList());
+        notifyAdminOversight(actorId, savedAdmin.getId(), action == null ? null : action.getId(), AdminNotificationType.ADMIN_CREATED,
+                "Tài khoản quản trị mới đã được tạo");
         return toResponse(savedAdmin);
     }
 
@@ -202,8 +215,11 @@ public class AdminManagementServiceImpl implements AdminManagementService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_ACCOUNT_NOT_FOUND));
         profile.setDisplayName(profileValidationSupport.normalizeAndValidateDisplayName(request.displayName()));
         profileRepository.save(profile);
-        saveAudit(currentUserProvider.getCurrentUserId(), AdminActionType.UPDATE_ADMIN, adminId,
+        Long actorId = currentUserProvider.getCurrentUserId();
+        AdminAction action = saveAudit(actorId, AdminActionType.UPDATE_ADMIN, adminId,
                 "Cập nhật tên hiển thị admin");
+        notifyAdminOversight(actorId, adminId, action == null ? null : action.getId(), AdminNotificationType.ADMIN_UPDATED,
+                "Tài khoản quản trị đã được cập nhật");
         return toResponse(admin);
     }
 
@@ -220,8 +236,11 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         admin.setBlockedAt(now);
         admin.setBlockedReason("ADMIN_DISABLED");
         refreshTokenRepository.revokeAllActiveByUserId(adminId, now);
-        saveAudit(currentUserProvider.getCurrentUserId(), AdminActionType.DISABLE_ADMIN, adminId,
+        Long actorId = currentUserProvider.getCurrentUserId();
+        AdminAction action = saveAudit(actorId, AdminActionType.DISABLE_ADMIN, adminId,
                 "Vô hiệu hóa tài khoản quản trị");
+        notifyAdminOversight(actorId, adminId, action == null ? null : action.getId(), AdminNotificationType.ADMIN_DISABLED,
+                "Tài khoản quản trị đã bị vô hiệu hóa");
         return toResponse(admin);
     }
 
@@ -235,8 +254,11 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         admin.setStatus(UserStatus.ACTIVE);
         admin.setBlockedAt(null);
         admin.setBlockedReason(null);
-        saveAudit(currentUserProvider.getCurrentUserId(), AdminActionType.ENABLE_ADMIN, adminId,
+        Long actorId = currentUserProvider.getCurrentUserId();
+        AdminAction action = saveAudit(actorId, AdminActionType.ENABLE_ADMIN, adminId,
                 "Mở khóa tài khoản quản trị");
+        notifyAdminOversight(actorId, adminId, action == null ? null : action.getId(), AdminNotificationType.ADMIN_ENABLED,
+                "Tài khoản quản trị đã được kích hoạt");
         return toResponse(admin);
     }
 
@@ -258,8 +280,11 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         // Cấp lại mật khẩu và thu hồi phiên trong cùng transaction để mật khẩu cũ không còn tạo phiên mới.
         admin.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         revokeSessions(adminId);
-        saveAudit(currentUserProvider.getCurrentUserId(), AdminActionType.RESET_ADMIN_PASSWORD, adminId,
+        Long actorId = currentUserProvider.getCurrentUserId();
+        AdminAction action = saveAudit(actorId, AdminActionType.RESET_ADMIN_PASSWORD, adminId,
                 "Cấp lại mật khẩu quản trị; không lưu giá trị mật khẩu trong lịch sử");
+        notifyAdminOversight(actorId, adminId, action == null ? null : action.getId(), AdminNotificationType.ADMIN_PASSWORD_RESET,
+                "Mật khẩu tài khoản quản trị đã được cấp lại");
     }
 
     @Override
@@ -281,7 +306,8 @@ public class AdminManagementServiceImpl implements AdminManagementService {
             managedSocialIdentityService.activateOrCreateForRole(admin, requireActor(actorId));
         }
         revokeSessions(adminId);
-        saveAudit(actorId, AdminActionType.ASSIGN_ADMIN_ROLE, adminId, "role=" + role.getCode());
+        AdminAction action = saveAudit(actorId, AdminActionType.ASSIGN_ADMIN_ROLE, adminId, "role=" + role.getCode());
+        notifyRoleChange(actorId, adminId, role, action == null ? null : action.getId(), true);
         return toResponse(admin);
     }
 
@@ -303,8 +329,10 @@ public class AdminManagementServiceImpl implements AdminManagementService {
                     requireActor(currentUserProvider.getCurrentUserId()));
         }
         revokeSessions(adminId);
-        saveAudit(currentUserProvider.getCurrentUserId(), AdminActionType.REVOKE_ADMIN_ROLE, adminId,
+        Long actorId = currentUserProvider.getCurrentUserId();
+        AdminAction action = saveAudit(actorId, AdminActionType.REVOKE_ADMIN_ROLE, adminId,
                 "role=" + role.getCode());
+        notifyRoleChange(actorId, adminId, role, action == null ? null : action.getId(), false);
         return toResponse(admin);
     }
 
@@ -341,8 +369,10 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         }
         permissionRepository.insertMappings(role.getId(), defaultPermissions);
         Long actorId = currentUserProvider.getCurrentUserId();
-        saveAudit(actorId, AdminActionType.CREATE_ADMIN_ROLE, actorId,
+        AdminAction action = saveAudit(actorId, AdminActionType.CREATE_ADMIN_ROLE, actorId,
                 "roleId=" + role.getId() + "; code=" + code + "; name=" + displayName);
+        notifyRoleOversight(actorId, role, action == null ? null : action.getId(), AdminNotificationType.ADMIN_ROLE_CREATED,
+                "Vai trò quản trị mới đã được tạo", false);
         return new AdminRoleResponse(
                 role.getCode(), role.getDisplayName(), role.getDescription(), role.isReserved(), defaultPermissions);
     }
@@ -392,8 +422,10 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         assignmentRepository.findAdminIdsByRoleId(role.getId())
                 .forEach(adminId -> refreshTokenRepository.revokeAllActiveByUserId(adminId, now));
         Long actorId = currentUserProvider.getCurrentUserId();
-        saveAudit(actorId, AdminActionType.UPDATE_ROLE_PERMISSIONS, actorId,
+        AdminAction action = saveAudit(actorId, AdminActionType.UPDATE_ROLE_PERMISSIONS, actorId,
                 "role=" + role.getCode() + "; old=" + oldCodes + "; new=" + normalizedCodes);
+        notifyRoleOversight(actorId, role, action == null ? null : action.getId(), AdminNotificationType.ADMIN_ROLE_PERMISSIONS_UPDATED,
+                "Quyền của vai trò " + role.getDisplayName() + " đã được cập nhật", true);
         return new AdminRoleResponse(
                 role.getCode(), role.getDisplayName(), role.getDescription(), role.isReserved(), normalizedCodes);
     }
@@ -506,9 +538,41 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         refreshTokenRepository.revokeAllActiveByUserId(adminId, LocalDateTime.now(clock));
     }
 
-    private void saveAudit(Long actorId, AdminActionType actionType, Long targetId, String note) {
+    private AdminAction saveAudit(Long actorId, AdminActionType actionType, Long targetId, String note) {
         User actor = requireActor(actorId);
-        actionRepository.save(new AdminAction(actor, actionType, AdminTargetType.USER, targetId, note));
+        return actionRepository.save(new AdminAction(actor, actionType, AdminTargetType.USER, targetId, note));
+    }
+
+    private void notifyAdminOversight(Long actorId, Long adminId, Long actionId,
+            AdminNotificationType type, String title) {
+        if (adminNotificationRouter == null) return;
+        adminNotificationRouter.notifyByPermission("ADMIN_VIEW", actorId, new AdminNotificationEvent(
+                type, title, title + ".", com.stu.edu.vn.backend.admin.notification.enums.AdminNotificationReferenceType.ADMIN,
+                adminId, "ADMIN_ACTION:" + actionId + ":" + type.name()));
+    }
+
+    private void notifyRoleChange(Long actorId, Long targetAdminId, AdminRole role, Long actionId, boolean assigned) {
+        if (adminNotificationRouter == null) return;
+        AdminNotificationType type = assigned ? AdminNotificationType.ADMIN_ROLE_ASSIGNED
+                : AdminNotificationType.ADMIN_ROLE_REVOKED;
+        String title = assigned ? "Bạn đã được gán vai trò " + role.getDisplayName()
+                : "Vai trò " + role.getDisplayName() + " đã bị thu hồi";
+        AdminNotificationEvent event = new AdminNotificationEvent(type, title, title + ".",
+                AdminNotificationReferenceType.ADMIN, targetAdminId,
+                "ADMIN_ACTION:" + actionId + ":" + type.name());
+        // Direct trước để holder không nhận thêm một row oversight cho cùng event key.
+        adminNotificationRouter.notifyDirectAdmin(targetAdminId, actorId, event);
+        adminNotificationRouter.notifyByPermission("ADMIN_VIEW", actorId, event);
+    }
+
+    private void notifyRoleOversight(Long actorId, AdminRole role, Long actionId,
+            AdminNotificationType type, String title, boolean notifyHolders) {
+        if (adminNotificationRouter == null) return;
+        AdminNotificationEvent event = new AdminNotificationEvent(type, title, title + ".",
+                AdminNotificationReferenceType.ROLE, role.getId(),
+                "ADMIN_ACTION:" + actionId + ":" + type.name());
+        if (notifyHolders) adminNotificationRouter.notifyRoleHolders(role.getId(), actorId, event);
+        adminNotificationRouter.notifyByPermission("ADMIN_VIEW", actorId, event);
     }
 
     private User requireActor(Long actorId) {

@@ -23,24 +23,6 @@ class MessagingSchemaContractTest {
     }
 
     @Test
-    void consolidatedMigrationMatchesCanonicalPostShareContract() throws Exception {
-        String migration = Files.readString(databasePath("V20260816__admin_rbac_collaborator_features.sql"));
-        assertThat(migration).contains(
-                "information_schema.columns",
-                "information_schema.table_constraints",
-                "enum('TEXT','IMAGE','POST_SHARE')",
-                "ADD COLUMN `shared_post_id` bigint unsigned DEFAULT NULL",
-                "idx_messages_shared_post",
-                "fk_messages_shared_post",
-                "ON DELETE SET NULL",
-                "chk_messages_payload_shape")
-                .doesNotContain("`shared_post_id` IS NULL");
-
-        String sql = Files.readString(databasePath("student_social_network.sql"));
-        assertThat(sql).doesNotContain("`shared_post_id` IS NULL");
-    }
-
-    @Test
     void restCoreDoesNotDependOnNotificationOrWebSocketPublisher() throws Exception {
         Path root = Path.of("").toAbsolutePath().normalize();
         Path source = (Files.isDirectory(root.resolve("src")) ? root : root.resolve("BackEnd"))

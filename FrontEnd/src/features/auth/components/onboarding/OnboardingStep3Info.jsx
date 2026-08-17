@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import {
-  displayDateToIso,
-  formatBirthDateInput,
   inputCls,
   inputStyle,
-  isoDateToDisplay,
+  todayIsoDate,
 } from './onboardingUtils.js';
 import { ErrorMsg, PrimaryBtn, SecondaryBtn, SlidePanel, CalendarIcon, CheckIcon } from './OnboardingShared.jsx';
 
@@ -17,17 +14,9 @@ export default function OnboardingStep3Info({
   onFinish,
   onBack,
   error,
+  dateError,
   isSubmitting,
-  canFinish,
 }) {
-  const [displayDate, setDisplayDate] = useState(() => isoDateToDisplay(dateOfBirth));
-
-  function handleDateChange(event) {
-    const formattedDate = formatBirthDateInput(event.target.value);
-    setDisplayDate(formattedDate);
-    onDateChange(displayDateToIso(formattedDate));
-  }
-
   return (
     <SlidePanel stepKey={3}>
       <div className="mb-7">
@@ -50,18 +39,23 @@ export default function OnboardingStep3Info({
               <CalendarIcon size={19} />
             </div>
             <input
-              type="text"
-              inputMode="numeric"
+              id="onboarding-date-of-birth"
+              type="date"
               autoComplete="bday"
-              placeholder="dd/mm/yyyy"
-              value={displayDate}
-              maxLength={10}
-              onChange={handleDateChange}
+              value={dateOfBirth}
+              max={todayIsoDate()}
+              onChange={(event) => onDateChange(event.target.value)}
               className={`${inputCls} h-13 pl-11 text-base shadow-xs`}
               style={inputStyle}
-              aria-label="Ngày sinh theo định dạng ngày tháng năm"
+              aria-describedby="onboarding-date-of-birth-error"
+              aria-invalid={Boolean(dateError)}
             />
           </div>
+          {dateError ? (
+            <p id="onboarding-date-of-birth-error" className="mt-2 text-sm font-medium text-red-600" role="alert">
+              {dateError}
+            </p>
+          ) : null}
         </div>
 
         {/* Bio */}
@@ -94,7 +88,7 @@ export default function OnboardingStep3Info({
           <span>Quay lại</span>
         </SecondaryBtn>
 
-        <PrimaryBtn onClick={onFinish} disabled={isSubmitting || !canFinish}>
+        <PrimaryBtn onClick={onFinish} disabled={isSubmitting}>
           <span>{isSubmitting ? 'Đang lưu...' : 'Hoàn tất'}</span>
           {!isSubmitting && <CheckIcon size={16} />}
         </PrimaryBtn>

@@ -5,6 +5,7 @@ import com.stu.edu.vn.backend.academic.dto.response.InterestResponse;
 import com.stu.edu.vn.backend.academic.dto.response.SchoolResponse;
 import java.time.LocalDate;
 import java.util.List;
+import com.stu.edu.vn.backend.user.enums.PublicUserBadge;
 
 /**
  * Dữ liệu hiển thị trang hồ sơ; không chứa email hoặc dữ liệu xác thực nhạy cảm.
@@ -26,7 +27,10 @@ public record UserProfileViewResponse(
         boolean followedByCurrentUser,
         boolean blockedByMe,
         boolean restrictedByMe,
-        boolean managedAccount
+        boolean managedAccount,
+        List<PublicUserBadge> badges,
+        boolean canFollow,
+        boolean canMessage
 ) {
     /** Giữ source compatibility cho mapper/test cũ; tài khoản hiện hữu mặc định không phải Managed. */
     public UserProfileViewResponse(
@@ -36,6 +40,7 @@ public record UserProfileViewResponse(
             boolean followedByCurrentUser, boolean blockedByMe, boolean restrictedByMe
     ) {
         this(userId, username, displayName, avatarUrl, dateOfBirth, bio, school, faculty, major, entryYear,
-                interests, followerCount, followingCount, followedByCurrentUser, blockedByMe, restrictedByMe, false);
+                interests, followerCount, followingCount, followedByCurrentUser, blockedByMe, restrictedByMe,
+                false, List.of(), true, true);
     }
 }
