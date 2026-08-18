@@ -134,9 +134,7 @@ public class SocialAuthChallenge extends BaseAuditEntity {
         return challenge;
     }
 
-    /**
-     * Resolve theo đúng cặp conflict/action; nhánh email ACTIVE tuyệt đối không nhận resolved user để tự link.
-     */
+    /** Resolve theo đúng cặp conflict/action; resolved user mới không được là conflicting user cũ. */
     public void resolve(SocialResolutionAction action, User resolvedUser, LocalDateTime resolvedAt) {
         requirePending();
         validateResolution(action, resolvedUser);
@@ -190,7 +188,22 @@ public class SocialAuthChallenge extends BaseAuditEntity {
                 && targetUser == null) {
             return;
         }
+        if (conflictType == SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER
+                && provider == AuthProvider.FACEBOOK
+                && action == SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT
+                && targetUser != null
+                && isDifferentUser(targetUser, conflictingUser)) {
+            return;
+        }
         throw new IllegalArgumentException("resolutionAction không phù hợp conflictType hoặc resolvedUser");
+    }
+
+    private static boolean isDifferentUser(User targetUser, User conflictingUser) {
+        if (targetUser == conflictingUser) {
+            return false;
+        }
+        return targetUser.getId() == null || conflictingUser == null || conflictingUser.getId() == null
+                || !targetUser.getId().equals(conflictingUser.getId());
     }
 
     private static void validateConflictContext(

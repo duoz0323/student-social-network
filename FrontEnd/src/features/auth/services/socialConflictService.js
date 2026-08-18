@@ -1,31 +1,20 @@
 import { authApi } from '../../../api/index.js';
+import {
+  SOCIAL_CONFLICT_TYPES,
+  allowedSocialConflictActions,
+} from './socialConflictPolicy.js';
+
+export { SOCIAL_CONFLICT_ACTIONS, SOCIAL_CONFLICT_TYPES } from './socialConflictPolicy.js';
 
 const CONFLICT_KEY = 'unishare.auth.social-conflict';
-
-export const SOCIAL_CONFLICT_TYPES = Object.freeze({
-  PENDING_EMAIL_MISMATCH: 'PENDING_EMAIL_MISMATCH',
-  ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER: 'ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER',
-});
-
-export const SOCIAL_CONFLICT_ACTIONS = Object.freeze({
-  CONTINUE_OTP: 'CONTINUE_OTP',
-  CANCEL_PENDING_AND_CONTINUE_SOCIAL: 'CANCEL_PENDING_AND_CONTINUE_SOCIAL',
-  LOGIN_EXISTING_ACCOUNT: 'LOGIN_EXISTING_ACCOUNT',
-  START_ACCOUNT_RECOVERY: 'START_ACCOUNT_RECOVERY',
-});
-
-const ACTIONS_BY_TYPE = Object.freeze({
-  [SOCIAL_CONFLICT_TYPES.PENDING_EMAIL_MISMATCH]: Object.freeze([SOCIAL_CONFLICT_ACTIONS.CONTINUE_OTP, SOCIAL_CONFLICT_ACTIONS.CANCEL_PENDING_AND_CONTINUE_SOCIAL]),
-  [SOCIAL_CONFLICT_TYPES.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER]: Object.freeze([SOCIAL_CONFLICT_ACTIONS.LOGIN_EXISTING_ACCOUNT, SOCIAL_CONFLICT_ACTIONS.START_ACCOUNT_RECOVERY]),
-});
 
 const PROVIDERS = new Set(['GOOGLE', 'FACEBOOK']);
 
 function normalizeState(details, context = {}) {
   const conflictType = details?.conflictType;
-  const allowedForType = ACTIONS_BY_TYPE[conflictType];
   const expiresIn = Number(details?.expiresIn);
   const provider = String(context.provider ?? '').toUpperCase();
+  const allowedForType = allowedSocialConflictActions(conflictType, provider);
   if (!details?.flowToken || details.flowType !== 'SOCIAL_CONFLICT' || !allowedForType || !PROVIDERS.has(provider) || !Number.isFinite(expiresIn) || expiresIn <= 0) return null;
 
   // Chỉ giữ giao của action Backend trả và whitelist theo đúng conflict type production.
@@ -47,7 +36,7 @@ function normalizeState(details, context = {}) {
 
 function isValidStoredState(state) {
   if (!state || state.flowType !== 'SOCIAL_CONFLICT' || !state.socialConflictFlowToken || !PROVIDERS.has(state.provider)) return false;
-  const allowedForType = ACTIONS_BY_TYPE[state.conflictType];
+  const allowedForType = allowedSocialConflictActions(state.conflictType, state.provider);
   return Boolean(allowedForType) && Array.isArray(state.allowedActions) && state.allowedActions.length > 0
     && state.allowedActions.every((action) => allowedForType.includes(action)) && Number.isFinite(Number(state.expiresAt));
 }
@@ -82,7 +71,9 @@ export const socialConflictService = Object.freeze({
   },
 
   isActionAllowed(conflict, action) {
-    return Boolean(conflict) && ACTIONS_BY_TYPE[conflict.conflictType]?.includes(action) && conflict.allowedActions.includes(action);
+    return Boolean(conflict)
+      && allowedSocialConflictActions(conflict.conflictType, conflict.provider).includes(action)
+      && conflict.allowedActions.includes(action);
   },
 
   async resolveConflict(conflict, action, signal) {

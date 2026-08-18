@@ -534,8 +534,9 @@ Quy tắc chung cho social authentication:
 - Provider đã link phải đăng nhập về đúng `users.id`.
 - Facebook không trả email vẫn được tạo provider-only user; không tạo email giả hoặc placeholder.
 - `providerEmail` nullable và user mới vẫn phải hoàn tất onboarding.
-- Social email trùng user `ACTIVE` nhưng provider chưa link không được tự link hoặc tạo user thứ hai; trả `SOCIAL_ACCOUNT_CONFLICT`.
-- Với `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER`, Backend chỉ trả hướng dẫn đăng nhập tài khoản hiện có hoặc bắt đầu account recovery; conflict này không được tự resolve thành provider link.
+- Social email trùng user `ACTIVE` nhưng provider chưa link không được tự link; trả `AUTH_SOCIAL_ACCOUNT_CONFLICT` để người dùng quyết định theo action Backend cho phép.
+- Với Facebook `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER`, người dùng có thể đăng nhập tài khoản hiện có để tự liên kết sau khi xác thực, hoặc chọn `CONTINUE_WITH_SEPARATE_ACCOUNT`. Action tạo riêng tạo một `USER` Facebook-only có `users.email = NULL`, không sửa và không kế thừa role/quyền của tài khoản trùng email.
+- Google `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER` tiếp tục chỉ hướng dẫn đăng nhập tài khoản hiện có hoặc account recovery; không hỗ trợ tạo tài khoản riêng qua conflict này.
 - Nếu request tham gia luồng pending, gửi registration flow token bằng `X-Auth-Flow-Token`.
 - Thành công trả token response giống login và gửi `Cache-Control: no-store`.
 
@@ -565,7 +566,10 @@ Social conflict token là opaque, một lần, TTL 5 phút và chỉ lưu dạng
 Allowed actions theo conflict type:
 
 - `PENDING_EMAIL_MISMATCH` và `PENDING_EMAIL_REQUIRES_CANCEL`: `CONTINUE_OTP` hoặc `CANCEL_PENDING_AND_CONTINUE_SOCIAL`.
-- `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER`: `LOGIN_EXISTING_ACCOUNT` hoặc `START_ACCOUNT_RECOVERY`; không có action tự link provider.
+- Facebook `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER`: `LOGIN_EXISTING_ACCOUNT` hoặc `CONTINUE_WITH_SEPARATE_ACCOUNT`; không có action tự link provider.
+- Google `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER`: `LOGIN_EXISTING_ACCOUNT` hoặc `START_ACCOUNT_RECOVERY`.
+
+`CONTINUE_WITH_SEPARATE_ACCOUNT` gọi endpoint resolve với social conflict token. Backend khóa challenge, kiểm tra lại Facebook provider chưa thuộc tài khoản nào, tạo `users.email = NULL`, `user_profiles`, `user_auth_providers` và Refresh Token trong cùng transaction rồi trả session với `nextStep = COMPLETE_PROFILE`. Request cạnh tranh thua unique constraint phải rollback; không được liên kết vào `conflicting_user_id`.
 
 ### POST `/api/v1/auth/registrations/resolve-social-conflict`
 

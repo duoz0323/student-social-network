@@ -116,7 +116,7 @@ Khi terminal:
 - Lưu `provider_identity_fingerprint` bằng HMAC với secret riêng để audit mà không giữ raw provider user ID sau terminal.
 - Fingerprint secret không dùng chung với OTP HMAC secret hoặc JWT secret.
 - Khi terminal, xóa conflict token hash, raw provider user ID/email và active provider key; giữ fingerprint tối đa 7 ngày.
-- `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER` không tự link. Chỉ hướng dẫn login existing account hoặc account recovery.
+- `ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER` không tự link. Google chỉ hướng dẫn login existing account hoặc account recovery. Facebook cho phép thêm `CONTINUE_WITH_SEPARATE_ACCOUNT`, tạo một `USER` mới có `users.email = NULL` và liên kết provider immutable ID; `conflicting_user_id` chỉ là ngữ cảnh conflict, không phải user đích.
 
 ## 6. Reauthentication challenge
 

@@ -135,6 +135,34 @@ class AuthChallengeDomainTest {
     }
 
     @Test
+    void facebookActiveEmailConflictCanCreateSeparateUserButCannotResolveToConflictingUser() {
+        User existingUser = persistedUser(31L);
+        User separateUser = persistedUser(32L);
+        SocialAuthChallenge challenge = SocialAuthChallenge.start(
+                "facebook-conflict-hash",
+                AuthProvider.FACEBOOK,
+                "facebook-user-id",
+                "facebook-fingerprint",
+                "student@example.com",
+                true,
+                SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER,
+                null,
+                existingUser,
+                NOW.plusMinutes(5)
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> challenge.resolve(
+                SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT, existingUser, NOW.plusMinutes(1)));
+
+        challenge.resolve(SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT, separateUser, NOW.plusMinutes(1));
+
+        assertEquals(SocialAuthChallengeStatus.RESOLVED, challenge.getStatus());
+        assertSame(separateUser, challenge.getResolvedUser());
+        assertNull(challenge.getProviderEmail());
+        assertNull(challenge.getProviderUserId());
+    }
+
+    @Test
     void reauthenticationProofCanDifferFromTargetAndConsumeClearsToken() {
         ReauthenticationChallenge challenge = ReauthenticationChallenge.start(
                 persistedUser(40L),

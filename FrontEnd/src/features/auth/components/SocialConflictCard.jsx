@@ -6,6 +6,7 @@ const ACTION_PRESENTATION = Object.freeze({
   [SOCIAL_CONFLICT_ACTIONS.CANCEL_PENDING_AND_CONTINUE_SOCIAL]: { label: 'Hủy đăng ký đang chờ và tiếp tục', primary: true },
   [SOCIAL_CONFLICT_ACTIONS.LOGIN_EXISTING_ACCOUNT]: { label: 'Đăng nhập bằng phương thức hiện có', primary: true },
   [SOCIAL_CONFLICT_ACTIONS.START_ACCOUNT_RECOVERY]: { label: 'Khôi phục tài khoản', primary: false },
+  [SOCIAL_CONFLICT_ACTIONS.CONTINUE_WITH_SEPARATE_ACCOUNT]: { label: 'Tạo tài khoản Facebook riêng', primary: false },
 });
 
 function conflictCopy(conflict) {
@@ -18,9 +19,13 @@ function conflictCopy(conflict) {
     };
   }
   return {
-    title: 'Tài khoản đã tồn tại',
-    description: `Thông tin từ ${providerName} trùng với một tài khoản đang hoạt động nhưng provider chưa được liên kết.`,
-    warning: 'Vui lòng dùng phương thức hiện có. Hệ thống không tự đăng nhập, liên kết hoặc gộp tài khoản.',
+    title: 'Email trùng tài khoản hiện có',
+    description: conflict.provider === 'FACEBOOK'
+      ? 'Email Facebook giống một tài khoản đang hoạt động. Bạn có thể đăng nhập tài khoản cũ để liên kết sau, hoặc tạo một tài khoản Facebook riêng.'
+      : `Thông tin từ ${providerName} trùng với một tài khoản đang hoạt động nhưng provider chưa được liên kết.`,
+    warning: conflict.provider === 'FACEBOOK'
+      ? 'Tài khoản Facebook riêng là tài khoản USER độc lập, không nhận dữ liệu hoặc quyền của tài khoản cũ.'
+      : 'Vui lòng dùng phương thức hiện có. Hệ thống không tự đăng nhập, liên kết hoặc gộp tài khoản.',
   };
 }
 

@@ -324,8 +324,8 @@ Username đã được đưa vào onboarding và hồ sơ; các ảnh Stitch cũ
 - Onboarding dùng ba bước nội bộ: tên hiển thị bắt buộc, avatar tùy chọn, ngày sinh bắt buộc/bio tùy chọn.
 - `/onboarding/success` dùng ảnh `docs/ui/screens/auth/update-profile-success.jpg`.
 - Route `/register/success` không còn là luồng chính.
-- Google/Facebook chỉ hiển thị trên UI, bấm chỉ báo “Tính năng đang được phát triển.”.
-- Google/Facebook không tạo user, không tạo session và không thuộc tiêu chí nghiệm thu MVP.
+- Google/Facebook đã có Auth thật theo README/API contract, không còn dùng thông báo “Tính năng đang được phát triển”.
+- Facebook email trùng account hiện có hiển thị lựa chọn đăng nhập account cũ hoặc tạo Facebook-only `USER` độc lập; không tự gộp hoặc kế thừa quyền.
 
 ### Phạm vi áp dụng
 

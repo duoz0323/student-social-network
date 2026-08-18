@@ -35,7 +35,7 @@ Google/Facebook SDK
 → Frontend hủy provider credential và đi đến onboarding/ứng dụng
 ```
 
-Provider token không được lưu lâu dài hoặc dùng cho API nghiệp vụ. Facebook không có email vẫn có thể tạo provider-only user; không tạo email giả. Email trùng một user `ACTIVE` nhưng provider chưa liên kết phải đi qua conflict, không tự động link hay tạo user thứ hai. Social conflict dùng flow token opaque một lần, TTL 5 phút, theo contract chi tiết.
+Provider token không được lưu lâu dài hoặc dùng cho API nghiệp vụ. Facebook không có email vẫn có thể tạo provider-only user; không tạo email giả. Email Facebook trùng một user `ACTIVE` nhưng provider chưa liên kết phải đi qua conflict: người dùng có thể đăng nhập account cũ hoặc chủ động tạo một Facebook-only `USER` độc lập với `users.email = NULL`; không tự động link/gộp hoặc kế thừa quyền. Social conflict dùng flow token opaque một lần, TTL 5 phút, theo contract chi tiết.
 
 ## 3. Quản lý phương thức xác thực
 

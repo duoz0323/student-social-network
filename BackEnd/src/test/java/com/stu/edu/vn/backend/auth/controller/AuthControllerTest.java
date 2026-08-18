@@ -14,6 +14,7 @@ import com.stu.edu.vn.backend.auth.dto.CancelRegistrationResponse;
 import com.stu.edu.vn.backend.auth.dto.LoginRequest;
 import com.stu.edu.vn.backend.auth.dto.GoogleAuthRequest;
 import com.stu.edu.vn.backend.auth.dto.GoogleAuthResponse;
+import com.stu.edu.vn.backend.auth.dto.FacebookAuthRequest;
 import com.stu.edu.vn.backend.auth.dto.SocialConflictDetails;
 import com.stu.edu.vn.backend.auth.dto.LoginResponse;
 import com.stu.edu.vn.backend.auth.dto.LogoutRequest;
@@ -410,6 +411,38 @@ class AuthControllerTest {
                         .string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.code").value("AUTH_SOCIAL_ACCOUNT_CONFLICT"))
                 .andExpect(jsonPath("$.details.flowToken").value("raw-conflict-flow-token"))
+                .andExpect(jsonPath("$.details.flowType").value("SOCIAL_CONFLICT"))
+                .andExpect(jsonPath("$.details.conflictType")
+                        .value("ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER"))
+                .andExpect(jsonPath("$.details.providerUserId").doesNotExist())
+                .andExpect(jsonPath("$.details.targetUserId").doesNotExist());
+    }
+
+    @Test
+    void facebookAuthConflictReturnsSafeNoStoreFlowDetails() throws Exception {
+        SocialConflictDetails details = new SocialConflictDetails(
+                "raw-facebook-conflict-token",
+                SocialConflictDetails.FLOW_TYPE,
+                SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER,
+                java.util.List.of(
+                        SocialResolutionAction.LOGIN_EXISTING_ACCOUNT,
+                        SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT
+                ),
+                300
+        );
+        when(facebookAuthService.authenticate(any(FacebookAuthRequest.class), anyString()))
+                .thenThrow(new SocialConflictException(ErrorCode.AUTH_SOCIAL_ACCOUNT_CONFLICT, details));
+
+        mockMvc.perform(post("/api/v1/auth/oauth/facebook")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new FacebookAuthRequest(
+                                "facebook-access-token", "device-1", "Chrome"
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.code").value("AUTH_SOCIAL_ACCOUNT_CONFLICT"))
+                .andExpect(jsonPath("$.details.flowToken").value("raw-facebook-conflict-token"))
                 .andExpect(jsonPath("$.details.flowType").value("SOCIAL_CONFLICT"))
                 .andExpect(jsonPath("$.details.conflictType")
                         .value("ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER"))

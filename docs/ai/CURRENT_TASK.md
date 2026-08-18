@@ -1,8 +1,8 @@
-# CURRENT TASK
+# HISTORICAL TASK — KHÔNG DÙNG LÀM TRẠNG THÁI HIỆN TẠI
 
 ## Trang thai
 
-Hoan thanh cap nhat Frontend React, mock data va tai lieu UI/Data cho luong dang ky va onboarding moi.
+Tai lieu lich su cua giai doan mock Frontend. Google/Facebook Auth hien da duoc trien khai; trang thai va nghiep vu hien hanh phai doc tu `README.md` va `docs/data/API-CONTRACT.md`.
 
 ## Pham vi da thuc hien
 

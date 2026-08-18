@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.stu.edu.vn.backend.auth.dto.ResolveSocialConflictRequest;
 import com.stu.edu.vn.backend.auth.entity.PendingRegistration;
 import com.stu.edu.vn.backend.auth.entity.SocialAuthChallenge;
+import com.stu.edu.vn.backend.auth.entity.UserAuthProvider;
 import com.stu.edu.vn.backend.auth.enums.AuthProvider;
 import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
 import com.stu.edu.vn.backend.auth.enums.RegistrationType;
@@ -24,6 +25,7 @@ import com.stu.edu.vn.backend.security.JwtProperties;
 import com.stu.edu.vn.backend.security.JwtService;
 import com.stu.edu.vn.backend.security.TokenHashService;
 import com.stu.edu.vn.backend.user.entity.User;
+import com.stu.edu.vn.backend.user.enums.UserRole;
 import com.stu.edu.vn.backend.user.repository.UserProfileRepository;
 import com.stu.edu.vn.backend.user.repository.UserRepository;
 import java.time.Clock;
@@ -91,6 +93,64 @@ class SocialConflictResolutionServiceImplTest {
 
         assertThatThrownBy(() -> service.resolve("raw-token", new ResolveSocialConflictRequest(
                 SocialResolutionAction.LOGIN_EXISTING_ACCOUNT, null, null), "127.0.0.1"))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.AUTH_SOCIAL_CHALLENGE_ACTION_INVALID));
+    }
+
+    @Test
+    void facebookActiveEmailConflictCanCreateIndependentUserWithoutEmailOrInheritedAdminRole() {
+        User existingAdmin = new User("admin@example.com", "hash");
+        existingAdmin.setRole(UserRole.ADMIN);
+        ReflectionTestUtils.setField(existingAdmin, "id", 1L);
+        SocialAuthChallenge challenge = SocialAuthChallenge.start("token-hash", AuthProvider.FACEBOOK,
+                "facebook-user-id", "fingerprint", "admin@example.com", true,
+                SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER, null, existingAdmin,
+                LocalDateTime.now(clock).plusMinutes(5));
+        when(tokenHashService.sha256Hex("raw-token")).thenReturn("token-hash");
+        when(challengeRepository.findByConflictTokenHashForUpdate("token-hash")).thenReturn(Optional.of(challenge));
+        when(providerRepository.findByProviderAndProviderUserIdForUpdate(
+                AuthProvider.FACEBOOK, "facebook-user-id")).thenReturn(Optional.empty());
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            ReflectionTestUtils.setField(user, "id", 50L);
+            return user;
+        });
+        when(refreshTokenIssuer.issue(any(), any(), any(), any()))
+                .thenReturn(new IssuedRefreshToken("refresh-token", 2_592_000));
+        when(jwtProperties.getAccessTokenExpirationMillis()).thenReturn(900_000L);
+        when(jwtService.generateAccessToken(50L, "USER")).thenReturn("access-token");
+
+        var response = service.resolve("raw-token", new ResolveSocialConflictRequest(
+                SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT, "device-1", "Chrome"), "127.0.0.1");
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        ArgumentCaptor<UserAuthProvider> providerCaptor = ArgumentCaptor.forClass(UserAuthProvider.class);
+        verify(userRepository).saveAndFlush(userCaptor.capture());
+        verify(providerRepository).saveAndFlush(providerCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isNull();
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.USER);
+        assertThat(providerCaptor.getValue().getProviderEmail()).isEqualTo("admin@example.com");
+        assertThat(providerCaptor.getValue().getUser().getId()).isEqualTo(50L);
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.nextStep()).isEqualTo("COMPLETE_PROFILE");
+        assertThat(response.user().role()).isEqualTo(UserRole.USER);
+        assertThat(challenge.getResolvedUser().getId()).isEqualTo(50L);
+        assertThat(challenge.getConflictingUser().getId()).isEqualTo(1L);
+        assertThat(challenge.getStatus()).isEqualTo(SocialAuthChallengeStatus.RESOLVED);
+    }
+
+    @Test
+    void googleActiveEmailConflictCannotUseFacebookOnlySeparateAccountAction() {
+        User existing = new User("existing@example.com", "hash");
+        SocialAuthChallenge challenge = SocialAuthChallenge.start("token-hash", AuthProvider.GOOGLE,
+                "google-sub", "fingerprint", "existing@example.com", true,
+                SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER, null, existing,
+                LocalDateTime.now(clock).plusMinutes(5));
+        when(tokenHashService.sha256Hex("raw-token")).thenReturn("token-hash");
+        when(challengeRepository.findByConflictTokenHashForUpdate("token-hash")).thenReturn(Optional.of(challenge));
+
+        assertThatThrownBy(() -> service.resolve("raw-token", new ResolveSocialConflictRequest(
+                SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT, null, null), "127.0.0.1"))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.AUTH_SOCIAL_CHALLENGE_ACTION_INVALID));
     }

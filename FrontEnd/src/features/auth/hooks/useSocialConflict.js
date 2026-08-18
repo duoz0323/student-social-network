@@ -23,7 +23,7 @@ export function useSocialConflict() {
   const resolveAction = useCallback(async (action, signal) => {
     if (!conflict || operationLock.current || isOutcomeUnknown || !socialConflictService.isActionAllowed(conflict, action)) return null;
 
-    // Hai action của active-account conflict chỉ điều hướng/hướng dẫn, tuyệt đối không gọi resolve API production.
+    // Đăng nhập account cũ chỉ điều hướng; tạo Facebook account riêng phải được Backend resolve bằng token một lần.
     if (action === SOCIAL_CONFLICT_ACTIONS.LOGIN_EXISTING_ACCOUNT) {
       clearConflict();
       return { type: 'LOGIN_EXISTING_ACCOUNT' };
@@ -50,11 +50,12 @@ export function useSocialConflict() {
         return { type: 'CONTINUE_OTP' };
       }
 
-      if (action === SOCIAL_CONFLICT_ACTIONS.CANCEL_PENDING_AND_CONTINUE_SOCIAL) {
+      if (action === SOCIAL_CONFLICT_ACTIONS.CANCEL_PENDING_AND_CONTINUE_SOCIAL
+        || action === SOCIAL_CONFLICT_ACTIONS.CONTINUE_WITH_SEPARATE_ACCOUNT) {
         try {
           const session = auth.setAuthenticatedSession(response);
-          // Registration Flow chỉ bị xóa sau khi session Backend đã được thiết lập đầy đủ.
-          registration.clearFlow();
+          // Chỉ nhánh hủy pending mới xóa Registration Flow; active-account conflict không sở hữu flow đó.
+          if (action === SOCIAL_CONFLICT_ACTIONS.CANCEL_PENDING_AND_CONTINUE_SOCIAL) registration.clearFlow();
           clearConflict();
           return { type: 'AUTH_SUCCESS', session };
         } catch {

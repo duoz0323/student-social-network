@@ -44,7 +44,7 @@ Bấm nút Google hoặc Facebook
 → Auth thành công: nhận JWT hệ thống và đến onboarding/Feed
 ```
 
-Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Email social trùng user `ACTIVE` chưa link provider không được tự link hay tạo user thứ hai. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
+Facebook không trả email vẫn có thể tạo provider-only user; UI không yêu cầu hoặc tạo email giả. Khi email Facebook trùng user `ACTIVE` chưa link provider, UI cho chọn đăng nhập account cũ hoặc tạo Facebook-only `USER` độc lập; không tự link/gộp và không kế thừa quyền. Social conflict token là flow token một lần, TTL 5 phút; UI chỉ hiển thị `allowedActions` từ Backend.
 
 Nếu `profile_completed_at` còn `NULL`, route guard chuyển người dùng về onboarding và API mạng xã hội chính trả `PROFILE_NOT_COMPLETED`. Frontend tải lại dữ liệu onboarding hiện có để legacy user chỉ bổ sung username mà không mất displayName, ngày sinh hoặc bio. Sau khi dữ liệu cơ bản hoàn tất, route onboarding vẫn cho phép tiếp tục hai bước tùy chọn và đọc current profile để prefill khi refresh; login và refresh không trả lỗi `PROFILE_NOT_COMPLETED`.
 

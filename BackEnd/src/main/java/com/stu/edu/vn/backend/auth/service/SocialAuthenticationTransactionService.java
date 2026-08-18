@@ -30,12 +30,14 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Nghiệp vụ dùng chung cho Google/Facebook sau khi danh tính provider đã được xác minh. */
 @Service
+@Slf4j
 public class SocialAuthenticationTransactionService {
     private final UserAuthProviderRepository providerRepository;
     private final UserRepository userRepository;
@@ -178,13 +180,22 @@ public class SocialAuthenticationTransactionService {
 
     private void throwActiveEmailConflict(AuthProvider provider, String providerUserId, String email,
             Boolean verified, User conflictingUser) {
+        // Chỉ ghi định danh nội bộ phục vụ điều tra; không ghi email, provider user ID hoặc credential social.
+        log.warn("Social authentication conflict: provider={}, conflictType={}, targetUserId={}, targetRole={}",
+                provider, SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER,
+                conflictingUser.getId(), conflictingUser.getRole());
         SocialChallengeSecurity.IssuedChallenge issued = challengeSecurity.issue(providerUserId);
         challengeRepository.saveAndFlush(SocialAuthChallenge.start(issued.tokenHash(), provider, providerUserId,
                 issued.identityFingerprint(), email, verified, SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER,
                 null, conflictingUser, LocalDateTime.now(clock).plus(challengeProperties.getConflictExpiration())));
+        List<SocialResolutionAction> allowedActions = provider == AuthProvider.FACEBOOK
+                ? List.of(SocialResolutionAction.LOGIN_EXISTING_ACCOUNT,
+                        SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT)
+                : List.of(SocialResolutionAction.LOGIN_EXISTING_ACCOUNT,
+                        SocialResolutionAction.START_ACCOUNT_RECOVERY);
         SocialConflictDetails details = new SocialConflictDetails(issued.rawToken(), SocialConflictDetails.FLOW_TYPE,
                 SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER,
-                List.of(SocialResolutionAction.LOGIN_EXISTING_ACCOUNT, SocialResolutionAction.START_ACCOUNT_RECOVERY),
+                allowedActions,
                 challengeProperties.getConflictExpiration().toSeconds());
         throw new SocialConflictException(ErrorCode.AUTH_SOCIAL_ACCOUNT_CONFLICT, details);
     }

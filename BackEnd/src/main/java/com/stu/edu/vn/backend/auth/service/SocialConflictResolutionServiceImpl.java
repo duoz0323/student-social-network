@@ -6,6 +6,7 @@ import com.stu.edu.vn.backend.auth.entity.PendingRegistration;
 import com.stu.edu.vn.backend.auth.entity.SocialAuthChallenge;
 import com.stu.edu.vn.backend.auth.entity.UserAuthProvider;
 import com.stu.edu.vn.backend.auth.enums.OtpChallengeStatus;
+import com.stu.edu.vn.backend.auth.enums.AuthProvider;
 import com.stu.edu.vn.backend.auth.enums.SocialAuthChallengeStatus;
 import com.stu.edu.vn.backend.auth.enums.SocialConflictType;
 import com.stu.edu.vn.backend.auth.enums.SocialResolutionAction;
@@ -71,8 +72,7 @@ public class SocialConflictResolutionServiceImpl implements SocialConflictResolu
         LocalDateTime now = LocalDateTime.now(clock);
         validateChallenge(challenge, now);
         if (challenge.getConflictType() == SocialConflictType.ACTIVE_EMAIL_MATCH_UNLINKED_PROVIDER) {
-            // Contract hiện tại chỉ hướng dẫn login/recovery, không tự link provider tại endpoint này.
-            throw new BusinessException(ErrorCode.AUTH_SOCIAL_CHALLENGE_ACTION_INVALID);
+            return resolveActiveEmailConflict(challenge, request, ipAddress, now);
         }
 
         PendingRegistration pending = pendingRepository.findByIdForUpdate(challenge.getPendingRegistration().getId())
@@ -96,8 +96,12 @@ public class SocialConflictResolutionServiceImpl implements SocialConflictResolu
             throw new BusinessException(ErrorCode.AUTH_SOCIAL_ACCOUNT_CONFLICT);
         }
 
-        User user = new User(challenge.getProviderEmail(), null);
-        if (challenge.getProviderEmail() != null && Boolean.TRUE.equals(challenge.getProviderEmailVerified())) {
+        String accountEmail = challenge.getProvider() == AuthProvider.GOOGLE
+                && Boolean.TRUE.equals(challenge.getProviderEmailVerified())
+                ? challenge.getProviderEmail()
+                : null;
+        User user = new User(accountEmail, null);
+        if (accountEmail != null) {
             user.setEmailVerifiedAt(now);
         }
         User savedUser = userRepository.saveAndFlush(user);
@@ -112,6 +116,39 @@ public class SocialConflictResolutionServiceImpl implements SocialConflictResolu
         pendingRepository.saveAndFlush(pending);
         challenge.resolve(SocialResolutionAction.CANCEL_PENDING_AND_CONTINUE_SOCIAL, savedUser, now);
         challengeRepository.saveAndFlush(challenge);
+        SocialAuthResult result = new SocialAuthResult(
+                jwtService.generateAccessToken(savedUser.getId(), savedUser.getRole().name()), refresh.rawToken(),
+                Duration.ofMillis(jwtProperties.getAccessTokenExpirationMillis()).toSeconds(),
+                refresh.expiresInSeconds(), false, "COMPLETE_PROFILE", challenge.getProvider(),
+                savedUser.getId(), savedUser.getRole());
+        return ResolveSocialConflictResponse.session(result);
+    }
+
+    private ResolveSocialConflictResponse resolveActiveEmailConflict(
+            SocialAuthChallenge challenge,
+            ResolveSocialConflictRequest request,
+            String ipAddress,
+            LocalDateTime now
+    ) {
+        if (challenge.getProvider() != AuthProvider.FACEBOOK
+                || request.action() != SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT) {
+            throw new BusinessException(ErrorCode.AUTH_SOCIAL_CHALLENGE_ACTION_INVALID);
+        }
+        if (providerRepository.findByProviderAndProviderUserIdForUpdate(
+                challenge.getProvider(), challenge.getProviderUserId()).isPresent()) {
+            throw new BusinessException(ErrorCode.AUTH_SOCIAL_PROVIDER_ALREADY_LINKED);
+        }
+
+        // Tài khoản mới độc lập hoàn toàn; email Facebook chỉ là metadata provider và không cấp quyền từ account cũ.
+        User savedUser = userRepository.saveAndFlush(new User(null, null));
+        profileRepository.saveAndFlush(new UserProfile(savedUser));
+        providerRepository.saveAndFlush(new UserAuthProvider(savedUser, challenge.getProvider(),
+                challenge.getProviderUserId(), challenge.getProviderEmail(), challenge.getProviderEmailVerified()));
+        IssuedRefreshToken refresh = refreshTokenIssuer.issue(
+                savedUser, request.deviceId(), request.deviceInfo(), ipAddress);
+        challenge.resolve(SocialResolutionAction.CONTINUE_WITH_SEPARATE_ACCOUNT, savedUser, now);
+        challengeRepository.saveAndFlush(challenge);
+
         SocialAuthResult result = new SocialAuthResult(
                 jwtService.generateAccessToken(savedUser.getId(), savedUser.getRole().name()), refresh.rawToken(),
                 Duration.ofMillis(jwtProperties.getAccessTokenExpirationMillis()).toSeconds(),

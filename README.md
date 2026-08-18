@@ -185,7 +185,7 @@ Chính sách mặc định:
 - Các API nghiệp vụ khác chỉ chấp nhận JWT do Backend phát hành.
 - Nếu provider đã được liên kết, Backend đăng nhập đúng tài khoản hiện có.
 - Nếu provider chưa được liên kết và thông tin hợp lệ chưa thuộc tài khoản nào, Backend tạo tài khoản nội bộ mới.
-- Nếu social email trùng một tài khoản `ACTIVE` nhưng provider chưa được liên kết, hệ thống không tự động gộp chỉ dựa trên email.
+- Nếu social email trùng một tài khoản `ACTIVE` nhưng provider chưa được liên kết, hệ thống không tự động gộp chỉ dựa trên email. Riêng Facebook, người dùng được chọn đăng nhập tài khoản hiện có để tự liên kết sau khi xác thực, hoặc tiếp tục tạo một tài khoản Facebook-only độc lập; tài khoản độc lập luôn là `USER`, giữ `users.email = NULL` và không kế thừa role/quyền của tài khoản trùng email.
 - `provider_user_id` là định danh social chính; provider email chỉ là metadata đã được Backend xác minh và không được dùng để chọn `users.id` đích.
 - Facebook có thể không trả email. Account Facebook-only hợp lệ giữ `users.email`, `email_verified_at` và `password_hash` bằng `NULL`; email Facebook nếu có chỉ lưu tại `user_auth_providers` và không tự tạo phương thức đăng nhập EMAIL.
 - Google identity vẫn được xác thực bằng `sub` khi không có verified email. Khi Google trả email đã verified và không có conflict, Backend được phép populate `users.email` cùng `email_verified_at`; `password_hash` vẫn `NULL`, nên local email login chưa khả dụng cho đến khi Set Password thành công.
@@ -1597,7 +1597,7 @@ npm run preview
 6. Mất mạng hoặc đóng tab vẫn có thể tiếp tục trong thời hạn.
 7. Email pending cùng social email đã xác minh hoàn tất đúng một tài khoản.
 9. Provider đã liên kết luôn đăng nhập đúng `users.id`.
-10. Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email.
+10. Không tự động gộp hai tài khoản `ACTIVE` chỉ vì trùng email; Facebook email trùng tài khoản hiện có cho phép người dùng chủ động đăng nhập tài khoản cũ hoặc tạo một Facebook-only `USER` độc lập với `users.email = NULL`.
 11. Không cho gỡ phương thức đăng nhập cuối cùng.
 12. Tài khoản social chưa có mật khẩu không đăng nhập local được.
 13. Tài khoản `BLOCKED` bị từ chối ở mọi phương thức.

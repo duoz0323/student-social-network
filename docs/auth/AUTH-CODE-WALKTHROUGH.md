@@ -291,14 +291,14 @@ sequenceDiagram
 
 | Mục | Diễn giải |
 |---|---|
-| A | Không tự động gộp hai tài khoản/pending khác email. |
-| B | Chọn tiếp tục OTP hoặc hủy pending để dùng social. |
+| A | Không tự động gộp hai tài khoản/pending khác email; Facebook account riêng không kế thừa role/quyền account trùng email. |
+| B | Chọn tiếp tục OTP, hủy pending để dùng social, đăng nhập account cũ hoặc tạo Facebook-only account riêng khi Backend cho phép. |
 | C | `SocialConflictPendingPage` → `useSocialConflict` → `socialConflictService.resolve`. |
 | D | Header social conflict token + `{action}`. |
 | E | `AuthController.resolveSocialConflict`. |
 | F | `SocialConflictResolutionServiceImpl.resolve`. |
 | G | Social challenge, pending, user/provider repositories và RefreshTokenIssuer. |
-| H | Khóa `social_auth_challenges`/pending; cancel hoặc giữ pending; có thể tạo session. |
+| H | Khóa `social_auth_challenges`/pending; cancel hoặc giữ pending; có thể tạo Facebook-only `USER` với `users.email = NULL` và session trong cùng transaction. |
 | I | `resolved`, nextStep hoặc session. |
 | J | Tiếp tục OTP, hoặc thiết lập session và onboarding/home. |
 | K | Token expired/used, action không được phép, pending terminal. |
