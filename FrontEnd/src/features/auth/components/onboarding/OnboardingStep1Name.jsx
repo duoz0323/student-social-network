@@ -74,7 +74,7 @@ export default function OnboardingStep1Name({
               disabled={usernameLocked}
               onChange={(event) => onUsernameChange(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && canContinue && onNext()}
-              placeholder="duoz_03"
+              placeholder="username"
               className={`${inputCls} h-13 pl-9 pr-11 text-base shadow-xs`}
               style={inputStyle}
               autoComplete="username"

@@ -753,7 +753,7 @@ POST /api/v1/users/me/auth-providers/facebook
 
 - Request lần lượt nhận `idToken` hoặc `accessToken`.
 - User đích luôn lấy từ JWT hiện tại.
-- Đã link vào chính user trả trạng thái hiện tại; đã thuộc user khác trả `PROVIDER_LINKED_TO_ANOTHER_USER`.
+- Đã link vào chính user trả trạng thái hiện tại; đã thuộc user khác trả `AUTH_PROVIDER_ALREADY_LINKED`.
 - Thành công trả `200` với method object như trong `GET /auth-providers`; không trả provider credential hoặc provider user ID.
 
 ### DELETE `/api/v1/users/me/auth-providers/{provider}`
@@ -821,8 +821,8 @@ Complete thu hồi toàn bộ Refresh Token trong cùng transaction. Access Toke
 | 409 | `REGISTRATION_STATE_CONFLICT` | Trạng thái pending không cho phép thao tác. |
 | 409 | `SOCIAL_ACCOUNT_CONFLICT` | Social email trùng ACTIVE user chưa link. |
 | 409 | `SOCIAL_PENDING_CONFLICT` | Pending và social identity cần người dùng lựa chọn. |
-| 409 | `PROVIDER_ALREADY_LINKED` | Provider đã link vào chính user. |
-| 409 | `PROVIDER_LINKED_TO_ANOTHER_USER` | Provider thuộc user khác. |
+| 409 | `AUTH_PROVIDER_LINK_CONFLICT` | Tài khoản hiện tại đã liên kết một danh tính khác của cùng dịch vụ. |
+| 409 | `AUTH_PROVIDER_ALREADY_LINKED` | Tài khoản mạng xã hội đã thuộc user khác. |
 | 409 | `IDENTIFIER_LINKED_TO_ANOTHER_USER` | Email thuộc user khác. |
 | 409 | `LAST_AUTH_METHOD` | Không được gỡ phương thức cuối cùng. |
 | 409 | `AUTH_METHOD_NOT_LINKED` | Phương thức cần gỡ không tồn tại. |

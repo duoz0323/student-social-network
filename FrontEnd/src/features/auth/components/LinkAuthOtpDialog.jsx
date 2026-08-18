@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../../../components/common/Button.jsx';
 import Modal from '../../../components/common/Modal.jsx';
-
-function secondsUntil(value, now) {
-  const timestamp = value ? new Date(value).getTime() : 0;
-  return Math.max(0, Math.ceil((timestamp - now) / 1000));
-}
+import { secondsUntilAuthTimestamp } from '../utils/authTimestamp.js';
 
 export default function LinkAuthOtpDialog({ flow, busy, onClose, onVerifyOtp, onComplete, onResend }) {
   const [code, setCode] = useState('');
   const [step, setStep] = useState('OTP');
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
-  const [now, setNow] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!flow) return undefined;
     const initialTimer = window.setTimeout(() => setNow(Date.now()), 0);
@@ -19,9 +15,9 @@ export default function LinkAuthOtpDialog({ flow, busy, onClose, onVerifyOtp, on
     return () => { window.clearTimeout(initialTimer); window.clearInterval(timer); };
   }, [flow]);
   const countdown = useMemo(() => ({
-    otp: secondsUntil(flow?.otpExpiresAt, now),
-    resend: secondsUntil(flow?.resendAvailableAt, now),
-    challenge: secondsUntil(flow?.challengeExpiresAt, now),
+    otp: secondsUntilAuthTimestamp(flow?.otpExpiresAt, now),
+    resend: secondsUntilAuthTimestamp(flow?.resendAvailableAt, now),
+    challenge: secondsUntilAuthTimestamp(flow?.challengeExpiresAt, now),
   }), [flow, now]);
   if (!flow) return null;
   const challengeExpired = countdown.challenge === 0;
@@ -44,7 +40,7 @@ export default function LinkAuthOtpDialog({ flow, busy, onClose, onVerifyOtp, on
       />
       <div className="mt-4 space-y-1 text-xs text-[var(--app-muted)]">
         <p>OTP còn hiệu lực: {countdown.otp} giây.</p>
-        <p>Challenge còn hiệu lực: {countdown.challenge} giây.</p>
+        <p>Phiên liên kết có hiệu lực tối đa 15 phút. Nếu hết hạn, hãy bắt đầu lại.</p>
       </div>
       <Button variant="secondary" className="mt-4 w-full" disabled={busy || challengeExpired || countdown.resend > 0} onClick={onResend}>
         {countdown.resend > 0 ? `Gửi lại sau ${countdown.resend} giây` : 'Gửi lại OTP'}

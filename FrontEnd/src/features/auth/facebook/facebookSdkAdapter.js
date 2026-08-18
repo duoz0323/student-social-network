@@ -60,10 +60,17 @@ export function loadFacebookSdk(appId) {
   return sdkPromise;
 }
 
-export async function requestFacebookCredential(facebookSdk) {
+export function buildFacebookLoginOptions({ requireReauthorization = false } = {}) {
+  const options = { scope: 'email', return_scopes: true };
+  // Luồng liên kết phải yêu cầu người dùng xác nhận lại, không tái dùng ngầm phiên Facebook cũ.
+  if (requireReauthorization) options.auth_type = 'reauthorize';
+  return options;
+}
+
+export async function requestFacebookCredential(facebookSdk, options = {}) {
   const response = await withTimeout((resolve) => {
     // Chỉ yêu cầu email; Backend tự xác minh token và quyết định identity tin cậy.
-    facebookSdk.login(resolve, { scope: 'email', return_scopes: true });
+    facebookSdk.login(resolve, buildFacebookLoginOptions(options));
   }, LOGIN_TIMEOUT_MS, 'FACEBOOK_LOGIN_TIMEOUT');
 
   const accessToken = response?.authResponse?.accessToken;

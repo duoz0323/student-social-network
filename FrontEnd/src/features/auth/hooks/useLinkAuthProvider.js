@@ -1,26 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authConfig } from '../../../config/authConfig.js';
 import { loadFacebookSdk, requestFacebookCredential } from '../facebook/facebookSdkAdapter.js';
-import { requestGoogleCredential } from '../google/googleSdkLoader.js';
+import { loadGoogleIdentityServices, requestGoogleCredential } from '../google/googleSdkLoader.js';
 import { authProviderService } from '../services/authProviderService.js';
 import { getAuthProviderErrorMessage, isAmbiguousProviderError, isTerminalLinkError } from '../utils/authProviderErrorMapper.js';
+import { getGoogleErrorMessage } from '../utils/googleErrorMapper.js';
 
-async function acquireCredential(provider) {
+async function acquireCredential(provider, { requireFacebookReauthorization = false } = {}) {
   if (provider === 'GOOGLE') {
     if (!authConfig.googleClientId) throw new Error('GOOGLE_NOT_CONFIGURED');
     return requestGoogleCredential();
   }
   if (!authConfig.facebookAppId) throw new Error('FACEBOOK_NOT_CONFIGURED');
-  return requestFacebookCredential(await loadFacebookSdk(authConfig.facebookAppId));
+  return requestFacebookCredential(
+    await loadFacebookSdk(authConfig.facebookAppId),
+    { requireReauthorization: requireFacebookReauthorization },
+  );
 }
 
-function friendlyClientError(error) {
+function friendlyClientError(error, provider) {
   const code = error?.code ?? error?.message;
   if (code === 'GOOGLE_NOT_CONFIGURED') return 'Google chưa được cấu hình.';
   if (code === 'FACEBOOK_NOT_CONFIGURED') return 'Facebook chưa được cấu hình.';
   if (code === 'GOOGLE_POPUP_CLOSED' || code === 'FACEBOOK_POPUP_CLOSED') return '';
   if (code === 'FACEBOOK_PERMISSION_DENIED') return 'Bạn chưa cấp quyền Facebook.';
-  return getAuthProviderErrorMessage(error);
+  if (provider === 'GOOGLE' && (code?.startsWith('GOOGLE_') || code?.startsWith('AUTH_GOOGLE_'))) {
+    return getGoogleErrorMessage(error);
+  }
+  return getAuthProviderErrorMessage(error, provider);
 }
 
 export function useLinkAuthProvider({ onUpdated }) {
@@ -32,6 +39,10 @@ export function useLinkAuthProvider({ onUpdated }) {
   const [state, setState] = useState({ isSubmitting: false, error: '', success: '', ambiguousTarget: null });
 
   useEffect(() => { callbackRef.current = onUpdated; }, [onUpdated]);
+  useEffect(() => {
+    // Tải GIS trước thao tác click để account chooser vẫn được mở trong user activation hiện tại.
+    if (authConfig.googleClientId) loadGoogleIdentityServices().catch(() => {});
+  }, []);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; controllerRef.current?.abort(); };
@@ -154,7 +165,10 @@ export function useLinkAuthProvider({ onUpdated }) {
     const controller = begin();
     if (!controller) return null;
     try {
-      const credential = await acquireCredential(provider);
+      // Link Facebook luôn yêu cầu xác nhận lại để việc đóng popup không thể tái dùng phiên cũ và tự liên kết.
+      const credential = await acquireCredential(provider, {
+        requireFacebookReauthorization: provider === 'FACEBOOK',
+      });
       if (!mountedRef.current) return null;
       const method = await authProviderService.linkSocial(provider, credential, controller.signal);
       if (mountedRef.current) setState((current) => ({ ...current, success: `Đã liên kết ${provider === 'GOOGLE' ? 'Google' : 'Facebook'}.` }));
@@ -162,7 +176,7 @@ export function useLinkAuthProvider({ onUpdated }) {
       return method;
     } catch (error) {
       if (isAmbiguousProviderError(error)) await safeRefetch();
-      if (mountedRef.current) setState((current) => ({ ...current, error: friendlyClientError(error) }));
+      if (mountedRef.current) setState((current) => ({ ...current, error: friendlyClientError(error, provider) }));
       throw error;
     } finally { finish(); }
   }, [begin, finish, safeRefetch]);

@@ -69,7 +69,7 @@ Google/Facebook login dùng cùng nguyên tắc provider credential chỉ dành 
 AUTH-METHOD-01
 → Xem email, Google, Facebook đang liên kết
 → Link email: AUTH-METHOD-02 initiate challenge riêng → verify OTP → quay lại danh sách
-→ Link Google/Facebook: xác minh provider trong phiên JWT hiện tại
+→ Link Google/Facebook: người dùng xác nhận với dịch vụ tương ứng, sau đó Backend xác minh credential trong phiên JWT hiện tại
 → Unlink: AUTH-REAUTH-01 xác thực lại → xác nhận → Backend kiểm tra phương thức cuối
 → Thành công cập nhật danh sách phương thức
 ```

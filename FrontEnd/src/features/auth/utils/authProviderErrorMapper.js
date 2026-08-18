@@ -8,9 +8,7 @@ const MESSAGES = Object.freeze({
   AUTH_METHOD_LINK_OTP_EXPIRED: 'Mã OTP đã hết hạn. Bạn có thể gửi lại mã nếu challenge còn hiệu lực.',
   AUTH_METHOD_LINK_OTP_ATTEMPTS_EXCEEDED: 'Bạn đã nhập sai OTP quá số lần cho phép.',
   AUTH_EMAIL_ALREADY_IN_USE: 'Email này không thể được liên kết với tài khoản hiện tại.',
-  AUTH_PROVIDER_ALREADY_LINKED: 'Provider này đã thuộc một tài khoản khác.',
-  AUTH_PROVIDER_LINK_CONFLICT: 'Không thể liên kết provider này với tài khoản hiện tại.',
-  PROVIDER_LINKED_TO_ANOTHER_USER: 'Provider này đã thuộc một tài khoản khác.',
+  AUTH_PROVIDER_LINK_CONFLICT: 'Không thể liên kết phương thức đăng nhập này với tài khoản hiện tại.',
   AUTH_REAUTHENTICATION_REQUIRED: 'Bạn cần xác thực lại trước khi gỡ phương thức.',
   AUTH_REAUTHENTICATION_INVALID: 'Phiên xác thực lại không hợp lệ.',
   AUTH_REAUTHENTICATION_EXPIRED: 'Phiên xác thực lại đã hết hạn.',
@@ -36,6 +34,16 @@ const MESSAGES = Object.freeze({
 export const isAmbiguousProviderError = (error) => error?.code === 'NETWORK_ERROR' || error?.code === 'REQUEST_TIMEOUT';
 export const isTerminalLinkError = (error) => ['AUTH_METHOD_LINK_CHALLENGE_INVALID', 'AUTH_METHOD_LINK_CHALLENGE_EXPIRED', 'AUTH_METHOD_LINK_CHALLENGE_ALREADY_USED', 'AUTH_METHOD_LINK_OTP_ATTEMPTS_EXCEEDED'].includes(error?.code);
 
-export function getAuthProviderErrorMessage(error) {
+function providerDisplayName(provider) {
+  if (provider === 'FACEBOOK') return 'Facebook';
+  if (provider === 'GOOGLE') return 'Google';
+  return 'mạng xã hội';
+}
+
+export function getAuthProviderErrorMessage(error, provider) {
+  // Hai mã lỗi cũ/mới cùng được ánh xạ để UI không phụ thuộc phiên bản Backend đang triển khai.
+  if (error?.code === 'AUTH_PROVIDER_ALREADY_LINKED' || error?.code === 'PROVIDER_LINKED_TO_ANOTHER_USER') {
+    return `Tài khoản ${providerDisplayName(provider)} này đã được liên kết với một tài khoản UniShare khác. Vui lòng dùng tài khoản ${providerDisplayName(provider)} khác.`;
+  }
   return MESSAGES[error?.code] ?? 'Không thể hoàn tất thao tác. Vui lòng thử lại.';
 }

@@ -25,7 +25,7 @@ export default function AuthProvidersPage() {
   const [passwordMode, setPasswordMode] = useState(null);
   const [setPasswordProof, setSetPasswordProof] = useState(null);
   const linkedCount = providers.methods.filter((method) => method.linked).length;
-  const pageError = providers.error || (!passwordMode ? actions.error : '');
+  const pageError = providers.error || (!passwordMode && !showEmailDialog ? actions.error : '');
 
   async function startEmailLink(email) { try { const flow = await actions.startEmailLink(email); if (flow) setShowEmailDialog(false); } catch { /* Hook hiển thị lỗi. */ } }
   async function linkSocial(type) { try { await actions.linkSocial(type); } catch { /* Hook hiển thị lỗi. */ } }
@@ -81,7 +81,7 @@ export default function AuthProvidersPage() {
         {!providers.isLoading && providers.methods.length > 0 && linkedCount === 0 ? <EmptyState title="Chưa có phương thức được Backend trả về" description="Đây là trạng thái bất thường với một phiên đã đăng nhập. Bạn vẫn có thể liên kết phương thức mới." /> : null}
         {providers.methods.length > 0 ? <div className="min-w-0">{providers.methods.map((method) => <AuthProviderCard key={method.type} method={method} disabled={actions.isSubmitting || actions.ambiguousTarget === method.type} onLink={beginLink} onUnlink={beginUnlink} onSetPassword={beginSetPassword} onChangePassword={() => { actions.clearMessages(); setPasswordMode('CHANGE'); }} />)}</div> : null}
       </div>
-      {showEmailDialog ? <LinkEmailDialog open busy={actions.isSubmitting} onClose={() => setShowEmailDialog(false)} onSubmit={startEmailLink} /> : null}
+      {showEmailDialog ? <LinkEmailDialog open busy={actions.isSubmitting} error={actions.error} onClearError={actions.clearMessages} onClose={() => { actions.clearMessages(); setShowEmailDialog(false); }} onSubmit={startEmailLink} /> : null}
       {actions.linkFlow ? <LinkAuthOtpDialog flow={actions.linkFlow} busy={actions.isSubmitting} onClose={actions.clearLinkFlow} onVerifyOtp={verifyEmailOtp} onComplete={completeEmailLink} onResend={resendOtp} /> : null}
       <UnlinkProviderDialog method={unlinkTarget} open={confirmUnlink} onClose={() => { setConfirmUnlink(false); setUnlinkTarget(null); }} onConfirm={() => { setConfirmUnlink(false); setReauthenticate(true); }} />
       {reauthenticate ? <ReauthenticationDialog targetMethod={unlinkTarget?.type} methods={providers.methods} purpose={unlinkTarget?.purpose ?? 'UNLINK_AUTH_METHOD'} open busy={actions.isSubmitting} onClose={() => { setReauthenticate(false); setUnlinkTarget(null); }} onSubmit={unlinkTarget?.purpose === 'SET_PASSWORD' ? acceptSetPasswordProof : finishUnlink} /> : null}

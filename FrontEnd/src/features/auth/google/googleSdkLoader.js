@@ -44,36 +44,69 @@ export function loadGoogleIdentityServices() {
   return sdkPromise;
 }
 
-// Các dialog liên kết tài khoản chưa có vùng render nút chính thức nên dùng prompt có khóa chống gọi trùng.
-export async function requestGoogleCredential() {
+function createTemporaryGoogleButton(documentRef) {
+  const container = documentRef.createElement('div');
+  // Nút chỉ tồn tại trong lúc mở account chooser và không làm thay đổi bố cục trang cài đặt.
+  Object.assign(container.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: '240px',
+    height: '44px',
+    overflow: 'hidden',
+  });
+  documentRef.body.appendChild(container);
+  return container;
+}
+
+// Dùng nút GIS chính thức để mở account chooser; One Tap không phù hợp với thao tác link chủ động.
+export async function requestGoogleCredential({
+  sdkLoader = loadGoogleIdentityServices,
+  clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? '',
+  documentRef = globalThis.document,
+  windowRef = globalThis.window,
+} = {}) {
   if (credentialRequestActive) throw new Error('GOOGLE_REQUEST_IN_PROGRESS');
   credentialRequestActive = true;
+  let container = null;
   try {
-    const google = await loadGoogleIdentityServices();
+    const google = await sdkLoader();
     return await new Promise((resolve, reject) => {
       let settled = false;
       const finish = (handler, value) => {
         if (settled) return;
         settled = true;
-        window.clearTimeout(timeoutId);
+        windowRef.clearTimeout(timeoutId);
+        container?.remove();
         handler(value);
       };
-      const timeoutId = window.setTimeout(() => finish(reject, new Error('GOOGLE_LOGIN_TIMEOUT')), 60_000);
+      const timeoutId = windowRef.setTimeout(() => finish(reject, new Error('GOOGLE_LOGIN_TIMEOUT')), 60_000);
+      container = createTemporaryGoogleButton(documentRef);
       google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? '',
+        client_id: clientId,
         auto_select: false,
         cancel_on_tap_outside: true,
         callback: (response) => response?.credential
           ? finish(resolve, response.credential)
           : finish(reject, new Error('GOOGLE_CREDENTIAL_MISSING')),
       });
-      google.accounts.id.prompt((notification) => {
-        if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
-          finish(reject, new Error('GOOGLE_PROMPT_UNAVAILABLE'));
-        }
+      google.accounts.id.renderButton(container, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        width: 240,
       });
+      const nativeButton = container.querySelector('[role="button"], button, div[tabindex]');
+      if (!nativeButton) {
+        finish(reject, new Error('GOOGLE_PROMPT_UNAVAILABLE'));
+        return;
+      }
+      nativeButton.click();
     });
   } finally {
+    container?.remove();
     credentialRequestActive = false;
   }
 }
